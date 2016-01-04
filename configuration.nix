@@ -27,6 +27,7 @@
       enable = true;
       efiSupport = true;
       efiInstallAsRemovable = true;
+      maxGenerations = 2;
       biosSupport = false;
       extraEntries = ''
         /Windows
@@ -39,7 +40,7 @@
 
   nix.settings = {
     experimental-features = [ "nix-command" "flakes" ];
-    allowed-users = [ "nixos" ];
+    allowed-users = [ "nixos" "schlich" ];
   };
   nixpkgs.config.allowUnfree = true;
 
@@ -66,13 +67,6 @@
     isNormalUser = true;
     extraGroups = [ "wheel" ];
   };
-  users.users.nixos = {
-    isNormalUser = true;
-    description = "Ty Schlichenmeyer";
-    extraGroups = [ "wheel" "input" "seat" "uinput" ];
-    shell = pkgs.nushell;
-  };
-
   environment = {
     shells = [ pkgs.nushell ];
     variables = {
@@ -94,17 +88,11 @@
     ];
   };
 
-  age.secrets.github-token = {
-    file = ./secrets/github-token.age;
-    owner = "schlich";
-    mode = "0400";
-  };
 #  age.secrets.openai = {
 #    file = ./secrets/openai.age;
 #    owner = "nixos";
 #    mode = "0400";
 #  };
-  age.identityPaths = [ "/home/schlich/.ssh/id_ed25519" ];
 
   services = {
     dbus.implementation = "broker";
@@ -115,7 +103,13 @@
         config = builtins.readFile ./system/kmonad.kbd;
       };
     };
-    greetd.enable = true;
+    greetd = {
+      default_session = {
+        user = "schlich";
+        command = "${pkgs.niri}/bin/niri-session";
+      };
+      enable = true;
+    };
     openssh = {
       enable = true;
       settings = {
