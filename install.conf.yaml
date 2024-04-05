@@ -1,29 +1,13 @@
 - shell:
-  - [git clone --depth=1 https://github.com/romkatv/powerlevel10k.git /home/vscode/.oh-my-zsh/custom/themes/powerlevel10k, Download Powerlevel10k for Oh My Zsh!]
   - [git submodule update --init --recursive, Update submodules]
 
 - link:
-    ~/.zshrc:
-      create: true
-      force: true
-
-    ~/.p10k.zsh:
-
-    ~/.local/share/fonts/:
-      path: local/share/fonts/*
-      create: true
-      glob: true
-
-    ~/.oh-my-zsh/custom/plugins/hatch/:
-      path: oh-my-zsh/plugins/hatch/*
-      create: true
-      glob: true
-
-    ~/.config/hatch/:
-      path: config/hatch/*
-      create: true
-      glob: true
-
+    
     ~/.ipython/profile_default/ipython_config.py:
       create: true
       path: ipython/profile_default/ipython_config.py
+
+    ~/.config/nushell/:
+      create: true
+      path: nushell/*
+      glob: true
