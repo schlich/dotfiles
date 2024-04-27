@@ -11,3 +11,7 @@
       create: true
       path: nushell/*
       glob: true
+
+    ~/.dagster/dagster.yaml:
+      create: true
+      path: dagster/dagster.yaml
