@@ -9,9 +9,9 @@
 
     ~/.config/nushell/:
       create: true
-      path: ~/nushell/*
+      path: nushell/*
       glob: true
 
     ~/.dagster/dagster.yaml:
       create: true
-      path: ~/dagster/dagster.yaml
+      path: dagster/dagster.yaml
