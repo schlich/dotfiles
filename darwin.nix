@@ -1,4 +1,4 @@
-{ pkgs, ... }: 
+{ pkgs, lib, ... }: 
 
 {
     # List packages installed in system profile. To search by name, run:
@@ -37,4 +37,10 @@
         name = "tyschlichenmeyer";
         home = "/Users/tyschlichenmeyer";
     };
+    
+    nixpkgs.config.allowUnfreePredicate = pkg:
+      builtins.elem (lib.getName pkg) [
+        "vault"
+      ];
+
   }

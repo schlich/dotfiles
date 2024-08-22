@@ -7,12 +7,13 @@
 
   home.stateVersion = "23.05";
 
-  home.packages = with pkgs; [
-    jira-cli-go
-    pijul
-    pyright
-    lua
-    glow
+  home.packages = [
+    pkgs.jira-cli-go
+    pkgs.pijul
+    pkgs.pyright
+    pkgs.lua
+    pkgs.glow
+    pkgs.vault
     # (pkgs.nerdfonts.override { fonts = [ "FantasqueSansMono" ]; })
  ];
 
@@ -26,11 +27,6 @@
 
  
   programs.home-manager.enable = true;
-  # programs.direnv = {
-  #   enable = true;
-  #   enableNushellIntegration = true;
-  #   nix-direnv.enable = true;
-  # };
   programs.nushell = {
     enable = true;
     shellAliases = {
