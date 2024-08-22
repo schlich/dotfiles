@@ -9,4 +9,5 @@ $env.ENV_CONVERSIONS = {
       to_string: { |v| $v | path expand --no-symlink | str join (char esep) }
   }
 }
+
 $env.PATH = ( $env.PATH | prepend '/Users/tyschlichenmeyer/.nix-profile/bin' | prepend '/Users/tyschlichenmeyer/.cargo/bin' )
