@@ -35,6 +35,7 @@
       hme = "home-manager edit";
       hms = "home-manager switch";
       lg = "lazygit";
+      nrb = "darwin-rebuild switch --flake ~/dotfiles";
     };
     environmentVariables = {
       XDG_CACHE_HOME = "/Users/tyschlichenmeyer/.cache";
