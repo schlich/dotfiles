@@ -41,6 +41,7 @@
       lg = "lazygit";
       nrb = "darwin-rebuild switch --flake ~/dotfiles";
       z = "zellij -l all";
+      edf = "enter ~/dotfiles";
     };
     environmentVariables = {
       XDG_CACHE_HOME = "/Users/tyschlichenmeyer/.cache";
@@ -99,6 +100,7 @@
   programs.navi.enable = true;
   programs.helix = {
     enable = true;
+    # note: defaultEditor not working for nushell?
     defaultEditor = true;
     extraPackages = [
       pkgs.nixd
@@ -110,5 +112,4 @@
   programs.fzf.enable = true;
   home.preferXdgDirectories = true;
   xdg.enable = true;
-
 }
