@@ -32,6 +32,10 @@
     shellAliases = {
       pj = "pijul";
       gst = "git status";
+      ga = "git add";
+      gcm = "git commit -m";
+      gacm = "git commit -am";
+      gd = "git diff";
       hme = "home-manager edit";
       hms = "home-manager switch";
       lg = "lazygit";
