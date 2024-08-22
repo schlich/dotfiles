@@ -39,9 +39,9 @@
       hme = "home-manager edit";
       hms = "home-manager switch";
       lg = "lazygit";
-      nrb = "darwin-rebuild switch --flake ~/dotfiles";
-      z = "zellij -l all";
-      edf = "enter ~/dotfiles";
+      nrb = "darwin-rebuild switch --flake ~/dotfiles"; # "nix rebuild"
+      zu = "zellij -l all"; # "zellij up"
+      df = "enter ~/dotfiles";
     };
     environmentVariables = {
       XDG_CACHE_HOME = "/Users/tyschlichenmeyer/.cache";
