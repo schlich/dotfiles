@@ -8,13 +8,10 @@
   home.stateVersion = "23.05";
 
   home.packages = with pkgs; [
-    nixd
     jira-cli-go
     pijul
     pyright
-    pylyzer
     lua
-    yaml-language-server
     glow
     # (pkgs.nerdfonts.override { fonts = [ "FantasqueSansMono" ]; })
  ];
@@ -44,7 +41,6 @@
       lg = "lazygit";
     };
     environmentVariables = {
-      EDITOR = "hx";
       XDG_CACHE_HOME = "/Users/tyschlichenmeyer/.cache";
       XDG_CONFIG_HOME = "/Users/tyschlichenmeyer/.config";
       XDG_DATA_HOME = "/Users/tyschlichenmeyer/.local/share";
@@ -99,7 +95,16 @@
   programs.gh.enable = true;
   programs.gh-dash.enable = true;
   programs.navi.enable = true;
-  programs.helix.enable = true;
+  programs.helix = {
+    enable = true;
+    defaultEditor = true;
+    extraPackages = [
+      pkgs.nixd
+      pkgs.marksman
+      pkgs.pylyzer
+      pkgs.yaml-language-server
+    ];
+  };
   programs.fzf.enable = true;
   home.preferXdgDirectories = true;
   xdg.enable = true;
