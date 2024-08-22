@@ -43,4 +43,6 @@
         "vault"
       ];
 
+    nix.settings.trusted-users = [ "root" "tyschlichenmeyer" ];
+
   }
