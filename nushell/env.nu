@@ -9,5 +9,3 @@ $env.ENV_CONVERSIONS = {
     }
 }
 
-$env.PATH = ($env.PATH | split row (char esep) | prepend '/Users/tyschlichenmeyer/.nix-profile/bin')
-$env.PATH = ($env.PATH | split row (char esep) | prepend '/nix/var/nix/profiles/default/bin')
