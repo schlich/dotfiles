@@ -14,7 +14,7 @@
     pkgs.lua
     pkgs.glow
     pkgs.vault
-    pkgs.python311
+    pkgs.python313
     pkgs.uv
     # (pkgs.nerdfonts.override { fonts = [ "FantasqueSansMono" ]; })
  ];
@@ -45,7 +45,7 @@
       hms = "home-manager switch";
       lg = "lazygit";
       nrb = "darwin-rebuild switch --flake ~/dotfiles"; # "nix rebuild"
-      zu = "zellij -l all"; # "zellij up"
+      zj = "zellij";  
       df = "enter ~/dotfiles";
     };
     configFile.source = ./nushell/config.nu;
