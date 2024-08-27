@@ -19,6 +19,7 @@
  ];
 
   home.file = {
+    ".config/zellij".source = ./zellij;
     # "$env.XDG_CONFIG_HOME/nushell/nupm".source = /Users/tyschlichenmeyer/.config/nushell/nupm;
     # ".gradle/gradle.properties".text = ''
     #   org.gradle.console=verbose
@@ -45,12 +46,6 @@
       nrb = "darwin-rebuild switch --flake ~/dotfiles"; # "nix rebuild"
       zu = "zellij -l all"; # "zellij up"
       df = "enter ~/dotfiles";
-    };
-    environmentVariables = {
-      XDG_CACHE_HOME = "/Users/tyschlichenmeyer/.cache";
-      XDG_CONFIG_HOME = "/Users/tyschlichenmeyer/.config";
-      XDG_DATA_HOME = "/Users/tyschlichenmeyer/.local/share";
-      XDG_STATE_HOME = "/Users/tyschlichenmeyer/.local/state";
     };
     configFile.source = ./nushell/config.nu;
     envFile.source = ./nushell/env.nu;
