@@ -14,6 +14,7 @@
     pkgs.lua
     pkgs.glow
     pkgs.vault
+    pkgs.python311
     # (pkgs.nerdfonts.override { fonts = [ "FantasqueSansMono" ]; })
  ];
 
