@@ -9,12 +9,12 @@
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = inputs@{ nixpkgs, home-manager, darwin, ... }: {
+  outputs = inputs@{ home-manager, darwin, ... }: {
     darwinConfigurations = {
       "Ty-Schlichenmeyer-MacBook-Air" = darwin.lib.darwinSystem {
         system = "aarch64-darwin";
         modules = [
-          ./darwin.nix
+          ./configuration.nix
           home-manager.darwinModules.home-manager
           {
             home-manager.useGlobalPkgs = true;
