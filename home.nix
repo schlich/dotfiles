@@ -37,6 +37,8 @@
       gcm = "git commit -m";
       gacm = "git commit -am";
       gd = "git diff";
+      gp = "git pull";
+      gP = "git push";
       hme = "home-manager edit";
       hms = "home-manager switch";
       lg = "lazygit";
