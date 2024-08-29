@@ -10,7 +10,6 @@
   home.packages = [
     pkgs.jira-cli-go
     pkgs.pijul
-    pkgs.pyright
     pkgs.lua
     pkgs.glow
     pkgs.vault
@@ -28,7 +27,6 @@
     # '';
   };
 
- 
   programs.home-manager.enable = true;
   programs.nushell = {
     enable = true;
@@ -38,6 +36,7 @@
       ga = "git add";
       gcm = "git commit -m";
       gacm = "git commit -am";
+      gb = "git branch";
       gd = "git diff";
       gp = "git pull";
       gP = "git push";
@@ -104,6 +103,7 @@
     extraPackages = [
       pkgs.nixd
       pkgs.marksman
+      pkgs.pyright
       pkgs.pylyzer
       pkgs.yaml-language-server
     ];
