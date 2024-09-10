@@ -5,6 +5,7 @@
         pkgs.zoxide
         pkgs.starship
         pkgs.stow
+        pkgs.glow
       ];
 
     services.nix-daemon.enable = true;
