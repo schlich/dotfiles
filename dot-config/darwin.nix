@@ -4,6 +4,7 @@
         pkgs.helix
         pkgs.zoxide
         pkgs.starship
+        pkgs.stow
       ];
 
     services.nix-daemon.enable = true;
