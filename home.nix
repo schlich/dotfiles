@@ -1,14 +1,13 @@
 { pkgs, lib, ... }:
 
 {
+  home.homeDirectory = "/Users/tyschlichenmeyer";  
   nixpkgs.config = {
     allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
       "terraform"
       "vault"
     ];
   };
-  home.username = "tyschlichenmeyer";
-  home.homeDirectory = "/Users/tyschlichenmeyer";
   home.preferXdgDirectories = true;
 
   home.stateVersion = "24.05";
@@ -20,8 +19,8 @@
     python313
     just
     fx
-    terraform
-    vault
+    # terraform
+    # vault
     basedpyright
     nodejs
     nix-search-cli
