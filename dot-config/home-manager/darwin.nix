@@ -9,8 +9,14 @@
         pkgs.tree
       ];
     environment.shells = [ pkgs.nushell ];
+    environment.variables = {
+      EDITOR = "hx";
+    };
 
 
+    environment.shellAliases = {
+      nde = "darwin-rebuild switch --flake ~/dotfiles/dot-config/home-manager";
+    };
     services.nix-daemon.enable = true;
 
     nix.settings.experimental-features = "nix-command flakes";
