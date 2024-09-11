@@ -10,8 +10,7 @@
   };
 
   outputs = inputs@{ nixpkgs, home-manager, darwin, ... }: {
-    darwinConfigurations."TySchlimeyerAir" = darwin.lib.darwinSystem {
-      system = "aarch64-darwin";
+    darwinConfigurations."Ty-Schlichenmeyer-MacBook-Air" = darwin.lib.darwinSystem {
       modules = [
         ./darwin.nix
         home-manager.darwinModules.home-manager
