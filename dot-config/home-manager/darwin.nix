@@ -25,7 +25,6 @@
       "tyschlichenmeyer"
     ];
 
-    # programs.zsh.enable = true;  # default shell on catalina
 
     system.stateVersion = 4;
     system.keyboard = {
