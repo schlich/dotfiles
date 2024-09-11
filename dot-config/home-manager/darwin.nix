@@ -15,7 +15,7 @@
 
 
     environment.shellAliases = {
-      nde = "darwin-rebuild switch --flake ~/dotfiles/dot-config/home-manager";
+      nde = "darwin-rebuild edit";
     };
     services.nix-daemon.enable = true;
 
