@@ -27,9 +27,6 @@
     devenv
     yaml-language-server
     ansible-language-server
-    # (pkgs.writeShellScriptBin "my-hello" ''
-    #   echo "Hello, ${config.home.username}!"
-    # '')
   ];
 
   home.file = {
