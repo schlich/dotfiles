@@ -1,4 +1,4 @@
-{ pkgs, ... }: {
+{ pkgs, lib, ... }: {
     environment.systemPackages =
       [ 
         pkgs.helix
@@ -25,6 +25,11 @@
       "tyschlichenmeyer"
     ];
 
+    nixpkgs.config.allowUnfreePredicate = pkg:
+    builtins.elem (lib.getName pkg) [
+      "terraform"
+      "vault"
+    ];
 
     system.stateVersion = 4;
     system.keyboard = {
