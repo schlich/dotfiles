@@ -36,6 +36,7 @@
       enableKeyMapping = true; 
       remapCapsLockToEscape = true;
     };
+    security.pam.enableSudoTouchIdAuth = true;
 
     nixpkgs.hostPlatform = "aarch64-darwin";
     users.users.tyschlichenmeyer = {
