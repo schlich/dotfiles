@@ -6,6 +6,7 @@
         pkgs.starship
         pkgs.stow
         pkgs.glow
+        pkgs.tree
       ];
 
     services.nix-daemon.enable = true;

@@ -10,7 +10,7 @@
   };
 
   outputs = inputs@{ nixpkgs, home-manager, darwin, ... }: {
-    darwinConfigurations.TySchlimeyerAir = darwin.lib.darwinSystem {
+    darwinConfigurations."TySchlimeyerAir" = darwin.lib.darwinSystem {
       system = "aarch64-darwin";
       modules = [
         ./darwin.nix
@@ -20,8 +20,6 @@
           home-manager.useUserPackages = true;
           home-manager.users.tyschlichenmeyer = import ./home.nix;
 
-          # Optionally, use home-manager.extraSpecialArgs to pass
-          # arguments to home.nix
         }
       ];
     };

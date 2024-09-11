@@ -19,8 +19,8 @@
     python313
     just
     fx
-    # terraform
-    # vault
+    terraform
+    vault
     basedpyright
     nodejs
     nix-search-cli
