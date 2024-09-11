@@ -8,6 +8,8 @@
         pkgs.glow
         pkgs.tree
       ];
+    environment.shells = [ pkgs.nushell ];
+
 
     services.nix-daemon.enable = true;
 
