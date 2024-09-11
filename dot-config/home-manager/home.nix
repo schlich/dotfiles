@@ -27,6 +27,7 @@
     devenv
     yaml-language-server
     ansible-language-server
+    graphviz
   ];
 
   home.file = {
