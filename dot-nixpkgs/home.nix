@@ -59,6 +59,10 @@
   # Let Home Manager install and manage itself.
   programs = {
     home-manager.enable = true;
+    wezterm = {
+      enable = true;
+      enableZshIntegration = true;
+    };
     nushell = {
       enable = true;
       envFile.source = ./nushell/env.nu;
