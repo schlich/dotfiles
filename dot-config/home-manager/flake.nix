@@ -12,7 +12,7 @@
   outputs = inputs@{ nixpkgs, home-manager, darwin, ... }: {
     darwinConfigurations."Ty-Schlichenmeyer-MacBook-Air" = darwin.lib.darwinSystem {
       modules = [
-        ./darwin.nix
+        ./darwin-configuration.nix
         home-manager.darwinModules.home-manager
         {
           home-manager.useGlobalPkgs = true;

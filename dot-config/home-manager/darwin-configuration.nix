@@ -15,7 +15,8 @@
 
 
     environment.shellAliases = {
-      nde = "darwin-rebuild edit";
+      dre = "darwin-rebuild edit";
+      drs = "darwin-rebuild switch --flake ~/.config/home-manager";
     };
     services.nix-daemon.enable = true;
 
