@@ -5,8 +5,8 @@ layout {
     pane
     pane split_direction="vertical" {
         pane
-        pane command="ptw" {
-        	args "."
+        pane command="watchexec" {
+        	args "just" "test-elt"
         }
     }
     pane size=2 borderless=true {
