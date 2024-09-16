@@ -53,6 +53,7 @@
   #  /etc/profiles/per-user/tyschlichenmeyer/etc/profile.d/hm-session-vars.sh
   #
   home.sessionVariables = {
+    SHELL = "nu -i";
   };
 
   xdg.enable = true;
@@ -60,15 +61,24 @@
   programs = {
     home-manager.enable = true;
     wezterm = {
+    zsh.enable = true;
+    kitty = {
       enable = true;
-      enableZshIntegration = true;
+      font = {
+        package = pkgs.monaspace;
+        name = "Monaspace Krypton Var";
+      };
+    };
+    direnv = {
+      enable = true;
+      enableNushellIntegration = true;
+      nix-direnv.enable = true;
     };
     nushell = {
       enable = true;
       envFile.source = ./nushell/env.nu;
       configFile.source = ./nushell/config.nu;
       environmentVariables = {
-        EDITOR = "'hx'";
         SNOWFLAKE_USER = "'TSCHLIC'";
         SNOWFLAKE_PASSWORD = "^pass show snowflake";
         DECIPHER_API_KEY = "^pass show decipher";
@@ -78,8 +88,10 @@
         ENABLE_SNOWFLAKE = "true";
       };
       shellAliases = {
-        hme = "home-manager edit";
+        hme = "hx ~/dotfiles/dot-nixpkgs/home.nix";
         hms = "home-manager switch";
+        dre = "darwin-rebuild edit";
+        drs = "darwin-rebuild switch --flake ~/dotfiles/dot-nixpkgs";
         activate = "overlay use .venv/bin/activate.nu";
         lg = "lazygit";
         oco = "bunx opencommit";

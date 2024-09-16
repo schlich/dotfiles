@@ -10,12 +10,15 @@
         pkgs.stow
         pkgs.glow
         pkgs.tree
+        pkgs.nushell
       ];
     environment.shells = [ pkgs.nushell ];
     environment.variables = {
       EDITOR = "hx";
+      SHELL = "nu"; 
     };
     fonts.packages = [ pkgs.monaspace ];
+    environment.loginShell = pkgs.nushell;
 
 
     environment.shellAliases = {
@@ -52,12 +55,13 @@
     users.users.tyschlichenmeyer = {
       name = "tyschlichenmeyer";
       home = "/Users/tyschlichenmeyer";
+      shell = pkgs.nushell;
     };   
+    programs.zsh.enable = true;
     programs.direnv = {
       enable = true;
       nix-direnv.enable = true;
     };
-    programs.zsh.enable = true;  
     programs.gnupg.agent = {
       enable = true;
       enableSSHSupport = true;
