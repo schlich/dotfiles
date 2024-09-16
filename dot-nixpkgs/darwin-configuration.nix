@@ -1,4 +1,5 @@
 { pkgs, lib, ... }: {
+    home-manager.backupFileExtension = "bak";
     nix.gc.automatic = true;
     nix.optimise.automatic = true;
     nix.settings.auto-optimise-store = true;
@@ -6,7 +7,6 @@
       [ 
         pkgs.helix
         pkgs.zoxide
-        pkgs.starship
         pkgs.stow
         pkgs.glow
         pkgs.tree
@@ -17,8 +17,8 @@
       EDITOR = "hx";
       SHELL = "nu"; 
     };
-    fonts.packages = [ pkgs.monaspace ];
     environment.loginShell = pkgs.nushell;
+    # fonts.packages = [ pkgs.monaspace ];
 
 
     environment.shellAliases = {
@@ -49,6 +49,7 @@
     system.defaults.screencapture.location = "/Users/tyschlichenmeyer/Downloads";
     system.defaults.dock = {
       orientation = "left";
+      autohide = true;
     };
 
     nixpkgs.hostPlatform = "aarch64-darwin";

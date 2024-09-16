@@ -28,6 +28,8 @@
     yaml-language-server
     ansible-language-server
     graphviz
+    graphicsmagick
+    watchexec
   ];
 
   home.file = {
@@ -60,8 +62,8 @@
   # Let Home Manager install and manage itself.
   programs = {
     home-manager.enable = true;
-    wezterm = {
     zsh.enable = true;
+    wezterm.enable = true;
     kitty = {
       enable = true;
       font = {
