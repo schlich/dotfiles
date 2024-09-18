@@ -30,6 +30,11 @@
     graphviz
     graphicsmagick
     watchexec
+    nufmt
+    libxml2
+    ftgl
+    chafa
+    imv
   ];
 
   home.file = {
