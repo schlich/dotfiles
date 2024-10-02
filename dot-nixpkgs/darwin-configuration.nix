@@ -64,6 +64,7 @@
         ansible-language-server
         tealdeer
         gh
+        gh-dash
       ];
       pathsToLink = [
         "/share"
