@@ -1,78 +1,121 @@
 { pkgs, lib, ... }: {
-    home-manager.backupFileExtension = "bak";
-    nix.gc.automatic = true;
-    nix.optimise.automatic = true;
-    nix.settings.auto-optimise-store = true;
-    environment.systemPackages =
-      [ 
-        pkgs.helix
-        pkgs.zoxide
-        pkgs.stow
-        pkgs.glow
-        pkgs.tree
-        pkgs.nushell
+
+    nix = {
+      settings.experimental-features = "nix-command flakes";
+
+      gc.automatic = true;
+      optimise.automatic = true;
+      settings.auto-optimise-store = true;
+      settings.trusted-users = [
+        "root"
+        "tyschlichenmeyer"
       ];
-    environment.shells = [ pkgs.nushell ];
-    environment.variables = {
-      EDITOR = "hx";
-      SHELL = "nu"; 
     };
-    environment.loginShell = pkgs.nushell;
-    # fonts.packages = [ pkgs.monaspace ];
 
 
-    environment.shellAliases = {
-      dre = "darwin-rebuild edit";
-      drs = "darwin-rebuild switch --flake ~/.config/home-manager";
+    system = {
+      stateVersion = 4;
+      keyboard = {
+        enableKeyMapping = true; 
+        remapCapsLockToEscape = true;
+        swapLeftCtrlAndFn = true;
+      };
+      defaults = {
+        screencapture.location = "/Users/tyschlichenmeyer/Downloads";
+        dock = {
+          orientation = "left";
+          autohide = true;
+        };
+        NSGlobalDomain = {
+          AppleInterfaceStyleSwitchesAutomatically = true;
+          AppleScrollerPagingBehavior = true;
+          AppleShowScrollBars = "Always";
+        };
+      };
     };
-    services.nix-daemon.enable = true;
 
-    nix.settings.experimental-features = "nix-command flakes";
-    nix.settings.trusted-users = [
-      "root"
-      "tyschlichenmeyer"
-    ];
-
-    nixpkgs.config.allowUnfreePredicate = pkg:
-    builtins.elem (lib.getName pkg) [
-      "terraform"
-      "vault"
-    ];
-
-    system.stateVersion = 4;
-    system.keyboard = {
-      enableKeyMapping = true; 
-      remapCapsLockToEscape = true;
-      swapLeftCtrlAndFn = true;
-    };
     security.pam.enableSudoTouchIdAuth = true;
-    system.defaults.screencapture.location = "/Users/tyschlichenmeyer/Downloads";
-    system.defaults.dock = {
-      orientation = "left";
-      autohide = true;
+
+    # home-manager.backupFileExtension = "bak";
+
+    environment = {
+      systemPackages = with pkgs; [ 
+        watchexec
+        yazi
+        helix
+        stow
+        glow
+        tree
+        nushell
+        nixd
+        bat
+        kitty
+        zoxide
+        direnv
+        starship
+        just
+        uv
+        lazygit
+        poetry
+        python313
+        ruff
+        basedpyright
+        yaml-language-server
+        ansible-language-server
+        tealdeer
+        gh
+      ];
+      pathsToLink = [
+        "/share"
+        "/bin"
+        "/Applications"
+      ];
+      systemPath = [
+        "/run/current-system/sw/bin"
+        "/usr/local/bin"
+      ];
+      shells = [ pkgs.nushell ];
+      variables = {
+        EDITOR = "hx";
+      };
+      shellAliases = {
+        dre = "darwin-rebuild -I ~/dotfiles/dot-nixpkgs";
+        drs = "darwin-rebuild switch --flake ~/dotfiles/dot-nixpkgs";
+      };
+      loginShell = "/run/current-system/sw/bin/nu -l -i"; 
+
+   };
+
+    nixpkgs = {
+      config.allowUnfreePredicate = pkg:
+        builtins.elem (lib.getName pkg) [
+          "terraform"
+          "vault"
+      ];
+      hostPlatform = "aarch64-darwin";
     };
 
-    nixpkgs.hostPlatform = "aarch64-darwin";
+    fonts.packages = [ pkgs.monaspace ];
+
     users.users.tyschlichenmeyer = {
       name = "tyschlichenmeyer";
       home = "/Users/tyschlichenmeyer";
       shell = pkgs.nushell;
     };   
-    programs.zsh.enable = true;
-    programs.direnv = {
-      enable = true;
-      nix-direnv.enable = true;
+
+    programs = {
+      direnv = {
+        enable = true;
+      };
+      gnupg.agent = {
+        enable = true;
+        enableSSHSupport = true;
+      };
     };
-    programs.gnupg.agent = {
-      enable = true;
-      enableSSHSupport = true;
+
+    services = {
+      sketchybar.enable = true;
+      nix-daemon.enable = true;
     };
-    services.sketchybar.enable = true;
-    
-    system.defaults.NSGlobalDomain = {
-      AppleInterfaceStyleSwitchesAutomatically = true;
-      AppleScrollerPagingBehavior = true;
-      AppleShowScrollBars = "Always";
-    };
- 
+   
 }

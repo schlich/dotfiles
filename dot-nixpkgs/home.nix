@@ -4,7 +4,6 @@
   home.homeDirectory = "/Users/tyschlichenmeyer";  
   nixpkgs.config = {
     allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
-      "terraform"
       "vault"
     ];
   };
@@ -15,26 +14,23 @@
   home.packages = with pkgs; [
     uv
     nil
-    nixpkgs-fmt
     python313
     just
     fx
-    terraform
     vault
     basedpyright
     nodejs
     nix-search-cli
-    devenv
     yaml-language-server
     ansible-language-server
     graphviz
     graphicsmagick
     watchexec
-    nufmt
     libxml2
     ftgl
     chafa
-    imv
+    devpod
+    nixd
   ];
 
   home.file = {
@@ -60,7 +56,6 @@
   #  /etc/profiles/per-user/tyschlichenmeyer/etc/profile.d/hm-session-vars.sh
   #
   home.sessionVariables = {
-    SHELL = "nu -i";
   };
 
   xdg.enable = true;
@@ -87,8 +82,8 @@
       configFile.source = ./nushell/config.nu;
       environmentVariables = {
         SNOWFLAKE_USER = "'TSCHLIC'";
-        SNOWFLAKE_PASSWORD = "^pass show snowflake";
-        DECIPHER_API_KEY = "^pass show decipher";
+        # SNOWFLAKE_PASSWORD = "^pass show snowflake";
+        # DECIPHER_API_KEY = "^pass show decipher";
         DAGSTER_HOME = "$env.HOME | path join .local share dagster";
         AWS_DEFAULT_PROFILE = "'tschlic'";
         VAULT_ADDR = "'http://127.0.0.1:8200'";
@@ -97,8 +92,9 @@
       shellAliases = {
         hme = "hx ~/dotfiles/dot-nixpkgs/home.nix";
         hms = "home-manager switch";
-        dre = "darwin-rebuild edit";
+        dce = "hx ~/dotfiles/dot-nixpkgs/darwin-configuration.nix";
         drs = "darwin-rebuild switch --flake ~/dotfiles/dot-nixpkgs";
+        dre = "darwin-rebuild edit --flake ~/dotfiles/dot-nixpkgs";
         activate = "overlay use .venv/bin/activate.nu";
         lg = "lazygit";
         oco = "bunx opencommit";
@@ -157,18 +153,18 @@
     };
     lazygit = {
       enable = true;
-      settings = {
-        customCommands = [
-          {
-            key = "c";
-            command = "uv run cz commit";
-            description = "commit with commitizen";
-            context = "files";
-            loadingText = "opening commitizen commit tool";
-            subprocess = true;
-          }
-        ];
-      };
+      # settings = {
+      #   customCommands = [
+      #     {
+      #       key = "c";
+      #       command = "cz commit";
+      #       description = "commit with commitizen";
+      #       context = "files";
+      #       loadingText = "opening commitizen commit tool";
+      #       subprocess = true;
+      #     }
+      #   ];
+      # };
     };
     gh = {
       enable = true;
@@ -199,6 +195,7 @@
         ".envrc"
       ];
       extraConfig = {
+        pull.rebase = true;
         core.editor = "hx";
       };
     };
