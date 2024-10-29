@@ -1,0 +1,73 @@
+[[language]]
+name = "python"
+language-id = "python"
+roots = ["pyproject.toml", "uv.lock", ".git", ".venv/"]
+language-servers = ["ruff", "basedpyright"]
+formatter = { command = "bash", "args" = ["-c", "ruff check fix - | ruff format -"] }
+file-types = ["py", "ipynb"]
+comment-token = "#"
+shebangs = ["python"]
+auto-format = true
+
+[language-server.basedpyright]
+command = "basedpyright-langserver"
+args = ["--stdio"]
+except-features = ["format", "code-action"]
+
+[language-server.basedpyright.config.basedpyright.analysis]
+autoSearchPaths = true
+typeCheckingMode = "basic"
+diagnosticMode = "openFilesOnly"
+autoImportCompletions = true
+ 
+[[language]]
+name = "nix"
+language-servers = ["nixd"]
+auto-format = true
+
+[language.formatter]
+command = "nix"
+args = ["fmt", "-"]
+
+[[language]]
+name = "sql"
+
+[language.formatter]
+args = ["-"]
+command = "sqlfmt"
+
+[language-server]
+[language-server.nu]
+args = ["--lsp"]
+command = "nu"
+
+[language-server.ruff]
+args = ["server", "--preview"]
+command = "ruff"
+environment = { "RUFF_TRACE" = "messages" }
+
+[language-server.ruff.settings]
+loglevel = "debug"
+
+[language-server.ruff.settings.lint]
+select = ["E", "F", "W", "B", "I", "RUF", "N", "LOG", "ERA", "W", "D", "UP", "ANN", "ASYNC", "S", "RET", "TCH", "ARG", "PTH", "DOC"]
+preview = true
+
+[language-server.ruff.config.settings.format]
+preview = true
+quote-style = "double"
+docstring-code-format = true
+indent-style = "space"
+
+[language-server.yaml-language-server.config.yaml]
+validation = true
+
+[language-server.yaml-language-server.config.yaml.format]
+enable = true
+
+[language-server.yaml-language-server.config.yaml.schemas]
+"https://json.schemastore.org/github-workflow.json" = ".github/workflows/*.{yml,yaml}"
+"https://raw.githubusercontent.com/ansible-community/schemas/main/f/ansible-tasks.json" = "roles/{tasks,handlers}/*.{yml,yaml}"
+
+[language-server.nixd]
+command = "nixd"
