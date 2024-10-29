@@ -40,11 +40,19 @@
 
     environment = {
       systemPackages = with pkgs; [ 
+        tre-command
+        dust
+        nodejs_20
+        robotframework-tidy
         watchexec
+        fzf
+        fd
+        ripgrep
         yazi
         helix
         stow
         glow
+        mdcat
         tree
         nushell
         nixd
@@ -65,6 +73,12 @@
         tealdeer
         gh
         gh-dash
+        fx
+        vault
+        marksman
+        zellij
+        carapace
+        heroku
       ];
       pathsToLink = [
         "/share"
