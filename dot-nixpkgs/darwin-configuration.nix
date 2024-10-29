@@ -18,7 +18,7 @@
       keyboard = {
         enableKeyMapping = true; 
         remapCapsLockToEscape = true;
-        swapLeftCtrlAndFn = true;
+        swapLeftCtrlAndFn = false;
       };
       defaults = {
         screencapture.location = "/Users/tyschlichenmeyer/Downloads";
