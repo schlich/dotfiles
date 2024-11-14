@@ -61,10 +61,8 @@
         direnv
         starship
         just
-        uv
         lazygit
         poetry
-        python313
         ruff
         basedpyright
         yaml-language-server
