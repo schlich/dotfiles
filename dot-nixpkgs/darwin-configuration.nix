@@ -79,6 +79,7 @@
         zellij
         carapace
         heroku
+        aichat
       ];
       pathsToLink = [
         "/share"
