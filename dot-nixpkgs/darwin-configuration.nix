@@ -5,7 +5,6 @@
 
       gc.automatic = true;
       optimise.automatic = true;
-      settings.auto-optimise-store = true;
       settings.trusted-users = [
         "root"
         "tyschlichenmeyer"
@@ -98,8 +97,6 @@
         dre = "darwin-rebuild -I ~/dotfiles/dot-nixpkgs";
         drs = "darwin-rebuild switch --flake ~/dotfiles/dot-nixpkgs";
       };
-      loginShell = "/run/current-system/sw/bin/nu -l -i"; 
-
    };
 
     nixpkgs = {
