@@ -3,23 +3,23 @@ name = "python"
 language-id = "python"
 roots = ["pyproject.toml", "uv.lock", ".git", ".venv/"]
 language-servers = ["ruff", "basedpyright"]
-formatter = { command = "bash", "args" = ["-c", "ruff check fix - | ruff format -"] }
+auto-format = true
+formatter = { command = "uvx", args = ["sh", "-c", "ruff check --fix - | ruff format -" ] }
 file-types = ["py", "ipynb"]
 comment-token = "#"
 shebangs = ["python"]
-auto-format = true
 
 [language-server.basedpyright]
-command = "basedpyright-langserver"
-args = ["--stdio"]
-except-features = ["format", "code-action"]
+command = "uv"
+args=["run", "basedpyright-langserver", "--stdio"]
 
-[language-server.basedpyright.config.basedpyright.analysis]
-autoSearchPaths = true
-typeCheckingMode = "basic"
-diagnosticMode = "openFilesOnly"
-autoImportCompletions = true
- 
+[language-server.basedpyright.config]
+
+[language-server.ruff]
+command = "uvx"
+args = ["ruff", "server"]
+environment = { "RUFF_TRACE" = "messages" }
+
 [[language]]
 name = "nix"
 language-servers = ["nixd"]
@@ -41,24 +41,8 @@ command = "sqlfmt"
 args = ["--lsp"]
 command = "nu"
 
-[language-server.ruff]
-args = ["server", "--preview"]
-command = "ruff"
-environment = { "RUFF_TRACE" = "messages" }
-
-[language-server.ruff.settings]
-loglevel = "debug"
-
-[language-server.ruff.settings.lint]
-select = ["E", "F", "W", "B", "I", "RUF", "N", "LOG", "ERA", "W", "D", "UP", "ANN", "ASYNC", "S", "RET", "TCH", "ARG", "PTH", "DOC"]
-preview = true
-
-[language-server.ruff.config.settings.format]
-preview = true
-quote-style = "double"
-docstring-code-format = true
-indent-style = "space"
-
+[[language]]
+name = "yaml"
 [language-server.yaml-language-server.config.yaml]
 validation = true
 
