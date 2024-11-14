@@ -1,4 +1,6 @@
 [plugin]
 prepend_previewers = [
-  { name = "*.md", run = "glow" },
+  # { name = "*.md", run = "glow" },
+  { name = "*.ipynb", run = "nbpreview" },
+  { name = "*.md", run = "mdcat" },
 ]
