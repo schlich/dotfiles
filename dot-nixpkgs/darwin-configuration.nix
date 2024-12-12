@@ -39,9 +39,10 @@
 
     environment = {
       systemPackages = with pkgs; [ 
+        python310
         tre-command
         dust
-        nodejs_20
+        nodenv
         robotframework-tidy
         watchexec
         fzf
@@ -71,12 +72,12 @@
         gh
         gh-dash
         fx
-        vault
+        # vault
         marksman
-        zellij
         carapace
         heroku
         aichat
+        xq-xml
       ];
       pathsToLink = [
         "/share"
@@ -127,6 +128,7 @@
     services = {
       sketchybar.enable = true;
       nix-daemon.enable = true;
+      yabai.enable = true;
     };
    
 }
