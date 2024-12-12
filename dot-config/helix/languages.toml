@@ -2,23 +2,22 @@
 name = "python"
 language-id = "python"
 roots = ["pyproject.toml", "uv.lock", ".git", ".venv/"]
-language-servers = ["ruff", "basedpyright"]
+language-servers = ["ruff", "basedpyright", "pylsp"]
 auto-format = true
-formatter = { command = "uvx", args = ["sh", "-c", "ruff check --fix - | ruff format -" ] }
+# formatter = { command = "", args = ["run", "ruff check --fix - | ruff format -" ] }
 file-types = ["py", "ipynb"]
 comment-token = "#"
 shebangs = ["python"]
 
 [language-server.basedpyright]
-command = "uv"
-args=["run", "basedpyright-langserver", "--stdio"]
+command = "basedpyright-langserver"
+args=["--stdio"]
 
 [language-server.basedpyright.config]
 
 [language-server.ruff]
-command = "uvx"
-args = ["ruff", "server"]
-environment = { "RUFF_TRACE" = "messages" }
+command = "ruff"
+args = ["server"]
 
 [[language]]
 name = "nix"
