@@ -128,7 +128,6 @@
     services = {
       sketchybar.enable = true;
       nix-daemon.enable = true;
-      yabai.enable = true;
     };
    
 }
