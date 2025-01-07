@@ -1,19 +1,8 @@
 [[language]]
 name = "python"
-language-id = "python"
-roots = ["pyproject.toml", "uv.lock", ".git", ".venv/"]
-language-servers = ["ruff", "basedpyright", "pylsp"]
+language-servers = [ "ruff", "basedpyright" ]
+formatter = { command = "ruff", args = ["format", "-"] }
 auto-format = true
-# formatter = { command = "", args = ["run", "ruff check --fix - | ruff format -" ] }
-file-types = ["py", "ipynb"]
-comment-token = "#"
-shebangs = ["python"]
-
-[language-server.basedpyright]
-command = "basedpyright-langserver"
-args=["--stdio"]
-
-[language-server.basedpyright.config]
 
 [language-server.ruff]
 command = "ruff"
@@ -34,11 +23,6 @@ name = "sql"
 [language.formatter]
 args = ["-"]
 command = "sqlfmt"
-
-[language-server]
-[language-server.nu]
-args = ["--lsp"]
-command = "nu"
 
 [[language]]
 name = "yaml"
