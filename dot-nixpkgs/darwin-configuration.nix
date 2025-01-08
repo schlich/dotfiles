@@ -39,7 +39,7 @@
 
     environment = {
       systemPackages = with pkgs; [ 
-        python310
+        python313
         tre-command
         dust
         nodenv
