@@ -15,16 +15,12 @@
     system = {
       stateVersion = 4;
       keyboard = {
-        enableKeyMapping = true; 
+        enableKeyMapping = true;
         remapCapsLockToEscape = true;
         swapLeftCtrlAndFn = false;
       };
       defaults = {
         screencapture.location = "/Users/tyschlichenmeyer/Downloads";
-        dock = {
-          orientation = "left";
-          autohide = true;
-        };
         NSGlobalDomain = {
           AppleInterfaceStyleSwitchesAutomatically = true;
           AppleScrollerPagingBehavior = true;
@@ -35,10 +31,9 @@
 
     security.pam.enableSudoTouchIdAuth = true;
 
-    # home-manager.backupFileExtension = "bak";
-
     environment = {
-      systemPackages = with pkgs; [ 
+      systemPackages = with pkgs; [
+        helix
         python313
         tre-command
         dust
@@ -49,15 +44,11 @@
         fd
         ripgrep
         yazi
-        helix
         stow
         glow
-        mdcat
-        tree
         nushell
         nixd
         bat
-        kitty
         zoxide
         direnv
         starship
@@ -75,9 +66,10 @@
         # vault
         marksman
         carapace
-        heroku
         aichat
         xq-xml
+        taplo
+        cargo
       ];
       pathsToLink = [
         "/share"
@@ -113,7 +105,7 @@
       name = "tyschlichenmeyer";
       home = "/Users/tyschlichenmeyer";
       shell = pkgs.nushell;
-    };   
+    };
 
     programs = {
       direnv = {
@@ -129,5 +121,5 @@
       sketchybar.enable = true;
       nix-daemon.enable = true;
     };
-   
+
 }

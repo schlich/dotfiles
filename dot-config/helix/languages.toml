@@ -38,3 +38,8 @@ enable = true
 
 [language-server.nixd]
 command = "nixd"
+
+[[language]]
+name = "toml"
+language-servers = ["taplo"]
+formatter = { command = "taplo", args = ["format", "-"] }
