@@ -69,7 +69,10 @@
         aichat
         xq-xml
         taplo
-        cargo
+        rustup
+        dockerfile-language-server-nodejs
+        vscode-langservers-extracted
+        tinymist
       ];
       pathsToLink = [
         "/share"
