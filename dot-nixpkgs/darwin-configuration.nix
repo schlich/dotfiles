@@ -73,6 +73,7 @@
         dockerfile-language-server-nodejs
         vscode-langservers-extracted
         tinymist
+        chezmoi
       ];
       pathsToLink = [
         "/share"
