@@ -1,9 +1,1 @@
-[manager]
-ratio = [0, 1, 1]
 
-[plugin]
-prepend_previewers = [
-  # { name = "*.md", run = "glow" },
-  { name = "*.ipynb", run = "nbpreview" },
-  { name = "*.md", run = "mdcat" },
-]

@@ -36,7 +36,7 @@
         helix
         python313
         tre-command
-        dust
+        ncdu
         nodenv
         robotframework-tidy
         watchexec
