@@ -1,0 +1,48 @@
+[language-server.hx-lsp]
+command = "hx-lsp"
+
+[[language]]
+name = "python"
+language-servers = [ "ruff", "basedpyright", "hx-lsp" ]
+formatter = { command = "ruff", args = ["format", "-"] }
+auto-format = true
+
+[language-server.ruff]
+command = "ruff"
+args = ["server"]
+
+[[language]]
+name = "nix"
+language-servers = ["nixd"]
+auto-format = true
+
+[language.formatter]
+command = "nix"
+args = ["fmt", "-"]
+
+[[language]]
+name = "sql"
+
+[language.formatter]
+args = ["-"]
+command = "sqlfmt"
+
+[[language]]
+name = "yaml"
+[language-server.yaml-language-server.config.yaml]
+validation = true
+
+[language-server.yaml-language-server.config.yaml.format]
+enable = true
+
+[language-server.yaml-language-server.config.yaml.schemas]
+"https://json.schemastore.org/github-workflow.json" = ".github/workflows/*.{yml,yaml}"
+"https://raw.githubusercontent.com/ansible-community/schemas/main/f/ansible-tasks.json" = "roles/{tasks,handlers}/*.{yml,yaml}"
+
+[language-server.nixd]
+command = "nixd"
+
+[[language]]
+name = "toml"
+language-servers = ["taplo"]
+formatter = { command = "taplo", args = ["format", "-"] }
