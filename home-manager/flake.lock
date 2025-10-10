@@ -1,0 +1,63 @@
+{
+  "nodes": {
+    "home-manager": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1760061988,
+        "narHash": "sha256-CeuMo7fjWm3XaoK+b1PGyaVIlE1GHudoxk9jrJFvfbY=",
+        "owner": "nix-community",
+        "repo": "home-manager",
+        "rev": "c7f4214faca2f196c551b767c12a70bfa0614510",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "home-manager",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1759831965,
+        "narHash": "sha256-vgPm2xjOmKdZ0xKA6yLXPJpjOtQPHfaZDRtH+47XEBo=",
+        "rev": "c9b6fb798541223bbb396d287d16f43520250518",
+        "revCount": 873798,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/NixOS/nixpkgs/0.1.873798%2Brev-c9b6fb798541223bbb396d287d16f43520250518/0199c273-922a-7e58-9985-2e0e56e6b960/source.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://flakehub.com/f/NixOS/nixpkgs/0.1"
+      }
+    },
+    "nushell-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1760097252,
+        "narHash": "sha256-ePDLBuF624pDkXJ2U6KvvuQsVdUpnIVOSqsNp9auxMM=",
+        "owner": "nushell",
+        "repo": "nushell",
+        "rev": "94fd31fb51692fb343ab5434da64456a5faa7431",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nushell",
+        "repo": "nushell",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "home-manager": "home-manager",
+        "nixpkgs": "nixpkgs",
+        "nushell-src": "nushell-src"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

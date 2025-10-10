@@ -1,0 +1,36 @@
+theme = "adventuretime"
+
+[editor]
+shell = ["nu", "-l", "-c"]
+line-number = "relative"
+
+[editor.soft-wrap]
+enable = true
+
+# for later:
+# [editor]
+# shell = ["nu", "--config", "/Users/user/.config/nushell/config.nu", "--env-config", "/Users/user/.config/nushell/env.nu", "--no-newline", "--stdin", "-c"]
+
+# [keys.normal."+"]
+# A = '''
+# :append-output #
+# nu -c r######'%{selection}'###### o+e>| lines
+# | each { $"# => ($in)"}
+# | if (r######'%{selection}'###### ends-with "\n") {} else {prepend ''}
+# | to text
+# '''
+
+# a = '''
+# :append-output #
+# let lines = nu -c r######'%{selection}'###### o+e>| lines
+
+# let len = $lines | length
+
+# $lines
+# | if $len > 5 {
+#   first 5 | append $'... and ($len - 5) more lines'
+# } else {}
+# | each {$"# => ($in)"}
+# | if (r######'%{selection}'###### ends-with "\n") {} else {prepend ''}
+# | to text
+# '''
