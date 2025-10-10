@@ -52,10 +52,21 @@
     in
     {
       overlays = overlays;
+
+      # WSL configuration (current machine)
       homeConfigurations."nixos" = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
         modules = [
           ./home.nix
+        ];
+      };
+
+      # Native Linux configuration with niri (new machine)
+      homeConfigurations."nixos-niri" = home-manager.lib.homeManagerConfiguration {
+        inherit pkgs;
+        modules = [
+          ./home.nix
+          ./niri.nix
         ];
       };
     };
