@@ -62,7 +62,7 @@
       };
 
       # Native Linux configuration with niri (new machine)
-      homeConfigurations."nixos-niri" = home-manager.lib.homeManagerConfiguration {
+      homeConfigurations."schlich-niri" = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
         modules = [
           ./home.nix

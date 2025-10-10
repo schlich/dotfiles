@@ -1,8 +1,8 @@
 { config, pkgs, ... }:
 
 {
-  home.username = "nixos";
-  home.homeDirectory = "/home/nixos";
+  home.username = "schlich";
+  home.homeDirectory = "/home/schlich";
   home.stateVersion = "25.05";
 
   nixpkgs.config.allowUnfree = true;
@@ -45,6 +45,7 @@
     d2
     nodejs
     uv
+    opencode
 
     # # You can also create simple shell scripts directly inside your
     # # configuration. For example, this adds a command 'my-hello' to your
@@ -98,6 +99,7 @@
   ];
 
   programs = {
+    claude-code.enable = true;
     nix-search-tv = {
       enable = true;
       enableTelevisionIntegration = true;
