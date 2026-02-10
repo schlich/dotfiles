@@ -7,7 +7,11 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    nixos-wsl = { 
+    fh = {
+      url = "https://flakehub.com/f/DeterminateSystems/fh/*";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    nixos-wsl = {
       url = "github:nix-community/nixos-wsl";
       inputs.nixpkgs.follows = "nixpkgs";
     };
@@ -19,11 +23,13 @@
       nixpkgs,
       home-manager,
       nixos-wsl,
+      fh,
       ...
     }@inputs:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs {
+        inherit system;
       };
     in
     {
@@ -38,6 +44,7 @@
       nixosConfigurations."nixos" = nixpkgs.lib.nixosSystem {
         inherit system;
         modules = [
+          { environment.systemPackages = [ fh.packages.x86_64-linux.default ]; }
           nixos-wsl.nixosModules.wsl
           {
             wsl.enable = true;
@@ -52,7 +59,13 @@
 
             system.stateVersion = "23.11";
 
-            nix.settings.experimental-features = [ "nix-command" "flakes" ];
+            nix.settings.experimental-features = [
+              "nix-command"
+              "flakes"
+            ];
+
+            environment.systemPackages = [ pkgs.wget ];
+            programs.nix-ld.enable = true;
           }
         ];
       };

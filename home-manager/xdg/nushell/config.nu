@@ -3,10 +3,8 @@ use std/util "path add"
 $env.config.show_banner = false;
 
 alias lg = lazygit
-alias hme = home-manager edit
-alias hms = home-manager switch
-alias nrbe = sudo nixos-rebuild edit
-alias nrbs = sudo nixos-rebuild switch
+alias hm = home-manager
+alias nrb = sudo nixos-rebuild 
 alias nixfmt = nix fmt
 
 def ns [ query?: string ] {

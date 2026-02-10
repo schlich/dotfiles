@@ -4,10 +4,11 @@
   home.stateVersion = "25.05";
 
   home.packages = with pkgs; [
-    wget
+    gh
+    allure
     biome
+    xdg-utils
     wslu
-    nix-ld
     systemctl-tui
     nil
     nixd
@@ -16,7 +17,6 @@
     difftastic
     chezmoi
     manix
-    opencode
     taplo
     cargo
     rustc
@@ -50,6 +50,7 @@
   ];
 
   programs = {
+    git.enable = true;
     starship = {
       enable = true;
       enableNushellIntegration = true;
@@ -57,6 +58,12 @@
         gcloud = {
           disabled = true;
         };
+        # git_branch = {
+        #   disabled = true;
+        # };
+        # git_commit = {
+        #   disabled = true;
+        # };
       };
     };
     nix-search-tv = {
@@ -111,7 +118,6 @@
       defaultEditor = true;
     };
     zed-editor.enable = true;
-
   };
 
   services = {
