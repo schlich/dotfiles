@@ -58,12 +58,12 @@
         gcloud = {
           disabled = true;
         };
-        # git_branch = {
-        #   disabled = true;
-        # };
-        # git_commit = {
-        #   disabled = true;
-        # };
+        git_branch = {
+          disabled = true;
+        };
+        git_commit = {
+          disabled = true;
+        };
       };
     };
     nix-search-tv = {
