@@ -7,6 +7,8 @@ alias hm = home-manager
 alias nrb = sudo nixos-rebuild 
 alias nixfmt = nix fmt
 
+alias helix = hx
+
 def ns [ query?: string ] {
   let q = ($query | default "")
   nix-search-tv print | fzf --preview 'nix-search-tv preview {}' --scheme history --query $q

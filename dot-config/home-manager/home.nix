@@ -2,8 +2,13 @@
 
 {
   home.stateVersion = "25.05";
+  home.username = "nixos";
+  home.homeDirectory = /home/nixos;
 
   home.packages = with pkgs; [
+    dust
+    cargo-binstall
+    gcc
     diffedit3
     bash
     gh
@@ -20,8 +25,7 @@
     chezmoi
     manix
     taplo
-    cargo
-    rustc
+    rustup
     fx
     nix-search-tv
     fzf
@@ -58,12 +62,18 @@
   home.keyboard = {
     layout = "us,gr";
     options = [
-      "grp:alt_shift_toggle"
-      "compose:ralt"
+      "grp:switch"
     ];
   };
 
   programs = {
+    lazygit = {
+      enable = true;
+      enableNushellIntegration = true;
+      settings = {
+        os.editPreset = "helix";
+      };
+    };
     # gemini-cli = {
     #   enable = true;
     # };
@@ -94,6 +104,7 @@
     yazi = {
       enable = true;
       enableNushellIntegration = true;
+      shellWrapperName = "y";
     };
     direnv = {
       enable = true;
@@ -134,7 +145,7 @@
       ];
       defaultEditor = true;
     };
-    zed-editor.enable = true;
+    bat.enable = true;
   };
 
   services = {
