@@ -1,0 +1,8 @@
+input {
+    keyboard {
+        xkb {
+            layout "us,gr"
+            options "grp:alt_shift_toggle"
+        }
+    }
+}

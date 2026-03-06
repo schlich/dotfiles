@@ -4,6 +4,8 @@
   home.stateVersion = "25.05";
 
   home.packages = with pkgs; [
+    diffedit3
+    bash
     gh
     allure
     biome
@@ -34,11 +36,15 @@
     uv
     opencode
     nixfmt
+    monaspace
+    (pkgs.writeShellScriptBin "gemini" ''
+      exec ${pkgs.bun}/bin/bunx @google/gemini-cli@preview "$@"
+    '')
   ];
 
   home.file = {
-    ".config/helix/config.toml".source = ./xdg/helix/config.toml;
-    ".config/helix/languages.toml".source = ./xdg/helix/languages.toml;
+    ".config/helix/config.toml".source = ./helix/config.toml;
+    ".config/helix/languages.toml".source = ./helix/languages.toml;
   };
   home.sessionVariables = {
     NIXPKGS_ALLOW_UNFREE = 1;
@@ -49,7 +55,18 @@
     "/etc/profiles/per-user/$USER/bin"
   ];
 
+  home.keyboard = {
+    layout = "us,gr";
+    options = [
+      "grp:alt_shift_toggle"
+      "compose:ralt"
+    ];
+  };
+
   programs = {
+    # gemini-cli = {
+    #   enable = true;
+    # };
     git.enable = true;
     starship = {
       enable = true;
@@ -74,7 +91,6 @@
     htop.enable = true;
     home-manager.enable = true;
     ghostty.enable = true;
-    gemini-cli.enable = true;
     yazi = {
       enable = true;
       enableNushellIntegration = true;
@@ -89,7 +105,7 @@
       environmentVariables = {
         EDITOR = "${pkgs.helix}/bin/hx";
       };
-      configFile.source = ./xdg/nushell/config.nu;
+      configFile.source = ./nushell/config.nu;
     };
     zoxide = {
       enable = true;
@@ -114,6 +130,7 @@
         nil
         nixfmt
         marksman
+        simple-completion-language-server
       ];
       defaultEditor = true;
     };
