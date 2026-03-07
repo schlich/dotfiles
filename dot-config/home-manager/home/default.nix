@@ -47,7 +47,6 @@
 
   home.file = {
     ".config/helix/config.toml".source = ../helix/config.toml;
-    ".config/helix/languages.toml".source = ../helix/languages.toml;
     ".config/niri/config.kdl".source = ../niri/config.kdl;
   };
 
@@ -136,6 +135,80 @@
         simple-completion-language-server
       ];
       defaultEditor = true;
+      languages = {
+        language-server = {
+          hx-lsp = {
+            command = "hx-lsp";
+          };
+          ruff = {
+            command = "ruff";
+            args = [ "server" ];
+          };
+          yaml-language-server = {
+            config.yaml = {
+              validation = true;
+              format.enable = true;
+              schemas = {
+                "https://json.schemastore.org/github-workflow.json" = ".github/workflows/*.{yml,yaml}";
+              };
+            };
+          };
+          nixd = {
+            command = "nixd";
+          };
+        };
+        language = [
+          {
+            name = "python";
+            language-servers = [
+              "ruff"
+              "basedpyright"
+              "hx-lsp"
+            ];
+            formatter = {
+              command = "ruff";
+              args = [
+                "format"
+                "-"
+              ];
+            };
+            auto-format = true;
+          }
+          {
+            name = "nix";
+            language-servers = [ "nixd" ];
+            auto-format = true;
+            formatter = {
+              command = "nix";
+              args = [
+                "fmt"
+                "-"
+              ];
+            };
+          }
+          {
+            name = "sql";
+            formatter = {
+              command = "sqlfmt";
+              args = [ "-" ];
+            };
+          }
+          {
+            name = "yaml";
+          }
+          {
+            name = "toml";
+            language-servers = [ "taplo" ];
+            formatter = {
+              command = "taplo";
+              args = [
+                "format"
+                "-"
+              ];
+            };
+          }
+        ];
+      };
     };
     bat.enable = true;
   };
