@@ -11,6 +11,7 @@
       url = "github:nix-community/nixos-wsl";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    jj-starship.url = "github:dmmulroy/jj-starship";
   };
 
   outputs =
@@ -19,17 +20,24 @@
       nixpkgs,
       home-manager,
       nixos-wsl,
+      jj-starship,
       ...
     }@inputs:
-    let
-      system = "x86_64-linux";
-      specialArgs = { inherit inputs; };
-    in
     {
       nixosConfigurations = {
         wsl = nixpkgs.lib.nixosSystem {
-          inherit system specialArgs;
+          specialArgs = { inherit inputs; };
           modules = [
+            {
+              nixpkgs.hostPlatform = "x86_64-linux";
+              nixpkgs.overlays = [ jj-starship.overlays.default ];
+            }
+            (
+              { pkgs, ... }:
+              {
+                environment.systemPackages = [ pkgs.jj-starship ];
+              }
+            )
             nixos-wsl.nixosModules.wsl
             ./hosts/wsl/configuration.nix
             home-manager.nixosModules.home-manager
@@ -37,31 +45,28 @@
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
               home-manager.users.nixos = import ./home/wsl.nix;
-              home-manager.extraSpecialArgs = specialArgs;
+              home-manager.extraSpecialArgs = { inherit inputs; };
             }
           ];
         };
 
         desktop = nixpkgs.lib.nixosSystem {
-          inherit system specialArgs;
+          specialArgs = { inherit inputs; };
           modules = [
+            {
+              nixpkgs.hostPlatform = "x86_64-linux";
+              nixpkgs.overlays = [ jj-starship.overlays.default ];
+            }
             ./hosts/desktop/configuration.nix
             home-manager.nixosModules.home-manager
             {
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
               home-manager.users.nixos = import ./home/desktop.nix;
-              home-manager.extraSpecialArgs = specialArgs;
+              home-manager.extraSpecialArgs = { inherit inputs; };
             }
           ];
         };
       };
-
-      # Standalone home-manager configuration (for non-NixOS or direct HM use)
-      # homeConfigurations."nixos" = home-manager.lib.homeManagerConfiguration {
-      #   pkgs = nixpkgs.legacyPackages.${system};
-      #   extraSpecialArgs = specialArgs;
-      #   modules = [ ./home/default.nix ];
-      # };
     };
 }

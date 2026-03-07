@@ -46,7 +46,6 @@
   ];
 
   home.file = {
-    ".config/helix/config.toml".source = ../helix/config.toml;
     ".config/niri/config.kdl".source = ../niri/config.kdl;
   };
 
