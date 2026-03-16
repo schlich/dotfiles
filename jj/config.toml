@@ -1,0 +1,2 @@
+[ui]
+diff-formatter = ["difft", "--color=always", "$left", "$right"]

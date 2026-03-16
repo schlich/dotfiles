@@ -1,0 +1,40 @@
+[
+  {
+    title: 'Helix Phase 1: normal movement and navigation bindings'
+    milestone: 'Phase 1'
+    status: 'Backlog'
+    priority: 'P0'
+    size: 'M'
+    body: 'Source: HELIX_KEYMAP_TRIAGE.md
+
+Scope:
+- Character movement: h, left, l, right
+- Line movement: home, end
+- Word movement: w, b, e
+- Big-word movement: W, B, E
+- Buffer movement: gg, ge
+- Insert transition: i
+- Selection: %
+- Undo/redo: u, U
+
+Goal:
+Wire the existing ReedlineEvent and EditCommand surface into Helix normal mode for the baseline navigation and editing bindings already identified as Phase 1.'
+  }
+  {
+    title: 'Helix Phase 1: insert editing basics'
+    milestone: 'Phase 1'
+    status: 'Backlog'
+    priority: 'P0'
+    size: 'M'
+    body: 'Source: HELIX_KEYMAP_TRIAGE.md
+
+Scope:
+- Mode switching: esc
+- Deletion: C-w, A-backspace, A-d, A-del, C-u, C-k, C-h, backspace, S-backspace, C-d, del
+- Character movement: left, right
+- Line movement: home
+
+Goal:
+Bring Helix insert mode up to the Phase 1 baseline using existing edit commands, especially common deletion and cursor movement keys.'
+  }
+]

@@ -1,0 +1,92 @@
+[
+  {
+    "source": "modalkit",
+    "crate_version": "0.0.24",
+    "id": 1812,
+    "name": "TerminalKey",
+    "kind": "struct",
+    "docs": "A key pressed in a terminal.\n\nIt's important to remember when setting up keybindings and building a TUI that some terminals\nrepresent several keypresses the same way by default, while others are capable of precisely\nrepresenting what keys the user actually pressed, such as when using something like\n[crossterm::event::PushKeyboardEnhancementFlags] or when running in Windows terminal.\n\nFor example, if you're using [crossterm::event::KeyCode] then you'll likely run into the\nfollowing in a Unix terminal:\n\n- `<C-M>` will sometimes be represented as `<Enter>`\n- `<C-I>` will sometimes be represented as `<Tab>`\n- `<C-?>` will sometimes be represented as `<BackSpace>`\n- `<C-@>` will sometimes be represented as `<C-Space>`\n- `<C-[>` will sometimes be represented as `<Esc>`\n- `<C-\\>` will sometimes be represented as `<C-4>`\n- `<C-]>` will sometimes be represented as `<C-5>`\n- `<C-^>` will sometimes be represented as `<C-6>`\n- `<C-_>` will sometimes be represented as `<C-7>`\n\nYou can avoid getting bit by differences between terminals by mapping all of these to the same\naction for consistency.\n\nAdditionally, some modifier keys can't be expressed by default: `<S-Enter>` or `<C-Enter>`\ncannot always be represented. If you map those, make sure you also provide alternatives!",
+    "path": "modalkit::key::TerminalKey"
+  },
+  {
+    "source": "keybindings",
+    "crate_version": "0.0.2",
+    "id": 251,
+    "name": "BindingMachine",
+    "kind": "trait",
+    "docs": "Trait for objects that can process input keys using previously mapped bindings.",
+    "path": "keybindings::BindingMachine"
+  },
+  {
+    "source": "keybindings",
+    "crate_version": "0.0.2",
+    "id": 376,
+    "name": "EdgeRepeat",
+    "kind": "enum",
+    "docs": "Specifies how many times an [EdgeEvent] is allowed to be repeated.",
+    "path": "keybindings::EdgeRepeat"
+  },
+  {
+    "source": "keybindings",
+    "crate_version": "0.0.2",
+    "id": 171,
+    "name": "ModalMachine",
+    "kind": "struct",
+    "docs": "Manage and process modal keybindings.",
+    "path": "keybindings::ModalMachine"
+  },
+  {
+    "source": "keybindings",
+    "crate_version": "0.0.2",
+    "id": 169,
+    "name": "InputKey",
+    "kind": "trait",
+    "docs": "Trait for keys that can be used with [ModalMachine].",
+    "path": "keybindings::InputKey"
+  },
+  {
+    "source": "keybindings",
+    "crate_version": "0.0.2",
+    "id": 193,
+    "name": "ModeKeys",
+    "kind": "trait",
+    "docs": "Key-specific behaviour associated with a [Mode].",
+    "path": "keybindings::ModeKeys"
+  },
+  {
+    "source": "keybindings",
+    "crate_version": "0.0.2",
+    "id": 241,
+    "name": "InputBindings",
+    "kind": "trait",
+    "docs": "A collection of bindings that can be added to a [ModalMachine].",
+    "path": "keybindings::InputBindings"
+  },
+  {
+    "source": "keybindings",
+    "crate_version": "0.0.2",
+    "id": 189,
+    "name": "Mode",
+    "kind": "trait",
+    "docs": "Trait for the input modes specific to a consumer.",
+    "path": "keybindings::Mode"
+  },
+  {
+    "source": "keybindings",
+    "crate_version": "0.0.2",
+    "id": 161,
+    "name": "EmptyKeyState",
+    "kind": "struct",
+    "docs": "An implementation of [InputKeyState] that stores nothing.",
+    "path": "keybindings::EmptyKeyState"
+  },
+  {
+    "source": "keybindings",
+    "crate_version": "0.0.2",
+    "id": 179,
+    "name": "EdgeEvent",
+    "kind": "enum",
+    "docs": "What kind of input is acceptible for continuing towards a [Step].\n\n[ModalMachine] will prioritize competing applicable edges in the following order:\n\n* A matching [EdgeEvent::Key] edge\n* A matching [EdgeEvent::Class] edge\n* A matching [EdgeEvent::Any] edge\n* If nothing else matches, an [EdgeEvent::Fallthrough] edge\n\nFor example, if there is both a `Key('0')` edge, and a `Class(Number)` edge, then the first one\nwill be used. If '1' is input instead, and there's no `Key('1')` edge, then the `Class(Number)`\nwill be followed instead.",
+    "path": "keybindings::EdgeEvent"
+  }
+]
