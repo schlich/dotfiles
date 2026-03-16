@@ -6,19 +6,22 @@
     defaultUser = "schlich";
     useWindowsDriver = true;
   };
-  environment.systemPackages = [
-    pkgs.wget
-  ];
-  environment.sessionVariables = {
-    LD_LIBRARY_PATH = [
-      "/run/opengl-driver/lib"
-      "/run/opengl-driver-32/lib"
-      "${pkgs.openssl.out}/lib"
+  environment = {
+    systemPackages = [
+      pkgs.wget
     ];
-    GALLIUM_DRIVER = "d3d12";
-    MESA_D3D12_DEFAULT_ADAPTER_NAME = "Intel";
-    XCURSOR_THEME = "Adwaita";
-    XCURSOR_SIZE = "24";
+    shells = [ pkgs.nushell ];
+    sessionVariables = {
+      LD_LIBRARY_PATH = [
+        "/run/opengl-driver/lib"
+        "/run/opengl-driver-32/lib"
+        "${pkgs.openssl.out}/lib"
+      ];
+      GALLIUM_DRIVER = "d3d12";
+      MESA_D3D12_DEFAULT_ADAPTER_NAME = "Intel";
+      XCURSOR_THEME = "Adwaita";
+      XCURSOR_SIZE = "24";
+    };
   };
   system.stateVersion = "26.05";
 

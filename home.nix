@@ -5,7 +5,6 @@
   home.username = "schlich";
   home.homeDirectory = "/home/schlich";
   home.packages = with pkgs; [
-    stow
     ripgrep
     devenv
     dust
@@ -13,8 +12,6 @@
     diffedit3
     bash
     gh
-    xdg-utils
-    wslu
     systemctl-tui
     eget
     difftastic
@@ -31,7 +28,6 @@
       exec ${pkgs.bun}/bin/bunx @google/gemini-cli@preview "$@"
     '')
   ];
-
 
   home.sessionVariables = {
     NIXPKGS_ALLOW_UNFREE = 1;
@@ -83,13 +79,9 @@
     nushell = {
       enable = true;
       environmentVariables = {
-        EDITOR = "${pkgs.helix}/bin/hx";
         COLORTERM = "truecolor";
       };
       configFile.source = ./nushell/config.nu;
-      extraConfig = ''
-        source ${config.xdg.configHome}/yazelix/nushell/config/config.nu
-      '';
     };
     zoxide = {
       enable = true;
@@ -113,6 +105,7 @@
       enable = true;
       enableNushellIntegration = true;
     };
+    wezterm.enable = true;
     helix = {
       enable = true;
       extraPackages = with pkgs; [
@@ -222,4 +215,5 @@
       enableNushellIntegration = true;
     };
   };
+
 }
