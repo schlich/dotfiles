@@ -1,29 +1,39 @@
 { config, pkgs, ... }:
 
 {
-  home.stateVersion = "25.05";
-  home.username = "schlich";
-  home.homeDirectory = "/home/schlich";
-  home.packages = with pkgs; [
-    ripgrep
-    devenv
-    dust
-    cargo-binstall
-    diffedit3
-    gh
-    systemctl-tui
-    eget
-    difftastic
-    manix
-    taplo
-    rustup
-    fx
-    fzf
-    bun
-    uv
-    opencode
-    nerd-fonts.monaspace
-  ];
+  home = {
+    stateVersion = "26.05";
+    username = "schlich";
+    homeDirectory = "/home/schlich";
+    packages = with pkgs; [
+      ripgrep
+      devenv
+      dust
+      cargo-binstall
+      diffedit3
+      gh
+      systemctl-tui
+      eget
+      difftastic
+      manix
+      taplo
+      rustup
+      fx
+      fzf
+      bun
+      uv
+      opencode
+      nerd-fonts.monaspace
+      (pkgs.writeShellScriptBin "xdg-open" ''
+        /mnt/c/Windows/System32/cmd.exe /c start "" "$1" >/dev/null 2>&1
+        exit 0
+      '')
+    ];
+    sessionVariables = {
+      EDITOR = "hx";
+      VISUAL = "hx";
+    };
+  };
 
   programs = {
     lazygit = {
@@ -33,7 +43,13 @@
         os.editPreset = "helix";
       };
     };
-    git.enable = true;
+    git = {
+      enable = true;
+      # extraConfig = {
+      #   credential."https://github.com".helper = "!gh auth git-credential";
+      #   credential."https://gist.github.com".helper = "!gh auth git-credential";
+      # };
+    };
     starship = {
       enable = true;
       enableNushellIntegration = true;
@@ -109,6 +125,8 @@
           shell = [ "nu" ];
           line-number = "relative";
           completion-replace = true;
+          completion-trigger-len = 0;
+          completion-timeout = 5;
           bufferline = "multiple";
           color-modes = true;
           trim-final-newlines = true;
@@ -196,6 +214,12 @@
       enable = true;
       enableNushellIntegration = true;
     };
+  };
+  xdg.portal = {
+    enable = true;
+    extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
+    config.gtk.default = [ "gtk" ];
+    xdgOpenUsePortal = true;
   };
 
 }

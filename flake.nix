@@ -13,6 +13,7 @@
       url = "github:nix-community/nixos-wsl";
     };
     nixgl.url = "github:nix-community/nixGL";
+    nuenv.url = "https://flakehub.com/f/xav-ie/nuenv/*.tar.gz";
   };
 
   outputs =
@@ -24,6 +25,7 @@
       determinate,
       fh,
       nixgl,
+      nuenv,
       ...
     }@inputs:
     {

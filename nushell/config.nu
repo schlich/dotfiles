@@ -1,6 +1,7 @@
 use std/util "path add"
 
 $env.config.show_banner = false;
+$env.config.buffer_editor = "hx";
 $env.config.use_kitty_protocol = true;
 
 alias lg = lazygit
