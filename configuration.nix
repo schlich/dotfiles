@@ -6,6 +6,7 @@
     defaultUser = "schlich";
     useWindowsDriver = true;
   };
+  users.users.schlich.shell = pkgs.nushell;
   environment = {
     systemPackages = [
       pkgs.wget
