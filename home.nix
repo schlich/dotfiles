@@ -10,7 +10,6 @@
     dust
     cargo-binstall
     diffedit3
-    bash
     gh
     systemctl-tui
     eget
@@ -24,14 +23,7 @@
     uv
     opencode
     nerd-fonts.monaspace
-    (pkgs.writeShellScriptBin "gemini" ''
-      exec ${pkgs.bun}/bin/bunx @google/gemini-cli@preview "$@"
-    '')
   ];
-
-  home.sessionVariables = {
-    NIXPKGS_ALLOW_UNFREE = 1;
-  };
 
   programs = {
     lazygit = {
@@ -62,9 +54,6 @@
     ghostty = {
       enable = true;
       installBatSyntax = true;
-      settings = {
-        initial-command = "nu";
-      };
     };
     yazi = {
       enable = true;
@@ -110,10 +99,8 @@
       enable = true;
       extraPackages = with pkgs; [
         nixd
-        nil
         nixfmt
         marksman
-        simple-completion-language-server
       ];
       defaultEditor = true;
       settings = {
@@ -139,9 +126,6 @@
       };
       languages = {
         language-server = {
-          hx-lsp = {
-            command = "hx-lsp";
-          };
           ruff = {
             command = "ruff";
             args = [ "server" ];
@@ -164,8 +148,6 @@
             name = "python";
             language-servers = [
               "ruff"
-              "basedpyright"
-              "hx-lsp"
             ];
             formatter = {
               command = "ruff";

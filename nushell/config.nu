@@ -11,8 +11,4 @@ def ns [ query?: string ] {
   nix-search-tv print | fzf --preview 'nix-search-tv preview {}' --scheme history --query $q
 }
 
-path add "~/.local/bin"
-path add "~/.pixi/bin"
-path add ($env.HOME | path join ".cargo/bin")
-
-const NU_LIB_DIRS = ["~/lib/monurepo"] ++ $NU_LIB_DIRS
+# const NU_LIB_DIRS = ["~/lib/monurepo"] ++ $NU_LIB_DIRS
