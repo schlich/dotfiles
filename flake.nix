@@ -14,6 +14,15 @@
     };
     nixgl.url = "github:nix-community/nixGL";
     nuenv.url = "https://flakehub.com/f/xav-ie/nuenv/*.tar.gz";
+    nix-inspect.url = "github:bluskript/nix-inspect";
+    agenix = {
+      url = "github:ryantm/agenix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    rust-docs-mcp = {
+      url = "github:christian-blades-cb/rust-docs-mcp/2d69d7acd57a36456f844df45e8aade257352257";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -26,6 +35,7 @@
       fh,
       nixgl,
       nuenv,
+      nix-inspect,
       ...
     }@inputs:
     {
@@ -35,8 +45,15 @@
           nixos-wsl.nixosModules.wsl
           determinate.nixosModules.default
           {
-            environment.systemPackages = [ fh.packages.x86_64-linux.default ];
-            nixpkgs.system = "x86_64-linux";
+            nix.nixPath = [ "nixpkgs=${inputs.nixpkgs}" ];
+            environment.systemPackages = [
+              fh.packages.x86_64-linux.default
+              nix-inspect.packages.x86_64-linux.default
+            ];
+            nixpkgs = {
+              system = "x86_64-linux";
+            };
+            programs.nix-ld.enable = true;
           }
           ./configuration.nix
         ];

@@ -1,6 +1,8 @@
-{ pkgs, ... }:
+{ pkgs, inputs, ... }:
 {
   nixpkgs.hostPlatform = "x86_64-linux";
+  users.defaultUserShell = pkgs.nushell;
+  users.users.schlich.shell = pkgs.nushell;
   wsl = {
     enable = true;
     defaultUser = "schlich";
@@ -16,11 +18,15 @@
 
     # ];
   };
-  users.defaultUserShell = pkgs.nushell;
   environment = {
     shells = [ pkgs.nushell ];
+    variables = {
+      EDITOR = "hx";
+      VISUAL = "hx";
+    };
     systemPackages = [
       pkgs.wget
+      inputs.agenix.packages.x86_64-linux.default
     ];
     # sessionVariables = {
     #   LD_LIBRARY_PATH = [

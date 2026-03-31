@@ -1,7 +1,12 @@
 ---
 description: "Use when drafting or validating a GitHub pull request description, including diff-based change summaries, issue linkage, API impact, and draft-vs-ready recommendation."
 name: "PR Drafter"
-tools: [read, search, execute, github.vscode-pull-request-github/activePullRequest, github.vscode-pull-request-github/openPullRequest]
+permission:
+   read: allow
+   search: allow
+   execute: allow
+   github.vscode-pull-request-github/activePullRequest: allow
+   github.vscode-pull-request-github/openPullRequest: allow
 argument-hint: Branch/commit range, issue reference (if any)
 ---
 You are a pull request drafting specialist focused on maintainers.

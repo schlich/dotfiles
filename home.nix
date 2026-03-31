@@ -1,41 +1,74 @@
-{ config, pkgs, ... }:
+{ pkgs, inputs, ... }:
 
 {
   home = {
     stateVersion = "26.05";
     username = "schlich";
-    homeDirectory = "/home/schlich";
+    homeDirectory = /home/schlich;
     packages = with pkgs; [
+      rustup
+      gcc
       ripgrep
       devenv
       dust
-      cargo-binstall
       diffedit3
       gh
+      gh-dash
       systemctl-tui
-      eget
       difftastic
-      manix
       taplo
-      rustup
       fx
       fzf
       bun
       uv
-      opencode
-      nerd-fonts.monaspace
-      (pkgs.writeShellScriptBin "xdg-open" ''
-        /mnt/c/Windows/System32/cmd.exe /c start "" "$1" >/dev/null 2>&1
-        exit 0
-      '')
+      monaspace
+      nerd-font-patcher
+      nom
+      lazyjj
+      cargo-nextest
+      pandoc
+      inputs.rust-docs-mcp.packages.x86_64-linux.default
+      # (pkgs.writeShellScriptBin "xdg-open" ''
+      #   ${pkgs.coreutils}/bin/timeout 10s \
+      #     /mnt/c/Windows/System32/cmd.exe /c start "" "$1" >/dev/null
+      # '')
     ];
     sessionVariables = {
       EDITOR = "hx";
       VISUAL = "hx";
+      RUST_SRC_PATH = "${pkgs.rustPlatform.rustLibSrc}";
+      SHELL = "nu";
     };
   };
+  fonts.fontconfig.enable = true;
 
   programs = {
+    zellij = {
+      enable = true;
+    };
+    mcp = {
+      enable = true;
+      servers = {
+        nixos = {
+          command = "uvx";
+          args = [ "mcp-nixos" ];
+        };
+        github = {
+          url = "https://api.githubcopilot.com/mcp/insiders";
+          oauth = false;
+          headers = {
+            Authorization = "Bearer {env:GITHUB_TOKEN}";
+          };
+        };
+        nushell = {
+          command = "nu";
+          args = [ "--mcp" ];
+        };
+        rust-docs = {
+          command = "rust-docs-mcp";
+        };
+      };
+    };
     lazygit = {
       enable = true;
       enableNushellIntegration = true;
@@ -54,10 +87,24 @@
       enable = true;
       enableNushellIntegration = true;
       settings = {
+        format = "$\{custom.jj}\$all";
         gcloud.disabled = true;
         git_branch.disabled = true;
         git_commit.disabled = true;
+        custom.jj = {
+          command = "prompt";
+          format = "\$output";
+          ignore_timeout = true;
+          shell = [
+            "starship-jj"
+            "--ignore-working-copy"
+            "starship"
+          ];
+          use_stdin = false;
+          when = true;
+        };
       };
+
     };
     nix-search-tv = {
       enable = true;
@@ -80,11 +127,14 @@
       enable = true;
       enableNushellIntegration = true;
       nix-direnv.enable = true;
+      config.global.hide_env_diff = true;
     };
     nushell = {
       enable = true;
       environmentVariables = {
         COLORTERM = "truecolor";
+        EDITOR = "hx";
+        VISUAL = "hx";
       };
       configFile.source = ./nushell/config.nu;
     };
@@ -115,14 +165,19 @@
       enable = true;
       extraPackages = with pkgs; [
         nixd
+        nil
         nixfmt
         marksman
+        rust-analyzer
       ];
       defaultEditor = true;
       settings = {
         theme = "base16_transparent";
         editor = {
-          shell = [ "nu" ];
+          shell = [
+            "nu"
+            "-c"
+          ];
           line-number = "relative";
           completion-replace = true;
           completion-trigger-len = 0;
@@ -140,6 +195,9 @@
           soft-wrap = {
             enable = true;
           };
+          end-of-line-diagnostics = "hint";
+          inline-diagnostics.cursor-line = "warning";
+
         };
       };
       languages = {
@@ -159,9 +217,24 @@
           };
           nixd = {
             command = "nixd";
+            config.nixd = {
+              nixpkgs.expr = "import (builtins.getFlake (builtins.toString ./.)).inputs.nixpkgs { }";
+              options = {
+                nixos.expr = "(builtins.getFlake (builtins.toString ./.)).nixosConfigurations.nixos.options";
+                home-manager.expr = "(builtins.getFlake (builtins.toString ./.)).homeConfigurations.schlich.options";
+              };
+            };
           };
         };
         language = [
+          {
+            name = "rust";
+            auto-format = true;
+            formatter = {
+              command = "rustup";
+              args = [ "-" ];
+            };
+          }
           {
             name = "python";
             language-servers = [
@@ -178,7 +251,10 @@
           }
           {
             name = "nix";
-            language-servers = [ "nixd" ];
+            language-servers = [
+              "nil"
+              "nixd"
+            ];
             auto-format = true;
             formatter = {
               command = "nixfmt";
@@ -204,10 +280,36 @@
         ];
       };
     };
+
     bat.enable = true;
     fd.enable = true;
+    opencode = {
+      enable = true;
+      enableMcpIntegration = true;
+      rules = ''
+        Use Nushell for shell commands and jujutsu (jj) for version control.
+        Use the appropriate skills.
+      '';
+      skills = {
+        jj = ./copilot/skills/jj;
+        nu = ./copilot/skills/nushell;
+      };
+      agents = ./copilot/agents;
+      settings = {
+        server.hostname = "localhost";
+        mcp = {
+          nixos = {
+            command = [
+              "uvx"
+              "mcp-nixos"
+            ];
+            enabled = true;
+            type = "local";
+          };
+        };
+      };
+    };
   };
-
   services = {
     home-manager.autoUpgrade.useFlake = true;
     gpg-agent = {
@@ -221,5 +323,4 @@
     config.gtk.default = [ "gtk" ];
     xdgOpenUsePortal = true;
   };
-
 }
