@@ -60,6 +60,14 @@
 
   nixpkgs.config.allowUnfree = true;
   fonts.fontconfig.enable = true;
+  xdg.configFile."nushell/completions/niri.nu".source =
+    pkgs.runCommandLocal "niri-nushell-completions.nu"
+      {
+        nativeBuildInputs = [ pkgs.niri ];
+      }
+      ''
+        ${pkgs.niri}/bin/niri completions nushell > "$out"
+      '';
   xdg.configFile."helix/llm.nu".source = ./helix/llm.nu;
   xdg.configFile."helix/llm-tools.yaml".source = ./helix/llm-tools.yaml;
   xdg.configFile."niri/config.kdl".source = ./niri/config.kdl;

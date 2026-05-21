@@ -25,6 +25,7 @@ alias hm = home-manager
 alias nrb = sudo nixos-rebuild
 alias nixfmt = nix fmt
 
+source ~/.config/nushell/completions/niri.nu
 # use completions *
 
 # $env.config.completions.external.completer
