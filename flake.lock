@@ -795,6 +795,26 @@
         "url": "https://flakehub.com/f/xav-ie/nuenv/%2A.tar.gz"
       }
     },
+    "opencode": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1779361296,
+        "narHash": "sha256-8lVuqeKzMEAf9W7RdKyh2zO/dvoWLvUkJcuTIYNGkMg=",
+        "owner": "anomalyco",
+        "repo": "opencode",
+        "rev": "6bee6ee7557072a81eed030edcf021acc0faf3c6",
+        "type": "github"
+      },
+      "original": {
+        "owner": "anomalyco",
+        "repo": "opencode",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "agenix": "agenix",
@@ -810,6 +830,7 @@
         "nixpkgs": "nixpkgs_7",
         "noctalia": "noctalia",
         "nuenv": "nuenv",
+        "opencode": "opencode",
         "rust-docs-mcp": "rust-docs-mcp"
       }
     },

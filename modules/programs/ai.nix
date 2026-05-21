@@ -41,6 +41,7 @@
 
   programs.opencode = {
     enable = true;
+    package = inputs.opencode.packages.${pkgs.stdenv.hostPlatform.system}.default;
     enableMcpIntegration = true;
     skills.marimo-pair = "${inputs.marimo-pair}/skills/marimo-pair";
     settings.tools.bash = false;

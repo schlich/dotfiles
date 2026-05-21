@@ -153,6 +153,7 @@
 
     opencode = {
       enable = true;
+      package = inputs.opencode.packages.${pkgs.stdenv.hostPlatform.system}.default;
       enableMcpIntegration = true;
       context = ''
         Use Nushell for shell commands and jujutsu (jj) for version control.

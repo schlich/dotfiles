@@ -23,6 +23,10 @@
       inputs.home-manager.follows = "home-manager";
     };
     marimo-pair.url = "github:schlich/marimo-pair";
+    opencode = {
+      url = "github:anomalyco/opencode";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     rust-docs-mcp = {
       url = "github:christian-blades-cb/rust-docs-mcp/2d69d7acd57a36456f844df45e8aade257352257";
       inputs.nixpkgs.follows = "nixpkgs";

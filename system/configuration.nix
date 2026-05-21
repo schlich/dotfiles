@@ -123,10 +123,6 @@
       "uinput"
     ];
     shell = pkgs.nushell;
-    packages = with pkgs; [
-      monaspace
-      opencode
-    ];
   };
 
   environment.systemPackages = with pkgs; [
