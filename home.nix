@@ -1,6 +1,8 @@
 { pkgs, inputs, ... }:
 
 {
+  imports = [ ./noctalia.nix ];
+
   home = {
     username = "schlich";
     homeDirectory = /home/schlich;
@@ -117,10 +119,6 @@
         ];
       };
     };
-    # dank-material-shell = {
-    #   enable = true;
-    #   systemd.enable = true;
-    # };
     mcp = {
       enable = true;
       servers = {

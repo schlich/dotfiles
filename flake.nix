@@ -39,10 +39,6 @@
       url = "github:noctalia-dev/noctalia-shell";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    dms = {
-      url = "github:AvengeMedia/DankMaterialShell/stable";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     fh.url = "https://flakehub.com/f/DeterminateSystems/fh/*";
   };
 
@@ -95,8 +91,6 @@
 
             desktop = mkNixos [
               inputs.agenix.nixosModules.default
-              inputs.dms.nixosModules.dank-material-shell
-              inputs.dms.nixosModules.greeter
               ./system/hardware-configuration.nix
               ./system/configuration.nix
               (

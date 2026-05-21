@@ -153,18 +153,6 @@
       enable = true;
       # settings.input.keyboard.xkb.options = "caps:escape";
     };
-    # dms-shell.enable = true;
-    dank-material-shell = {
-      enable = true;
-      greeter = {
-        enable = true;
-        compositor.name = "niri";
-      };
-      # niri = {
-      #   enableKeybinds = true;
-      #   enableSpawn = true;
-      # };
-    };
   };
   services.dbus.implementation = "broker";
   xdg = {
