@@ -20,7 +20,9 @@
     agenix = {
       url = "github:ryantm/agenix";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.home-manager.follows = "home-manager";
     };
+    marimo-pair.url = "github:schlich/marimo-pair";
     rust-docs-mcp = {
       url = "github:christian-blades-cb/rust-docs-mcp/2d69d7acd57a36456f844df45e8aade257352257";
       inputs.nixpkgs.follows = "nixpkgs";

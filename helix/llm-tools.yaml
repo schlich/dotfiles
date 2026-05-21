@@ -1,0 +1,71 @@
+# Configuration for helix/llm.nu.
+#
+# The built-in defaults in llm.nu match this file; edit to customise paths, args,
+# env vars, or to add new tools. Placeholders:
+#   {prompt}       - replaced with the selected text as a single argument.
+#   {prompt-file}  - replaced with the path to a temp file containing the prompt.
+#
+# send modes:
+#   arg   - prompt passed as a command-line argument (default).
+#   stdin - prompt piped on stdin.
+#   file  - prompt written to a temp file (path appended unless {prompt-file} is used).
+
+default: aider
+ensure_trailing_newline: true
+prompt_preview_lines: 3
+
+tools:
+  aider:
+    command: aider
+    send: arg
+    args:
+      - --message
+    description: Aider CLI (default)
+
+  gemini:
+    command: gemini
+    send: arg
+    args:
+      - --output-format
+      - text
+      - --prompt
+    description: Google Gemini CLI
+
+  claude:
+    command: claude
+    send: arg
+    args:
+      - --message
+    description: Anthropic Claude Code CLI (adjust flags as needed)
+
+  codex:
+    command: codex
+    send: stdin
+    args:
+      - chat
+      - --stdin
+    description: OpenAI Codex CLI wrapper
+
+  copilot:
+    command: github-copilot-cli
+    send: arg
+    args:
+      - chat
+      - --prompt
+    description: GitHub Copilot CLI
+
+  aichat:
+    command: aichat
+    send: stdin
+    args:
+      - --input
+      - "-"
+    description: aichat CLI
+
+  opencode:
+    command: opencode
+    send: stdin
+    args:
+      - ask
+      - --stdin
+    description: OpenCode CLI client

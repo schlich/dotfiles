@@ -6,36 +6,46 @@
     homeDirectory = /home/schlich;
     stateVersion = "26.05";
     packages = with pkgs; [
+      wget
       mesa-demos
       niri
       dhall
       skills
       ssh-to-age
+      aider-chat
+      aichat
       gcr
       clipboard-jh
       diffedit3
       difftastic
       dust
+      eget
       font-awesome
       fx
       fzf
       gcc
+      github-copilot-cli
       ghostty
+      glow
       jjui
       lazyjj
+      lsp-ai
       monaspace
       nerd-font-patcher
       nerd-fonts.symbols-only
       pavucontrol
       pandoc
+      pixi
       rerun
       ripgrep
       rustup
+      systemctl-tui
       systemd-manager-tui
       taplo
       uv
       wl-clipboard-rs
       zed-editor
+      inputs.agenix.packages.${pkgs.stdenv.hostPlatform.system}.default
       inputs.rust-docs-mcp.packages.${pkgs.stdenv.hostPlatform.system}.default
     ];
     sessionVariables = {
@@ -48,8 +58,30 @@
 
   nixpkgs.config.allowUnfree = true;
   fonts.fontconfig.enable = true;
+  xdg.configFile."helix/llm.nu".source = ./helix/llm.nu;
+  xdg.configFile."helix/llm-tools.yaml".source = ./helix/llm-tools.yaml;
   xdg.configFile."niri/config.kdl".source = ./niri/config.kdl;
   programs = {
+    claude-code = {
+      enable = true;
+      enableMcpIntegration = true;
+      marketplaces.marimo-pair = inputs.marimo-pair;
+      plugins = [ inputs.marimo-pair ];
+      settings = {
+        enabledPlugins."marimo-pair@marimo-pair" = true;
+        hooks.PreToolUse = [
+          {
+            matcher = "Bash";
+            hooks = [
+              {
+                type = "command";
+                command = ''echo "Bash is disabled here. Use the nu MCP server instead: mcp__plugin_claude-code-home-manager_nu__evaluate for running commands, mcp__plugin_claude-code-home-manager_nu__list_commands to discover, mcp__plugin_claude-code-home-manager_nu__command_help for help. Rewrite the bash invocation as a nushell pipeline and call evaluate." >&2; exit 2'';
+              }
+            ];
+          }
+        ];
+      };
+    };
     codex = {
       enable = true;
       enableMcpIntegration = true;
@@ -130,11 +162,13 @@
       '';
       skills = {
         jj = ./copilot/skills/jj;
+        marimo-pair = "${inputs.marimo-pair}/skills/marimo-pair";
         nu = ./copilot/skills/nushell;
       };
       agents = ./copilot/agents;
       settings = {
         server.hostname = "localhost";
+        tools.bash = false;
         mcp = {
           nixos = {
             command = [
@@ -188,6 +222,78 @@
           normal = {
             tab = "move_parent_node_end";
             S-tab = "move_parent_node_start";
+            space = {
+              a = ''
+                :append-output #
+                let prompt = r######'%{selection}'######
+                if ($prompt | str trim | is-empty) {
+                  print "hx-llm: select text before invoking the assistant"
+                } else {
+                  $prompt
+                  | nu ~/.config/helix/llm.nu
+                }
+              '';
+              g = ''
+                :append-output #
+                let prompt = r######'%{selection}'######
+                if ($prompt | str trim | is-empty) {
+                  print "hx-llm: select text before invoking the assistant"
+                } else {
+                  $prompt
+                  | nu ~/.config/helix/llm.nu --tool gemini
+                }
+              '';
+              c = ''
+                :append-output #
+                let prompt = r######'%{selection}'######
+                if ($prompt | str trim | is-empty) {
+                  print "hx-llm: select text before invoking the assistant"
+                } else {
+                  $prompt
+                  | nu ~/.config/helix/llm.nu --tool claude
+                }
+              '';
+              x = ''
+                :append-output #
+                let prompt = r######'%{selection}'######
+                if ($prompt | str trim | is-empty) {
+                  print "hx-llm: select text before invoking the assistant"
+                } else {
+                  $prompt
+                  | nu ~/.config/helix/llm.nu --tool codex
+                }
+              '';
+              p = ''
+                :append-output #
+                let prompt = r######'%{selection}'######
+                if ($prompt | str trim | is-empty) {
+                  print "hx-llm: select text before invoking the assistant"
+                } else {
+                  $prompt
+                  | nu ~/.config/helix/llm.nu --tool copilot
+                }
+              '';
+              i = ''
+                :append-output #
+                let prompt = r######'%{selection}'######
+                if ($prompt | str trim | is-empty) {
+                  print "hx-llm: select text before invoking the assistant"
+                } else {
+                  $prompt
+                  | nu ~/.config/helix/llm.nu --tool aichat
+                }
+              '';
+              o = ''
+                :append-output #
+                let prompt = r######'%{selection}'######
+                if ($prompt | str trim | is-empty) {
+                  print "hx-llm: select text before invoking the assistant"
+                } else {
+                  $prompt
+                  | nu ~/.config/helix/llm.nu --tool opencode
+                }
+              '';
+            };
           };
           insert = {
             S-tab = "move_parent_node_end";
@@ -366,6 +472,10 @@
       settings = { };
     };
     pet.enable = true;
+    tealdeer = {
+      enable = true;
+      settings.updates.auto_update = true;
+    };
     starship = {
       enable = true;
       enableNushellIntegration = true;
@@ -393,7 +503,19 @@
       enable = true;
       enableNushellIntegration = true;
       shellWrapperName = "y";
+      settings = {
+        manager = {
+          show_hidden = false;
+          sort_by = "modified";
+          sort_dir_first = true;
+        };
+        preview = {
+          max_width = 1000;
+          max_height = 1000;
+        };
+      };
     };
+    zed-editor.enable = true;
     zellij.enable = true;
     zoxide = {
       enable = true;
