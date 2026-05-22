@@ -1,4 +1,4 @@
-{ inputs, ... }:
+{ config, inputs, ... }:
 {
   imports = [
     inputs.noctalia.homeModules.default
@@ -49,7 +49,7 @@
       };
       colorSchemes.predefinedScheme = "Monochrome";
       general = {
-        avatarImage = "/home/schlich/.face";
+        avatarImage = "${config.home.homeDirectory}/.face";
         radiusRatio = 0.2;
       };
       location = {

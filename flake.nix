@@ -78,6 +78,30 @@
               inherit modules;
             };
 
+          mkHome =
+            {
+              username,
+              homeDirectory,
+              stateVersion,
+            }:
+            home-manager.lib.homeManagerConfiguration {
+              inherit pkgs;
+              modules = [
+                ./home.nix
+                # ./noctalia.nix
+                # inputs.niri.homeModules.niri
+              ];
+              extraSpecialArgs = {
+                inherit
+                  inputs
+                  username
+                  homeDirectory
+                  stateVersion
+                  ;
+                # nixgl = inputs.nixgl;
+              };
+            };
+
           pkgs = import nixpkgs {
             system = "x86_64-linux";
             overlays = [ inputs.jj-starship.overlays.default ];
@@ -109,16 +133,17 @@
             ];
           };
 
-          homeConfigurations.schlich = home-manager.lib.homeManagerConfiguration {
-            inherit pkgs;
-            modules = [
-              ./home.nix
-              # ./noctalia.nix
-              # inputs.niri.homeModules.niri
-            ];
-            extraSpecialArgs = {
-              inherit inputs;
-              # nixgl = inputs.nixgl;
+          homeConfigurations = {
+            schlich = mkHome {
+              username = "schlich";
+              homeDirectory = "/home/schlich";
+              stateVersion = "26.05";
+            };
+
+            nixos = mkHome {
+              username = "nixos";
+              homeDirectory = "/home/nixos";
+              stateVersion = "26.05";
             };
           };
         };

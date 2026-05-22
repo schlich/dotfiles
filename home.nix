@@ -1,12 +1,21 @@
-{ pkgs, inputs, ... }:
+{
+  pkgs,
+  inputs,
+  username ? "schlich",
+  homeDirectory ? "/home/${username}",
+  stateVersion ? "26.05",
+  ...
+}:
 
 {
   imports = [ ./noctalia.nix ];
 
   home = {
-    username = "schlich";
-    homeDirectory = /home/schlich;
-    stateVersion = "26.05";
+    inherit
+      username
+      homeDirectory
+      stateVersion
+      ;
     packages = with pkgs; [
       wget
       mesa-demos
@@ -72,6 +81,7 @@
   xdg.configFile."helix/llm-tools.yaml".source = ./helix/llm-tools.yaml;
   xdg.configFile."niri/config.kdl".source = ./niri/config.kdl;
   programs = {
+    bash.enable = true;
     claude-code = {
       enable = true;
       enableMcpIntegration = true;
@@ -333,7 +343,7 @@
               nixpkgs.expr = "import (builtins.getFlake (builtins.toString ./.)).inputs.nixpkgs { }";
               options = {
                 nixos.expr = "(builtins.getFlake (builtins.toString ./.)).nixosConfigurations.nixos.options";
-                home-manager.expr = "(builtins.getFlake (builtins.toString ./.)).homeConfigurations.schlich.options";
+                home-manager.expr = "(builtins.getFlake (builtins.toString ./.)).homeConfigurations.${username}.options";
               };
             };
           };
