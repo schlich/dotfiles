@@ -33,38 +33,14 @@ jobs:
           nix fmt
           git diff --exit-code
 
-  home-manager:
-    name: home-manager (${{ matrix.profile }})
+  flake-check:
+    name: flake check
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        profile:
-          - schlich
-          - nixos
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/determinate-nix-action@v3.21.1
         with:
           kvm: false
       - uses: DeterminateSystems/magic-nix-cache-action@main
-      - name: Build Home Manager profile
-        run: nix build .#homeConfigurations.${{ matrix.profile }}.activationPackage
-
-  nixos:
-    name: nixos (${{ matrix.host }})
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        host:
-          - nixos
-          - desktop
-    steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/determinate-nix-action@v3.21.1
-        with:
-          kvm: false
-      - uses: DeterminateSystems/magic-nix-cache-action@main
-      - name: Build NixOS host
-        run: nix build .#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel
+      - name: Run flake checks
+        run: nix flake check --print-build-logs
