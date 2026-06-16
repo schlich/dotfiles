@@ -1,6 +1,6 @@
 ---
 description: 'Routing and repository guidance for using the generated Copilot plugin in schlich/dotfiles flake workflow'
-applyTo: 'flake.nix,flake.lock,home.nix,configuration.nix,system/**/*.nix,modules/**/*.nix,**/*.nu,copilot/**/*.md,.github/**/*.{json,md}'
+applyTo: 'flake.nix,flake.lock,home.nix,configuration.nix,system/**/*.nix,modules/**/*.nix,**/*.nu,copilot/**/*.md,.github/**/*.{json,md,yml}'
 ---
 
 # JJ-first flake evolution guide
@@ -12,6 +12,8 @@ This repository uses a generated Copilot customization stack with distinct respo
 - Customization scope: project-specific
 - Host repository: project repo at /home/nixos/.config/home-manager
 - Hooks: .github/hooks/jj-flake-vigilance.json
+- GitHub remote: `origin https://github.com/schlich/dotfiles.git`
+- Default PR base: `main`
 
 ## Routing guidance
 
@@ -44,6 +46,14 @@ This repository uses a generated Copilot customization stack with distinct respo
 - Desktop host changes: `nix build .#nixosConfigurations.desktop.config.system.build.toplevel`
 - System smoke coverage when relevant: `nix-build system/system_test.nix`
 
+## Remote GitHub policy
+
+1. Treat local validation as the fast gate and GitHub Actions as the comprehensive gate. Once the relevant local checks succeed, rely on `.github/workflows/nix-ci.yml` for the broader formatting, Home Manager, both-host NixOS, and smoke-test coverage.
+2. When the user wants a change published, ensure the committed revision has a bookmark, push it to `origin`, and open or update a pull request against `main`.
+3. The remote publication flow is: `jj status`/`jj diff`/`jj log` -> edit -> local validation -> `jj commit` -> bookmark the committed revision if needed -> `jj git push` -> open or update the PR.
+4. Auto-merge is opt-in and label-driven. Only request it for non-draft PRs from the same repository that carry the `automerge` label, and let `.github/workflows/automerge.yml` enable squash-based auto-merge after the required checks are satisfied.
+5. Repository settings still need to allow auto-merge and require the `nix-ci` checks on `main`; the repo-local workflow only encodes the policy, not the server-side protection toggle.
+
 ## Flake-editing guidance
 
 1. Preserve flake output names and option paths that other tooling depends on.
@@ -53,4 +63,4 @@ This repository uses a generated Copilot customization stack with distinct respo
 
 ## Repository notes
 
-Prefer jj over git for all write operations. Read-only git inspection is acceptable, but commits, rebases, resets, switches, pushes, and other history edits should go through jj. Start by checking `jj status`, `jj diff`, and `jj log` so existing work is reconciled instead of accidentally bypassed. Before risky jj history surgery such as rebase, squash, abandon, split, or op restore, record a checkpoint with `copilot/skills/jj/scripts/jj-checkpoint`. For implementation or repo-reconciliation requests, derive a jj change description from the user's requested outcome, apply it with `jj describe`, and keep it current if the scope shifts. Preserve unrelated user changes and only commit the in-scope work. Run `nix fmt` after Nix edits. Build `.#homeConfigurations.schlich.activationPackage` for home-level changes, `.#nixosConfigurations.nixos.config.system.build.toplevel` for the WSL host, and `.#nixosConfigurations.desktop.config.system.build.toplevel` for desktop system changes. Use `nix-build system/system_test.nix` when system-level behavior needs the smoke test. Only finalize with `jj commit` after the relevant formatting and validation succeed.
+Prefer jj over git for all write operations. Read-only git inspection is acceptable, but commits, rebases, resets, switches, pushes, and other history edits should go through jj. Start by checking `jj status`, `jj diff`, and `jj log` so existing work is reconciled instead of accidentally bypassed. Before risky jj history surgery such as rebase, squash, abandon, split, or op restore, record a checkpoint with `copilot/skills/jj/scripts/jj-checkpoint`. For implementation or repo-reconciliation requests, derive a jj change description from the user's requested outcome, apply it with `jj describe`, and keep it current if the scope shifts. Preserve unrelated user changes and only commit the in-scope work. Run `nix fmt` after Nix edits. Build `.#homeConfigurations.schlich.activationPackage` for home-level changes, `.#nixosConfigurations.nixos.config.system.build.toplevel` for the WSL host, and `.#nixosConfigurations.desktop.config.system.build.toplevel` for desktop system changes. Use `nix-build system/system_test.nix` when system-level behavior needs the smoke test. Once local validation succeeds and the work is committed, publish through `origin`, open or update the PR against `main`, and rely on the repo's CI plus the opt-in `automerge` label before enabling auto-merge. Only finalize with `jj commit` after the relevant formatting and validation succeed.

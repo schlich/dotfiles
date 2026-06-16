@@ -1,7 +1,7 @@
 {
   "name": "jj-flake-vigilance",
-  "description": "JJ-first Copilot workflow for careful flake evolution in schlich/dotfiles with repo-state reconciliation, auto-generated jj change descriptions, and validation-gated commits.",
-  "version": "0.1.2",
+  "description": "JJ-first Copilot workflow for careful flake evolution in schlich/dotfiles with repo-state reconciliation, GitHub-aware publication, CI-backed validation, and validation-gated commits.",
+  "version": "0.2.0",
   "author": {
     "name": "schlich"
   },
