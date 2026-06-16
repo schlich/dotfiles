@@ -8,16 +8,9 @@
 }:
 
 let
-  awesomeCopilotPlugin = ./copilot/installed-plugins/awesome-copilot/awesome-copilot;
   schlichDotfilesMarketplacePath = "${homeDirectory}/.config/home-manager";
   copilotPluginSettings = {
     extraKnownMarketplaces = {
-      awesome-copilot = {
-        source = {
-          source = "github";
-          repo = "github/awesome-copilot";
-        };
-      };
       schlich-dotfiles = {
         source = {
           source = "directory";
@@ -26,7 +19,6 @@ let
       };
     };
     enabledPlugins = {
-      "awesome-copilot@awesome-copilot" = true;
       "jj-flake-vigilance@schlich-dotfiles" = true;
       "project-plugin-factory@schlich-dotfiles" = true;
     };
@@ -48,19 +40,15 @@ in
       dhall
       skills
       ssh-to-age
-      aider-chat
-      aichat
       gcr
       clipboard-jh
       diffedit3
       difftastic
       dust
-      eget
       font-awesome
       fx
       fzf
       gcc
-      ghostty
       glow
       jjui
       lazyjj
@@ -71,12 +59,10 @@ in
       pavucontrol
       pandoc
       pixi
-      rerun
       ripgrep
       rustup
       systemctl-tui
       systemd-manager-tui
-      taplo
       uv
       wl-clipboard-rs
       zed-editor
@@ -101,8 +87,6 @@ in
       ''
         ${pkgs.niri}/bin/niri completions nushell > "$out"
       '';
-  xdg.configFile."helix/llm.nu".source = ./helix/llm.nu;
-  xdg.configFile."helix/llm-tools.yaml".source = ./helix/llm-tools.yaml;
   xdg.configFile."niri/config.kdl".source = ./niri/config.kdl;
   home.file.".copilot/settings.json".text = builtins.toJSON copilotPluginSettings;
   programs = {
@@ -111,14 +95,11 @@ in
       enable = true;
       enableMcpIntegration = true;
       marketplaces.marimo-pair = inputs.marimo-pair;
-      marketplaces.awesome-copilot = awesomeCopilotPlugin;
       plugins = [
         inputs.marimo-pair
-        awesomeCopilotPlugin
       ];
       settings = {
         enabledPlugins."marimo-pair@marimo-pair" = true;
-        enabledPlugins."awesome-copilot@awesome-copilot" = true;
       };
     };
     codex = {
@@ -187,16 +168,11 @@ in
     github-copilot-cli = {
       enable = true;
       enableMcpIntegration = true;
-      package = pkgs.github-copilot-cli;
     };
-
     opencode = {
       enable = true;
       enableMcpIntegration = true;
-      context = ''
-        Use Nushell for shell commands and jujutsu (jj) for version control.
-        Use the appropriate skills.
-      '';
+      context = ./copilot/instructions/removeAttrs;
       skills = {
         jj = ./copilot/skills/jj;
         marimo-pair = "${inputs.marimo-pair}/skills/marimo-pair";
@@ -206,16 +182,6 @@ in
       settings = {
         server.hostname = "localhost";
         tools.bash = false;
-        mcp = {
-          nixos = {
-            command = [
-              "uvx"
-              "mcp-nixos"
-            ];
-            enabled = true;
-            type = "local";
-          };
-        };
       };
     };
 

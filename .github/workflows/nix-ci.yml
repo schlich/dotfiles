@@ -15,16 +15,13 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  NIX_CONFIG: accept-flake-config = true
-
 jobs:
   fmt:
     name: nix fmt
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/determinate-nix-action@v3.21.1
+      - uses: actions/checkout@v6
+      - uses: DeterminateSystems/determinate-nix-action@v3.21
         with:
           kvm: false
       - uses: DeterminateSystems/magic-nix-cache-action@main
@@ -37,10 +34,10 @@ jobs:
     name: flake check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/determinate-nix-action@v3.21.1
+      - uses: actions/checkout@v6
+      - uses: DeterminateSystems/determinate-nix-action@v3.21
         with:
           kvm: false
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Run flake checks
-        run: nix flake check --print-build-logs
+        run: nix flake check
