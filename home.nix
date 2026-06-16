@@ -283,8 +283,10 @@
             ];
             auto-format = true;
             formatter = {
-              command = "nixfmt";
-              args = [ "-" ];
+              command = "nix";
+              args = [
+                "fmt"
+              ];
             };
           }
           {
