@@ -5,13 +5,13 @@
   },
   "metadata": {
     "description": "Copilot plugins maintained in schlich/dotfiles.",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "plugins": [
     {
       "name": "jj-flake-vigilance",
       "description": "JJ-first Copilot workflow for careful flake evolution in schlich/dotfiles with repo-state reconciliation, GitHub-aware publication, CI-backed validation, and validation-gated commits.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "source": "copilot/plugins/jj-flake-vigilance"
     },
     {
