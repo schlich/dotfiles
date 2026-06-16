@@ -132,7 +132,7 @@ To add to your configuration:
   "mcpServers": {
     "custom": {
       "command": "python3",
-      "args": ["/home/schlich/.mcp/servers/custom-example.py"],
+      "args": ["/home/nixos/.mcp/servers/custom-example.py"],
       "enabled": true
     }
   }

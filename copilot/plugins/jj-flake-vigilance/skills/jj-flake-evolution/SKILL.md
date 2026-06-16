@@ -16,7 +16,7 @@ This skill is the repeatable workflow for **flake and host evolution in schlich/
 - Hooks: .github/hooks/jj-flake-vigilance.json
 - GitHub remote: `origin https://github.com/schlich/dotfiles.git`
 - Default PR base: `main`
-- Build: `nix build .#homeConfigurations.schlich.activationPackage`
+- Build: `nix build .#homeConfigurations.nixos.activationPackage`
 - Lint: `nix fmt`
 
 ## When to use
@@ -39,7 +39,7 @@ Use this skill for routine repository tasks that should follow a repeatable patt
 5. Make the smallest coherent change that preserves existing flake output names and host wiring.
 6. Run `nix fmt` after Nix edits.
 7. Choose validation based on the touched surface:
-   - home-level changes: `nix build .#homeConfigurations.schlich.activationPackage`
+   - home-level changes: `nix build .#homeConfigurations.nixos.activationPackage`
    - WSL host changes: `nix build .#nixosConfigurations.nixos.config.system.build.toplevel`
    - desktop host changes: `nix build .#nixosConfigurations.desktop.config.system.build.toplevel`
 8. Treat local validation as the fast gate and GitHub Actions as the comprehensive gate. Once the in-scope local checks succeed, expect `.github/workflows/nix-ci.yml` to run the broader formatting check plus `nix flake check` coverage for both Home Manager profiles and both NixOS hosts on the PR.
@@ -50,4 +50,4 @@ Use this skill for routine repository tasks that should follow a repeatable patt
 
 ## Project notes
 
-Prefer jj over git for all write operations. Read-only git inspection is acceptable, but commits, rebases, resets, switches, pushes, and other history edits should go through jj. Start by checking `jj status`, `jj diff`, and `jj log` so existing work is reconciled instead of skipped. Before risky jj history surgery such as rebase, squash, abandon, split, or op restore, record a checkpoint with `copilot/skills/jj/scripts/jj-checkpoint`. For implementation or repo-reconciliation requests, derive a jj change description from the user's requested outcome, apply it with `jj describe`, and keep it current if the scope shifts. Preserve unrelated user changes and only commit the in-scope work. Run `nix fmt` after Nix edits. Build `.#homeConfigurations.schlich.activationPackage` for home-level changes, `.#nixosConfigurations.nixos.config.system.build.toplevel` for the WSL host, and `.#nixosConfigurations.desktop.config.system.build.toplevel` for desktop system changes. Once the change is locally validated and committed, publish it through `origin`, and if that publication uses a non-`main` bookmark, automatically open or update the matching PR against `main` before relying on GitHub Actions for the comprehensive checks. Default auto-merge then waits on the repo's required checks. Only finalize with `jj commit` after the relevant formatting and validation succeed.
+Prefer jj over git for all write operations. Read-only git inspection is acceptable, but commits, rebases, resets, switches, pushes, and other history edits should go through jj. Start by checking `jj status`, `jj diff`, and `jj log` so existing work is reconciled instead of skipped. Before risky jj history surgery such as rebase, squash, abandon, split, or op restore, record a checkpoint with `copilot/skills/jj/scripts/jj-checkpoint`. For implementation or repo-reconciliation requests, derive a jj change description from the user's requested outcome, apply it with `jj describe`, and keep it current if the scope shifts. Preserve unrelated user changes and only commit the in-scope work. Run `nix fmt` after Nix edits. Build `.#homeConfigurations.nixos.activationPackage` for home-level changes, `.#nixosConfigurations.nixos.config.system.build.toplevel` for the WSL host, and `.#nixosConfigurations.desktop.config.system.build.toplevel` for desktop system changes. Once the change is locally validated and committed, publish it through `origin`, and if that publication uses a non-`main` bookmark, automatically open or update the matching PR against `main` before relying on GitHub Actions for the comprehensive checks. Default auto-merge then waits on the repo's required checks. Only finalize with `jj commit` after the relevant formatting and validation succeed.

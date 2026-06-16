@@ -17,7 +17,7 @@ You are the generated Copilot specialist for **schlich/dotfiles flake workflow**
 - Hooks: .github/hooks/jj-flake-vigilance.json
 - GitHub remote: `origin https://github.com/schlich/dotfiles.git`
 - Default PR base: `main`
-- Build command: `nix build .#homeConfigurations.schlich.activationPackage`
+- Build command: `nix build .#homeConfigurations.nixos.activationPackage`
 - Lint command: `nix fmt`
 
 ## Mission
@@ -38,7 +38,7 @@ Evolve this flake carefully with **jj-first** version control discipline. Prefer
 3. Use `jj`, not mutating `git`, for repository write operations; the repo hook enforces this for shell commands.
 4. Before `jj rebase`, `jj squash`, `jj abandon`, `jj split`, or `jj op restore`, create a checkpoint with `copilot/skills/jj/scripts/jj-checkpoint`.
 5. Run `nix fmt` after Nix edits and choose validation that matches the touched surface:
-   - home-level changes: `nix build .#homeConfigurations.schlich.activationPackage`
+   - home-level changes: `nix build .#homeConfigurations.nixos.activationPackage`
    - WSL host changes: `nix build .#nixosConfigurations.nixos.config.system.build.toplevel`
    - desktop host changes: `nix build .#nixosConfigurations.desktop.config.system.build.toplevel`
 6. Treat local validation as the fast gate and GitHub Actions as the comprehensive gate: once the in-scope local checks succeed, the remote PR should rely on `.github/workflows/nix-ci.yml` for the broader formatting check plus `nix flake check` coverage of both Home Manager profiles and both NixOS builds.
@@ -50,4 +50,4 @@ Evolve this flake carefully with **jj-first** version control discipline. Prefer
 
 ## Project Notes
 
-Prefer jj over git for all write operations. Read-only git inspection is acceptable, but commits, rebases, resets, switches, pushes, and other history edits should go through jj. Start by checking `jj status`, `jj diff`, and `jj log` so existing work is reconciled instead of skipped. Before risky jj history surgery such as rebase, squash, abandon, split, or op restore, record a checkpoint with `copilot/skills/jj/scripts/jj-checkpoint`. For implementation or repo-reconciliation requests, derive a jj change description from the user's requested outcome, apply it with `jj describe`, and keep it current if the scope shifts. Preserve unrelated user changes and only commit the in-scope work. Run `nix fmt` after Nix edits. Build `.#homeConfigurations.schlich.activationPackage` for home-level changes, `.#nixosConfigurations.nixos.config.system.build.toplevel` for the WSL host, and `.#nixosConfigurations.desktop.config.system.build.toplevel` for desktop system changes. When the user wants the change published, push the bookmarked change to `origin`, and if that publication uses a non-`main` bookmark, automatically open or update the matching PR against `main` before relying on the repo's GitHub Actions checks and default auto-merge policy. Only finalize with `jj commit` after the relevant formatting and validation succeed.
+Prefer jj over git for all write operations. Read-only git inspection is acceptable, but commits, rebases, resets, switches, pushes, and other history edits should go through jj. Start by checking `jj status`, `jj diff`, and `jj log` so existing work is reconciled instead of skipped. Before risky jj history surgery such as rebase, squash, abandon, split, or op restore, record a checkpoint with `copilot/skills/jj/scripts/jj-checkpoint`. For implementation or repo-reconciliation requests, derive a jj change description from the user's requested outcome, apply it with `jj describe`, and keep it current if the scope shifts. Preserve unrelated user changes and only commit the in-scope work. Run `nix fmt` after Nix edits. Build `.#homeConfigurations.nixos.activationPackage` for home-level changes, `.#nixosConfigurations.nixos.config.system.build.toplevel` for the WSL host, and `.#nixosConfigurations.desktop.config.system.build.toplevel` for desktop system changes. When the user wants the change published, push the bookmarked change to `origin`, and if that publication uses a non-`main` bookmark, automatically open or update the matching PR against `main` before relying on the repo's GitHub Actions checks and default auto-merge policy. Only finalize with `jj commit` after the relevant formatting and validation succeed.

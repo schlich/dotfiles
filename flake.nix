@@ -151,12 +151,6 @@
           };
 
           homeConfigurations = {
-            schlich = mkHome {
-              username = "schlich";
-              homeDirectory = "/home/schlich";
-              stateVersion = "26.05";
-            };
-
             nixos = mkHome {
               username = "nixos";
               homeDirectory = "/home/nixos";
@@ -168,7 +162,6 @@
           inherit nixosConfigurations homeConfigurations;
 
           checks.x86_64-linux = {
-            home-manager-schlich = homeConfigurations.schlich.activationPackage;
             home-manager-nixos = homeConfigurations.nixos.activationPackage;
             nixos-wsl = nixosConfigurations.nixos.config.system.build.toplevel;
             # nixos-desktop = nixosConfigurations.desktop.config.system.build.toplevel;

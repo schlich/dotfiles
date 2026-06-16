@@ -2,7 +2,7 @@
   "mcpServers": {
     "filesystem": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/home/schlich"],
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/home/nixos"],
       "description": "Access to filesystem operations in home directory",
       "enabled": true
     },
@@ -23,7 +23,7 @@
     },
     "sqlite": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sqlite", "/home/schlich/databases"],
+      "args": ["-y", "@modelcontextprotocol/server-sqlite", "/home/nixos/databases"],
       "description": "SQLite database operations",
       "enabled": false
     },
