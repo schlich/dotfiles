@@ -1,0 +1,39 @@
+---
+description: 'Routing and repository guidance for using the generated Copilot plugin in <<PROJECT_NAME>>'
+applyTo: '<<INSTRUCTIONS_APPLY_TO>>'
+---
+
+# <<PROJECT_NAME>> Copilot Customization Guide
+
+This repository uses a generated Copilot customization stack with distinct responsibilities for agents, skills, prompts, and instructions.
+
+## Placement
+
+- Customization scope: <<CUSTOMIZATION_SCOPE_LABEL>>
+- Host repository: <<HOST_REPO_LABEL>>
+
+## Routing guidance
+
+- Use the `project-specialist` custom agent for multi-step repository work and project-aware decision making.
+- Use the `<<SKILL_NAME>>` skill for routine, bounded workflows that follow a repeatable implementation loop.
+- Use prompt files in `.github/prompts/` as human-invoked entrypoints for recurring tasks.
+- Keep durable repository policy and architecture guidance in instruction files, not in prompts.
+- Add MCP or LSP integrations only when they clearly improve context or editing quality for this repository.
+
+## Validation commands
+
+- Lint: `<<LINT_COMMAND>>`
+- Test: `<<TEST_COMMAND>>`
+- Build: `<<BUILD_COMMAND>>`
+
+## Authoring guidance
+
+1. Put reusable, scriptable workflows in skills.
+2. Put orchestration and judgment-heavy tasks in agents.
+3. Put repeatable user entrypoints in prompts.
+4. Put durable conventions in instructions.
+5. Keep the plugin small; move highly repo-specific prose into `.github/`.
+
+## Repository notes
+
+<<NOTES>>

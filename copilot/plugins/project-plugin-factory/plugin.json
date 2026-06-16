@@ -1,0 +1,23 @@
+{
+  "name": "project-plugin-factory",
+  "description": "Design and scaffold user-specific or project-specific GitHub Copilot CLI plugins plus companion repo-local prompts and instructions.",
+  "version": "0.1.0",
+  "author": {
+    "name": "schlich"
+  },
+  "license": "MIT",
+  "keywords": [
+    "github-copilot",
+    "plugin",
+    "scaffold",
+    "meta",
+    "project-customization",
+    "personal-workflow"
+  ],
+  "agents": [
+    "./agents"
+  ],
+  "skills": [
+    "./skills/project-plugin-factory"
+  ]
+}

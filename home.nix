@@ -7,6 +7,30 @@
   ...
 }:
 
+let
+  awesomeCopilotPlugin = ./copilot/installed-plugins/awesome-copilot/awesome-copilot;
+  schlichDotfilesMarketplacePath = "${homeDirectory}/.config/home-manager";
+  copilotPluginSettings = {
+    extraKnownMarketplaces = {
+      awesome-copilot = {
+        source = {
+          source = "github";
+          repo = "github/awesome-copilot";
+        };
+      };
+      schlich-dotfiles = {
+        source = {
+          source = "directory";
+          path = schlichDotfilesMarketplacePath;
+        };
+      };
+    };
+    enabledPlugins = {
+      "awesome-copilot@awesome-copilot" = true;
+      "project-plugin-factory@schlich-dotfiles" = true;
+    };
+  };
+in
 {
   # imports = [ ./noctalia.nix ];
 
@@ -35,7 +59,6 @@
       fx
       fzf
       gcc
-      github-copilot-cli
       ghostty
       glow
       jjui
@@ -80,26 +103,21 @@
   xdg.configFile."helix/llm.nu".source = ./helix/llm.nu;
   xdg.configFile."helix/llm-tools.yaml".source = ./helix/llm-tools.yaml;
   xdg.configFile."niri/config.kdl".source = ./niri/config.kdl;
+  home.file.".copilot/settings.json".text = builtins.toJSON copilotPluginSettings;
   programs = {
     bash.enable = true;
     claude-code = {
       enable = true;
       enableMcpIntegration = true;
       marketplaces.marimo-pair = inputs.marimo-pair;
-      plugins = [ inputs.marimo-pair ];
+      marketplaces.awesome-copilot = awesomeCopilotPlugin;
+      plugins = [
+        inputs.marimo-pair
+        awesomeCopilotPlugin
+      ];
       settings = {
         enabledPlugins."marimo-pair@marimo-pair" = true;
-        hooks.PreToolUse = [
-          {
-            matcher = "Bash";
-            hooks = [
-              {
-                type = "command";
-                command = ''echo "Bash is disabled here. Use the nu MCP server instead: mcp__plugin_claude-code-home-manager_nu__evaluate for running commands, mcp__plugin_claude-code-home-manager_nu__list_commands to discover, mcp__plugin_claude-code-home-manager_nu__command_help for help. Rewrite the bash invocation as a nushell pipeline and call evaluate." >&2; exit 2'';
-              }
-            ];
-          }
-        ];
+        enabledPlugins."awesome-copilot@awesome-copilot" = true;
       };
     };
     codex = {
@@ -134,6 +152,10 @@
             name = "nix-ci";
             url = "https://blog.nix-ci.com/rss.xml";
           }
+          {
+            name = "Vicky Boykis";
+            url = "https://vickiboykis.com/index.xml";
+          }
         ];
       };
     };
@@ -144,29 +166,27 @@
           command = "uvx";
           args = [ "mcp-nixos" ];
         };
-        github = {
-          url = "https://api.githubcopilot.com/mcp/insiders";
-          oauth = false;
-          headers = {
-            Authorization = "Bearer {env:GITHUB_TOKEN}";
-          };
-        };
+        # github = {
+        #   url = "https://api.githubcopilot.com/mcp/insiders";
+        #   oauth = false;
+        #   headers = {
+        #     Authorization = "Bearer {env:GITHUB_TOKEN}";
+        #   };
+        # };
         nushell = {
           command = "nu";
           args = [ "--mcp" ];
         };
-        # chrome-devtools = {
-        #   command = "bunx";
-        #   args = [ "chrome-devtools-mcp@latest" ];
-        # };
-        # playwright = {
-        #   command = "bunx";
-        #   args = [ "@playwright/mcp@latest" ];
-        # };
-        rust-docs = {
-          command = "rust-docs-mcp";
+        jj = {
+          command = "bunx";
+          args = [ "jj-mcp-server" ];
         };
       };
+    };
+    github-copilot-cli = {
+      enable = true;
+      enableMcpIntegration = true;
+      package = pkgs.github-copilot-cli;
     };
 
     opencode = {
@@ -239,95 +259,94 @@
             tab = "move_parent_node_end";
             S-tab = "move_parent_node_start";
           };
+          insert = {
+            S-tab = "move_parent_node_end";
+          };
+          select = {
+            tab = "extend_parent_node_end";
+            S-tab = "extend_parent_node_start";
+          };
         };
-        insert = {
-          S-tab = "move_parent_node_end";
-        };
-        select = {
-          tab = "extend_parent_node_end";
-          S-tab = "extend_parent_node_start";
-        };
-        # };
-        languages = {
-          language-server = {
-            rust-analyzer.config.cargo.features = "all";
-            ruff = {
-              command = "ruff";
-              args = [ "server" ];
-            };
-            yaml-language-server = {
-              config.yaml = {
-                validation = true;
-                format.enable = true;
-                schemas = {
-                  "https://json.schemastore.org/github-workflow.json" = ".github/workflows/*.{yml,yaml}";
-                };
-              };
-            };
-            nixd = {
-              command = "nixd";
-              config.nixd = {
-                nixpkgs.expr = "import (builtins.getFlake (builtins.toString ./.)).inputs.nixpkgs { }";
-                options = {
-                  nixos.expr = "(builtins.getFlake (builtins.toString ./.)).nixosConfigurations.nixos.options";
-                  home-manager.expr = "(builtins.getFlake (builtins.toString ./.)).homeConfigurations.${username}.options";
-                };
+      };
+      languages = {
+        language-server = {
+          rust-analyzer.config.cargo.features = "all";
+          ruff = {
+            command = "ruff";
+            args = [ "server" ];
+          };
+          yaml-language-server = {
+            config.yaml = {
+              validation = true;
+              format.enable = true;
+              schemas = {
+                "https://json.schemastore.org/github-workflow.json" = ".github/workflows/*.{yml,yaml}";
               };
             };
           };
-          language = [
-            {
-              name = "rust";
-              auto-format = true;
-              formatter = {
-                command = "rustfmt";
-                args = [ "-" ];
+          nixd = {
+            command = "nixd";
+            config.nixd = {
+              nixpkgs.expr = "import (builtins.getFlake (builtins.toString ./.)).inputs.nixpkgs { }";
+              options = {
+                nixos.expr = "(builtins.getFlake (builtins.toString ./.)).nixosConfigurations.nixos.options";
+                home-manager.expr = "(builtins.getFlake (builtins.toString ./.)).homeConfigurations.${username}.options";
               };
-            }
-            {
-              name = "python";
-              language-servers = [ "ruff" ];
-              formatter = {
-                command = "ruff";
-                args = [
-                  "format"
-                  "-"
-                ];
-              };
-              auto-format = true;
-            }
-            {
-              name = "nix";
-              language-servers = [
-                "nil"
-                "nixd"
-              ];
-              auto-format = true;
-              formatter = {
-                command = "nixfmt";
-                args = [ "-" ];
-              };
-            }
-            {
-              name = "nu";
-              auto-format = true;
-            }
-            {
-              name = "yaml";
-            }
-            {
-              name = "toml";
-              language-servers = [ "taplo" ];
-              formatter = {
-                command = "taplo";
-                args = [
-                  "format"
-                  "-"
-                ];
-              };
-            }
-          ];
+            };
+          };
         };
+        language = [
+          {
+            name = "rust";
+            auto-format = true;
+            formatter = {
+              command = "rustfmt";
+              args = [ "-" ];
+            };
+          }
+          {
+            name = "python";
+            language-servers = [ "ruff" ];
+            formatter = {
+              command = "ruff";
+              args = [
+                "format"
+                "-"
+              ];
+            };
+            auto-format = true;
+          }
+          {
+            name = "nix";
+            language-servers = [
+              "nil"
+              "nixd"
+            ];
+            auto-format = true;
+            formatter = {
+              command = "nixfmt";
+              args = [ "-" ];
+            };
+          }
+          {
+            name = "nu";
+            auto-format = true;
+          }
+          {
+            name = "yaml";
+          }
+          {
+            name = "toml";
+            language-servers = [ "taplo" ];
+            formatter = {
+              command = "taplo";
+              args = [
+                "format"
+                "-"
+              ];
+            };
+          }
+        ];
       };
     };
     nushell = {

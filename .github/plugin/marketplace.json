@@ -1,0 +1,18 @@
+{
+  "name": "schlich-dotfiles",
+  "owner": {
+    "name": "schlich"
+  },
+  "metadata": {
+    "description": "Copilot plugins maintained in schlich/dotfiles.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "project-plugin-factory",
+      "description": "Design and scaffold project-specific GitHub Copilot CLI plugins plus companion repo-local prompts and instructions.",
+      "version": "0.1.0",
+      "source": "copilot/plugins/project-plugin-factory"
+    }
+  ]
+}

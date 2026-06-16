@@ -1,0 +1,50 @@
+{
+  "projectName": "Example Service",
+  "customizationScope": "project",
+  "pluginName": "example-service-copilot",
+  "description": "Copilot helpers for the Example Service repository.",
+  "authorName": "Example Team",
+  "repositoryUrl": "https://github.com/example/example-service",
+  "license": "MIT",
+  "keywords": [
+    "github-copilot",
+    "typescript",
+    "backend",
+    "service"
+  ],
+  "language": "TypeScript",
+  "workspaceRoot": ".",
+  "buildCommand": "pnpm build",
+  "testCommand": "pnpm test",
+  "lintCommand": "pnpm lint",
+  "agentName": "Example Service Specialist",
+  "agentDescription": "Specialist for implementing and reviewing changes in Example Service.",
+  "skillName": "example-service-workflow",
+  "skillDescription": "Repository-specific workflow for Example Service tasks.",
+  "instructionsApplyTo": "src/**/*.ts, tests/**/*.ts",
+  "promptDescription": "Use the Example Service workflow with the generated plugin and repo instructions.",
+  "projectRepoDir": "/path/to/example-service",
+  "notes": "Prefer service-layer changes over route-layer duplication and keep contract tests in sync.",
+  "mcpServers": {
+    "docs": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "."
+      ]
+    }
+  },
+  "lspServers": {
+    "tsserver": {
+      "command": "typescript-language-server",
+      "args": [
+        "--stdio"
+      ],
+      "fileExtensions": {
+        ".ts": "typescript",
+        ".tsx": "typescriptreact"
+      }
+    }
+  }
+}

@@ -18,7 +18,7 @@
     nixgl.url = "github:nix-community/nixGL";
     nuenv.url = "https://flakehub.com/f/xav-ie/nuenv/*.tar.gz";
     agenix = {
-      url = "github:ryantm/agenix";
+      url = "github:ryantm/agenix/main";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
@@ -49,6 +49,28 @@
       nixpkgs,
       ...
     }:
+    let
+      copilotCliVersion = "1.0.63";
+      copilotCliHash = "sha256-0K+uVsaG9cndsqRhxIV8K399WsLjvVZAgbLreJdmJbs=";
+      copilotCliOverlay = _: prev: {
+        github-copilot-cli = prev.github-copilot-cli.overrideAttrs (old: {
+          version = copilotCliVersion;
+          src = prev.fetchurl {
+            url = "https://github.com/github/copilot-cli/releases/download/v${copilotCliVersion}/github-copilot-${copilotCliVersion}.tgz";
+            hash = copilotCliHash;
+          };
+          preFixup = (old.preFixup or "") + ''
+            rm -rf \
+              "$out"/lib/github-copilot-cli/prebuilds/linuxmusl-arm64 \
+              "$out"/lib/github-copilot-cli/prebuilds/linuxmusl-x64
+          '';
+        });
+      };
+      overlays = [
+        inputs.jj-starship.overlays.default
+        copilotCliOverlay
+      ];
+    in
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = [ "x86_64-linux" ];
 
@@ -57,7 +79,7 @@
         {
           _module.args.pkgs = import nixpkgs {
             inherit system;
-            overlays = [ inputs.jj-starship.overlays.default ];
+            inherit overlays;
             config.allowUnfree = true;
           };
 
@@ -100,7 +122,7 @@
 
           pkgs = import nixpkgs {
             system = "x86_64-linux";
-            overlays = [ inputs.jj-starship.overlays.default ];
+            inherit overlays;
             config.allowUnfree = true;
           };
         in
