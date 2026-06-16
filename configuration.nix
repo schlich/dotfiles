@@ -3,11 +3,11 @@
   nixpkgs.hostPlatform = "x86_64-linux";
   time.hardwareClockInLocalTime = true;
   users.defaultUserShell = pkgs.nushell;
-  users.users.schlich.shell = pkgs.nushell;
+  users.users.nixos.shell = pkgs.nushell;
 
   wsl = {
     enable = true;
-    defaultUser = "schlich";
+    defaultUser = "nixos";
     useWindowsDriver = true;
     ssh-agent.enable = true;
     startMenuLaunchers = true;

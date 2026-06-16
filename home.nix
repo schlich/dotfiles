@@ -1,7 +1,7 @@
 {
   pkgs,
   inputs,
-  username ? "schlich",
+  username ? "nixos",
   homeDirectory ? "/home/${username}",
   stateVersion ? "26.05",
   ...

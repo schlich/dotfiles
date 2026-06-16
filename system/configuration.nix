@@ -12,7 +12,7 @@
       "nix-command"
       "flakes"
     ];
-    allowed-users = [ "schlich" ];
+    allowed-users = [ "nixos" ];
   };
   nixpkgs.config.allowUnfree = true;
 
@@ -97,7 +97,7 @@
         PasswordAuthentication = false;
         KbdInteractiveAuthentication = false;
         PermitRootLogin = "no";
-        AllowUsers = [ "schlich" ];
+        AllowUsers = [ "nixos" ];
       };
     };
     pipewire = {
@@ -113,7 +113,7 @@
   };
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
-  users.users.schlich = {
+  users.users.nixos = {
     isNormalUser = true;
     description = "Ty Schlichenmeyer";
     extraGroups = [
@@ -175,7 +175,7 @@
   security.polkit.enable = true;
   age.secrets.openai = {
     file = ./secrets/openai.age;
-    owner = "schlich";
+    owner = "nixos";
     mode = "0400";
   };
 }
