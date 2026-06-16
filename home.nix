@@ -6,6 +6,23 @@
   stateVersion ? "26.05",
   ...
 }:
+let
+  githubTokenPath = "/run/agenix/github-token";
+  opencodeWithGithubToken = pkgs.nuenv.writeShellApplication {
+    name = "opencode";
+    text = ''
+      def main [...args: string] {
+        let token_path = "${githubTokenPath}"
+
+        if ($token_path | path exists) {
+          $env.GITHUB_TOKEN = (open --raw $token_path | str trim)
+        }
+
+        ^${pkgs.opencode}/bin/opencode ...$args
+      }
+    '';
+  };
+in
 {
   # imports = [ ./noctalia.nix ];
 
@@ -49,7 +66,7 @@
       uv
       wl-clipboard-rs
       zed-editor
-      inputs.agenix.packages.${pkgs.stdenv.hostPlatform.system}.default
+      inputs.ragenix.packages.${pkgs.stdenv.hostPlatform.system}.default
       # inputs.rust-docs-mcp.packages.${pkgs.stdenv.hostPlatform.system}.default
     ];
     sessionVariables = {
@@ -165,6 +182,7 @@
     };
     opencode = {
       enable = true;
+      package = opencodeWithGithubToken;
       enableMcpIntegration = true;
       skills = {
         jj = ./copilot/skills/jj;
@@ -173,6 +191,12 @@
       };
       agents = ./copilot/agents;
       settings = {
+        mcp.github = {
+          type = "remote";
+          url = "https://api.githubcopilot.com/mcp/";
+          enabled = true;
+          headers.Authorization = "Bearer \${GITHUB_TOKEN}";
+        };
         server.hostname = "localhost";
         tools.bash = false;
       };

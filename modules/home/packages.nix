@@ -18,6 +18,6 @@
     gcc
     pipewire
     wireplumber
-    inputs.agenix.packages.${pkgs.stdenv.hostPlatform.system}.default
+    inputs.ragenix.packages.${pkgs.stdenv.hostPlatform.system}.default
   ];
 }

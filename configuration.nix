@@ -22,9 +22,16 @@
     };
     systemPackages = [
       pkgs.wget
-      inputs.agenix.packages.x86_64-linux.default
+      inputs.ragenix.packages.x86_64-linux.default
     ];
   };
+
+  age.secrets.github-token = {
+    file = ./secrets/github-token.age;
+    owner = "nixos";
+    mode = "0400";
+  };
+  age.identityPaths = [ "/home/nixos/.ssh/id_ed25519" ];
 
   system.stateVersion = "26.05";
 

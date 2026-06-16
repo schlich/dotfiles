@@ -17,10 +17,9 @@
     };
     nixgl.url = "github:nix-community/nixGL";
     nuenv.url = "https://flakehub.com/f/xav-ie/nuenv/*.tar.gz";
-    agenix = {
-      url = "github:ryantm/agenix/main";
+    ragenix = {
+      url = "github:yaxitech/ragenix";
       inputs.nixpkgs.follows = "nixpkgs";
-      inputs.home-manager.follows = "home-manager";
     };
     marimo-pair.url = "github:schlich/marimo-pair";
     # rust-docs-mcp = {
@@ -67,6 +66,7 @@
       # };
       overlays = [
         inputs.jj-starship.overlays.default
+        inputs.nuenv.overlays.default
         # copilotCliOverlay
       ];
     in
@@ -130,12 +130,12 @@
             nixos = mkNixos [
               inputs.nixos-wsl.nixosModules.wsl
               inputs.determinate.nixosModules.default
-              inputs.agenix.nixosModules.default
+              inputs.ragenix.nixosModules.default
               ./configuration.nix
             ];
 
             # desktop = mkNixos [
-            #   inputs.agenix.nixosModules.default
+            #   inputs.ragenix.nixosModules.default
             #   ./system/hardware-configuration.nix
             #   ./system/configuration.nix
             #   (
@@ -143,7 +143,7 @@
             #     {
             #       environment.systemPackages = [
             #         inputs.fh.packages.${pkgs.stdenv.hostPlatform.system}.default
-            #         inputs.agenix.packages.${pkgs.stdenv.hostPlatform.system}.default
+            #         inputs.ragenix.packages.${pkgs.stdenv.hostPlatform.system}.default
             #       ];
             #     }
             #   )
