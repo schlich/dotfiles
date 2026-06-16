@@ -324,10 +324,10 @@
 
     git = {
       enable = true;
-      settings = {
-        user.name = "schlich";
-        user.email = "ty.schlich@gmail.com";
-      };
+      # settings = {
+      #   user.name = "schlich";
+      #   user.email = "ty.schlich@gmail.com";
+      # };
     };
 
     gpg.enable = true;
@@ -369,7 +369,10 @@
     };
     fd.enable = true;
     antigravity-cli.enable = true;
-    gh.enable = true;
+    gh = {
+      enable = true;
+      gitCredentialHelper.enable = true;
+    };
     gh-dash.enable = true;
     ghostty = {
       enable = true;
