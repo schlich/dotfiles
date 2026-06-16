@@ -7,8 +7,32 @@
   ...
 }:
 
+let
+  awesomeCopilotPlugin = ./copilot/installed-plugins/awesome-copilot/awesome-copilot;
+  schlichDotfilesMarketplacePath = "${homeDirectory}/.config/home-manager";
+  copilotPluginSettings = {
+    extraKnownMarketplaces = {
+      awesome-copilot = {
+        source = {
+          source = "github";
+          repo = "github/awesome-copilot";
+        };
+      };
+      schlich-dotfiles = {
+        source = {
+          source = "directory";
+          path = schlichDotfilesMarketplacePath;
+        };
+      };
+    };
+    enabledPlugins = {
+      "awesome-copilot@awesome-copilot" = true;
+      "project-plugin-factory@schlich-dotfiles" = true;
+    };
+  };
+in
 {
-  imports = [ ./noctalia.nix ];
+  # imports = [ ./noctalia.nix ];
 
   home = {
     inherit
@@ -35,7 +59,6 @@
       fx
       fzf
       gcc
-      github-copilot-cli
       ghostty
       glow
       jjui
@@ -80,26 +103,21 @@
   xdg.configFile."helix/llm.nu".source = ./helix/llm.nu;
   xdg.configFile."helix/llm-tools.yaml".source = ./helix/llm-tools.yaml;
   xdg.configFile."niri/config.kdl".source = ./niri/config.kdl;
+  home.file.".copilot/settings.json".text = builtins.toJSON copilotPluginSettings;
   programs = {
     bash.enable = true;
     claude-code = {
       enable = true;
       enableMcpIntegration = true;
       marketplaces.marimo-pair = inputs.marimo-pair;
-      plugins = [ inputs.marimo-pair ];
+      marketplaces.awesome-copilot = awesomeCopilotPlugin;
+      plugins = [
+        inputs.marimo-pair
+        awesomeCopilotPlugin
+      ];
       settings = {
         enabledPlugins."marimo-pair@marimo-pair" = true;
-        hooks.PreToolUse = [
-          {
-            matcher = "Bash";
-            hooks = [
-              {
-                type = "command";
-                command = ''echo "Bash is disabled here. Use the nu MCP server instead: mcp__plugin_claude-code-home-manager_nu__evaluate for running commands, mcp__plugin_claude-code-home-manager_nu__list_commands to discover, mcp__plugin_claude-code-home-manager_nu__command_help for help. Rewrite the bash invocation as a nushell pipeline and call evaluate." >&2; exit 2'';
-              }
-            ];
-          }
-        ];
+        enabledPlugins."awesome-copilot@awesome-copilot" = true;
       };
     };
     codex = {
@@ -134,6 +152,10 @@
             name = "nix-ci";
             url = "https://blog.nix-ci.com/rss.xml";
           }
+          {
+            name = "Vicky Boykis";
+            url = "https://vickiboykis.com/index.xml";
+          }
         ];
       };
     };
@@ -144,34 +166,31 @@
           command = "uvx";
           args = [ "mcp-nixos" ];
         };
-        github = {
-          url = "https://api.githubcopilot.com/mcp/insiders";
-          oauth = false;
-          headers = {
-            Authorization = "Bearer {env:GITHUB_TOKEN}";
-          };
-        };
+        # github = {
+        #   url = "https://api.githubcopilot.com/mcp/insiders";
+        #   oauth = false;
+        #   headers = {
+        #     Authorization = "Bearer {env:GITHUB_TOKEN}";
+        #   };
+        # };
         nushell = {
           command = "nu";
           args = [ "--mcp" ];
         };
-        # chrome-devtools = {
-        #   command = "bunx";
-        #   args = [ "chrome-devtools-mcp@latest" ];
-        # };
-        # playwright = {
-        #   command = "bunx";
-        #   args = [ "@playwright/mcp@latest" ];
-        # };
-        rust-docs = {
-          command = "rust-docs-mcp";
+        jj = {
+          command = "bunx";
+          args = [ "jj-mcp-server" ];
         };
       };
+    };
+    github-copilot-cli = {
+      enable = true;
+      enableMcpIntegration = true;
+      package = pkgs.github-copilot-cli;
     };
 
     opencode = {
       enable = true;
-      package = inputs.opencode.packages.${pkgs.stdenv.hostPlatform.system}.default;
       enableMcpIntegration = true;
       context = ''
         Use Nushell for shell commands and jujutsu (jj) for version control.
@@ -239,78 +258,6 @@
           normal = {
             tab = "move_parent_node_end";
             S-tab = "move_parent_node_start";
-            space = {
-              a = ''
-                :append-output #
-                let prompt = r######'%{selection}'######
-                if ($prompt | str trim | is-empty) {
-                  print "hx-llm: select text before invoking the assistant"
-                } else {
-                  $prompt
-                  | nu ~/.config/helix/llm.nu
-                }
-              '';
-              g = ''
-                :append-output #
-                let prompt = r######'%{selection}'######
-                if ($prompt | str trim | is-empty) {
-                  print "hx-llm: select text before invoking the assistant"
-                } else {
-                  $prompt
-                  | nu ~/.config/helix/llm.nu --tool gemini
-                }
-              '';
-              c = ''
-                :append-output #
-                let prompt = r######'%{selection}'######
-                if ($prompt | str trim | is-empty) {
-                  print "hx-llm: select text before invoking the assistant"
-                } else {
-                  $prompt
-                  | nu ~/.config/helix/llm.nu --tool claude
-                }
-              '';
-              x = ''
-                :append-output #
-                let prompt = r######'%{selection}'######
-                if ($prompt | str trim | is-empty) {
-                  print "hx-llm: select text before invoking the assistant"
-                } else {
-                  $prompt
-                  | nu ~/.config/helix/llm.nu --tool codex
-                }
-              '';
-              p = ''
-                :append-output #
-                let prompt = r######'%{selection}'######
-                if ($prompt | str trim | is-empty) {
-                  print "hx-llm: select text before invoking the assistant"
-                } else {
-                  $prompt
-                  | nu ~/.config/helix/llm.nu --tool copilot
-                }
-              '';
-              i = ''
-                :append-output #
-                let prompt = r######'%{selection}'######
-                if ($prompt | str trim | is-empty) {
-                  print "hx-llm: select text before invoking the assistant"
-                } else {
-                  $prompt
-                  | nu ~/.config/helix/llm.nu --tool aichat
-                }
-              '';
-              o = ''
-                :append-output #
-                let prompt = r######'%{selection}'######
-                if ($prompt | str trim | is-empty) {
-                  print "hx-llm: select text before invoking the assistant"
-                } else {
-                  $prompt
-                  | nu ~/.config/helix/llm.nu --tool opencode
-                }
-              '';
-            };
           };
           insert = {
             S-tab = "move_parent_node_end";
@@ -402,7 +349,6 @@
         ];
       };
     };
-
     nushell = {
       enable = true;
       environmentVariables = {
@@ -459,7 +405,7 @@
       config.global.hide_env_diff = true;
     };
     fd.enable = true;
-    gemini-cli.enable = true;
+    antigravity-cli.enable = true;
     gh.enable = true;
     gh-dash.enable = true;
     ghostty = {

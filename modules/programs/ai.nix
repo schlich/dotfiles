@@ -1,13 +1,21 @@
 { inputs, ... }:
 
+let
+  awesomeCopilotPlugin = ../../copilot/installed-plugins/awesome-copilot/awesome-copilot;
+in
 {
   programs.claude-code = {
     enable = true;
     enableMcpIntegration = true;
     marketplaces.marimo-pair = inputs.marimo-pair;
-    plugins = [ inputs.marimo-pair ];
+    marketplaces.awesome-copilot = awesomeCopilotPlugin;
+    plugins = [
+      inputs.marimo-pair
+      awesomeCopilotPlugin
+    ];
     settings = {
       enabledPlugins."marimo-pair@marimo-pair" = true;
+      enabledPlugins."awesome-copilot@awesome-copilot" = true;
       hooks.PreToolUse = [
         {
           matcher = "Bash";

@@ -1,0 +1,42 @@
+---
+name: <<SKILL_NAME>>
+description: <<SKILL_DESCRIPTION>>
+---
+
+# <<PROJECT_NAME>> Workflow
+
+This skill is the default bounded workflow for **<<PROJECT_NAME>>**.
+
+## Project context
+
+- Customization scope: <<CUSTOMIZATION_SCOPE_LABEL>>
+- Host repository: <<HOST_REPO_LABEL>>
+- Language: <<LANGUAGE>>
+- Workspace root: `<<WORKSPACE_ROOT>>`
+- Build: `<<BUILD_COMMAND>>`
+- Test: `<<TEST_COMMAND>>`
+- Lint: `<<LINT_COMMAND>>`
+
+## When to use
+
+Use this skill for routine repository tasks that should follow a repeatable pattern, such as:
+
+- implementing a scoped feature
+- fixing a bug with targeted validation
+- updating related docs along with code
+- reviewing whether a proposed change fits existing patterns
+
+## Workflow
+
+1. Inspect the relevant code, tests, and configuration first.
+2. Identify the nearest existing pattern and reuse it.
+3. Make the smallest coherent change that solves the real problem.
+4. Run the relevant project command:
+   - lint: `<<LINT_COMMAND>>`
+   - test: `<<TEST_COMMAND>>`
+   - build: `<<BUILD_COMMAND>>`
+5. Summarize the behavioral impact, not just the file diff.
+
+## Project notes
+
+<<NOTES>>
