@@ -321,15 +321,7 @@
       };
       configFile.source = ./config.nu;
     };
-
-    git = {
-      enable = true;
-      # settings = {
-      #   user.name = "schlich";
-      #   user.email = "ty.schlich@gmail.com";
-      # };
-    };
-
+    git.enable = true;
     gpg.enable = true;
     lazygit = {
       enable = true;
