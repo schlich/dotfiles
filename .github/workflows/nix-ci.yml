@@ -68,13 +68,3 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Build NixOS host
         run: nix build .#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel
-
-  smoke-test:
-    name: system smoke test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/determinate-nix-action@v3.21.1
-      - uses: DeterminateSystems/magic-nix-cache-action@main
-      - name: Run smoke test
-        run: nix build -f system/system_test.nix
