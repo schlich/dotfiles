@@ -25,6 +25,19 @@
   "promptDescription": "Use the Example Service workflow with the generated plugin and repo instructions.",
   "projectRepoDir": "/path/to/example-service",
   "notes": "Prefer service-layer changes over route-layer duplication and keep contract tests in sync.",
+  "repoHooksFileName": "example-service-policy.json",
+  "repoHooks": {
+    "version": 1,
+    "hooks": {
+      "preToolUse": [
+        {
+          "matcher": "bash",
+          "type": "command",
+          "command": "printf '{}'"
+        }
+      ]
+    }
+  },
   "mcpServers": {
     "docs": {
       "command": "npx",

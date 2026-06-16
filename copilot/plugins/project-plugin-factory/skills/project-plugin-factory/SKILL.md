@@ -78,6 +78,8 @@ The spec should be concrete enough to generate:
 - at least one skill
 - optional `.mcp.json`
 - optional `lsp.json`
+- optional plugin `hooks.json`
+- optional `.github/hooks/<name>.json`
 - `.github/prompts/use-<pluginName>.prompt.md`
 - `.github/instructions/<pluginName>.instructions.md`
 
@@ -100,6 +102,7 @@ Confirm that:
 3. optional MCP/LSP files only exist when they were explicitly requested
 4. the generated agent and skill reflect real project commands and conventions
 5. the plugin and overlay were emitted into the correct repository for the chosen scope
+6. hook files only exist when they were explicitly requested, and they are placed in the right surface for the chosen policy
 
 ## Expected spec fields
 
@@ -128,6 +131,8 @@ Strongly recommended:
 - `instructionsApplyTo`
 - `promptDescription`
 - `pluginOutputDir` and `repoOverlayDir` only when overriding the default in-repo placement
+- `pluginHooks` for plugin-bundled automatic guardrails
+- `repoHooks` for repository-level policy that should also apply in `.github/hooks/`
 
 ## Example usage
 

@@ -27,6 +27,7 @@ let
     };
     enabledPlugins = {
       "awesome-copilot@awesome-copilot" = true;
+      "jj-flake-vigilance@schlich-dotfiles" = true;
       "project-plugin-factory@schlich-dotfiles" = true;
     };
   };

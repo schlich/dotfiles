@@ -35,6 +35,7 @@ The scaffold script reads a JSON spec file. Unknown fields are ignored, so you c
 | `promptDescription` | Generated prompt description |
 | `promptFileName` | Prompt filename override, defaults to `use-<pluginName>.prompt.md` |
 | `instructionsFileName` | Instruction filename override, defaults to `<pluginName>.instructions.md` |
+| `repoHooksFileName` | Repo hook filename override, defaults to `<pluginName>.json` |
 
 ## Optional structured fields
 
@@ -49,6 +50,14 @@ Record serialized into the generated plugin's `.mcp.json`. The scaffold writes t
 ### `lspServers`
 
 Record serialized into the generated plugin's `lsp.json`. The scaffold writes the file only when this field is present and non-empty.
+
+### `pluginHooks`
+
+Record serialized verbatim into the generated plugin's `hooks.json`. Use this for hooks that should travel with the installable plugin, such as user-specific guardrails.
+
+### `repoHooks`
+
+Record serialized verbatim into the generated repository overlay at `.github/hooks/<repoHooksFileName>`. Use this for repository policy that should also apply to repo-level Copilot usage and cloud agent runs.
 
 ### `notes`
 
@@ -89,5 +98,6 @@ If omitted, the scaffold uses these defaults:
 - `promptDescription`: `Use the generated Copilot workflow`
 - `promptFileName`: `use-<pluginName>.prompt.md`
 - `instructionsFileName`: `<pluginName>.instructions.md`
+- `repoHooksFileName`: `<pluginName>.json`
 - `license`: `MIT`
 - `workspaceRoot`: `.`

@@ -1,0 +1,24 @@
+{
+  "name": "jj-flake-vigilance",
+  "description": "JJ-first Copilot workflow for careful flake evolution in schlich/dotfiles.",
+  "version": "0.1.0",
+  "author": {
+    "name": "schlich"
+  },
+  "license": "MIT",
+  "keywords": [
+    "github-copilot",
+    "nix",
+    "flake",
+    "jujutsu",
+    "home-manager",
+    "nixos"
+  ],
+  "agents": [
+    "./agents"
+  ],
+  "skills": [
+    "./skills/jj-flake-evolution"
+  ],
+  "repository": "https://github.com/schlich/dotfiles"
+}

@@ -100,6 +100,7 @@ The script emits two trees:
 
 - the installable target plugin
 - the target repository overlay containing prompts and instructions
+- optional hook files in the plugin and/or `.github/hooks/`, when the spec requests them
 
 ## Scope-aware placement
 
@@ -143,11 +144,14 @@ Given a spec, the scaffold produces:
 ├── skills/
 │   └── project-workflow/
 │       └── SKILL.md
+├── hooks.json         # only if spec defines pluginHooks
 ├── .mcp.json         # only if spec defines MCP servers
 └── lsp.json          # only if spec defines LSP servers
 
 <hostRepoDir>/
 └── .github/
+    ├── hooks/
+    │   └── <pluginName>.json     # only if spec defines repoHooks
     ├── prompts/
     │   └── use-<pluginName>.prompt.md
     └── instructions/
@@ -161,5 +165,5 @@ Given a spec, the scaffold produces:
 3. Use prompts as entrypoints for repeatable human-invoked workflows.
 4. Use skills for deterministic or semi-deterministic actions that can be script-backed later.
 5. Only add MCP/LSP config if the target project already benefits from those tools.
-6. Avoid hooks unless there is a clear automatic policy worth enforcing.
+6. Use plugin hooks for installable personal guardrails, and `.github/hooks` for repository policy that should also apply to cloud agent.
 7. Keep personal workflow plugins in the dotfiles repo and repository policy plugins in the project repo.

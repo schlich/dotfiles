@@ -9,6 +9,12 @@
   },
   "plugins": [
     {
+      "name": "jj-flake-vigilance",
+      "description": "JJ-first Copilot workflow for careful flake evolution in schlich/dotfiles.",
+      "version": "0.1.0",
+      "source": "copilot/plugins/jj-flake-vigilance"
+    },
+    {
       "name": "project-plugin-factory",
       "description": "Design and scaffold project-specific GitHub Copilot CLI plugins plus companion repo-local prompts and instructions.",
       "version": "0.1.0",

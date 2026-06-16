@@ -29,6 +29,21 @@ def is-nonempty-record [value: any] {
   (($value | describe | str starts-with "record") and (($value | columns | length) > 0))
 }
 
+def hook-summary [plugin_hooks: any, repo_hooks: any, repo_hook_file_name: string] {
+  let has_plugin_hooks = (is-nonempty-record $plugin_hooks)
+  let has_repo_hooks = (is-nonempty-record $repo_hooks)
+
+  if $has_plugin_hooks and $has_repo_hooks {
+    $"plugin hooks at hooks.json and repo hooks at .github/hooks/($repo_hook_file_name)"
+  } else if $has_plugin_hooks {
+    "plugin hooks at hooks.json"
+  } else if $has_repo_hooks {
+    $".github/hooks/($repo_hook_file_name)"
+  } else {
+    "none"
+  }
+}
+
 def canonicalize [target_path: path] {
   $target_path | path expand
 }
@@ -113,11 +128,15 @@ def main [spec_path: path] {
   let prompt_description = (maybe ($spec.promptDescription?) "Use the generated Copilot workflow")
   let prompt_file_name = (maybe ($spec.promptFileName?) $"use-($plugin_name).prompt.md")
   let instructions_file_name = (maybe ($spec.instructionsFileName?) $"($plugin_name).instructions.md")
+  let repo_hook_file_name = (maybe ($spec.repoHooksFileName?) $"($plugin_name).json")
   let notes = (maybe ($spec.notes?) "")
+  let plugin_hooks = ($spec.pluginHooks? | default {})
+  let repo_hooks = ($spec.repoHooks? | default {})
 
   let host_repo_root = (selected-host-root $spec $customization_scope)
   let scope_label = (if $customization_scope == "user" { "user-specific" } else { "project-specific" })
   let host_repo_label = (if $customization_scope == "user" { $"dotfiles repo at ($host_repo_root)" } else { $"project repo at ($host_repo_root)" })
+  let hooks_summary = (hook-summary $plugin_hooks $repo_hooks $repo_hook_file_name)
 
   let plugin_output = (
     if ($spec.pluginOutputDir? | default null) != null {
@@ -152,6 +171,7 @@ def main [spec_path: path] {
   mkdir ($plugin_output | path join "skills" $skill_name)
   mkdir ($overlay_output | path join ".github" "prompts")
   mkdir ($overlay_output | path join ".github" "instructions")
+  mkdir ($overlay_output | path join ".github" "hooks")
 
   let keywords = (maybe ($spec.keywords?) ["github-copilot" $plugin_name])
   mut manifest = {
@@ -194,6 +214,7 @@ def main [spec_path: path] {
     PROMPT_DESCRIPTION: $prompt_description
     PROMPT_FILE_NAME: $prompt_file_name
     INSTRUCTIONS_FILE_NAME: $instructions_file_name
+    HOOKS_SUMMARY: $hooks_summary
     NOTES: $notes
   }
 
@@ -229,17 +250,35 @@ def main [spec_path: path] {
     { lspServers: $spec.lspServers } | to json --indent 2 | save --force ($plugin_output | path join "lsp.json")
   }
 
+  if (is-nonempty-record $plugin_hooks) {
+    $plugin_hooks | to json --indent 2 | save --force ($plugin_output | path join "hooks.json")
+  }
+
+  if (is-nonempty-record $repo_hooks) {
+    $repo_hooks | to json --indent 2 | save --force ($overlay_output | path join ".github" "hooks" $repo_hook_file_name)
+  }
+
+  mut generated_files = [
+    ($plugin_output | path join "plugin.json")
+    ($plugin_output | path join "agents" "project-specialist.agent.md")
+    ($plugin_output | path join "skills" $skill_name "SKILL.md")
+    ($overlay_output | path join ".github" "prompts" $prompt_file_name)
+    ($overlay_output | path join ".github" "instructions" $instructions_file_name)
+  ]
+
+  if (is-nonempty-record $plugin_hooks) {
+    $generated_files = ($generated_files | append ($plugin_output | path join "hooks.json"))
+  }
+
+  if (is-nonempty-record $repo_hooks) {
+    $generated_files = ($generated_files | append ($overlay_output | path join ".github" "hooks" $repo_hook_file_name))
+  }
+
   {
     customization_scope: $customization_scope
     host_repo_root: $host_repo_root
     plugin_dir: $plugin_output
     overlay_dir: $overlay_output
-    generated_files: [
-      ($plugin_output | path join "plugin.json")
-      ($plugin_output | path join "agents" "project-specialist.agent.md")
-      ($plugin_output | path join "skills" $skill_name "SKILL.md")
-      ($overlay_output | path join ".github" "prompts" $prompt_file_name)
-      ($overlay_output | path join ".github" "instructions" $instructions_file_name)
-    ]
+    generated_files: $generated_files
   }
 }

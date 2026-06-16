@@ -12,8 +12,9 @@ Work on: ${input:task:Describe the change or question}
 1. Use the `project-specialist` custom agent for orchestration.
 2. Apply the repository guidance from `.github/instructions/<<INSTRUCTIONS_FILE_NAME>>`.
 3. Reuse the generated `<<SKILL_NAME>>` skill for repeatable repository work.
-4. Prefer existing project patterns over introducing new structure.
-5. Use the repository's real validation commands before concluding:
+4. Honor the configured hook policy: <<HOOKS_SUMMARY>>.
+5. Prefer existing project patterns over introducing new structure.
+6. Use the repository's real validation commands before concluding:
    - `<<LINT_COMMAND>>`
    - `<<TEST_COMMAND>>`
    - `<<BUILD_COMMAND>>`
