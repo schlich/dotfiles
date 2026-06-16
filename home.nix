@@ -8,7 +8,7 @@
 }:
 
 {
-  imports = [ ./noctalia.nix ];
+  # imports = [ ./noctalia.nix ];
 
   home = {
     inherit
@@ -171,7 +171,6 @@
 
     opencode = {
       enable = true;
-      package = inputs.opencode.packages.${pkgs.stdenv.hostPlatform.system}.default;
       enableMcpIntegration = true;
       context = ''
         Use Nushell for shell commands and jujutsu (jj) for version control.
@@ -239,170 +238,98 @@
           normal = {
             tab = "move_parent_node_end";
             S-tab = "move_parent_node_start";
-            space = {
-              a = ''
-                :append-output #
-                let prompt = r######'%{selection}'######
-                if ($prompt | str trim | is-empty) {
-                  print "hx-llm: select text before invoking the assistant"
-                } else {
-                  $prompt
-                  | nu ~/.config/helix/llm.nu
-                }
-              '';
-              g = ''
-                :append-output #
-                let prompt = r######'%{selection}'######
-                if ($prompt | str trim | is-empty) {
-                  print "hx-llm: select text before invoking the assistant"
-                } else {
-                  $prompt
-                  | nu ~/.config/helix/llm.nu --tool gemini
-                }
-              '';
-              c = ''
-                :append-output #
-                let prompt = r######'%{selection}'######
-                if ($prompt | str trim | is-empty) {
-                  print "hx-llm: select text before invoking the assistant"
-                } else {
-                  $prompt
-                  | nu ~/.config/helix/llm.nu --tool claude
-                }
-              '';
-              x = ''
-                :append-output #
-                let prompt = r######'%{selection}'######
-                if ($prompt | str trim | is-empty) {
-                  print "hx-llm: select text before invoking the assistant"
-                } else {
-                  $prompt
-                  | nu ~/.config/helix/llm.nu --tool codex
-                }
-              '';
-              p = ''
-                :append-output #
-                let prompt = r######'%{selection}'######
-                if ($prompt | str trim | is-empty) {
-                  print "hx-llm: select text before invoking the assistant"
-                } else {
-                  $prompt
-                  | nu ~/.config/helix/llm.nu --tool copilot
-                }
-              '';
-              i = ''
-                :append-output #
-                let prompt = r######'%{selection}'######
-                if ($prompt | str trim | is-empty) {
-                  print "hx-llm: select text before invoking the assistant"
-                } else {
-                  $prompt
-                  | nu ~/.config/helix/llm.nu --tool aichat
-                }
-              '';
-              o = ''
-                :append-output #
-                let prompt = r######'%{selection}'######
-                if ($prompt | str trim | is-empty) {
-                  print "hx-llm: select text before invoking the assistant"
-                } else {
-                  $prompt
-                  | nu ~/.config/helix/llm.nu --tool opencode
-                }
-              '';
-            };
-          };
-          insert = {
-            S-tab = "move_parent_node_end";
-          };
-          select = {
-            tab = "extend_parent_node_end";
-            S-tab = "extend_parent_node_start";
           };
         };
-      };
-      languages = {
-        language-server = {
-          rust-analyzer.config.cargo.features = "all";
-          ruff = {
-            command = "ruff";
-            args = [ "server" ];
-          };
-          yaml-language-server = {
-            config.yaml = {
-              validation = true;
-              format.enable = true;
-              schemas = {
-                "https://json.schemastore.org/github-workflow.json" = ".github/workflows/*.{yml,yaml}";
-              };
-            };
-          };
-          nixd = {
-            command = "nixd";
-            config.nixd = {
-              nixpkgs.expr = "import (builtins.getFlake (builtins.toString ./.)).inputs.nixpkgs { }";
-              options = {
-                nixos.expr = "(builtins.getFlake (builtins.toString ./.)).nixosConfigurations.nixos.options";
-                home-manager.expr = "(builtins.getFlake (builtins.toString ./.)).homeConfigurations.${username}.options";
-              };
-            };
-          };
+        insert = {
+          S-tab = "move_parent_node_end";
         };
-        language = [
-          {
-            name = "rust";
-            auto-format = true;
-            formatter = {
-              command = "rustfmt";
-              args = [ "-" ];
-            };
-          }
-          {
-            name = "python";
-            language-servers = [ "ruff" ];
-            formatter = {
+        select = {
+          tab = "extend_parent_node_end";
+          S-tab = "extend_parent_node_start";
+        };
+        # };
+        languages = {
+          language-server = {
+            rust-analyzer.config.cargo.features = "all";
+            ruff = {
               command = "ruff";
-              args = [
-                "format"
-                "-"
+              args = [ "server" ];
+            };
+            yaml-language-server = {
+              config.yaml = {
+                validation = true;
+                format.enable = true;
+                schemas = {
+                  "https://json.schemastore.org/github-workflow.json" = ".github/workflows/*.{yml,yaml}";
+                };
+              };
+            };
+            nixd = {
+              command = "nixd";
+              config.nixd = {
+                nixpkgs.expr = "import (builtins.getFlake (builtins.toString ./.)).inputs.nixpkgs { }";
+                options = {
+                  nixos.expr = "(builtins.getFlake (builtins.toString ./.)).nixosConfigurations.nixos.options";
+                  home-manager.expr = "(builtins.getFlake (builtins.toString ./.)).homeConfigurations.${username}.options";
+                };
+              };
+            };
+          };
+          language = [
+            {
+              name = "rust";
+              auto-format = true;
+              formatter = {
+                command = "rustfmt";
+                args = [ "-" ];
+              };
+            }
+            {
+              name = "python";
+              language-servers = [ "ruff" ];
+              formatter = {
+                command = "ruff";
+                args = [
+                  "format"
+                  "-"
+                ];
+              };
+              auto-format = true;
+            }
+            {
+              name = "nix";
+              language-servers = [
+                "nil"
+                "nixd"
               ];
-            };
-            auto-format = true;
-          }
-          {
-            name = "nix";
-            language-servers = [
-              "nil"
-              "nixd"
-            ];
-            auto-format = true;
-            formatter = {
-              command = "nixfmt";
-              args = [ "-" ];
-            };
-          }
-          {
-            name = "nu";
-            auto-format = true;
-          }
-          {
-            name = "yaml";
-          }
-          {
-            name = "toml";
-            language-servers = [ "taplo" ];
-            formatter = {
-              command = "taplo";
-              args = [
-                "format"
-                "-"
-              ];
-            };
-          }
-        ];
+              auto-format = true;
+              formatter = {
+                command = "nixfmt";
+                args = [ "-" ];
+              };
+            }
+            {
+              name = "nu";
+              auto-format = true;
+            }
+            {
+              name = "yaml";
+            }
+            {
+              name = "toml";
+              language-servers = [ "taplo" ];
+              formatter = {
+                command = "taplo";
+                args = [
+                  "format"
+                  "-"
+                ];
+              };
+            }
+          ];
+        };
       };
     };
-
     nushell = {
       enable = true;
       environmentVariables = {
@@ -459,7 +386,7 @@
       config.global.hide_env_diff = true;
     };
     fd.enable = true;
-    gemini-cli.enable = true;
+    antigravity-cli.enable = true;
     gh.enable = true;
     gh-dash.enable = true;
     ghostty = {
