@@ -25,6 +25,8 @@ jobs:
         with:
           kvm: false
       - uses: DeterminateSystems/magic-nix-cache-action@v14
+        with:
+          use-flakehub: false
       - name: Check formatting
         run: |
           nix fmt
@@ -39,5 +41,7 @@ jobs:
         with:
           kvm: false
       - uses: DeterminateSystems/magic-nix-cache-action@v14
+        with:
+          use-flakehub: false
       - name: Run flake checks
         run: nix flake check

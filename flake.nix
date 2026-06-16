@@ -23,10 +23,10 @@
       inputs.home-manager.follows = "home-manager";
     };
     marimo-pair.url = "github:schlich/marimo-pair";
-    rust-docs-mcp = {
-      url = "github:christian-blades-cb/rust-docs-mcp/2d69d7acd57a36456f844df45e8aade257352257";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    # rust-docs-mcp = {
+    #   url = "github:christian-blades-cb/rust-docs-mcp/2d69d7acd57a36456f844df45e8aade257352257";
+    #   inputs.nixpkgs.follows = "nixpkgs";
+    # };
     jj-starship = {
       url = "gitlab:lanastara_foss/starship-jj";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -51,13 +51,12 @@
     }:
     let
       copilotCliVersion = "1.0.63";
-      copilotCliHash = "sha256-0K+uVsaG9cndsqRhxIV8K399WsLjvVZAgbLreJdmJbs=";
       copilotCliOverlay = _: prev: {
         github-copilot-cli = prev.github-copilot-cli.overrideAttrs (old: {
           version = copilotCliVersion;
           src = prev.fetchurl {
             url = "https://github.com/github/copilot-cli/releases/download/v${copilotCliVersion}/github-copilot-${copilotCliVersion}.tgz";
-            hash = copilotCliHash;
+            hash = "sha256-0K+uVsaG9cndsqRhxIV8K399WsLjvVZAgbLreJdmJbs=";
           };
           preFixup = (old.preFixup or "") + ''
             rm -rf \
@@ -83,7 +82,7 @@
             config.allowUnfree = true;
           };
 
-          formatter = pkgs.nixfmt-tree;
+          formatter = pkgs.nixfmt;
         };
 
       flake =
