@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -23,7 +24,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/determinate-nix-action@v3.21.1
+        with:
+          kvm: false
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Check formatting
         run: |
@@ -41,7 +44,9 @@ jobs:
           - nixos
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/determinate-nix-action@v3.21.1
+        with:
+          kvm: false
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Build Home Manager profile
         run: nix build .#homeConfigurations.${{ matrix.profile }}.activationPackage
@@ -57,7 +62,9 @@ jobs:
           - desktop
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/determinate-nix-action@v3.21.1
+        with:
+          kvm: false
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Build NixOS host
         run: nix build .#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel
@@ -67,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/determinate-nix-action@v3.21.1
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Run smoke test
         run: nix-build system/system_test.nix
