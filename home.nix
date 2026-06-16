@@ -6,24 +6,6 @@
   stateVersion ? "26.05",
   ...
 }:
-
-let
-  schlichDotfilesMarketplacePath = "${homeDirectory}/.config/home-manager";
-  copilotPluginSettings = {
-    extraKnownMarketplaces = {
-      schlich-dotfiles = {
-        source = {
-          source = "directory";
-          path = schlichDotfilesMarketplacePath;
-        };
-      };
-    };
-    enabledPlugins = {
-      "jj-flake-vigilance@schlich-dotfiles" = true;
-      "project-plugin-factory@schlich-dotfiles" = true;
-    };
-  };
-in
 {
   # imports = [ ./noctalia.nix ];
 
@@ -167,7 +149,18 @@ in
     github-copilot-cli = {
       enable = true;
       enableMcpIntegration = true;
-      settings = copilotPluginSettings;
+      settings = {
+        extraKnownMarketplaces = {
+          schlich-dotfiles = {
+            source = "directory";
+            path = ./.;
+          };
+        };
+        enabledPlugins = {
+          "jj-flake-vigilance@schlich-dotfiles" = true;
+          "project-plugin-factory@schlich-dotfiles" = true;
+        };
+      };
     };
     opencode = {
       enable = true;
