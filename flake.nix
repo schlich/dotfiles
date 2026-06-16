@@ -126,7 +126,7 @@
             config.allowUnfree = true;
           };
         in
-        {
+        let
           nixosConfigurations = {
             nixos = mkNixos [
               inputs.nixos-wsl.nixosModules.wsl
@@ -163,6 +163,16 @@
               homeDirectory = "/home/nixos";
               stateVersion = "26.05";
             };
+          };
+        in
+        {
+          inherit nixosConfigurations homeConfigurations;
+
+          checks.x86_64-linux = {
+            home-manager-schlich = homeConfigurations.schlich.activationPackage;
+            home-manager-nixos = homeConfigurations.nixos.activationPackage;
+            nixos-wsl = nixosConfigurations.nixos.config.system.build.toplevel;
+            nixos-desktop = nixosConfigurations.desktop.config.system.build.toplevel;
           };
         };
     };
