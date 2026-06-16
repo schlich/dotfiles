@@ -129,7 +129,7 @@
           nixosConfigurations = {
             nixos = mkNixos [
               inputs.nixos-wsl.nixosModules.wsl
-              # inputs.determinate.nixosModules.default
+              inputs.determinate.nixosModules.default
               inputs.agenix.nixosModules.default
               ./configuration.nix
             ];
