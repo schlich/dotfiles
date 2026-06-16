@@ -40,21 +40,6 @@
         "url": "https://flakehub.com/f/ipetkov/crane/0"
       }
     },
-    "crane_2": {
-      "locked": {
-        "lastModified": 1750266157,
-        "narHash": "sha256-tL42YoNg9y30u7zAqtoGDNdTyXTi8EALDeCB13FtbQA=",
-        "owner": "ipetkov",
-        "repo": "crane",
-        "rev": "e37c943371b73ed87faf33f7583860f81f1d5a48",
-        "type": "github"
-      },
-      "original": {
-        "owner": "ipetkov",
-        "repo": "crane",
-        "type": "github"
-      }
-    },
     "darwin": {
       "inputs": {
         "nixpkgs": [
@@ -177,30 +162,6 @@
         "type": "github"
       }
     },
-    "fenix_3": {
-      "inputs": {
-        "nixpkgs": [
-          "rust-docs-mcp",
-          "nixpkgs"
-        ],
-        "rust-analyzer-src": [
-          "rust-docs-mcp"
-        ]
-      },
-      "locked": {
-        "lastModified": 1750315135,
-        "narHash": "sha256-SnX5IW9zTVYhKKX/Q8zk0VJV8/ch+UIo4IahxqAJLA8=",
-        "owner": "nix-community",
-        "repo": "fenix",
-        "rev": "b4c4ecfacdb343b8b5d48d90692db461a32d3d8e",
-        "type": "github"
-      },
-      "original": {
-        "owner": "nix-community",
-        "repo": "fenix",
-        "type": "github"
-      }
-    },
     "fh": {
       "inputs": {
         "crane": "crane",
@@ -285,24 +246,6 @@
         "owner": "hercules-ci",
         "repo": "flake-parts",
         "rev": "f7c1a2d347e4c52d5fb8d10cb4d94b5884e546fb",
-        "type": "github"
-      },
-      "original": {
-        "owner": "hercules-ci",
-        "repo": "flake-parts",
-        "type": "github"
-      }
-    },
-    "flake-parts_3": {
-      "inputs": {
-        "nixpkgs-lib": "nixpkgs-lib"
-      },
-      "locked": {
-        "lastModified": 1749398372,
-        "narHash": "sha256-tYBdgS56eXYaWVW3fsnPQ/nFlgWi/Z2Ymhyu21zVM98=",
-        "owner": "hercules-ci",
-        "repo": "flake-parts",
-        "rev": "9305fe4e5c2a6fcf5ba6a3ff155720fbe4076569",
         "type": "github"
       },
       "original": {
@@ -584,21 +527,6 @@
         "type": "github"
       }
     },
-    "nixpkgs-lib": {
-      "locked": {
-        "lastModified": 1748740939,
-        "narHash": "sha256-rQaysilft1aVMwF14xIdGS3sj1yHlI6oKQNBRTF40cc=",
-        "owner": "nix-community",
-        "repo": "nixpkgs.lib",
-        "rev": "656a64127e9d791a334452c6b6606d17539476e2",
-        "type": "github"
-      },
-      "original": {
-        "owner": "nix-community",
-        "repo": "nixpkgs.lib",
-        "type": "github"
-      }
-    },
     "nixpkgs-regression": {
       "locked": {
         "lastModified": 1643052045,
@@ -741,11 +669,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1781614955,
-        "narHash": "sha256-S9SlCpyaC3veOVE9hw36yjyrB01HMymYhg3LxEnF3pw=",
+        "lastModified": 1781618155,
+        "narHash": "sha256-zc1cMddWGzLQMdgnrYSNTGreCtzwKqzitakiWuPvWzQ=",
         "owner": "noctalia-dev",
         "repo": "noctalia-shell",
-        "rev": "b09b7d364c89c0586023d7dc342a9c3e611e4fb6",
+        "rev": "98852a6c7dbb97d21bbebd58ad0edfdaf40efdb3",
         "type": "github"
       },
       "original": {
@@ -786,8 +714,7 @@
         "nixos-wsl": "nixos-wsl",
         "nixpkgs": "nixpkgs_7",
         "noctalia": "noctalia",
-        "nuenv": "nuenv",
-        "rust-docs-mcp": "rust-docs-mcp"
+        "nuenv": "nuenv"
       }
     },
     "rust-analyzer-src": {
@@ -821,30 +748,6 @@
         "owner": "rust-lang",
         "ref": "nightly",
         "repo": "rust-analyzer",
-        "type": "github"
-      }
-    },
-    "rust-docs-mcp": {
-      "inputs": {
-        "crane": "crane_2",
-        "fenix": "fenix_3",
-        "flake-parts": "flake-parts_3",
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1773266952,
-        "narHash": "sha256-3c+xhIVkJwy92gSCHwhcAPAQ6Fm0/pfMLmJmqa8bLU0=",
-        "owner": "christian-blades-cb",
-        "repo": "rust-docs-mcp",
-        "rev": "2d69d7acd57a36456f844df45e8aade257352257",
-        "type": "github"
-      },
-      "original": {
-        "owner": "christian-blades-cb",
-        "repo": "rust-docs-mcp",
-        "rev": "2d69d7acd57a36456f844df45e8aade257352257",
         "type": "github"
       }
     },
