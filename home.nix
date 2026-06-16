@@ -1,4 +1,5 @@
 {
+  config,
   pkgs,
   inputs,
   username ? "nixos",
@@ -7,7 +8,7 @@
   ...
 }:
 let
-  githubTokenPath = "/run/agenix/github-token";
+  githubTokenPath = config.age.secrets.github-token.path;
   opencodeWithGithubToken = pkgs.nuenv.writeShellApplication {
     name = "opencode";
     text = ''
@@ -15,7 +16,7 @@ let
         let token_path = "${githubTokenPath}"
 
         if ($token_path | path exists) {
-          $env.GITHUB_TOKEN = (open --raw $token_path | str trim)
+          $env.GITHUB_PERSONAL_ACCESS_TOKEN = (open --raw $token_path | str trim)
         }
 
         ^${pkgs.opencode}/bin/opencode ...$args
@@ -24,7 +25,12 @@ let
   };
 in
 {
-  # imports = [ ./noctalia.nix ];
+  imports = [ inputs.ragenix.homeManagerModules.default ];
+
+  age = {
+    identityPaths = [ "${homeDirectory}/.ssh/id_ed25519" ];
+    secrets.github-token.file = ./secrets/github-token.age;
+  };
 
   manual.manpages.enable = false;
   home = {
@@ -195,10 +201,10 @@ in
           type = "remote";
           url = "https://api.githubcopilot.com/mcp/";
           enabled = true;
-          headers.Authorization = "Bearer \${GITHUB_TOKEN}";
+          oauth = false;
+          headers.Authorization = "Bearer {env:GITHUB_PERSONAL_ACCESS_TOKEN}";
         };
         server.hostname = "localhost";
-        tools.bash = false;
       };
     };
 
