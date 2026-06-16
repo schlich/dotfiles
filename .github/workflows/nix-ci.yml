@@ -77,4 +77,4 @@ jobs:
       - uses: DeterminateSystems/determinate-nix-action@v3.21.1
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Run smoke test
-        run: nix-build system/system_test.nix
+        run: nix build -f system/system_test.nix
