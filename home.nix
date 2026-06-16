@@ -42,19 +42,19 @@
       pandoc
       pixi
       ripgrep
-      rustup
+      # rustup
       systemctl-tui
       systemd-manager-tui
       uv
       wl-clipboard-rs
       zed-editor
       inputs.agenix.packages.${pkgs.stdenv.hostPlatform.system}.default
-      inputs.rust-docs-mcp.packages.${pkgs.stdenv.hostPlatform.system}.default
+      # inputs.rust-docs-mcp.packages.${pkgs.stdenv.hostPlatform.system}.default
     ];
     sessionVariables = {
       EDITOR = "hx";
       VISUAL = "hx";
-      RUST_SRC_PATH = "${pkgs.rustPlatform.rustLibSrc}";
+      # RUST_SRC_PATH = "${pkgs.rustPlatform.rustLibSrc}";
       SHELL = "nu";
     };
   };
@@ -184,7 +184,7 @@
         nil
         nixfmt
         marksman
-        rust-analyzer
+        # rust-analyzer
         taplo
         dhall
       ];
@@ -229,7 +229,7 @@
       };
       languages = {
         language-server = {
-          rust-analyzer.config.cargo.features = "all";
+          # rust-analyzer.config.cargo.features = "all";
           ruff = {
             command = "ruff";
             args = [ "server" ];
@@ -255,14 +255,14 @@
           };
         };
         language = [
-          {
-            name = "rust";
-            auto-format = true;
-            formatter = {
-              command = "rustfmt";
-              args = [ "-" ];
-            };
-          }
+          # {
+          #   name = "rust";
+          #   auto-format = true;
+          #   formatter = {
+          #     command = "rustfmt";
+          #     args = [ "-" ];
+          #   };
+          # }
           {
             name = "python";
             language-servers = [ "ruff" ];
