@@ -50,24 +50,24 @@
       ...
     }:
     let
-      copilotCliVersion = "1.0.63";
-      copilotCliOverlay = _: prev: {
-        github-copilot-cli = prev.github-copilot-cli.overrideAttrs (old: {
-          version = copilotCliVersion;
-          src = prev.fetchurl {
-            url = "https://github.com/github/copilot-cli/releases/download/v${copilotCliVersion}/github-copilot-${copilotCliVersion}.tgz";
-            hash = "sha256-0K+uVsaG9cndsqRhxIV8K399WsLjvVZAgbLreJdmJbs=";
-          };
-          preFixup = (old.preFixup or "") + ''
-            rm -rf \
-              "$out"/lib/github-copilot-cli/prebuilds/linuxmusl-arm64 \
-              "$out"/lib/github-copilot-cli/prebuilds/linuxmusl-x64
-          '';
-        });
-      };
+      # copilotCliVersion = "1.0.63";
+      # copilotCliOverlay = _: prev: {
+      #   github-copilot-cli = prev.github-copilot-cli.overrideAttrs (old: {
+      #     version = copilotCliVersion;
+      #     src = prev.fetchurl {
+      #       url = "https://github.com/github/copilot-cli/releases/download/v${copilotCliVersion}/github-copilot-${copilotCliVersion}.tgz";
+      #       hash = "sha256-0K+uVsaG9cndsqRhxIV8K399WsLjvVZAgbLreJdmJbs=";
+      #     };
+      #     preFixup = (old.preFixup or "") + ''
+      #       rm -rf \
+      #         "$out"/lib/github-copilot-cli/prebuilds/linuxmusl-arm64 \
+      #         "$out"/lib/github-copilot-cli/prebuilds/linuxmusl-x64
+      #     '';
+      #   });
+      # };
       overlays = [
         inputs.jj-starship.overlays.default
-        copilotCliOverlay
+        # copilotCliOverlay
       ];
     in
     flake-parts.lib.mkFlake { inherit inputs; } {

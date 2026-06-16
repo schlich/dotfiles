@@ -17,7 +17,7 @@
       ;
     packages = with pkgs; [
       wget
-      mesa-demos
+      # mesa-demos
       niri
       dhall
       skills
