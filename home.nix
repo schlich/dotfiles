@@ -149,18 +149,18 @@
     github-copilot-cli = {
       enable = true;
       enableMcpIntegration = true;
-      settings = {
-        extraKnownMarketplaces = {
-          schlich-dotfiles = {
-            source = "directory";
-            path = ./.;
-          };
-        };
-        enabledPlugins = {
-          "jj-flake-vigilance@schlich-dotfiles" = true;
-          "project-plugin-factory@schlich-dotfiles" = true;
-        };
-      };
+      # settings = {
+      #   extraKnownMarketplaces = {
+      #     schlich-dotfiles = {
+      #       source = "directory";
+      #       path = ./.;
+      #     };
+      #   };
+      #   enabledPlugins = {
+      #     "jj-flake-vigilance@schlich-dotfiles" = true;
+      #     "project-plugin-factory@schlich-dotfiles" = true;
+      #   };
+      # };
     };
     opencode = {
       enable = true;
@@ -286,6 +286,7 @@
               command = "nix";
               args = [
                 "fmt"
+                "-"
               ];
             };
           }
