@@ -9,7 +9,7 @@
 - Build the NixOS system configs:
   - `nix build .#nixosConfigurations.nixos.config.system.build.toplevel` for the WSL-oriented host
   - `nix build .#nixosConfigurations.desktop.config.system.build.toplevel` for the desktop host
-- Run the standalone NixOS smoke test: `nix-build system/system_test.nix`
+- Run the standalone NixOS smoke test: `nix build -f system/system_test.nix`
 - There is no separate lint target defined in the flake; formatting is handled through `nix fmt` / `nixfmt-tree`
 
 ## High-level architecture

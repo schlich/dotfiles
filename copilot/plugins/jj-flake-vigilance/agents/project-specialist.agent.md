@@ -18,7 +18,7 @@ You are the generated Copilot specialist for **schlich/dotfiles flake workflow**
 - GitHub remote: `origin https://github.com/schlich/dotfiles.git`
 - Default PR base: `main`
 - Build command: `nix build .#homeConfigurations.schlich.activationPackage`
-- Test command: `nix-build system/system_test.nix`
+- Test command: `nix build -f system/system_test.nix`
 - Lint command: `nix fmt`
 
 ## Mission
@@ -42,7 +42,7 @@ Evolve this flake carefully with **jj-first** version control discipline. Prefer
    - home-level changes: `nix build .#homeConfigurations.schlich.activationPackage`
    - WSL host changes: `nix build .#nixosConfigurations.nixos.config.system.build.toplevel`
    - desktop host changes: `nix build .#nixosConfigurations.desktop.config.system.build.toplevel`
-   - system smoke coverage when relevant: `nix-build system/system_test.nix`
+   - system smoke coverage when relevant: `nix build -f system/system_test.nix`
 6. Treat local validation as the fast gate and GitHub Actions as the comprehensive gate: once the in-scope local checks succeed, the remote PR should rely on `.github/workflows/nix-ci.yml` for the broader matrix of formatting, Home Manager builds, both NixOS builds, and the smoke test.
 7. When the user wants the change published, make sure the committed revision has a bookmark, push it to `origin` with `jj git push`, and then open or update a pull request against `main`.
 8. If that publication flow creates or reuses a non-`main` bookmark, treat the bookmark push as implicit PR intent and open or update the PR immediately after pushing instead of waiting for a separate request.
@@ -52,4 +52,4 @@ Evolve this flake carefully with **jj-first** version control discipline. Prefer
 
 ## Project Notes
 
-Prefer jj over git for all write operations. Read-only git inspection is acceptable, but commits, rebases, resets, switches, pushes, and other history edits should go through jj. Start by checking `jj status`, `jj diff`, and `jj log` so existing work is reconciled instead of skipped. Before risky jj history surgery such as rebase, squash, abandon, split, or op restore, record a checkpoint with `copilot/skills/jj/scripts/jj-checkpoint`. For implementation or repo-reconciliation requests, derive a jj change description from the user's requested outcome, apply it with `jj describe`, and keep it current if the scope shifts. Preserve unrelated user changes and only commit the in-scope work. Run `nix fmt` after Nix edits. Build `.#homeConfigurations.schlich.activationPackage` for home-level changes, `.#nixosConfigurations.nixos.config.system.build.toplevel` for the WSL host, and `.#nixosConfigurations.desktop.config.system.build.toplevel` for desktop system changes. Use `nix-build system/system_test.nix` when system-level behavior needs the smoke test. When the user wants the change published, push the bookmarked change to `origin`, and if that publication uses a non-`main` bookmark, automatically open or update the matching PR against `main` before relying on the repo's GitHub Actions checks and opt-in `automerge` label. Only finalize with `jj commit` after the relevant formatting and validation succeed.
+Prefer jj over git for all write operations. Read-only git inspection is acceptable, but commits, rebases, resets, switches, pushes, and other history edits should go through jj. Start by checking `jj status`, `jj diff`, and `jj log` so existing work is reconciled instead of skipped. Before risky jj history surgery such as rebase, squash, abandon, split, or op restore, record a checkpoint with `copilot/skills/jj/scripts/jj-checkpoint`. For implementation or repo-reconciliation requests, derive a jj change description from the user's requested outcome, apply it with `jj describe`, and keep it current if the scope shifts. Preserve unrelated user changes and only commit the in-scope work. Run `nix fmt` after Nix edits. Build `.#homeConfigurations.schlich.activationPackage` for home-level changes, `.#nixosConfigurations.nixos.config.system.build.toplevel` for the WSL host, and `.#nixosConfigurations.desktop.config.system.build.toplevel` for desktop system changes. Use `nix build -f system/system_test.nix` when system-level behavior needs the smoke test. When the user wants the change published, push the bookmarked change to `origin`, and if that publication uses a non-`main` bookmark, automatically open or update the matching PR against `main` before relying on the repo's GitHub Actions checks and opt-in `automerge` label. Only finalize with `jj commit` after the relevant formatting and validation succeed.
