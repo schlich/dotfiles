@@ -9,6 +9,7 @@
 {
   # imports = [ ./noctalia.nix ];
 
+  manual.manpages.enable = false;
   home = {
     inherit
       username
