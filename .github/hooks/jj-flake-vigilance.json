@@ -6,7 +6,7 @@
         "matcher": "bash",
         "type": "command",
         "timeoutSec": 5,
-        "bash": "uv run python -c 'import json, re, sys; payload = json.load(sys.stdin); args = payload.get(\"toolArgs\") or {}; command = args.get(\"command\") if isinstance(args, dict) else \"\"; command = command if isinstance(command, str) else \"\"; write_git = re.search(r\"(^|[;&|][&|]?|\\n)\\s*git\\s+(add|am|apply|bisect|branch|checkout|cherry-pick|clean|commit|merge|mv|pull|push|rebase|reset|restore|revert|rm|stash|switch|tag|worktree)\\b\", command); response = {\"permissionDecision\": \"allow\"};\nif write_git:\n    response = {\"permissionDecision\": \"deny\", \"permissionDecisionReason\": \"This repository uses jj for write operations. Use the jj equivalent instead of mutating history or the working copy with git.\"};\nprint(json.dumps(response))'"
+        "bash": "nu copilot/plugins/jj-flake-vigilance/scripts/guard-git-writes.nu"
       }
     ]
   }
