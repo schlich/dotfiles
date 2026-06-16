@@ -7,41 +7,16 @@ on:
       - main
   workflow_dispatch:
 
-permissions:
-  contents: read
-  id-token: write
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  fmt:
-    name: nix fmt
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: DeterminateSystems/nix-installer-action@v22
-        with:
-          kvm: false
-      - uses: DeterminateSystems/magic-nix-cache-action@v14
-        with:
-          use-flakehub: false
-      - name: Check formatting
-        run: |
-          nix fmt
-          git diff --exit-code
-
   flake-check:
     name: flake check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: DeterminateSystems/nix-installer-action@v22
-        with:
-          kvm: false
-      - uses: DeterminateSystems/magic-nix-cache-action@v14
-        with:
-          use-flakehub: false
+      - uses: DeterminateSystems/determinate-nix-action@main
       - name: Run flake checks
         run: nix flake check
