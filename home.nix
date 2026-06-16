@@ -88,7 +88,6 @@ in
         ${pkgs.niri}/bin/niri completions nushell > "$out"
       '';
   xdg.configFile."niri/config.kdl".source = ./niri/config.kdl;
-  home.file.".copilot/settings.json".text = builtins.toJSON copilotPluginSettings;
   programs = {
     bash.enable = true;
     claude-code = {
@@ -168,11 +167,11 @@ in
     github-copilot-cli = {
       enable = true;
       enableMcpIntegration = true;
+      settings = copilotPluginSettings;
     };
     opencode = {
       enable = true;
       enableMcpIntegration = true;
-      context = ./copilot/instructions/removeAttrs;
       skills = {
         jj = ./copilot/skills/jj;
         marimo-pair = "${inputs.marimo-pair}/skills/marimo-pair";
