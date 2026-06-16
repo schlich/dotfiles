@@ -24,3 +24,5 @@ Work on: ${input:task:Describe the change, question, or repo state to reconcile}
    - `nix build .#nixosConfigurations.nixos.config.system.build.toplevel`
    - `nix build .#nixosConfigurations.desktop.config.system.build.toplevel`
 10. If the relevant formatting and validation succeed and the current working change represents completed implementation work, finalize it with `jj commit`; otherwise leave it uncommitted and explain what is still missing.
+11. If the user wants the change shipped remotely, make sure the committed revision has a bookmark, push it to `origin`, and open or update a pull request against `main`.
+12. Treat GitHub Actions as the comprehensive remote gate: `.github/workflows/nix-ci.yml` should cover the broader formatting/build/test matrix, and the `automerge` label should be the only path to requesting auto-merge for a non-draft same-repository PR.

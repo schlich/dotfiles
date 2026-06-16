@@ -1,0 +1,70 @@
+name: automerge
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+      - labeled
+      - unlabeled
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  enable:
+    if: >-
+      github.event.pull_request.state == 'open' &&
+      !github.event.pull_request.draft &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      contains(github.event.pull_request.labels.*.name, 'automerge')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable squash auto-merge
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.graphql(
+              `mutation($pullRequestId: ID!) {
+                enablePullRequestAutoMerge(
+                  input: {
+                    pullRequestId: $pullRequestId,
+                    mergeMethod: SQUASH
+                  }
+                ) {
+                  clientMutationId
+                }
+              }`,
+              {
+                pullRequestId: context.payload.pull_request.node_id,
+              },
+            );
+
+  disable:
+    if: >-
+      github.event.action == 'unlabeled' &&
+      github.event.label.name == 'automerge' &&
+      github.event.pull_request.auto_merge != null
+    runs-on: ubuntu-latest
+    steps:
+      - name: Disable auto-merge
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.graphql(
+              `mutation($pullRequestId: ID!) {
+                disablePullRequestAutoMerge(
+                  input: {
+                    pullRequestId: $pullRequestId
+                  }
+                ) {
+                  clientMutationId
+                }
+              }`,
+              {
+                pullRequestId: context.payload.pull_request.node_id,
+              },
+            );
