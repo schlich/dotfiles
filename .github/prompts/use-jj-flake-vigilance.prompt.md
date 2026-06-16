@@ -19,7 +19,6 @@ Work on: ${input:task:Describe the change, question, or repo state to reconcile}
 8. Prefer existing project patterns over introducing new structure.
 9. Use the repository's real validation commands before concluding, choosing the smallest one that fits the touched surface:
    - `nix fmt`
-   - `nix build -f system/system_test.nix`
    - `nix build .#homeConfigurations.schlich.activationPackage`
    - `nix build .#nixosConfigurations.nixos.config.system.build.toplevel`
    - `nix build .#nixosConfigurations.desktop.config.system.build.toplevel`
