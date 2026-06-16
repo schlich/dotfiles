@@ -1,29 +1,12 @@
 {
-  config,
   pkgs,
+  config,
   inputs,
   username ? "nixos",
   homeDirectory ? "/home/${username}",
   stateVersion ? "26.05",
   ...
 }:
-let
-  githubTokenPath = config.age.secrets.github-token.path;
-  opencodeWithGithubToken = pkgs.nuenv.writeShellApplication {
-    name = "opencode";
-    text = ''
-      def main [...args: string] {
-        let token_path = "${githubTokenPath}"
-
-        if ($token_path | path exists) {
-          $env.GITHUB_PERSONAL_ACCESS_TOKEN = (open --raw $token_path | str trim)
-        }
-
-        ^${pkgs.opencode}/bin/opencode ...$args
-      }
-    '';
-  };
-in
 {
   imports = [ inputs.ragenix.homeManagerModules.default ];
 
@@ -188,7 +171,6 @@ in
     };
     opencode = {
       enable = true;
-      package = opencodeWithGithubToken;
       enableMcpIntegration = true;
       skills = {
         jj = ./copilot/skills/jj;
@@ -349,6 +331,7 @@ in
         EDITOR = "hx";
         VISUAL = "hx";
       };
+      envFile.source = ./env.nu;
       configFile.source = ./config.nu;
     };
     git.enable = true;
