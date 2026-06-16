@@ -27,6 +27,15 @@ This repository uses a generated Copilot customization stack with distinct respo
 3. Before risky jj history surgery such as `jj rebase`, `jj squash`, `jj abandon`, `jj split`, or `jj op restore`, create a checkpoint with `copilot/skills/jj/scripts/jj-checkpoint`.
 4. When describing results, call out any history-shaping jj operation explicitly.
 
+## Change-description policy
+
+1. Start by checking `jj status`, `jj diff`, and `jj log` so the current repo state informs whether you are extending existing work, validating it again, or starting a fresh edit.
+2. For implementation or repo-reconciliation requests, derive a concise jj change description from the user's requested outcome instead of asking for a separate summary.
+3. Apply that draft description to the current working change with `jj describe` as soon as the intended change is clear.
+4. If the actual implementation scope shifts, tighten the description before finalizing the change so it reflects what landed rather than the original guess.
+5. Preserve unrelated user changes; only commit work that matches the active request or the in-scope pending change you are reconciling.
+6. Only finalize the change with `jj commit` after `nix fmt` and the smallest relevant build or test command succeed. If validation fails, keep the change uncommitted and surface the failure clearly.
+
 ## Validation commands
 
 - Always run `nix fmt` after Nix edits.
@@ -44,4 +53,4 @@ This repository uses a generated Copilot customization stack with distinct respo
 
 ## Repository notes
 
-Prefer jj over git for all write operations. Read-only git inspection is acceptable, but commits, rebases, resets, switches, pushes, and other history edits should go through jj. Before risky jj history surgery such as rebase, squash, abandon, split, or op restore, record a checkpoint with `copilot/skills/jj/scripts/jj-checkpoint`. Run `nix fmt` after Nix edits. Build `.#homeConfigurations.schlich.activationPackage` for home-level changes, `.#nixosConfigurations.nixos.config.system.build.toplevel` for the WSL host, and `.#nixosConfigurations.desktop.config.system.build.toplevel` for desktop system changes. Use `nix-build system/system_test.nix` when system-level behavior needs the smoke test.
+Prefer jj over git for all write operations. Read-only git inspection is acceptable, but commits, rebases, resets, switches, pushes, and other history edits should go through jj. Start by checking `jj status`, `jj diff`, and `jj log` so existing work is reconciled instead of accidentally bypassed. Before risky jj history surgery such as rebase, squash, abandon, split, or op restore, record a checkpoint with `copilot/skills/jj/scripts/jj-checkpoint`. For implementation or repo-reconciliation requests, derive a jj change description from the user's requested outcome, apply it with `jj describe`, and keep it current if the scope shifts. Preserve unrelated user changes and only commit the in-scope work. Run `nix fmt` after Nix edits. Build `.#homeConfigurations.schlich.activationPackage` for home-level changes, `.#nixosConfigurations.nixos.config.system.build.toplevel` for the WSL host, and `.#nixosConfigurations.desktop.config.system.build.toplevel` for desktop system changes. Use `nix-build system/system_test.nix` when system-level behavior needs the smoke test. Only finalize with `jj commit` after the relevant formatting and validation succeed.
