@@ -134,20 +134,20 @@
               ./configuration.nix
             ];
 
-            desktop = mkNixos [
-              inputs.agenix.nixosModules.default
-              ./system/hardware-configuration.nix
-              ./system/configuration.nix
-              (
-                { pkgs, ... }:
-                {
-                  environment.systemPackages = [
-                    inputs.fh.packages.${pkgs.stdenv.hostPlatform.system}.default
-                    inputs.agenix.packages.${pkgs.stdenv.hostPlatform.system}.default
-                  ];
-                }
-              )
-            ];
+            # desktop = mkNixos [
+            #   inputs.agenix.nixosModules.default
+            #   ./system/hardware-configuration.nix
+            #   ./system/configuration.nix
+            #   (
+            #     { pkgs, ... }:
+            #     {
+            #       environment.systemPackages = [
+            #         inputs.fh.packages.${pkgs.stdenv.hostPlatform.system}.default
+            #         inputs.agenix.packages.${pkgs.stdenv.hostPlatform.system}.default
+            #       ];
+            #     }
+            #   )
+            # ];
           };
 
           homeConfigurations = {
@@ -171,7 +171,7 @@
             home-manager-schlich = homeConfigurations.schlich.activationPackage;
             home-manager-nixos = homeConfigurations.nixos.activationPackage;
             nixos-wsl = nixosConfigurations.nixos.config.system.build.toplevel;
-            nixos-desktop = nixosConfigurations.desktop.config.system.build.toplevel;
+            # nixos-desktop = nixosConfigurations.desktop.config.system.build.toplevel;
           };
         };
     };
