@@ -23,6 +23,7 @@
       stateVersion
       ;
     packages = with pkgs; [
+      marimo
       wget
       # mesa-demos
       niri
@@ -67,6 +68,11 @@
   };
 
   nixpkgs.config.allowUnfree = true;
+  accounts.email.accounts.personal = {
+    address = "ty.schlich@gmail.com";
+    primary = true;
+    realName = "Ty Schlichenmeyer";
+  };
   fonts.fontconfig.enable = true;
   xdg.configFile."nushell/completions/niri.nu".source =
     pkgs.runCommandLocal "niri-nushell-completions.nu"
@@ -334,7 +340,13 @@
       envFile.source = ./env.nu;
       configFile.source = ./config.nu;
     };
-    git.enable = true;
+    git = {
+      enable = true;
+      settings.user = {
+        email = "ty.schlich@gmail.com";
+        name = "Ty Schlichenmeyer";
+      };
+    };
     gpg.enable = true;
     lazygit = {
       enable = true;
