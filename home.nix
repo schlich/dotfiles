@@ -84,6 +84,9 @@
       '';
   xdg.configFile."niri/config.kdl".source = ./niri/config.kdl;
   programs = {
+    rio = {
+      enable = true;
+    };
     bash.enable = true;
     claude-code = {
       enable = true;
