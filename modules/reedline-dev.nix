@@ -1,41 +1,38 @@
-{ inputs, ... }:
+{ ... }:
 {
-  perSystem =
-    {
-      config,
-      self',
-      inputs',
-      pkgs,
-      system,
-      ...
-    }:
-    {
-      devShells.reedline = pkgs.mkShell {
-        name = "reedline-dev";
+  perSystem = { pkgs, ... }: {
+    devShells.reedline = pkgs.mkShell {
+      name = "reedline-dev";
 
-        buildInputs = with pkgs; [
-          # Rust toolchain
-          rustc
-          cargo
-          rustfmt
+      packages =
+        with pkgs;
+        [
+          cargo-nextest
           clippy
-          rust-analyzer
-
-          # Build dependencies
-          pkg-config
-
-          # Development tools
+          cargo
           git
+          pkg-config
+          rust-analyzer
+          rustc
+          rustfmt
+          sqlite
+        ]
+        ++ lib.optionals stdenv.hostPlatform.isLinux [
+          libxkbcommon
+          wayland
+        ]
+        ++ lib.optionals stdenv.hostPlatform.isDarwin [
+          darwin.apple_sdk.frameworks.AppKit
         ];
 
-        shellHook = ''
-          echo "Reedline development environment"
-          echo "Rust version: $(rustc --version)"
-          echo "Cargo version: $(cargo --version)"
-          echo ""
-          echo "To clone reedline: git clone https://github.com/nushell/reedline"
-          echo "Then: cd reedline && cargo build"
-        '';
-      };
+      RUST_SRC_PATH = "${pkgs.rustPlatform.rustLibSrc}";
+
+      shellHook = ''
+        echo "Reedline development environment"
+        echo "Rust: $(rustc --version)"
+        echo "Cargo: $(cargo --version)"
+        echo "Nextest: $(cargo nextest --version)"
+      '';
     };
+  };
 }

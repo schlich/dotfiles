@@ -71,6 +71,11 @@
       ];
     in
     flake-parts.lib.mkFlake { inherit inputs; } {
+      imports = [
+        # Project-local development shells. Comment this import to disable them.
+        ./modules/reedline-dev.nix
+      ];
+
       systems = [ "x86_64-linux" ];
 
       perSystem =
