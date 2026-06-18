@@ -2,8 +2,8 @@
   pkgs,
   config,
   inputs,
-  username ? "nixos",
-  homeDirectory ? "/home/${username}",
+  username,
+  homeDirectory,
   stateVersion ? "26.05",
   ...
 }:
@@ -11,7 +11,7 @@
   imports = [ inputs.ragenix.homeManagerModules.default ];
 
   age = {
-    identityPaths = [ "${homeDirectory}/.ssh/id_ed25519" ];
+    identityPaths = [ "/home/schlich/.ssh/id_ed25519" ];
     secrets.github-token.file = ./secrets/github-token.age;
   };
 
@@ -141,7 +141,7 @@
     mcp = {
       enable = true;
       servers = {
-        nixos = {
+        nix = {
           command = "uvx";
           args = [ "mcp-nixos" ];
         };
@@ -270,8 +270,8 @@
             config.nixd = {
               nixpkgs.expr = "import (builtins.getFlake (builtins.toString ./.)).inputs.nixpkgs { }";
               options = {
-                nixos.expr = "(builtins.getFlake (builtins.toString ./.)).nixosConfigurations.nixos.options";
-                home-manager.expr = "(builtins.getFlake (builtins.toString ./.)).homeConfigurations.${username}.options";
+                nixos.expr = "(builtins.getFlake (builtins.toString ./.)).nixosConfigurations.asus.options";
+                home-manager.expr = "(builtins.getFlake (builtins.toString ./.)).homeConfigurations.schlich.options";
               };
             };
           };

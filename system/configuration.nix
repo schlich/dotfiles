@@ -173,9 +173,9 @@
   # };
   # };
   security.polkit.enable = true;
-  age.secrets.openai = {
-    file = ./secrets/openai.age;
-    owner = "nixos";
-    mode = "0400";
-  };
+#  age.secrets.openai = {
+#    file = ./secrets/openai.age;
+#    owner = "nixos";
+#    mode = "0400";
+#  };
 }

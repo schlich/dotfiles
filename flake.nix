@@ -3,17 +3,10 @@
 
   inputs = {
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
-    flake-parts = {
-      url = "github:hercules-ci/flake-parts";
-      inputs.nixpkgs-lib.follows = "nixpkgs";
-    };
     determinate.url = "https://flakehub.com/f/DeterminateSystems/determinate/*";
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
-    };
-    nixos-wsl = {
-      url = "github:nix-community/nixos-wsl";
     };
     nixgl.url = "github:nix-community/nixGL";
     nuenv.url = "https://flakehub.com/f/xav-ie/nuenv/*.tar.gz";
@@ -22,10 +15,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     marimo-pair.url = "github:schlich/marimo-pair";
-    # rust-docs-mcp = {
-    #   url = "github:christian-blades-cb/rust-docs-mcp/2d69d7acd57a36456f844df45e8aade257352257";
-    #   inputs.nixpkgs.follows = "nixpkgs";
-    # };
     jj-starship = {
       url = "gitlab:lanastara_foss/starship-jj";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -43,134 +32,87 @@
 
   outputs =
     inputs@{
-      flake-parts,
       home-manager,
       nixpkgs,
       ...
     }:
     let
-      # copilotCliVersion = "1.0.63";
-      # copilotCliOverlay = _: prev: {
-      #   github-copilot-cli = prev.github-copilot-cli.overrideAttrs (old: {
-      #     version = copilotCliVersion;
-      #     src = prev.fetchurl {
-      #       url = "https://github.com/github/copilot-cli/releases/download/v${copilotCliVersion}/github-copilot-${copilotCliVersion}.tgz";
-      #       hash = "sha256-0K+uVsaG9cndsqRhxIV8K399WsLjvVZAgbLreJdmJbs=";
-      #     };
-      #     preFixup = (old.preFixup or "") + ''
-      #       rm -rf \
-      #         "$out"/lib/github-copilot-cli/prebuilds/linuxmusl-arm64 \
-      #         "$out"/lib/github-copilot-cli/prebuilds/linuxmusl-x64
-      #     '';
-      #   });
-      # };
+      system = "x86_64-linux";
       overlays = [
         inputs.jj-starship.overlays.default
         inputs.nuenv.overlays.default
-        # copilotCliOverlay
       ];
+      pkgs = import nixpkgs {
+        inherit system;
+        inherit overlays;
+        config.allowUnfree = true;
+      };
+      lib = nixpkgs.lib;
+
+      mkNixos = modules:
+        lib.nixosSystem {
+          inherit system modules;
+          specialArgs = { inherit inputs; };
+        };
+
+      nixosConfigurations = {
+        asus = mkNixos [
+          inputs.determinate.nixosModules.default
+          inputs.ragenix.nixosModules.default
+          ./configuration.nix
+        ];
+      };
+
+      homeConfigurations.schlich = home-manager.lib.homeManagerConfiguration {
+        inherit pkgs;
+        modules = [
+          ./home.nix
+        ];
+        extraSpecialArgs = {
+          inherit inputs;
+          username = "schlich";
+          homeDirectory = "/home/schlich";
+          stateVersion = "26.05";
+        };
+      };
     in
-    flake-parts.lib.mkFlake { inherit inputs; } {
-      imports = [
-        # Project-local development shells. Comment this import to disable them.
-        ./modules/reedline-dev.nix
-      ];
+    {
+      inherit nixosConfigurations homeConfigurations;
 
-      systems = [ "x86_64-linux" ];
+      formatter.${system} = pkgs.nixfmt-tree;
 
-      perSystem =
-        { pkgs, system, ... }:
-        {
-          _module.args.pkgs = import nixpkgs {
-            inherit system;
-            inherit overlays;
-            config.allowUnfree = true;
-          };
-
-          formatter = pkgs.nixfmt-tree;
+      devShells.${system} = {
+        reedline = pkgs.mkShell {
+          name = "reedline-dev";
+          packages = with pkgs; [
+            cargo-nextest
+            clippy
+            cargo
+            git
+            pkg-config
+            rust-analyzer
+            rustc
+            rustfmt
+            sqlite
+          ] ++ lib.optionals stdenv.hostPlatform.isLinux [
+            libxkbcommon
+            wayland
+          ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
+            darwin.apple_sdk.frameworks.AppKit
+          ];
+          RUST_SRC_PATH = "${pkgs.rustPlatform.rustLibSrc}";
+          shellHook = ''
+            echo "Reedline development environment"
+            echo "Rust: $(rustc --version)"
+            echo "Cargo: $(cargo --version)"
+            echo "Nextest: $(cargo nextest --version)"
+          '';
         };
+      };
 
-      flake =
-        let
-          mkNixos =
-            modules:
-            nixpkgs.lib.nixosSystem {
-              system = "x86_64-linux";
-              specialArgs = { inherit inputs; };
-              inherit modules;
-            };
-
-          mkHome =
-            {
-              username,
-              homeDirectory,
-              stateVersion,
-            }:
-            home-manager.lib.homeManagerConfiguration {
-              inherit pkgs;
-              modules = [
-                ./home.nix
-                # ./noctalia.nix
-                # inputs.niri.homeModules.niri
-              ];
-              extraSpecialArgs = {
-                inherit
-                  inputs
-                  username
-                  homeDirectory
-                  stateVersion
-                  ;
-                # nixgl = inputs.nixgl;
-              };
-            };
-
-          pkgs = import nixpkgs {
-            system = "x86_64-linux";
-            inherit overlays;
-            config.allowUnfree = true;
-          };
-        in
-        let
-          nixosConfigurations = {
-            nixos = mkNixos [
-              inputs.nixos-wsl.nixosModules.wsl
-              inputs.determinate.nixosModules.default
-              inputs.ragenix.nixosModules.default
-              ./configuration.nix
-            ];
-
-            # desktop = mkNixos [
-            #   inputs.ragenix.nixosModules.default
-            #   ./system/hardware-configuration.nix
-            #   ./system/configuration.nix
-            #   (
-            #     { pkgs, ... }:
-            #     {
-            #       environment.systemPackages = [
-            #         inputs.fh.packages.${pkgs.stdenv.hostPlatform.system}.default
-            #         inputs.ragenix.packages.${pkgs.stdenv.hostPlatform.system}.default
-            #       ];
-            #     }
-            #   )
-            # ];
-          };
-
-          homeConfigurations = {
-            nixos = mkHome {
-              username = "nixos";
-              homeDirectory = "/home/nixos";
-              stateVersion = "26.05";
-            };
-          };
-        in
-        {
-          inherit nixosConfigurations homeConfigurations;
-
-          checks.x86_64-linux = {
-            home-manager-nixos = homeConfigurations.nixos.activationPackage;
-            nixos-wsl = nixosConfigurations.nixos.config.system.build.toplevel;
-            # nixos-desktop = nixosConfigurations.desktop.config.system.build.toplevel;
-          };
-        };
+      checks.${system} = {
+        home-manager-nixos = homeConfigurations.schlich.activationPackage;
+        asus = nixosConfigurations.asus.config.system.build.toplevel;
+      };
     };
 }
