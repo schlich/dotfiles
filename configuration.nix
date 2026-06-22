@@ -104,7 +104,7 @@
       };
     };
     greetd = {
-      default_session = {
+      settings.default_session = {
         user = "schlich";
         command = "${pkgs.niri}/bin/niri-session";
       };
