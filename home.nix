@@ -56,6 +56,7 @@
       uv
       wl-clipboard-rs
       zed-editor
+      google-chrome
       inputs.ragenix.packages.${pkgs.stdenv.hostPlatform.system}.default
       # inputs.rust-docs-mcp.packages.${pkgs.stdenv.hostPlatform.system}.default
     ];
