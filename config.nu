@@ -10,7 +10,7 @@ $env.VISUAL = "hx"
 
 alias lg = lazygit
 alias hm = home-manager
-alias nrb = sudo nixos-rebuild
+alias nrb = sudo nixos-rebuild --flake /home/nixos/dotfiles#asus
 alias nixfmt = nix fmt
 
 # source ~/.config/nushell/completions/niri.nu
