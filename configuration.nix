@@ -1,11 +1,23 @@
-{ config, pkgs, inputs, lib, modulesPath, ... }:
+{
+  config,
+  pkgs,
+  inputs,
+  lib,
+  modulesPath,
+  ...
+}:
 {
   imports = [
     (modulesPath + "/installer/scan/not-detected.nix")
     ./system/hardware-configuration.nix
   ];
 
-  boot.initrd.availableKernelModules = [ "nvme" "xhci_pci" "usb_storage" "sd_mod" ];
+  boot.initrd.availableKernelModules = [
+    "nvme"
+    "xhci_pci"
+    "usb_storage"
+    "sd_mod"
+  ];
   boot.initrd.kernelModules = [ ];
   boot.kernelModules = [ "kvm-amd" ];
   boot.extraModulePackages = [ ];
@@ -22,12 +34,11 @@
 
   boot.loader = {
     efi.canTouchEfiVariables = false;
-    efi.efiSysMountPoint = "/boot";
     limine = {
       enable = true;
       efiSupport = true;
       efiInstallAsRemovable = true;
-      maxGenerations = 2;
+      maxGenerations = 10;
       biosSupport = false;
       extraEntries = ''
         /Windows
@@ -39,14 +50,19 @@
   };
 
   nix.settings = {
-    experimental-features = [ "nix-command" "flakes" ];
-    allowed-users = [ "nixos" "schlich" ];
+    experimental-features = [
+      "nix-command"
+      "flakes"
+    ];
+    allowed-users = [ "schlich" ];
   };
   nixpkgs.config.allowUnfree = true;
 
-  networking.hostName = "asus";
-  networking.networkmanager.enable = true;
-
+  # networking.networkmanager.enable = true;
+  networking.wireless = {
+    enable = true;
+    networks."EvilCorp HQ".pskRaw = "37660d09044c0b74085b1604031b4a8ac965ed1bb10b07a5a2f797402ea10bd7";
+  };
   time.timeZone = "America/Chicago";
   i18n.defaultLocale = "en_US.UTF-8";
   i18n.extraLocaleSettings = {
@@ -84,15 +100,15 @@
       swaylock
       pavucontrol
       vscode-json-languageserver
-      inputs.ragenix.packages.x86_64-linux.default
+      # inputs.ragenix.packages.x86_64-linux.default
     ];
   };
 
-#  age.secrets.openai = {
-#    file = ./secrets/openai.age;
-#    owner = "nixos";
-#    mode = "0400";
-#  };
+  #  age.secrets.openai = {
+  #    file = ./secrets/openai.age;
+  #    owner = "nixos";
+  #    mode = "0400";
+  #  };
 
   services = {
     dbus.implementation = "broker";
@@ -106,7 +122,7 @@
     greetd = {
       settings.default_session = {
         user = "schlich";
-        command = "${pkgs.niri}/bin/niri-session";
+        command = "${config.programs.niri.package}/bin/niri-session";
       };
       enable = true;
     };
@@ -116,7 +132,7 @@
         PasswordAuthentication = false;
         KbdInteractiveAuthentication = false;
         PermitRootLogin = "no";
-        AllowUsers = [ "nixos" ];
+        AllowUsers = [ "schlich" ];
       };
     };
     pipewire = {
@@ -153,4 +169,5 @@
 
   security.polkit.enable = true;
   system.stateVersion = "26.05";
+  systemd.user.services.niri.enableDefaultPath = false;
 }
