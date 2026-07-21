@@ -49,7 +49,8 @@
       };
       lib = nixpkgs.lib;
 
-      mkNixos = modules:
+      mkNixos =
+        modules:
         lib.nixosSystem {
           inherit system modules;
           specialArgs = { inherit inputs; };
@@ -58,7 +59,7 @@
       nixosConfigurations = {
         asus = mkNixos [
           inputs.determinate.nixosModules.default
-          inputs.ragenix.nixosModules.default
+          # inputs.ragenix.nixosModules.default
           ./configuration.nix
         ];
       };
@@ -84,20 +85,23 @@
       devShells.${system} = {
         reedline = pkgs.mkShell {
           name = "reedline-dev";
-          packages = with pkgs; [
-            cargo-nextest
-            clippy
-            cargo
-            git
-            pkg-config
-            rust-analyzer
-            rustc
-            rustfmt
-            sqlite
-          ] ++ lib.optionals stdenv.hostPlatform.isLinux [
-            libxkbcommon
-            wayland
-          ];
+          packages =
+            with pkgs;
+            [
+              cargo-nextest
+              clippy
+              cargo
+              git
+              pkg-config
+              rust-analyzer
+              rustc
+              rustfmt
+              sqlite
+            ]
+            ++ lib.optionals stdenv.hostPlatform.isLinux [
+              libxkbcommon
+              wayland
+            ];
         };
       };
 

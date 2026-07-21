@@ -1,6 +1,5 @@
 {
   pkgs,
-  config,
   inputs,
   username,
   homeDirectory,
@@ -8,12 +7,12 @@
   ...
 }:
 {
-  imports = [ inputs.ragenix.homeManagerModules.default ];
+  # imports = [ inputs.ragenix.homeManagerModules.default ];
 
-  age = {
-    identityPaths = [ "/home/schlich/.ssh/id_ed25519" ];
-    secrets.github-token.file = ./secrets/github-token.age;
-  };
+  # age = {
+  #   identityPaths = [ "/home/schlich/.ssh/id_ed25519" ];
+  #   secrets.github-token.file = ./secrets/github-token.age;
+  # };
 
   manual.manpages.enable = false;
   home = {
@@ -27,9 +26,10 @@
       wget
       # mesa-demos
       niri
+      xwayland-satellite
       dhall
       skills
-      ssh-to-age
+      # ssh-to-age
       gcr
       clipboard-jh
       diffedit3
@@ -46,6 +46,7 @@
       monaspace
       nerd-font-patcher
       nerd-fonts.symbols-only
+      noctalia-shell
       pavucontrol
       pandoc
       pixi
@@ -56,8 +57,7 @@
       uv
       wl-clipboard-rs
       zed-editor
-      google-chrome
-      inputs.ragenix.packages.${pkgs.stdenv.hostPlatform.system}.default
+      # inputs.ragenix.packages.${pkgs.stdenv.hostPlatform.system}.default
       # inputs.rust-docs-mcp.packages.${pkgs.stdenv.hostPlatform.system}.default
     ];
     sessionVariables = {
@@ -65,6 +65,7 @@
       VISUAL = "hx";
       # RUST_SRC_PATH = "${pkgs.rustPlatform.rustLibSrc}";
       SHELL = "nu";
+      NIXOS_OZONE_WL = "1";
     };
   };
 
@@ -85,6 +86,7 @@
       '';
   xdg.configFile."niri/config.kdl".source = ./niri/config.kdl;
   programs = {
+    chromium.enable = true;
     rio = {
       enable = true;
     };
@@ -92,13 +94,13 @@
     claude-code = {
       enable = true;
       enableMcpIntegration = true;
-      marketplaces.marimo-pair = inputs.marimo-pair;
-      plugins = [
-        inputs.marimo-pair
-      ];
-      settings = {
-        enabledPlugins."marimo-pair@marimo-pair" = true;
-      };
+      # marketplaces.marimo-pair = inputs.marimo-pair;
+      # plugins = [
+      #   inputs.marimo-pair
+      # ];
+      # settings = {
+      #   enabledPlugins."marimo-pair@marimo-pair" = true;
+      # };
     };
     codex = {
       enable = true;
@@ -480,6 +482,7 @@
       enable = true;
       enableNushellIntegration = true;
     };
+    # ssh-agent.enable = true;
   };
 
 }
