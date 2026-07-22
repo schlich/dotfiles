@@ -89,7 +89,12 @@
   xdg.configFile."niri/config.kdl".source = ./niri/config.kdl;
   programs = {
     herdr.enable = true;
-    noctalia.enable = true;
+    noctalia = {
+      enable = true;
+      settings = {
+        widget.workspaces.display = "name";
+      };
+    };
     rio = {
       enable = true;
     };
