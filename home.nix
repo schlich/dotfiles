@@ -1,4 +1,5 @@
 {
+  config,
   pkgs,
   inputs,
   username,
@@ -10,6 +11,7 @@
   imports = [
     inputs.ragenix.homeManagerModules.default
     inputs.noctalia.homeModules.default
+    inputs.yazelix.homeManagerModules.default
   ];
 
   # age = {
@@ -26,6 +28,7 @@
       ;
     packages = with pkgs; [
       marimo
+      nirimap
       wget
       # mesa-demos
       niri
@@ -78,6 +81,8 @@
     realName = "Ty Schlichenmeyer";
   };
   fonts.fontconfig.enable = true;
+  xdg.configFile."home-manager".source =
+    config.lib.file.mkOutOfStoreSymlink "${homeDirectory}/dotfiles";
   xdg.configFile."nushell/completions/niri.nu".source =
     pkgs.runCommandLocal "niri-nushell-completions.nu"
       {
@@ -87,12 +92,23 @@
         ${pkgs.niri}/bin/niri completions nushell > "$out"
       '';
   xdg.configFile."niri/config.kdl".source = ./niri/config.kdl;
+  xdg.configFile."niri/launch-kitty.nu".source = ./niri/launch-kitty.nu;
+  xdg.configFile."zellij/config.kdl".source = ./zellij/config.kdl;
   programs = {
+    yazelix.enable = true;
+    bottom.enable = true;
     herdr.enable = true;
     noctalia = {
       enable = true;
       settings = {
-        widget.workspaces.display = "name";
+        widget.taskbar.show_window_title = true;
+        bar = {
+          default.start = [
+            "launcher"
+            "wallpaper"
+            "taskbar"
+          ];
+        };
       };
     };
     rio = {
@@ -178,21 +194,20 @@
       enable = true;
       enableMcpIntegration = true;
       settings = {
-      #   extraKnownMarketplaces = {
-      #     schlich-dotfiles = {
-      #       source = "directory";
-      #       path = ./.;
-      #     };
-      #   };
-      #   enabledPlugins = {
-      #     "jj-flake-vigilance@schlich-dotfiles" = true;
-      #     "project-plugin-factory@schlich-dotfiles" = true;
-      #   };
-      # };
-      # skills = {
-      #   marimo-pair = ${pkgs.t}./skills/data-analysis;
-      }
-      ;
+        #   extraKnownMarketplaces = {
+        #     schlich-dotfiles = {
+        #       source = "directory";
+        #       path = ./.;
+        #     };
+        #   };
+        #   enabledPlugins = {
+        #     "jj-flake-vigilance@schlich-dotfiles" = true;
+        #     "project-plugin-factory@schlich-dotfiles" = true;
+        #   };
+        # };
+        # skills = {
+        #   marimo-pair = ${pkgs.t}./skills/data-analysis;
+      };
     };
     agent-skills = {
       enable = true;
@@ -200,7 +215,24 @@
         input = "marimo-pair";
         subdir = "skills";
       };
-      skills.enableAll = true;
+      sources.marimo-team = {
+        input = "marimo-skills";
+        subdir = "skills";
+      };
+      sources.anthropic = {
+        input = "anthropic-skills";
+        subdir = "skills";
+      };
+      sources.meta-quest = {
+        input = "meta-quest-agentic-tools";
+        subdir = "skills";
+      };
+      skills.enable = [
+        "pdf"
+        "marimo-pair"
+        "anywidget"
+        "hz-iwsdk-webxr"
+      ];
       # skills.enable = [ "frontend-design" "skill-creator" ];
       # targets.claude.enable = true;
       targets.copilot.enable = true;

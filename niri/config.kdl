@@ -252,6 +252,7 @@ layout {
 // See the binds section below for more spawn examples.
 // spawn-at-startup "alacritty" "-e" "fish"
 // spawn-at-startup "noctalia-shell"
+spawn-sh-at-startup "exec kitty --class niri-config --directory \"$HOME/dotfiles\" hx"
 
 // Uncomment this line to ask the clients to omit their client-side decorations if possible.
 // If the client will specifically ask for CSD, the request will be honored.
@@ -283,24 +284,34 @@ animations {
 // Find more information on the wiki:
 // https://github.com/YaLTeR/niri/wiki/Configuration:-Window-Rules
 
-// Work around WezTerm's initial configure bug
-// by setting an empty default-column-width.
 window-rule {
-    // This regular expression is intentionally made as specific as possible,
-    // since this is the default config, and we want no false positives.
-    // You can get away with just app-id="wezterm" if you want.
-    match app-id=r#"^org\.wezfurlong\.wezterm$"#
-    default-column-width {}
+  // Rounded corners for a modern look.
+  geometry-corner-radius 20
+
+  // Clips window contents to the rounded corner boundaries.
+  clip-to-geometry true
 }
 
-// Open the Firefox picture-in-picture player as floating by default.
+// Keep the startup configuration editor separate from interactive terminals.
 window-rule {
-    // This app-id regular expression will work for both:
-    // - host Firefox (app-id is "firefox")
-    // - Flatpak Firefox (app-id is "org.mozilla.firefox")
-    match app-id=r#"firefox$"# title="^Picture-in-Picture$"
-    open-floating true
+  match app-id=r#"^niri-config$"#
+  open-on-workspace "config"
 }
+
+// Floating Noctalia settings window.
+window-rule {
+  match app-id="dev.noctalia.Noctalia"
+  open-floating true
+  default-column-width { fixed 1080; }
+  default-window-height { fixed 920; }
+}
+
+debug {
+  // Allows notification actions and window activation from Noctalia.
+  honor-xdg-activation-with-invalid-serial
+}
+
+
 
 // Example: block out two password managers from screen capture.
 // (This example rule is commented out with a "/-" in front.)
@@ -335,16 +346,16 @@ binds {
     // Mod-Shift-/, which is usually the same as Mod-?, opens a curated
     // shortcut reference. Labels identify the object each shortcut affects so
     // the overlay remains useful in the current window/workspace context.
-    Mod+Shift+Slash hotkey-overlay-title="Help - show contextual shortcuts" { show-hotkey-overlay; }
+    Mod+Shift+Slash { show-hotkey-overlay; }
 
     // Applications and session controls.
-    Mod+Return hotkey-overlay-title="Apps - open terminal" { spawn "kitty"; }
-    Mod+Space hotkey-overlay-title="Apps - launcher" { spawn-sh "noctalia msg panel-toggle launcher"; }
-    Mod+S hotkey-overlay-title="System - control center" { spawn-sh "noctalia msg panel-toggle control-center"; }
-    Mod+Shift+S hotkey-overlay-title="System - settings" { spawn-sh "noctalia msg settings-toggle"; }
-    Mod+B hotkey-overlay-title="Apps - open browser" { spawn "google-chrome"; }
-    Super+Alt+L hotkey-overlay-title="Session - lock screen" { spawn "swaylock"; }
-    Alt+Tab hotkey-overlay-title="Windows - switch" { spawn-sh "noctalia msg window-switcher"; }
+    Mod+Return { spawn-sh "exec nu \"$HOME/.config/niri/launch-kitty.nu\""; }
+    Mod+Space { spawn-sh "noctalia msg panel-toggle launcher"; }
+    Mod+S { spawn-sh "noctalia msg panel-toggle control-center"; }
+    Mod+Shift+S { spawn-sh "noctalia msg settings-toggle"; }
+    Mod+B { spawn "google-chrome"; }
+    Super+Alt+L { spawn "swaylock"; }
+    Alt+Tab { spawn-sh "noctalia msg window-switcher"; }
 
     // You can also use a shell. Do this if you need pipes, multiple commands, etc.
     // Note: the entire command goes as a single argument in the end.
@@ -363,7 +374,7 @@ binds {
     XF86MonBrightnessUp allow-when-locked=true { spawn-sh "noctalia msg brightness-up"; }
     XF86MonBrightnessDown allow-when-locked=true { spawn-sh "noctalia msg brightness-down"; }
 
-    Mod+Q hotkey-overlay-title="Focused window - close" { close-window; }
+    Mod+Q { close-window; }
 
     // Navigate with arrows or HJKL; add Shift to move the focused column/window.
     Mod+Left  { focus-column-left; }
@@ -391,10 +402,10 @@ binds {
     // Mod+Ctrl+J     { move-window-down-or-to-workspace-down; }
     // Mod+Ctrl+K     { move-window-up-or-to-workspace-up; }
 
-    Mod+Home hotkey-overlay-title="Workspace - focus first column" { focus-column-first; }
-    Mod+End hotkey-overlay-title="Workspace - focus last column" { focus-column-last; }
-    Mod+Ctrl+Home hotkey-overlay-title="Focused column - move to first" { move-column-to-first; }
-    Mod+Ctrl+End hotkey-overlay-title="Focused column - move to last" { move-column-to-last; }
+    Mod+Home { focus-column-first; }
+    Mod+End { focus-column-last; }
+    Mod+Ctrl+Home { move-column-to-first; }
+    Mod+Ctrl+End { move-column-to-last; }
 
     Mod+Ctrl+Left  { focus-monitor-left; }
     Mod+Ctrl+Down  { focus-monitor-down; }
@@ -422,13 +433,17 @@ binds {
     // Mod+Shift+Ctrl+Left  { move-workspace-to-monitor-left; }
     // ...
 
-    Mod+Page_Down hotkey-overlay-title="Workspace - next" { focus-workspace-down; }
-    Mod+Page_Up hotkey-overlay-title="Workspace - previous" { focus-workspace-up; }
-    Mod+Ctrl+Page_Down hotkey-overlay-title="Focused column - move to next workspace" { move-column-to-workspace-down; }
-    Mod+Ctrl+Page_Up hotkey-overlay-title="Focused column - move to previous workspace" { move-column-to-workspace-up; }
+    Mod+U { focus-workspace-down; }
+    Mod+I { focus-workspace-up; }
+    Mod+Ctrl+U { move-column-to-workspace-down; }
+    Mod+Ctrl+I { move-column-to-workspace-up; }
+
+    // Logitech thumb buttons switch to the previous and next workspace.
+    MouseBack    { focus-workspace-up; }
+    MouseForward { focus-workspace-down; }
 
     // Alternatively, there are commands to move just a single window:
-    // Mod+Ctrl+Page_Down { move-window-to-workspace-down; }
+    // Mod+Ctrl+U { move-window-to-workspace-down; }
     // ...
 
     Mod+Shift+Page_Down { move-workspace-down; }
@@ -485,7 +500,7 @@ binds {
     Mod+7 { focus-workspace 7; }
     Mod+8 { focus-workspace 8; }
     Mod+9 { focus-workspace 9; }
-    Mod+0 hotkey-overlay-title="Workspace - config" { focus-workspace "config"; }
+    Mod+0 { focus-workspace "config"; }
     Mod+Shift+1 { move-column-to-workspace 1; }
     Mod+Shift+2 { move-column-to-workspace 2; }
     Mod+Shift+3 { move-column-to-workspace 3; }
@@ -495,7 +510,7 @@ binds {
     Mod+Shift+7 { move-column-to-workspace 7; }
     Mod+Shift+8 { move-column-to-workspace 8; }
     Mod+Shift+9 { move-column-to-workspace 9; }
-    Mod+Shift+0 hotkey-overlay-title="Focused column - move to config" { move-column-to-workspace "config"; }
+    Mod+Shift+0 { move-column-to-workspace "config"; }
 
     // Alternatively, there are commands to move just a single window:
     // Mod+Ctrl+1 { move-window-to-workspace 1; }
@@ -506,19 +521,19 @@ binds {
     // The following binds move the focused window in and out of a column.
     // If the window is alone, they will consume it into the nearby column to the side.
     // If the window is already in a column, they will expel it out.
-    Mod+BracketLeft hotkey-overlay-title="Focused window - merge or split left" { consume-or-expel-window-left; }
-    Mod+BracketRight hotkey-overlay-title="Focused window - merge or split right" { consume-or-expel-window-right; }
+    Mod+BracketLeft { consume-or-expel-window-left; }
+    Mod+BracketRight { consume-or-expel-window-right; }
 
     // Consume one window from the right to the bottom of the focused column.
     Mod+Comma  { consume-window-into-column; }
     // Expel the bottom window from the focused column to the right.
     Mod+Period { expel-window-from-column; }
 
-    Mod+R hotkey-overlay-title="Focused column - cycle width" { switch-preset-column-width; }
-    Mod+Shift+R hotkey-overlay-title="Focused window - cycle height" { switch-preset-window-height; }
-    Mod+Ctrl+R hotkey-overlay-title="Focused window - reset height" { reset-window-height; }
-    Mod+F hotkey-overlay-title="Focused column - maximize" { maximize-column; }
-    Mod+Shift+F hotkey-overlay-title="Focused window - fullscreen" { fullscreen-window; }
+    Mod+R { switch-preset-column-width; }
+    Mod+Shift+R { switch-preset-window-height; }
+    Mod+Ctrl+R { reset-window-height; }
+    Mod+F { maximize-column; }
+    Mod+Shift+F { fullscreen-window; }
 
     // Expand the focused column to space not taken up by other fully visible columns.
     // Makes the column "fill the rest of the space".
@@ -542,13 +557,13 @@ binds {
     Mod+Shift+Equal { set-window-height "+10%"; }
 
     // Move the focused window between the floating and the tiling layout.
-    Mod+V hotkey-overlay-title="Focused window - toggle floating" { toggle-window-floating; }
-    Mod+Shift+V hotkey-overlay-title="Layout - switch tiled/floating focus" { switch-focus-between-floating-and-tiling; }
+    Mod+V { toggle-window-floating; }
+    Mod+Shift+V { switch-focus-between-floating-and-tiling; }
 
     // Toggle tabbed column display mode.
     // Windows in this column will appear as vertical tabs,
     // rather than stacked on top of each other.
-    Mod+W hotkey-overlay-title="Focused column - toggle tabs" { toggle-column-tabbed-display; }
+    Mod+W { toggle-column-tabbed-display; }
 
     // Actions to switch layouts.
     // Note: if you uncomment these, make sure you do NOT have
@@ -558,9 +573,9 @@ binds {
     // Mod+Space       { switch-layout "next"; }
     // Mod+Shift+Space { switch-layout "prev"; }
 
-    Print hotkey-overlay-title="Capture - select area" { screenshot; }
-    Ctrl+Print hotkey-overlay-title="Capture - current screen" { screenshot-screen; }
-    Alt+Print hotkey-overlay-title="Capture - focused window" { screenshot-window; }
+    Print { screenshot; }
+    Ctrl+Print { screenshot-screen; }
+    Alt+Print { screenshot-window; }
 
     // Applications such as remote-desktop clients and software KVM switches may
     // request that niri stops processing the keyboard shortcuts defined here

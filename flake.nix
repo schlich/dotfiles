@@ -18,6 +18,10 @@
       url = "github:marimo-team/marimo-pair";
       flake = false;
     };
+    marimo-skills = {
+      url = "github:marimo-team/skills";
+      flake = false;
+    };
     jj-starship = {
       url = "gitlab:lanastara_foss/starship-jj";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -29,15 +33,29 @@
     noctalia = {
       url = "github:noctalia-dev/noctalia/cachix";
     };
-    fh.url = "https://flakehub.com/f/DeterminateSystems/fh/*";
+    fh.url = "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz";
     agent-skills.url = "github:Kyure-A/agent-skills-nix";
+    anthropic-skills = {
+      url = "github:anthropics/skills";
+      flake = false;
+    };
+    meta-quest-agentic-tools = {
+      url = "github:meta-quest/agentic-tools";
+      flake = false;
+    };
+    yazelix = {
+      url = "github:luccahuguet/yazelix/stable";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
     inputs@{
       home-manager,
       agent-skills,
+      anthropic-skills,
       nixpkgs,
+      fh,
       ...
     }:
     let
@@ -58,6 +76,30 @@
             '';
             postInstall = "";
           });
+          nirimap = prev.stdenvNoCC.mkDerivation rec {
+            pname = "nirimap";
+            version = "0.2.0";
+
+            src = prev.fetchurl {
+              url = "https://github.com/alexandergknoll/nirimap/releases/download/v${version}/nirimap-v${version}-x86_64-linux.tar.gz";
+              hash = "sha256-YDflubbAGgrbCzzUgpTA8GnBIZBImI3XZzzpv2y7Z4g=";
+            };
+
+            sourceRoot = ".";
+            installPhase = ''
+              runHook preInstall
+              install -Dm755 nirimap "$out/bin/nirimap"
+              runHook postInstall
+            '';
+
+            meta = {
+              description = "Generate a visual map of a Niri workspace";
+              homepage = "https://github.com/alexandergknoll/nirimap";
+              license = prev.lib.licenses.mit;
+              platforms = [ "x86_64-linux" ];
+              mainProgram = "nirimap";
+            };
+          };
         })
         inputs.jj-starship.overlays.default
         inputs.nuenv.overlays.default
@@ -81,6 +123,9 @@
           inputs.determinate.nixosModules.default
           # inputs.ragenix.nixosModules.default
           ./configuration.nix
+          {
+            environment.systemPackages = [ fh.packages.x86_64-linux.default ];
+          }
         ];
       };
 
@@ -132,9 +177,13 @@
       };
     };
   nixConfig = {
-    extra-substituters = [ "https://noctalia.cachix.org" ];
+    extra-substituters = [
+      "https://noctalia.cachix.org"
+      "https://yazelix.cachix.org"
+    ];
     extra-trusted-public-keys = [
       "noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4="
+      "yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM="
     ];
     trusted-users = [ "schlich" ];
   };
