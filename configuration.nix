@@ -10,6 +10,7 @@
   imports = [
     (modulesPath + "/installer/scan/not-detected.nix")
     ./system/hardware-configuration.nix
+    inputs.noctalia.nixosModules.default
   ];
 
   boot.initrd.availableKernelModules = [
@@ -54,7 +55,8 @@
       "nix-command"
       "flakes"
     ];
-    allowed-users = [ "schlich" ];
+    # allowed-users = [ "schlich" ];
+    trusted-users = [ "schlich" ];
   };
   nixpkgs.config.allowUnfree = true;
 
@@ -90,6 +92,7 @@
       VISUAL = "hx";
     };
     systemPackages = with pkgs; [
+      google-chrome
       helix
       wget
       nix-search-tv
@@ -100,6 +103,7 @@
       swaylock
       pavucontrol
       vscode-json-languageserver
+      jj-starship
       # inputs.ragenix.packages.x86_64-linux.default
     ];
   };
@@ -153,6 +157,11 @@
   programs = {
     nix-ld.enable = true;
     niri.enable = true;
+    noctalia = {
+      enable = true;
+      # recommendedServices.enable = true;
+      systemd.enable = true;
+    };
   };
 
   xdg = {

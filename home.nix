@@ -7,7 +7,10 @@
   ...
 }:
 {
-  # imports = [ inputs.ragenix.homeManagerModules.default ];
+  imports = [
+    inputs.ragenix.homeManagerModules.default
+    inputs.noctalia.homeModules.default
+  ];
 
   # age = {
   #   identityPaths = [ "/home/schlich/.ssh/id_ed25519" ];
@@ -46,7 +49,6 @@
       monaspace
       nerd-font-patcher
       nerd-fonts.symbols-only
-      noctalia-shell
       pavucontrol
       pandoc
       pixi
@@ -86,6 +88,7 @@
       '';
   xdg.configFile."niri/config.kdl".source = ./niri/config.kdl;
   programs = {
+    noctalia.enable = true;
     chromium.enable = true;
     rio = {
       enable = true;
@@ -482,6 +485,7 @@
       enable = true;
       enableNushellIntegration = true;
     };
+    gnome-keyring.enable = true;
     # ssh-agent.enable = true;
   };
 
