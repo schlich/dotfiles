@@ -24,8 +24,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     noctalia = {
-      url = "github:noctalia-dev/noctalia-shell";
-      inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:noctalia-dev/noctalia/cachix";
     };
     fh.url = "https://flakehub.com/f/DeterminateSystems/fh/*";
   };
@@ -110,4 +109,9 @@
         asus = nixosConfigurations.asus.config.system.build.toplevel;
       };
     };
+  nixConfig = {
+    extra-substituters = [ "https://noctalia.cachix.org" ];
+    extra-trusted-public-keys = [ "noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4=" ];
+    trusted-users = [ "schlich" ];
+  };
 }
