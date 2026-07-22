@@ -97,6 +97,9 @@ input {
     position x=1280 y=0
 }
 
+// Permanent workspace for working on this dotfiles flake.
+workspace "config"
+
 // Settings that influence how windows are positioned and sized.
 // Find more information on the wiki:
 // https://github.com/YaLTeR/niri/wiki/Configuration:-Layout
@@ -329,15 +332,16 @@ binds {
     // Most actions that you can bind here can also be invoked programmatically with
     // `niri msg action do-something`.
 
-    // Mod-Shift-/, which is usually the same as Mod-?,
-    // shows a list of important hotkeys.
-    Mod+Shift+Slash { show-hotkey-overlay; }
+    // Mod-Shift-/, which is usually the same as Mod-?, opens a curated
+    // shortcut reference. Labels identify the object each shortcut affects so
+    // the overlay remains useful in the current window/workspace context.
+    Mod+Shift+Slash hotkey-overlay-title="Help - show contextual shortcuts" { show-hotkey-overlay; }
 
     // Suggested binds for running programs: terminal, app launcher, screen locker.
-    Mod+T { spawn "kitty"; }
-    Mod+D { spawn "fuzzel"; }
-    Mod+B { spawn "chromium"; }
-    Super+Alt+L { spawn "swaylock"; }
+    Mod+T hotkey-overlay-title="Apps - open terminal" { spawn "kitty"; }
+    Mod+D hotkey-overlay-title="Apps - launcher" { spawn "fuzzel"; }
+    Mod+B hotkey-overlay-title="Apps - open browser" { spawn "google-chrome"; }
+    Super+Alt+L hotkey-overlay-title="Session - lock screen" { spawn "swaylock"; }
 
     // You can also use a shell. Do this if you need pipes, multiple commands, etc.
     // Note: the entire command goes as a single argument in the end.
@@ -350,7 +354,7 @@ binds {
     XF86AudioMute        allow-when-locked=true { spawn "wpctl" "set-mute" "@DEFAULT_AUDIO_SINK@" "toggle"; }
     XF86AudioMicMute     allow-when-locked=true { spawn "wpctl" "set-mute" "@DEFAULT_AUDIO_SOURCE@" "toggle"; }
 
-    Mod+Q { close-window; }
+    Mod+Q hotkey-overlay-title="Focused window - close" { close-window; }
 
     // Super+Left  { focus-column-left; }
     // Super+Down  { focus-window-down; }
@@ -377,10 +381,10 @@ binds {
     // Mod+Ctrl+J     { move-window-down-or-to-workspace-down; }
     // Mod+Ctrl+K     { move-window-up-or-to-workspace-up; }
 
-    Mod+Home { focus-column-first; }
-    Mod+End  { focus-column-last; }
-    Mod+Ctrl+Home { move-column-to-first; }
-    Mod+Ctrl+End  { move-column-to-last; }
+    Mod+Home hotkey-overlay-title="Workspace - focus first column" { focus-column-first; }
+    Mod+End hotkey-overlay-title="Workspace - focus last column" { focus-column-last; }
+    Mod+Ctrl+Home hotkey-overlay-title="Focused column - move to first" { move-column-to-first; }
+    Mod+Ctrl+End hotkey-overlay-title="Focused column - move to last" { move-column-to-last; }
 
     Mod+Shift+Left  { focus-monitor-left; }
     Mod+Shift+Down  { focus-monitor-down; }
@@ -408,14 +412,14 @@ binds {
     // Mod+Shift+Ctrl+Left  { move-workspace-to-monitor-left; }
     // ...
 
-    Mod+Page_Down      { focus-workspace-down; }
-    Mod+Page_Up        { focus-workspace-up; }
-    Mod+U              { focus-workspace-down; }
-    Mod+I              { focus-workspace-up; }
-    Mod+Ctrl+Page_Down { move-column-to-workspace-down; }
-    Mod+Ctrl+Page_Up   { move-column-to-workspace-up; }
-    Mod+Ctrl+U         { move-column-to-workspace-down; }
-    Mod+Ctrl+I         { move-column-to-workspace-up; }
+    Mod+Page_Down hotkey-overlay-title="Workspace - next" { focus-workspace-down; }
+    Mod+Page_Up hotkey-overlay-title="Workspace - previous" { focus-workspace-up; }
+    Mod+U hotkey-overlay-title="Workspace - next" { focus-workspace-down; }
+    Mod+I hotkey-overlay-title="Workspace - previous" { focus-workspace-up; }
+    Mod+Ctrl+Page_Down hotkey-overlay-title="Focused column - move to next workspace" { move-column-to-workspace-down; }
+    Mod+Ctrl+Page_Up hotkey-overlay-title="Focused column - move to previous workspace" { move-column-to-workspace-up; }
+    Mod+Ctrl+U hotkey-overlay-title="Focused column - move to next workspace" { move-column-to-workspace-down; }
+    Mod+Ctrl+I hotkey-overlay-title="Focused column - move to previous workspace" { move-column-to-workspace-up; }
 
     // Alternatively, there are commands to move just a single window:
     // Mod+Ctrl+Page_Down { move-window-to-workspace-down; }
@@ -475,6 +479,7 @@ binds {
     Mod+7 { focus-workspace 7; }
     Mod+8 { focus-workspace 8; }
     Mod+9 { focus-workspace 9; }
+    Mod+0 hotkey-overlay-title="Workspace - config" { focus-workspace "config"; }
     Mod+Ctrl+1 { move-column-to-workspace 1; }
     Mod+Ctrl+2 { move-column-to-workspace 2; }
     Mod+Ctrl+3 { move-column-to-workspace 3; }
@@ -484,6 +489,7 @@ binds {
     Mod+Ctrl+7 { move-column-to-workspace 7; }
     Mod+Ctrl+8 { move-column-to-workspace 8; }
     Mod+Ctrl+9 { move-column-to-workspace 9; }
+    Mod+Ctrl+0 hotkey-overlay-title="Focused column - move to config" { move-column-to-workspace "config"; }
 
     // Alternatively, there are commands to move just a single window:
     // Mod+Ctrl+1 { move-window-to-workspace 1; }
@@ -494,19 +500,19 @@ binds {
     // The following binds move the focused window in and out of a column.
     // If the window is alone, they will consume it into the nearby column to the side.
     // If the window is already in a column, they will expel it out.
-    Mod+BracketLeft  { consume-or-expel-window-left; }
-    Mod+BracketRight { consume-or-expel-window-right; }
+    Mod+BracketLeft hotkey-overlay-title="Focused window - merge or split left" { consume-or-expel-window-left; }
+    Mod+BracketRight hotkey-overlay-title="Focused window - merge or split right" { consume-or-expel-window-right; }
 
     // Consume one window from the right to the bottom of the focused column.
     Mod+Comma  { consume-window-into-column; }
     // Expel the bottom window from the focused column to the right.
     Mod+Period { expel-window-from-column; }
 
-    Mod+R { switch-preset-column-width; }
-    Mod+Shift+R { switch-preset-window-height; }
-    Mod+Ctrl+R { reset-window-height; }
-    Mod+F { maximize-column; }
-    Mod+Shift+F { fullscreen-window; }
+    Mod+R hotkey-overlay-title="Focused column - cycle width" { switch-preset-column-width; }
+    Mod+Shift+R hotkey-overlay-title="Focused window - cycle height" { switch-preset-window-height; }
+    Mod+Ctrl+R hotkey-overlay-title="Focused window - reset height" { reset-window-height; }
+    Mod+F hotkey-overlay-title="Focused column - maximize" { maximize-column; }
+    Mod+Shift+F hotkey-overlay-title="Focused window - fullscreen" { fullscreen-window; }
 
     // Expand the focused column to space not taken up by other fully visible columns.
     // Makes the column "fill the rest of the space".
@@ -530,13 +536,13 @@ binds {
     Mod+Shift+Equal { set-window-height "+10%"; }
 
     // Move the focused window between the floating and the tiling layout.
-    Mod+V       { toggle-window-floating; }
-    Mod+Shift+V { switch-focus-between-floating-and-tiling; }
+    Mod+V hotkey-overlay-title="Focused window - toggle floating" { toggle-window-floating; }
+    Mod+Shift+V hotkey-overlay-title="Layout - switch tiled/floating focus" { switch-focus-between-floating-and-tiling; }
 
     // Toggle tabbed column display mode.
     // Windows in this column will appear as vertical tabs,
     // rather than stacked on top of each other.
-    Mod+W { toggle-column-tabbed-display; }
+    Mod+W hotkey-overlay-title="Focused column - toggle tabs" { toggle-column-tabbed-display; }
 
     // Actions to switch layouts.
     // Note: if you uncomment these, make sure you do NOT have
@@ -546,9 +552,9 @@ binds {
     // Mod+Space       { switch-layout "next"; }
     // Mod+Shift+Space { switch-layout "prev"; }
 
-    Print { screenshot; }
-    Ctrl+Print { screenshot-screen; }
-    Alt+Print { screenshot-window; }
+    Print hotkey-overlay-title="Capture - select area" { screenshot; }
+    Ctrl+Print hotkey-overlay-title="Capture - current screen" { screenshot-screen; }
+    Alt+Print hotkey-overlay-title="Capture - focused window" { screenshot-window; }
 
     // Applications such as remote-desktop clients and software KVM switches may
     // request that niri stops processing the keyboard shortcuts defined here

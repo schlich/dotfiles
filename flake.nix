@@ -14,7 +14,10 @@
       url = "github:yaxitech/ragenix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    marimo-pair.url = "github:schlich/marimo-pair";
+    marimo-pair = {
+      url = "github:marimo-team/marimo-pair";
+      flake = false;
+    };
     jj-starship = {
       url = "gitlab:lanastara_foss/starship-jj";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -27,17 +30,35 @@
       url = "github:noctalia-dev/noctalia/cachix";
     };
     fh.url = "https://flakehub.com/f/DeterminateSystems/fh/*";
+    agent-skills.url = "github:Kyure-A/agent-skills-nix";
   };
 
   outputs =
     inputs@{
       home-manager,
+      agent-skills,
       nixpkgs,
       ...
     }:
     let
       system = "x86_64-linux";
       overlays = [
+        (final: prev: {
+          github-copilot-cli = prev.github-copilot-cli.overrideAttrs (old: rec {
+            version = "1.0.73";
+            src = prev.fetchurl {
+              url = "https://github.com/github/copilot-cli/releases/download/v${version}/copilot-linux-x64.tar.gz";
+              hash = "sha256:8f9bb5f7e364c267265d1e24ac2aea69ed559ddb956719c6db12a353de6c5970";
+            };
+            sourceRoot = ".";
+            installPhase = ''
+              runHook preInstall
+              install -Dm755 copilot "$out/bin/copilot"
+              runHook postInstall
+            '';
+            postInstall = "";
+          });
+        })
         inputs.jj-starship.overlays.default
         inputs.nuenv.overlays.default
       ];
@@ -66,6 +87,7 @@
       homeConfigurations.schlich = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
         modules = [
+          agent-skills.homeManagerModules.default
           ./home.nix
         ];
         extraSpecialArgs = {
@@ -111,7 +133,9 @@
     };
   nixConfig = {
     extra-substituters = [ "https://noctalia.cachix.org" ];
-    extra-trusted-public-keys = [ "noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4=" ];
+    extra-trusted-public-keys = [
+      "noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4="
+    ];
     trusted-users = [ "schlich" ];
   };
 }

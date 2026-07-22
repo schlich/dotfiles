@@ -88,8 +88,8 @@
       '';
   xdg.configFile."niri/config.kdl".source = ./niri/config.kdl;
   programs = {
+    herdr.enable = true;
     noctalia.enable = true;
-    chromium.enable = true;
     rio = {
       enable = true;
     };
@@ -162,16 +162,17 @@
           command = "nu";
           args = [ "--mcp" ];
         };
-        jj = {
-          command = "bunx";
-          args = [ "jj-mcp-server" ];
-        };
+        # jj = {
+        #   command = "bunx";
+        #   args = [ "jj-mcp-server" ];
+        #   enabled = false;
+        # };
       };
     };
     github-copilot-cli = {
       enable = true;
       enableMcpIntegration = true;
-      # settings = {
+      settings = {
       #   extraKnownMarketplaces = {
       #     schlich-dotfiles = {
       #       source = "directory";
@@ -183,10 +184,34 @@
       #     "project-plugin-factory@schlich-dotfiles" = true;
       #   };
       # };
+      # skills = {
+      #   marimo-pair = ${pkgs.t}./skills/data-analysis;
+      }
+      ;
+    };
+    agent-skills = {
+      enable = true;
+      sources.marimo-pair = {
+        input = "marimo-pair";
+        subdir = "skills";
+      };
+      skills.enableAll = true;
+      # skills.enable = [ "frontend-design" "skill-creator" ];
+      # targets.claude.enable = true;
+      targets.copilot.enable = true;
     };
     opencode = {
       enable = true;
       enableMcpIntegration = true;
+      package = pkgs.nuenv.writeScriptBin {
+        name = "opencode";
+        script = ''
+          def --wrapped main [...args] {
+            $env.GITHUB_TOKEN = (^${pkgs.gh}/bin/gh auth token | str trim)
+            ^${pkgs.opencode}/bin/opencode ...$args
+          }
+        '';
+      };
       skills = {
         jj = ./copilot/skills/jj;
         marimo-pair = "${inputs.marimo-pair}/skills/marimo-pair";
@@ -199,7 +224,7 @@
           url = "https://api.githubcopilot.com/mcp/";
           enabled = true;
           oauth = false;
-          headers.Authorization = "Bearer {env:GITHUB_PERSONAL_ACCESS_TOKEN}";
+          headers.Authorization = "Bearer {env:GITHUB_TOKEN}";
         };
         server.hostname = "localhost";
       };
