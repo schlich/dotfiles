@@ -27,6 +27,8 @@
       stateVersion
       ;
     packages = with pkgs; [
+      super-productivity
+      zotero
       marimo
       nirimap
       wget
@@ -94,6 +96,7 @@
   xdg.configFile."niri/config.kdl".source = ./niri/config.kdl;
   xdg.configFile."niri/launch-kitty.nu".source = ./niri/launch-kitty.nu;
   xdg.configFile."zellij/config.kdl".source = ./zellij/config.kdl;
+  xdg.configFile."zellij/layouts/default.kdl".source = ./zellij/layouts/default.kdl;
   programs = {
     yazelix.enable = true;
     bottom.enable = true;

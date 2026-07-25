@@ -97,7 +97,9 @@ input {
     position x=1280 y=0
 }
 
-// Permanent workspace for working on this dotfiles flake.
+// Keep the primary contexts available even when they have no windows.
+workspace "terminal"
+workspace "web"
 workspace "config"
 
 // Settings that influence how windows are positioned and sized.
@@ -250,9 +252,9 @@ layout {
 // Note that running niri as a session supports xdg-desktop-autostart,
 // which may be more convenient to use.
 // See the binds section below for more spawn examples.
-// spawn-at-startup "alacritty" "-e" "fish"
 // spawn-at-startup "noctalia-shell"
 spawn-sh-at-startup "exec kitty --class niri-config --directory \"$HOME/dotfiles\" hx"
+spawn-sh-at-startup "exec kitty --class niri-terminal --directory \"$HOME\" zellij"
 
 // Uncomment this line to ask the clients to omit their client-side decorations if possible.
 // If the client will specifically ask for CSD, the request will be honored.
@@ -296,6 +298,17 @@ window-rule {
 window-rule {
   match app-id=r#"^niri-config$"#
   open-on-workspace "config"
+}
+
+// Keep the initial Zellij session and future browser windows in predictable places.
+window-rule {
+  match app-id=r#"^niri-terminal$"#
+  open-on-workspace "terminal"
+}
+
+window-rule {
+  match app-id=r#"^google-chrome$"#
+  open-on-workspace "web"
 }
 
 // Floating Noctalia settings window.
@@ -433,8 +446,11 @@ binds {
     // Mod+Shift+Ctrl+Left  { move-workspace-to-monitor-left; }
     // ...
 
-    Mod+U { focus-workspace-down; }
-    Mod+I { focus-workspace-up; }
+    // Page keys provide discoverable workspace navigation; U/I remain handy on the home row.
+    Mod+Page_Down { focus-workspace-down; }
+    Mod+Page_Up   { focus-workspace-up; }
+    Mod+U         { focus-workspace-down; }
+    Mod+I         { focus-workspace-up; }
     Mod+Ctrl+U { move-column-to-workspace-down; }
     Mod+Ctrl+I { move-column-to-workspace-up; }
 
@@ -516,7 +532,7 @@ binds {
     // Mod+Ctrl+1 { move-window-to-workspace 1; }
 
     // Switches focus between the current and the previous workspace.
-    // Mod+Tab { focus-workspace-previous; }
+    Mod+Tab { focus-workspace-previous; }
 
     // The following binds move the focused window in and out of a column.
     // If the window is alone, they will consume it into the nearby column to the side.

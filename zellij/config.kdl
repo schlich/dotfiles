@@ -3,3 +3,6 @@ keybinds {
         bind "Alt f" { ToggleFloatingPanes; }
     }
 }
+
+// Load the repository-managed two-pane work layout for new sessions.
+default_layout "default"
