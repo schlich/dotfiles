@@ -4,7 +4,7 @@
   imports = [ ./hardware-configuration.nix ];
 
   boot.loader = {
-    efi.canTouchEfiVariables = false;
+    efi.canTouchEfiVariables = true;
     limine = {
       enable = true;
       efiSupport = true;
