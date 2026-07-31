@@ -306,11 +306,6 @@ window-rule {
   open-on-workspace "terminal"
 }
 
-window-rule {
-  match app-id=r#"^google-chrome$"#
-  open-on-workspace "web"
-}
-
 // Floating Noctalia settings window.
 window-rule {
   match app-id="dev.noctalia.Noctalia"

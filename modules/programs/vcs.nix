@@ -1,6 +1,19 @@
 { ... }:
 
 {
+  programs.git = {
+    enable = true;
+    settings.user = {
+      email = "ty.schlich@gmail.com";
+      name = "Ty Schlichenmeyer";
+    };
+  };
+  programs.gpg.enable = true;
+  programs.lazygit = {
+    enable = true;
+    enableNushellIntegration = true;
+    settings.os.editPreset = "helix";
+  };
   programs.jjui.enable = true;
 
   programs.jujutsu = {

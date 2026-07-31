@@ -1,8 +1,11 @@
-{ pkgs, ... }:
+{ ... }:
 
 {
-  nix.package = pkgs.nix;
   nixpkgs.config.allowUnfree = true;
-
-  age.secrets.github-token.file = ../../secrets/github-token.age;
+  accounts.email.accounts.personal = {
+    address = "ty.schlich@gmail.com";
+    primary = true;
+    realName = "Ty Schlichenmeyer";
+  };
+  fonts.fontconfig.enable = true;
 }

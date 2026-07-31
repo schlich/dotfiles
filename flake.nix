@@ -146,6 +146,8 @@
     {
       inherit nixosConfigurations homeConfigurations;
 
+      packages.${system}.default = homeConfigurations.schlich.activationPackage;
+
       formatter.${system} = pkgs.nixfmt-tree;
 
       devShells.${system} = {
@@ -174,39 +176,42 @@
       checks.${system} = {
         home-manager-nixos = homeConfigurations.schlich.activationPackage;
         asus = nixosConfigurations.asus.config.system.build.toplevel;
-        niri-config = pkgs.runCommand "niri-config-check"
-          {
-            nativeBuildInputs = [ pkgs.niri ];
-          }
-          ''
-            niri validate --config ${./niri/config.kdl}
-            touch "$out"
-          '';
-        zellij-config = pkgs.runCommand "zellij-config-check"
-          {
-            nativeBuildInputs = [ pkgs.zellij ];
-          }
-          ''
-            config_dir="$TMPDIR/zellij"
-            mkdir -p "$config_dir/layouts"
-            cp ${./zellij/config.kdl} "$config_dir/config.kdl"
-            cp ${./zellij/layouts/default.kdl} "$config_dir/layouts/default.kdl"
-            ZELLIJ_CONFIG_DIR="$config_dir" zellij setup --check
-            touch "$out"
-          '';
-        whitespace = pkgs.runCommand "whitespace-check"
-          {
-            nativeBuildInputs = [ pkgs.git ];
-            src = ./.;
-          }
-          ''
-            set +e
-            git --no-pager diff --check --no-index --no-patch /dev/null "$src"
-            status=$?
-            set -e
-            test "$status" -eq 1
-            touch "$out"
-          '';
+        niri-config =
+          pkgs.runCommand "niri-config-check"
+            {
+              nativeBuildInputs = [ pkgs.niri ];
+            }
+            ''
+              niri validate --config ${./niri/config.kdl}
+              touch "$out"
+            '';
+        zellij-config =
+          pkgs.runCommand "zellij-config-check"
+            {
+              nativeBuildInputs = [ pkgs.zellij ];
+            }
+            ''
+              config_dir="$TMPDIR/zellij"
+              mkdir -p "$config_dir/layouts"
+              cp ${./zellij/config.kdl} "$config_dir/config.kdl"
+              cp ${./zellij/layouts/default.kdl} "$config_dir/layouts/default.kdl"
+              ZELLIJ_CONFIG_DIR="$config_dir" zellij setup --check
+              touch "$out"
+            '';
+        whitespace =
+          pkgs.runCommand "whitespace-check"
+            {
+              nativeBuildInputs = [ pkgs.git ];
+              src = ./.;
+            }
+            ''
+              set +e
+              git --no-pager diff --check --no-index --no-patch /dev/null "$src"
+              status=$?
+              set -e
+              test "$status" -eq 1
+              touch "$out"
+            '';
       };
     };
   nixConfig = {

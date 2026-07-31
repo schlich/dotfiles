@@ -1,4 +1,4 @@
-{ ... }:
+{ pkgs, ... }:
 
 {
   programs.atuin = {
@@ -15,6 +15,7 @@
     enable = true;
     enableNushellIntegration = true;
     nix-direnv.enable = true;
+    config.global.hide_env_diff = true;
   };
 
   programs.intelli-shell = {
@@ -24,6 +25,12 @@
 
   programs.nushell = {
     enable = true;
+    environmentVariables = {
+      COLORTERM = "truecolor";
+      EDITOR = "hx";
+      VISUAL = "hx";
+    };
+    envFile.source = ../../env.nu;
     configFile.source = ../../config.nu;
   };
 
@@ -31,18 +38,21 @@
     enable = true;
     enableNushellIntegration = true;
     settings = {
+      format = "$\{custom.jj}\$all";
+      gcloud.disabled = true;
       git_branch.disabled = true;
       git_commit.disabled = true;
-      git_state.disabled = true;
-      git_status.disabled = true;
-      git_metrics.disabled = true;
       custom.jj = {
-        description = "Current jj change";
-        when = "jj root";
-        command = ''jj log -r @ --no-graph --ignore-working-copy --color always -T '"(" ++ change_id.shortest(8) ++ ")" ++ if(empty, " (empty)", "") ++ if(conflict, " (conflict)", "") ++ if(bookmarks, " " ++ bookmarks.map(|b| b.name()).join(","), "") ++ if(description, " " ++ description.first_line(), "")' '';
-        symbol = "jj ";
-        format = "[$symbol$output]($style) ";
-        style = "bold purple";
+        command = "prompt";
+        format = "$output ";
+        ignore_timeout = true;
+        shell = [
+          "${pkgs.starship-jj}/bin/starship-jj"
+          "--ignore-working-copy"
+          "starship"
+        ];
+        use_stdin = false;
+        when = true;
       };
     };
   };
@@ -51,6 +61,17 @@
     enable = true;
     enableNushellIntegration = true;
     shellWrapperName = "y";
+    settings = {
+      manager = {
+        show_hidden = false;
+        sort_by = "modified";
+        sort_dir_first = true;
+      };
+      preview = {
+        max_width = 1000;
+        max_height = 1000;
+      };
+    };
   };
 
   programs.zellij.enable = true;
@@ -59,4 +80,7 @@
     enable = true;
     enableNushellIntegration = true;
   };
+
+  programs.antigravity-cli.enable = true;
+  programs.intelli-shell.settings.ai.enabled = true;
 }
