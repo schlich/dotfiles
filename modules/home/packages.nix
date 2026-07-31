@@ -1,23 +1,48 @@
-{ pkgs, inputs, ... }:
+{ pkgs, ... }:
 
 {
   home.packages = with pkgs; [
+    super-productivity
+    zotero
+    marimo
+    nirimap
     wget
     nixfmt
     systemctl-tui
+    systemd-manager-tui
     nix-search-tv
     difftastic
     fzf
     lsp-ai
     github-copilot-cli
-    eget
     pixi
     uv
     glow
     bat
     gcc
-    pipewire
-    wireplumber
-    inputs.ragenix.packages.${pkgs.stdenv.hostPlatform.system}.default
+    nil
+    nixd
+    swaylock
+    pavucontrol
+    vscode-json-languageserver
+    jj-starship
+    xwayland-satellite
+    dhall
+    skills
+    gcr
+    clipboard-jh
+    diffedit3
+    dust
+    font-awesome
+    fx
+    jjui
+    lazyjj
+    monaspace
+    nerd-font-patcher
+    nerd-fonts.symbols-only
+    pandoc
+    ripgrep
+    wl-clipboard-rs
+    zed-editor
   ];
 }

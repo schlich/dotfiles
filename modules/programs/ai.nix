@@ -1,57 +1,90 @@
-{ inputs, ... }:
+{ inputs, pkgs, ... }:
 
-let
-  awesomeCopilotPlugin = ../../copilot/installed-plugins/awesome-copilot/awesome-copilot;
-in
 {
   programs.claude-code = {
     enable = true;
     enableMcpIntegration = true;
-    marketplaces.marimo-pair = inputs.marimo-pair;
-    marketplaces.awesome-copilot = awesomeCopilotPlugin;
-    plugins = [
-      inputs.marimo-pair
-      awesomeCopilotPlugin
-    ];
-    settings = {
-      enabledPlugins."marimo-pair@marimo-pair" = true;
-      enabledPlugins."awesome-copilot@awesome-copilot" = true;
-      hooks.PreToolUse = [
-        {
-          matcher = "Bash";
-          hooks = [
-            {
-              type = "command";
-              command = ''echo "Bash is disabled here. Use the nu MCP server instead: mcp__plugin_claude-code-home-manager_nu__evaluate for running commands, mcp__plugin_claude-code-home-manager_nu__list_commands to discover, mcp__plugin_claude-code-home-manager_nu__command_help for help. Rewrite the bash invocation as a nushell pipeline and call evaluate." >&2; exit 2'';
-            }
-          ];
-        }
-      ];
-    };
+    settings = { };
   };
 
-  programs.codex.enable = true;
-  programs.gemini-cli.enable = true;
+  programs.codex = {
+    enable = true;
+    enableMcpIntegration = true;
+  };
 
   programs.mcp = {
     enable = true;
     servers = {
-      nu = {
-        command = "nu";
-        args = [ "--mcp" ];
-      };
       nix = {
         command = "uvx";
         args = [ "mcp-nixos" ];
+      };
+      nushell = {
+        command = "nu";
+        args = [ "--mcp" ];
       };
     };
   };
 
   programs.opencode = {
     enable = true;
-    package = inputs.opencode.packages.${pkgs.stdenv.hostPlatform.system}.default;
+    package = pkgs.nuenv.writeScriptBin {
+      name = "opencode";
+      script = ''
+        def --wrapped main [...args] {
+          $env.GITHUB_TOKEN = (^${pkgs.gh}/bin/gh auth token | str trim)
+          ^${pkgs.opencode}/bin/opencode ...$args
+        }
+      '';
+    };
     enableMcpIntegration = true;
-    skills.marimo-pair = "${inputs.marimo-pair}/skills/marimo-pair";
-    settings.tools.bash = false;
+    skills = {
+      jj = ../../copilot/skills/jj;
+      marimo-pair = "${inputs.marimo-pair}/skills/marimo-pair";
+      nu = ../../copilot/skills/nushell;
+    };
+    agents = ../../copilot/agents;
+    settings = {
+      mcp.github = {
+        type = "remote";
+        url = "https://api.githubcopilot.com/mcp/";
+        enabled = true;
+        oauth = false;
+        headers.Authorization = "Bearer {env:GITHUB_TOKEN}";
+      };
+      server.hostname = "localhost";
+    };
+  };
+
+  programs.github-copilot-cli = {
+    enable = true;
+    enableMcpIntegration = true;
+  };
+
+  programs.agent-skills = {
+    enable = true;
+    sources.marimo-pair = {
+      input = "marimo-pair";
+      subdir = "skills";
+    };
+    sources.marimo-team = {
+      input = "marimo-skills";
+      subdir = "skills";
+    };
+    sources.anthropic = {
+      input = "anthropic-skills";
+      subdir = "skills";
+    };
+    sources.meta-quest = {
+      input = "meta-quest-agentic-tools";
+      subdir = "skills";
+    };
+    skills.enable = [
+      "pdf"
+      "marimo-pair"
+      "anywidget"
+      "hz-iwsdk-webxr"
+    ];
+    targets.copilot.enable = true;
   };
 }
