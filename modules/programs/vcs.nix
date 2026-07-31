@@ -1,4 +1,4 @@
-{ ... }:
+{ pkgs, ... }:
 
 {
   programs.git = {
@@ -31,4 +31,11 @@
       ];
     };
   };
+
+  home.packages = [
+    (pkgs.nuenv.writeScriptBin {
+      name = "jj-describe";
+      script = builtins.readFile ../../jj/describe.nu;
+    })
+  ];
 }
