@@ -1,12 +1,12 @@
-{ config, ... }:
+{ config, pkgs, ... }:
 
 {
   services = {
     greetd = {
       enable = true;
       settings.default_session = {
-        user = "schlich";
-        command = "${config.programs.niri.package}/bin/niri-session";
+        command = "${pkgs.tuigreet}/bin/tuigreet --cmd ${config.programs.niri.package}/bin/niri-session";
+        user = "greeter";
       };
     };
     power-profiles-daemon.enable = true;
