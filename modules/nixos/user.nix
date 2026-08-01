@@ -5,7 +5,10 @@
   users.users.schlich = {
     shell = pkgs.nushell;
     isNormalUser = true;
-    extraGroups = [ "wheel" ];
+    extraGroups = [
+      "wheel"
+      "networkmanager"
+    ];
   };
   environment.shells = [ pkgs.nushell ];
 
