@@ -23,6 +23,10 @@
         command = "nu";
         args = [ "--mcp" ];
       };
+      jj = {
+        command = "npx";
+        args = [ "--yes" "jj-mcp-server" ];
+      };
       }
       // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
         # metavr ships binaries only for macOS and Windows, not Linux.
@@ -52,6 +56,7 @@
     enableMcpIntegration = true;
     skills = {
       immersive-songwriting-studio = ../../copilot/skills/immersive-songwriting-studio;
+      gh-stack = "${inputs.gh-stack}/skills/gh-stack";
       jj = ../../copilot/skills/jj;
       marimo-pair = "${inputs.marimo-pair}/skills/marimo-pair";
       nu = ../../copilot/skills/nushell;

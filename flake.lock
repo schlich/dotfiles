@@ -532,6 +532,22 @@
         "type": "github"
       }
     },
+    "gh-stack": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1785424405,
+        "narHash": "sha256-RrVYkqUX0vKPUC0zextQSR+SG59j/HaILPZ/tBCXspQ=",
+        "owner": "github",
+        "repo": "gh-stack",
+        "rev": "8c9c8331309529e2114d4c34e77f4edea543f9fa",
+        "type": "github"
+      },
+      "original": {
+        "owner": "github",
+        "repo": "gh-stack",
+        "type": "github"
+      }
+    },
     "git-hooks-nix": {
       "inputs": {
         "flake-compat": "flake-compat",
@@ -1095,6 +1111,7 @@
         "anthropic-skills": "anthropic-skills",
         "determinate": "determinate",
         "fh": "fh",
+        "gh-stack": "gh-stack",
         "home-manager": "home-manager_2",
         "jj-starship": "jj-starship",
         "marimo-pair": "marimo-pair",

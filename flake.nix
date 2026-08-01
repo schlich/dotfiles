@@ -22,6 +22,10 @@
       url = "github:marimo-team/skills";
       flake = false;
     };
+    gh-stack = {
+      url = "github:github/gh-stack";
+      flake = false;
+    };
     jj-starship = {
       url = "gitlab:lanastara_foss/starship-jj";
       inputs.nixpkgs.follows = "nixpkgs";

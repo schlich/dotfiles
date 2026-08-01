@@ -29,6 +29,7 @@
         "$left"
         "$right"
       ];
+      git.push = "origin";
     };
   };
 
@@ -36,6 +37,10 @@
     (pkgs.nuenv.writeScriptBin {
       name = "jj-describe";
       script = builtins.readFile ../../jj/describe.nu;
+    })
+    (pkgs.nuenv.writeScriptBin {
+      name = "jj-flake";
+      script = builtins.readFile ../../jj/flake.nu;
     })
   ];
 }
