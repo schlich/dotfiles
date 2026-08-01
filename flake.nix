@@ -155,29 +155,6 @@
 
       formatter.${system} = pkgs.nixfmt-tree;
 
-      devShells.${system} = {
-        reedline = pkgs.mkShell {
-          name = "reedline-dev";
-          packages =
-            with pkgs;
-            [
-              cargo-nextest
-              clippy
-              cargo
-              git
-              pkg-config
-              rust-analyzer
-              rustc
-              rustfmt
-              sqlite
-            ]
-            ++ lib.optionals stdenv.hostPlatform.isLinux [
-              libxkbcommon
-              wayland
-            ];
-        };
-      };
-
       checks.${system} = {
         home-manager-nixos = homeConfigurations.schlich.activationPackage;
         asus = nixosConfigurations.asus.config.system.build.toplevel;
