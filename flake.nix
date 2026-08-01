@@ -56,6 +56,7 @@
   outputs =
     inputs@{
       home-manager,
+      determinate,
       agent-skills,
       anthropic-skills,
       nixpkgs,
@@ -124,7 +125,7 @@
 
       nixosConfigurations = {
         asus = mkNixos [
-          inputs.determinate.nixosModules.default
+          determinate.nixosModules.default
           # inputs.ragenix.nixosModules.default
           ./configuration.nix
           {
