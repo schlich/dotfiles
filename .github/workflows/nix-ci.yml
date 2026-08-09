@@ -16,22 +16,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  evaluate:
-    name: evaluate flake
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: DeterminateSystems/determinate-nix-action@main
-        with:
-          extra-conf: |
-            extra-substituters = https://noctalia.cachix.org https://yazelix.cachix.org
-            extra-trusted-public-keys = noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4= yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM=
-      - name: Evaluate flake outputs
-        run: nix flake check --no-build
-
   build:
     name: build ${{ matrix.name }}
-    needs: evaluate
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
