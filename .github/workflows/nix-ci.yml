@@ -7,6 +7,10 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+  id-token: write
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -19,7 +23,8 @@ jobs:
       - uses: actions/checkout@v6
       - uses: DeterminateSystems/determinate-nix-action@main
         with:
-          cache-on-darwin: true
-          cache-on-linux: true
+          extra-conf: |
+            extra-substituters = https://noctalia.cachix.org https://yazelix.cachix.org
+            extra-trusted-public-keys = noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4= yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM=
       - name: Run flake checks
         run: nix flake check
