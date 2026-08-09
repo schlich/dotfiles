@@ -179,7 +179,6 @@
 
       checks.${system} = {
         home-manager-nixos = homeConfigurations.schlich.activationPackage;
-        asus = nixosConfigurations.asus.config.system.build.toplevel;
         niri-config =
           pkgs.runCommand "niri-config-check"
             {
