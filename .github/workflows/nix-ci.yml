@@ -16,8 +16,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  flake-check:
-    name: flake check
+  evaluate:
+    name: evaluate flake
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -26,5 +26,33 @@ jobs:
           extra-conf: |
             extra-substituters = https://noctalia.cachix.org https://yazelix.cachix.org
             extra-trusted-public-keys = noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4= yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM=
-      - name: Run flake checks
-        run: nix flake check
+      - name: Evaluate flake outputs
+        run: nix flake check --no-build
+
+  build:
+    name: build ${{ matrix.name }}
+    needs: evaluate
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: home manager (shell, editor, and desktop)
+            output: .#homeConfigurations.schlich.activationPackage
+          - name: NixOS (shell and compositor)
+            output: .#nixosConfigurations.asus.config.system.build.toplevel
+          - name: niri compositor config
+            output: .#checks.x86_64-linux.niri-config
+          - name: zellij shell config
+            output: .#checks.x86_64-linux.zellij-config
+          - name: whitespace
+            output: .#checks.x86_64-linux.whitespace
+    steps:
+      - uses: actions/checkout@v6
+      - uses: DeterminateSystems/determinate-nix-action@main
+        with:
+          extra-conf: |
+            extra-substituters = https://noctalia.cachix.org https://yazelix.cachix.org
+            extra-trusted-public-keys = noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4= yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM=
+      - name: Build ${{ matrix.output }}
+        run: nix build "${{ matrix.output }}" --print-build-logs
