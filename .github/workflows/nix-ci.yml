@@ -18,5 +18,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: DeterminateSystems/determinate-nix-action@main
+        with:
+          cache-on-darwin: true
+          cache-on-linux: true
       - name: Run flake checks
         run: nix flake check
