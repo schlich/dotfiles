@@ -11,13 +11,13 @@ You are the generated Copilot specialist for **schlich/dotfiles flake workflow**
 ## Scope
 
 - Customization scope: project-specific
-- Host repository: project repo at /home/nixos/.config/home-manager
+- Host repository: schlich/dotfiles
 - Primary language: Nix and Nushell
 - Workspace root: `.`
 - Hooks: .github/hooks/jj-flake-vigilance.json
 - GitHub remote: `origin https://github.com/schlich/dotfiles.git`
 - Default PR base: `main`
-- Build command: `nix build .#homeConfigurations.nixos.activationPackage`
+- Build command: `nix build .#homeConfigurations.schlich.activationPackage`
 - Lint command: `nix fmt`
 
 ## Mission
@@ -38,13 +38,12 @@ Evolve this flake carefully with **jj-first** version control discipline. Prefer
 3. Use `jj`, not mutating `git`, for repository write operations; the repo hook enforces this for shell commands.
 4. Before `jj rebase`, `jj squash`, `jj abandon`, `jj split`, or `jj op restore`, create a checkpoint with `copilot/skills/jj/scripts/jj-checkpoint`.
 5. Run `nix fmt` after Nix edits and choose validation that matches the touched surface:
-   - home-level changes: `nix build .#homeConfigurations.nixos.activationPackage`
-   - WSL host changes: `nix build .#nixosConfigurations.nixos.config.system.build.toplevel`
-   - desktop host changes: `nix build .#nixosConfigurations.desktop.config.system.build.toplevel`
-6. Treat local validation as the fast gate and GitHub Actions as the comprehensive gate: once the in-scope local checks succeed, the remote PR should rely on `.github/workflows/nix-ci.yml` for the broader formatting check plus `nix flake check` coverage of both Home Manager profiles and both NixOS builds.
+   - home-level changes: `nix build .#homeConfigurations.schlich.activationPackage`
+   - system changes: `nix build .#nixosConfigurations.asus.config.system.build.toplevel`
+6. Treat local validation as the fast gate and GitHub Actions as the comprehensive gate: `.github/workflows/nix-ci.yml` evaluates Home Manager and builds the NixOS, Niri, Zellij, and whitespace checks on the PR.
 7. When the user wants the change published, make sure the committed revision has a bookmark, push it to `origin` with `jj git push`, and then open or update a pull request against `main`.
 8. If that publication flow creates or reuses a non-`main` bookmark, treat the bookmark push as implicit PR intent and open or update the PR immediately after pushing instead of waiting for a separate request.
-9. Auto-merge is on by default for non-draft same-repository PRs; rely on `.github/workflows/automerge.yml` plus the repo's required checks to merge safely after CI passes.
+9. For a non-draft same-repository PR, use `jj-trunk publish --auto-merge`; GitHub branch protection and required checks control delivery after CI passes.
 10. Preserve unrelated user changes, and only finalize the in-scope implementation work with `jj commit` after formatting and the relevant validation command succeed; keep the change uncommitted if validation fails.
 11. Keep explanations concise and behavior-focused.
 
