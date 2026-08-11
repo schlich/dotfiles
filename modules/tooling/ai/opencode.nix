@@ -1,54 +1,12 @@
 {
+  config,
   inputs,
-  lib,
   pkgs,
   ...
 }:
 
 {
-  programs.claude-code = {
-    enable = true;
-    enableMcpIntegration = true;
-    settings = { };
-  };
-
-  programs.codex = {
-    enable = true;
-    enableMcpIntegration = true;
-  };
-
-  programs.mcp = {
-    enable = true;
-    servers = {
-      nix = {
-        command = "uvx";
-        args = [ "mcp-nixos" ];
-      };
-      nushell = {
-        command = "nu";
-        args = [ "--mcp" ];
-      };
-      jj = {
-        command = "npx";
-        args = [
-          "--yes"
-          "jj-mcp-server"
-        ];
-      };
-    }
-    // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
-      # metavr ships binaries only for macOS and Windows, not Linux.
-      metavr = {
-        command = "npx";
-        args = [
-          "-y"
-          "metavr"
-          "mcp"
-          "server"
-        ];
-      };
-    };
-  };
+  imports = [ ./common.nix ];
 
   programs.opencode = {
     enable = true;
@@ -56,19 +14,26 @@
       name = "opencode";
       script = ''
         def --wrapped main [...args] {
-          $env.GITHUB_TOKEN = (^${pkgs.gh}/bin/gh auth token | str trim)
-          ^${pkgs.opencode}/bin/opencode ...$args
+          let github_token = (do -i { ^${pkgs.gh}/bin/gh auth token | str trim } | default "")
+
+          if ($github_token | is-empty) {
+            ^${pkgs.opencode}/bin/opencode ...$args
+          } else {
+            with-env { GITHUB_TOKEN: $github_token } {
+              ^${pkgs.opencode}/bin/opencode ...$args
+            }
+          }
         }
       '';
     };
     enableMcpIntegration = true;
     skills = {
-      immersive-songwriting-studio = ../../copilot/skills/immersive-songwriting-studio;
+      immersive-songwriting-studio = ../../../copilot/skills/immersive-songwriting-studio;
       gh-stack = "${inputs.gh-stack}/skills/gh-stack";
-      jj = ../../copilot/skills/jj;
-      trunk-based-jj = ../../copilot/skills/trunk-based-jj;
+      jj = ../../../copilot/skills/jj;
+      # trunk-based-jj = ../../../copilot/skills/trunk-based-jj;
       marimo-pair = "${inputs.marimo-pair}/skills/marimo-pair";
-      nu = ../../copilot/skills/nushell;
+      nu = ../../../copilot/skills/nushell;
       hz-immersive-designer = "${inputs.meta-quest-agentic-tools}/skills/hz-immersive-designer";
       hz-iwsdk-webxr = "${inputs.meta-quest-agentic-tools}/skills/hz-iwsdk-webxr";
       hz-new-project-creation = "${inputs.meta-quest-agentic-tools}/skills/hz-new-project-creation";
@@ -77,7 +42,7 @@
       hz-vr-debug = "${inputs.meta-quest-agentic-tools}/skills/hz-vr-debug";
       metavr-cli = "${inputs.meta-quest-agentic-tools}/skills/metavr-cli";
     };
-    agents = ../../copilot/agents;
+    agents = ../../../copilot/agents;
     settings = {
       command.init-repo = {
         description = "Initialize the current directory as a Nix, Nushell, and Jujutsu project.";
@@ -106,39 +71,10 @@
     };
   };
 
-  programs.github-copilot-cli = {
-    enable = true;
-    enableMcpIntegration = true;
-    agents.trunk-triage = ../../copilot/agents/trunk-triage.md;
-    skills.trunk-based-jj = ../../copilot/skills/trunk-based-jj;
-    settings.notifications = true;
-    skills.github-pr-checks = ../../copilot/skills/github-pr-checks;
-  };
-
-  programs.agent-skills = {
-    enable = true;
-    sources.marimo-pair = {
-      input = "marimo-pair";
-      subdir = "skills";
-    };
-    sources.marimo-team = {
-      input = "marimo-skills";
-      subdir = "skills";
-    };
-    sources.anthropic = {
-      input = "anthropic-skills";
-      subdir = "skills";
-    };
-    sources.meta-quest = {
-      input = "meta-quest-agentic-tools";
-      subdir = "skills";
-    };
-    skills.enable = [
-      "pdf"
-      "marimo-pair"
-      "anywidget"
-      "hz-iwsdk-webxr"
-    ];
-    targets.copilot.enable = true;
+  dotfiles.tooling.ai.opencode = {
+    command = "${config.programs.opencode.package}/bin/opencode";
+    automation = ''
+      ^${config.programs.opencode.package}/bin/opencode run --agent $agent --auto $prompt
+    '';
   };
 }

@@ -37,7 +37,8 @@
   Run `prek run --all-files` or `jj-trunk validate` before publication.
 - Use a concise JJ change description. Publish a validated ordinary change with
   `jj-trunk publish --auto-merge`; it creates or updates a PR and requests
-  GitHub auto-merge against the current head SHA.
+  GitHub auto-merge against the current head SHA, then starts an empty
+  follow-up changeset so later edits do not rewrite the pushed revision.
 - GitHub owns PR state, required checks, and delivery to `main`. Do not bypass
   protection with direct pushes or manual merge commands.
 - The required `nix-ci` checks evaluate Home Manager and build NixOS, Niri,

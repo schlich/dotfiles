@@ -15,7 +15,6 @@
     difftastic
     fzf
     lsp-ai
-    github-copilot-cli
     pixi
     uv
     glow
@@ -45,7 +44,6 @@
     prek
     ripgrep
     wl-clipboard-rs
-    zed-editor
     gh-stack
   ];
 }

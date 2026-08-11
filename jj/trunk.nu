@@ -46,6 +46,11 @@ def validate-change [] {
     run-command "running Prek" { ^prek run --all-files } | ignore
 }
 
+def start-follow-up-change [] {
+    run-command "starting a follow-up change" { ^jj new @ } | ignore
+    print "Started a fresh follow-up change. Subsequent edits will not rewrite the published revision."
+}
+
 def github-reconcile [apply: bool] {
     let required_checks = [
         "build home manager (shell, editor, and desktop)"
@@ -167,6 +172,8 @@ def "main publish" [--auto-merge] {
             ^gh pr merge $url --auto --squash --delete-branch --match-head-commit $head
         } | ignore
     }
+
+    start-follow-up-change
 }
 
 def "main github reconcile" [--apply] {

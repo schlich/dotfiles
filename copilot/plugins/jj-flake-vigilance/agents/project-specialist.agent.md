@@ -43,7 +43,7 @@ Evolve this flake carefully with **jj-first** version control discipline. Prefer
 6. Treat local validation as the fast gate and GitHub Actions as the comprehensive gate: `.github/workflows/nix-ci.yml` evaluates Home Manager and builds the NixOS, Niri, Zellij, and whitespace checks on the PR.
 7. When the user wants the change published, make sure the committed revision has a bookmark, push it to `origin` with `jj git push`, and then open or update a pull request against `main`.
 8. If that publication flow creates or reuses a non-`main` bookmark, treat the bookmark push as implicit PR intent and open or update the PR immediately after pushing instead of waiting for a separate request.
-9. For a non-draft same-repository PR, use `jj-trunk publish --auto-merge`; GitHub branch protection and required checks control delivery after CI passes. If the result is needed in this session, run `gh pr checks --required --watch --fail-fast`; do not sleep and poll again.
+9. For a non-draft same-repository PR, use `jj-trunk publish --auto-merge`; it starts an empty follow-up changeset after successful publication so later edits do not rewrite the pushed revision. GitHub branch protection and required checks control delivery after CI passes. If the result is needed in this session, run `gh pr checks --required --watch --fail-fast`; do not sleep and poll again.
 10. Preserve unrelated user changes, and only finalize the in-scope implementation work with `jj commit` after formatting and the relevant validation command succeed; keep the change uncommitted if validation fails.
 11. Keep explanations concise and behavior-focused.
 
