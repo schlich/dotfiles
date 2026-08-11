@@ -1,4 +1,9 @@
-{ pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   programs.git = {
@@ -7,6 +12,7 @@
       email = "ty.schlich@gmail.com";
       name = "Ty Schlichenmeyer";
     };
+    settings.remote.pushDefault = "origin";
   };
   programs.gpg.enable = true;
   programs.lazygit = {
@@ -42,5 +48,16 @@
       name = "jj-flake";
       script = builtins.readFile ../../jj/flake.nu;
     })
+    (pkgs.nuenv.writeScriptBin {
+      name = "jj-trunk";
+      script = builtins.readFile ../../jj/trunk.nu;
+    })
   ];
+
+  home.activation.installPrek = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    repo=${config.home.homeDirectory}/dotfiles
+    if [ -f "$repo/prek.toml" ] && [ -d "$repo/.git" ]; then
+      ${pkgs.prek}/bin/prek -C "$repo" install -f
+    fi
+  '';
 }

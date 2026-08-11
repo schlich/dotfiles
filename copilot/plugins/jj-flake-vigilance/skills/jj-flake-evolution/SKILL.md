@@ -10,13 +10,13 @@ This skill is the repeatable workflow for **flake and host evolution in schlich/
 ## Project context
 
 - Customization scope: project-specific
-- Host repository: project repo at /home/nixos/.config/home-manager
+- Host repository: schlich/dotfiles
 - Language: Nix and Nushell
 - Workspace root: `.`
 - Hooks: .github/hooks/jj-flake-vigilance.json
 - GitHub remote: `origin https://github.com/schlich/dotfiles.git`
 - Default PR base: `main`
-- Build: `nix build .#homeConfigurations.nixos.activationPackage`
+- Build: `nix build .#homeConfigurations.schlich.activationPackage`
 - Lint: `nix fmt`
 
 ## When to use
@@ -39,10 +39,9 @@ Use this skill for routine repository tasks that should follow a repeatable patt
 5. Make the smallest coherent change that preserves existing flake output names and host wiring.
 6. Run `nix fmt` after Nix edits.
 7. Choose validation based on the touched surface:
-   - home-level changes: `nix build .#homeConfigurations.nixos.activationPackage`
-   - WSL host changes: `nix build .#nixosConfigurations.nixos.config.system.build.toplevel`
-   - desktop host changes: `nix build .#nixosConfigurations.desktop.config.system.build.toplevel`
-8. Treat local validation as the fast gate and GitHub Actions as the comprehensive gate. Once the in-scope local checks succeed, expect `.github/workflows/nix-ci.yml` to run the broader formatting check plus `nix flake check` coverage for both Home Manager profiles and both NixOS hosts on the PR.
+   - home-level changes: `nix build .#homeConfigurations.schlich.activationPackage`
+   - system changes: `nix build .#nixosConfigurations.asus.config.system.build.toplevel`
+8. Treat local validation as the fast gate and GitHub Actions as the comprehensive gate. `.github/workflows/nix-ci.yml` evaluates Home Manager and builds the NixOS, Niri, Zellij, and whitespace checks on the PR.
 9. Preserve unrelated user changes, and only after formatting and the relevant validation command succeed, finalize the in-scope work with `jj commit` using the up-to-date description. If validation fails or the request is analysis-only, stop without committing.
 10. If the user wants the change published, ensure the committed revision has a bookmark, push it to `origin`, and open or update a PR against `main`; non-draft same-repository PRs use the default auto-merge workflow once the required checks pass.
 11. If that publication flow creates or reuses a non-`main` bookmark, treat that bookmark push as implicit PR intent and open or update the PR immediately after pushing instead of waiting for a follow-up request.

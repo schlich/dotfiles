@@ -1,4 +1,9 @@
-{ inputs, lib, pkgs, ... }:
+{
+  inputs,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   programs.claude-code = {
@@ -25,21 +30,24 @@
       };
       jj = {
         command = "npx";
-        args = [ "--yes" "jj-mcp-server" ];
+        args = [
+          "--yes"
+          "jj-mcp-server"
+        ];
       };
-      }
-      // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
-        # metavr ships binaries only for macOS and Windows, not Linux.
-        metavr = {
-          command = "npx";
-          args = [
-            "-y"
-            "metavr"
-            "mcp"
-            "server"
-          ];
-        };
+    }
+    // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
+      # metavr ships binaries only for macOS and Windows, not Linux.
+      metavr = {
+        command = "npx";
+        args = [
+          "-y"
+          "metavr"
+          "mcp"
+          "server"
+        ];
       };
+    };
   };
 
   programs.opencode = {
@@ -58,6 +66,7 @@
       immersive-songwriting-studio = ../../copilot/skills/immersive-songwriting-studio;
       gh-stack = "${inputs.gh-stack}/skills/gh-stack";
       jj = ../../copilot/skills/jj;
+      trunk-based-jj = ../../copilot/skills/trunk-based-jj;
       marimo-pair = "${inputs.marimo-pair}/skills/marimo-pair";
       nu = ../../copilot/skills/nushell;
       hz-immersive-designer = "${inputs.meta-quest-agentic-tools}/skills/hz-immersive-designer";
@@ -100,6 +109,8 @@
   programs.github-copilot-cli = {
     enable = true;
     enableMcpIntegration = true;
+    agents.trunk-triage = ../../copilot/agents/trunk-triage.md;
+    skills.trunk-based-jj = ../../copilot/skills/trunk-based-jj;
   };
 
   programs.agent-skills = {
