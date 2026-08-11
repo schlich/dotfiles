@@ -4,7 +4,7 @@
   imports = [ ./hardware-configuration.nix ];
 
   boot.loader = {
-    efi.canTouchEfiVariables = false;
+    efi.canTouchEfiVariables = true;
     limine = {
       enable = true;
       efiSupport = true;
@@ -20,11 +20,11 @@
     };
   };
 
-  networking.wireless = {
+  networking.hostName = "asus";
+  networking.networkmanager = {
     enable = true;
-    networks."EvilCorp HQ".pskRaw = "37660d09044c0b74085b1604031b4a8ac965ed1bb10b07a5a2f797402ea10bd7";
   };
-
+  networking.firewall.allowedTCPPorts = [ 8080 ];
   services.kmonad = {
     enable = true;
     keyboards.myKMonadOutput = {
