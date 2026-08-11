@@ -43,7 +43,9 @@ def sync-main [] {
 }
 
 def validate-change [] {
-    run-command "running Prek" { ^prek run --all-files } | ignore
+    run-command "running Prek across the current stack" {
+        ^jj run -r 'trunk()..@' -j 4 --ignore-changes -- prek run --all-files
+    } | ignore
 }
 
 def github-reconcile [apply: bool] {
@@ -157,7 +159,7 @@ def "main publish" [--auto-merge] {
         $pr.stdout | str trim
     } else {
         run-command "creating the pull request" {
-            ^gh pr create --base main --head $branch --title $title --body "## Summary\n\n- $title\n\n## Validation\n\n- `prek run --all-files`"
+            ^gh pr create --base main --head $branch --title $title --body "## Summary\n\n- $title\n\n## Validation\n\n- `jj run -r 'trunk()..@' -j 4 --ignore-changes -- prek run --all-files`"
         }
     }
     print $url

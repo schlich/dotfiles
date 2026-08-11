@@ -17,7 +17,15 @@ Use this skill for repository changes that should land through `main`.
 
 Run `jj status`, `jj diff`, and `jj log` before work. Keep unrelated changes
 intact. Use `jj-trunk sync` only from an empty working copy and run
-`jj-trunk validate` before publication.
+`jj-trunk validate` before publication. It validates every revision in
+`trunk()..@` concurrently through isolated JJ workspaces:
+
+```nu
+jj run -r 'trunk()..@' -j 4 --ignore-changes -- prek run --all-files
+```
+
+`--ignore-changes` discards any hook or formatter writes, so validation never
+rewrites a change.
 
 ## Publication
 

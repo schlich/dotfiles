@@ -11,6 +11,13 @@ checks, auto-merge, merge queues, and stacked-PR metadata.
 
 Run `jj status`, `jj diff`, and `jj log` first. From a described conflict-free
 change, run `jj-trunk validate`, then `jj-trunk publish --auto-merge`.
+Validation runs Prek over every revision in `trunk()..@` via:
+
+```nu
+jj run -r 'trunk()..@' -j 4 --ignore-changes -- prek run --all-files
+```
+
+The isolated workspaces and `--ignore-changes` ensure hook writes are discarded.
 
 For an explicitly planned dependency stack, create and push each layer with JJ,
 link existing PRs using `gh stack link`, inspect only with `gh stack view --json`,

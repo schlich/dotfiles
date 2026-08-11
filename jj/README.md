@@ -38,7 +38,8 @@ jj-trunk status
 # Update an empty working copy to origin/main.
 jj-trunk sync
 
-# Run deterministic local formatting and evaluation gates.
+# Validate every change from trunk through the current stack in isolated
+# workspaces. Formatter output is discarded.
 jj-trunk validate
 
 # Push the current described JJ change, create/update its PR, and enable auto-merge.
@@ -52,6 +53,16 @@ jj-trunk github reconcile --apply
 Use JJ for all change, bookmark, rebase, and push operations. Git is for
 read-only interoperability only. GitHub owns required checks, merge queues, and
 delivery to `main`.
+
+`jj-trunk validate` runs:
+
+```nu
+jj run -r 'trunk()..@' -j 4 --ignore-changes -- prek run --all-files
+```
+
+JJ selects and materializes each revision, while Prek defines and runs the
+checks. `--ignore-changes` prevents hooks or formatters from rewriting the
+validated revisions.
 
 For an explicitly planned dependency stack, create and push the ordered JJ
 bookmarks, link the existing PRs with `gh stack link`, inspect with
