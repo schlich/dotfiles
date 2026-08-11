@@ -37,6 +37,10 @@
     noctalia = {
       url = "github:noctalia-dev/noctalia/cachix";
     };
+    noctalia-greeter = {
+      url = "github:noctalia-dev/noctalia-greeter";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     fh.url = "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz";
     agent-skills.url = "github:Kyure-A/agent-skills-nix";
     anthropic-skills = {
@@ -126,6 +130,7 @@
       nixosConfigurations = {
         asus = mkNixos [
           determinate.nixosModules.default
+          inputs.noctalia-greeter.nixosModules.default
           # inputs.ragenix.nixosModules.default
           ./configuration.nix
           {
