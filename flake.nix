@@ -37,6 +37,10 @@
     noctalia = {
       url = "github:noctalia-dev/noctalia/cachix";
     };
+    noctalia-greeter = {
+      url = "github:noctalia-dev/noctalia-greeter";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     fh.url = "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz";
     agent-skills.url = "github:Kyure-A/agent-skills-nix";
     anthropic-skills = {
@@ -56,6 +60,7 @@
   outputs =
     inputs@{
       home-manager,
+      determinate,
       agent-skills,
       anthropic-skills,
       nixpkgs,
@@ -124,7 +129,8 @@
 
       nixosConfigurations = {
         asus = mkNixos [
-          inputs.determinate.nixosModules.default
+          determinate.nixosModules.default
+          inputs.noctalia-greeter.nixosModules.default
           # inputs.ragenix.nixosModules.default
           ./configuration.nix
           {
@@ -153,29 +159,6 @@
       packages.${system}.default = homeConfigurations.schlich.activationPackage;
 
       formatter.${system} = pkgs.nixfmt-tree;
-
-      devShells.${system} = {
-        reedline = pkgs.mkShell {
-          name = "reedline-dev";
-          packages =
-            with pkgs;
-            [
-              cargo-nextest
-              clippy
-              cargo
-              git
-              pkg-config
-              rust-analyzer
-              rustc
-              rustfmt
-              sqlite
-            ]
-            ++ lib.optionals stdenv.hostPlatform.isLinux [
-              libxkbcommon
-              wayland
-            ];
-        };
-      };
 
       checks.${system} = {
         home-manager-nixos = homeConfigurations.schlich.activationPackage;
