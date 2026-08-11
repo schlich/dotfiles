@@ -111,6 +111,8 @@
     enableMcpIntegration = true;
     agents.trunk-triage = ../../copilot/agents/trunk-triage.md;
     skills.trunk-based-jj = ../../copilot/skills/trunk-based-jj;
+    settings.notifications = true;
+    skills.github-pr-checks = ../../copilot/skills/github-pr-checks;
   };
 
   programs.agent-skills = {
