@@ -24,15 +24,15 @@ jobs:
       matrix:
         include:
           - name: home manager (shell, editor, and desktop)
-            output: .#homeConfigurations.schlich.activationPackage
+            command: nix eval --raw .#homeConfigurations.schlich.activationPackage.drvPath
           - name: NixOS (shell and compositor)
-            output: .#nixosConfigurations.asus.config.system.build.toplevel
+            command: nix build .#nixosConfigurations.asus.config.system.build.toplevel --print-build-logs
           - name: niri compositor config
-            output: .#checks.x86_64-linux.niri-config
+            command: nix build .#checks.x86_64-linux.niri-config --print-build-logs
           - name: zellij shell config
-            output: .#checks.x86_64-linux.zellij-config
+            command: nix build .#checks.x86_64-linux.zellij-config --print-build-logs
           - name: whitespace
-            output: .#checks.x86_64-linux.whitespace
+            command: nix build .#checks.x86_64-linux.whitespace --print-build-logs
     steps:
       - uses: actions/checkout@v6
       - uses: DeterminateSystems/determinate-nix-action@main
@@ -40,5 +40,5 @@ jobs:
           extra-conf: |
             extra-substituters = https://noctalia.cachix.org https://yazelix.cachix.org
             extra-trusted-public-keys = noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4= yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM=
-      - name: Build ${{ matrix.output }}
-        run: nix build "${{ matrix.output }}" --print-build-logs
+      - name: Build ${{ matrix.name }}
+        run: ${{ matrix.command }}
