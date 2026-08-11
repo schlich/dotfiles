@@ -4,7 +4,7 @@
 export def main [
   --modalkit_json: string = ".copilot/modalkit-rustdoc/raw/modalkit-0.0.24.json"
   --keybindings_json: string = ".copilot/modalkit-rustdoc/raw/keybindings-0.0.2.json"
-  --symbols_file: string = ".copilot/skills/modalkit-rustdoc/references/helix-symbols.txt"
+  --symbols_file: string = "copilot/skills/rust-docs/references/helix-symbols.txt"
   --out_file: string = ".copilot/modalkit-rustdoc/modalkit-pruned.json"
 ] {
   let targets = (open $symbols_file | lines | each {|x| $x | str trim } | where {|x| ($x | str length) > 0 })

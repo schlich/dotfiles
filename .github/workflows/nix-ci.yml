@@ -38,8 +38,8 @@ jobs:
       - uses: DeterminateSystems/determinate-nix-action@v3.21.9
         with:
           extra-conf: |
-            extra-substituters = https://noctalia.cachix.org https://yazelix.cachix.org
-            extra-trusted-public-keys = noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4= yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM=
+            extra-substituters = https://noctalia.cachix.org
+            extra-trusted-public-keys = noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4=
       - name: Enable FlakeHub Cache
         if: matrix.name == 'NixOS (shell and compositor)'
         uses: DeterminateSystems/flakehub-cache-action@v3.21.9
