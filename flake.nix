@@ -57,8 +57,6 @@
     inputs@{
       home-manager,
       determinate,
-      agent-skills,
-      anthropic-skills,
       nixpkgs,
       fh,
       ...
@@ -67,20 +65,6 @@
       system = "x86_64-linux";
       overlays = [
         (final: prev: {
-          github-copilot-cli = prev.github-copilot-cli.overrideAttrs (old: rec {
-            version = "1.0.73";
-            src = prev.fetchurl {
-              url = "https://github.com/github/copilot-cli/releases/download/v${version}/copilot-linux-x64.tar.gz";
-              hash = "sha256:8f9bb5f7e364c267265d1e24ac2aea69ed559ddb956719c6db12a353de6c5970";
-            };
-            sourceRoot = ".";
-            installPhase = ''
-              runHook preInstall
-              install -Dm755 copilot "$out/bin/copilot"
-              runHook postInstall
-            '';
-            postInstall = "";
-          });
           nirimap = prev.stdenvNoCC.mkDerivation rec {
             pname = "nirimap";
             version = "0.2.0";
@@ -115,6 +99,7 @@
         config.allowUnfree = true;
       };
       lib = nixpkgs.lib;
+      profiles = import ./profiles;
 
       mkNixos =
         modules:
@@ -135,19 +120,53 @@
         ];
       };
 
-      homeConfigurations.schlich = home-manager.lib.homeManagerConfiguration {
-        inherit pkgs;
-        modules = [
-          agent-skills.homeManagerModules.default
-          ./home.nix
-        ];
-        extraSpecialArgs = {
-          inherit inputs;
-          username = "schlich";
-          homeDirectory = "/home/schlich";
-          stateVersion = "26.05";
+      mkHome =
+        profileModule:
+        home-manager.lib.homeManagerConfiguration {
+          inherit pkgs;
+          modules = [
+            ./home.nix
+            profileModule
+          ];
+          extraSpecialArgs = {
+            inherit inputs;
+            username = "schlich";
+            homeDirectory = "/home/schlich";
+            stateVersion = "26.05";
+          };
         };
+
+      namedHomeConfigurations = lib.mapAttrs' (
+        name: profileModule: lib.nameValuePair "schlich-${name}" (mkHome profileModule)
+      ) profiles;
+
+      homeConfigurations = namedHomeConfigurations // {
+        schlich = namedHomeConfigurations.schlich-full;
       };
+
+      profileChecks = lib.mapAttrs' (
+        name: home:
+        lib.nameValuePair "home-${name}" (
+          pkgs.linkFarm "home-${name}-check" (
+            [
+              {
+                name = "activation";
+                path = home.activationPackage;
+              }
+            ]
+            ++ lib.mapAttrsToList (checkName: path: {
+              name = checkName;
+              inherit path;
+            }) home.config.dotfiles.tooling.checks
+          )
+        )
+      ) namedHomeConfigurations;
+
+      allProfileChecks = pkgs.linkFarm "home-profile-checks" (
+        lib.mapAttrsToList (name: path: {
+          inherit name path;
+        }) profileChecks
+      );
     in
     {
       inherit nixosConfigurations homeConfigurations;
@@ -156,8 +175,9 @@
 
       formatter.${system} = pkgs.nixfmt-tree;
 
-      checks.${system} = {
+      checks.${system} = profileChecks // {
         home-manager-nixos = homeConfigurations.schlich.activationPackage;
+        home-profiles = allProfileChecks;
         niri-config =
           pkgs.runCommand "niri-config-check"
             {

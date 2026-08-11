@@ -18,7 +18,6 @@
   programs.lazygit = {
     enable = true;
     enableNushellIntegration = true;
-    settings.os.editPreset = "helix";
   };
   programs.jjui.enable = true;
 

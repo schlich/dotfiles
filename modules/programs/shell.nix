@@ -27,8 +27,6 @@
     enable = true;
     environmentVariables = {
       COLORTERM = "truecolor";
-      EDITOR = "hx";
-      VISUAL = "hx";
     };
     envFile.source = ../../env.nu;
     configFile.source = ../../config.nu;

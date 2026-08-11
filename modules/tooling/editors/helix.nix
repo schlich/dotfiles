@@ -11,7 +11,6 @@
       taplo
       dhall
     ];
-    defaultEditor = true;
     settings = {
       theme = "dark-synthwave";
       editor = {
@@ -118,5 +117,5 @@
     };
   };
 
-  programs.zed-editor.enable = true;
+  dotfiles.tooling.editors.helix.command = "${pkgs.helix}/bin/hx";
 }

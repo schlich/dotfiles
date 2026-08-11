@@ -12,5 +12,5 @@ def "main describe-one" [agent: string] {
         error make { msg: "jj-describe must be run through jj run" }
     }
 
-    ^opencode run --agent $agent --auto $"Describe changeset ($change_id). Inspect it with `jj show -r ($change_id)`, then update only its description with `jj desc -r ($change_id) -m DESCRIPTION`. Write a concise imperative subject of at most 72 characters and an optional body explaining why. Do not modify tracked files, create commits, or modify any other changeset."
+    ^ai-run --agent $agent $"Describe changeset ($change_id). Inspect it with `jj show -r ($change_id)`, then update only its description with `jj desc -r ($change_id) -m DESCRIPTION`. Write a concise imperative subject of at most 72 characters and an optional body explaining why. Do not modify tracked files, create commits, or modify any other changeset."
 }

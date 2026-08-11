@@ -12,4 +12,4 @@ let directory = if $is_config_workspace {
   $"($env.HOME)/dotfiles"
 }
 
-kitty --directory $directory
+terminal --directory $directory

@@ -9,6 +9,7 @@
   imports = [
     inputs.ragenix.homeManagerModules.default
     inputs.noctalia.homeModules.default
+    ./modules/tooling/interface.nix
     ./modules/home
     ./modules/programs
   ];
