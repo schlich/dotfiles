@@ -27,9 +27,9 @@ Goals:
 4. Validate that imported symbols in src/edit_mode/helix.rs still match docs.
 
 Execution plan:
-- Run: nu .copilot/skills/modalkit-rustdoc/scripts/fetch-modalkit-docs.nu
-- Run: nu .copilot/skills/modalkit-rustdoc/scripts/prune-modalkit-docs.nu
-- Run: nu .copilot/skills/modalkit-rustdoc/scripts/build-modalkit-reference.nu
+- Run: nu copilot/skills/rust-docs/scripts/fetch-modalkit-docs.nu
+- Run: nu copilot/skills/rust-docs/scripts/prune-modalkit-docs.nu
+- Run: nu copilot/skills/rust-docs/scripts/build-modalkit-reference.nu
 - Summarize diffs and any missing or renamed API symbols.
 
 Rules:
