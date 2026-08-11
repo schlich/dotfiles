@@ -11,7 +11,6 @@
   nixpkgs.config.allowUnfree = true;
 
   environment.systemPackages = [ pkgs.google-chrome ];
-
   time.timeZone = "America/Chicago";
   i18n.defaultLocale = "en_US.UTF-8";
   i18n.extraLocaleSettings = {
@@ -44,6 +43,7 @@
   };
 
   programs.nix-ld.enable = true;
+  programs.immersed.enable = true;
   xdg = {
     portal = {
       enable = true;

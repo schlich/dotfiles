@@ -6,6 +6,7 @@
     zotero
     marimo
     nirimap
+    nodejs
     wget
     nixfmt
     systemctl-tui

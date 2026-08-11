@@ -1,4 +1,4 @@
-{ ... }:
+{ pkgs, ... }:
 
 {
   programs.home-manager.enable = true;
@@ -8,6 +8,7 @@
   programs.gh = {
     enable = true;
     gitCredentialHelper.enable = true;
+    extensions = [ pkgs.gh-stack ];
   };
   programs.gh-dash.enable = true;
   programs.navi.enable = true;

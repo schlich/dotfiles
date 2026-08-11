@@ -22,6 +22,10 @@
       url = "github:marimo-team/skills";
       flake = false;
     };
+    gh-stack = {
+      url = "github:github/gh-stack";
+      flake = false;
+    };
     jj-starship = {
       url = "gitlab:lanastara_foss/starship-jj";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -52,6 +56,7 @@
   outputs =
     inputs@{
       home-manager,
+      determinate,
       agent-skills,
       anthropic-skills,
       nixpkgs,
@@ -120,7 +125,7 @@
 
       nixosConfigurations = {
         asus = mkNixos [
-          inputs.determinate.nixosModules.default
+          determinate.nixosModules.default
           # inputs.ragenix.nixosModules.default
           ./configuration.nix
           {
@@ -149,29 +154,6 @@
       packages.${system}.default = homeConfigurations.schlich.activationPackage;
 
       formatter.${system} = pkgs.nixfmt-tree;
-
-      devShells.${system} = {
-        reedline = pkgs.mkShell {
-          name = "reedline-dev";
-          packages =
-            with pkgs;
-            [
-              cargo-nextest
-              clippy
-              cargo
-              git
-              pkg-config
-              rust-analyzer
-              rustc
-              rustfmt
-              sqlite
-            ]
-            ++ lib.optionals stdenv.hostPlatform.isLinux [
-              libxkbcommon
-              wayland
-            ];
-        };
-      };
 
       checks.${system} = {
         home-manager-nixos = homeConfigurations.schlich.activationPackage;
