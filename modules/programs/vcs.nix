@@ -35,6 +35,7 @@
         "$right"
       ];
       git.push = "origin";
+      templates.git_push_bookmark = ''"trunk/" ++ change_id.short()'';
     };
   };
 
