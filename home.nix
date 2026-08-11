@@ -9,7 +9,6 @@
   imports = [
     inputs.ragenix.homeManagerModules.default
     inputs.noctalia.homeModules.default
-    inputs.yazelix.homeManagerModules.default
     ./modules/home
     ./modules/programs
   ];
