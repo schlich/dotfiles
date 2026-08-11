@@ -57,6 +57,8 @@
     inputs@{
       home-manager,
       determinate,
+      agent-skills,
+      anthropic-skills,
       nixpkgs,
       fh,
       ...
@@ -65,6 +67,20 @@
       system = "x86_64-linux";
       overlays = [
         (final: prev: {
+          github-copilot-cli = prev.github-copilot-cli.overrideAttrs (old: rec {
+            version = "1.0.73";
+            src = prev.fetchurl {
+              url = "https://github.com/github/copilot-cli/releases/download/v${version}/copilot-linux-x64.tar.gz";
+              hash = "sha256:8f9bb5f7e364c267265d1e24ac2aea69ed559ddb956719c6db12a353de6c5970";
+            };
+            sourceRoot = ".";
+            installPhase = ''
+              runHook preInstall
+              install -Dm755 copilot "$out/bin/copilot"
+              runHook postInstall
+            '';
+            postInstall = "";
+          });
           nirimap = prev.stdenvNoCC.mkDerivation rec {
             pname = "nirimap";
             version = "0.2.0";
@@ -125,6 +141,7 @@
         home-manager.lib.homeManagerConfiguration {
           inherit pkgs;
           modules = [
+            agent-skills.homeManagerModules.default
             ./home.nix
             profileModule
           ];
