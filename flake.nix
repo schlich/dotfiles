@@ -27,8 +27,7 @@
       flake = false;
     };
     jj-starship = {
-      url = "gitlab:lanastara_foss/starship-jj";
-      inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:dmmulroy/jj-starship";
     };
     niri = {
       url = "github:sodiboo/niri-flake";
@@ -61,6 +60,7 @@
       anthropic-skills,
       nixpkgs,
       fh,
+      jj-starship,
       ...
     }:
     let
@@ -106,7 +106,7 @@
             };
           };
         })
-        inputs.jj-starship.overlays.default
+        jj-starship.overlays.default
         inputs.nuenv.overlays.default
       ];
       pkgs = import nixpkgs {
@@ -131,7 +131,10 @@
           # inputs.ragenix.nixosModules.default
           ./configuration.nix
           {
-            environment.systemPackages = [ fh.packages.x86_64-linux.default ];
+            environment.systemPackages = [
+              fh.packages.x86_64-linux.default
+              pkgs.jj-starship
+            ];
           }
         ];
       };
@@ -141,7 +144,6 @@
         home-manager.lib.homeManagerConfiguration {
           inherit pkgs;
           modules = [
-            agent-skills.homeManagerModules.default
             ./home.nix
             profileModule
           ];

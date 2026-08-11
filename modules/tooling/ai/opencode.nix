@@ -31,7 +31,7 @@
       immersive-songwriting-studio = ../../../copilot/skills/immersive-songwriting-studio;
       gh-stack = "${inputs.gh-stack}/skills/gh-stack";
       jj = ../../../copilot/skills/jj;
-      trunk-based-jj = ../../../copilot/skills/trunk-based-jj;
+      # trunk-based-jj = ../../../copilot/skills/trunk-based-jj;
       marimo-pair = "${inputs.marimo-pair}/skills/marimo-pair";
       nu = ../../../copilot/skills/nushell;
       hz-immersive-designer = "${inputs.meta-quest-agentic-tools}/skills/hz-immersive-designer";

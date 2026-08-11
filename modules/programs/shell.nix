@@ -36,22 +36,9 @@
     enable = true;
     enableNushellIntegration = true;
     settings = {
-      format = "$\{custom.jj}\$all";
       gcloud.disabled = true;
       git_branch.disabled = true;
       git_commit.disabled = true;
-      custom.jj = {
-        command = "prompt";
-        format = "$output ";
-        ignore_timeout = true;
-        shell = [
-          "${pkgs.starship-jj}/bin/starship-jj"
-          "--ignore-working-copy"
-          "starship"
-        ];
-        use_stdin = false;
-        when = true;
-      };
     };
   };
 
