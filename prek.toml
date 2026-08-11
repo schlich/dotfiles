@@ -1,0 +1,7 @@
+[[repos]]
+repo = "local"
+hooks = [
+  { id = "nixfmt", name = "format Nix", language = "system", entry = "nix fmt", files = "\\.nix$", pass_filenames = false },
+  { id = "whitespace", name = "check whitespace", language = "system", entry = "nix build .#checks.x86_64-linux.whitespace", pass_filenames = false },
+  { id = "flake-eval", name = "evaluate Home Manager", language = "system", entry = "nix eval --raw .#homeConfigurations.schlich.activationPackage.drvPath", files = "^(flake\\.nix|flake\\.lock|home\\.nix|modules/.*\\.nix)$", pass_filenames = false },
+]

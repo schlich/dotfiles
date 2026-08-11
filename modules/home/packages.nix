@@ -42,8 +42,10 @@
     nerd-font-patcher
     nerd-fonts.symbols-only
     pandoc
+    prek
     ripgrep
     wl-clipboard-rs
     zed-editor
+    gh-stack
   ];
 }

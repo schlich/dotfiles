@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "matcher": "bash",
+        "type": "command",
+        "command": "nu ${COPILOT_PLUGIN_ROOT}/scripts/guard-git-writes.nu"
+      }
+    ]
+  }
+}
