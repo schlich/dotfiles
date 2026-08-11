@@ -56,8 +56,9 @@
 
   home.activation.installPrek = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     repo=${config.home.homeDirectory}/dotfiles
-    if [ -f "$repo/prek.toml" ] && [ -d "$repo/.git" ]; then
-      ${pkgs.prek}/bin/prek -C "$repo" install -f
+    if [ -f "$repo/prek.toml" ]; then
+      git_dir="$(${pkgs.git}/bin/git -C "$repo" rev-parse --absolute-git-dir)"
+      ${pkgs.prek}/bin/prek -C "$repo" install --git-dir "$git_dir" -f
     fi
   '';
 }
