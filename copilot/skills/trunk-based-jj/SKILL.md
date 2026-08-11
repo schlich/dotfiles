@@ -1,6 +1,6 @@
 ---
 name: trunk-based-jj
-description: Use for JJ-first trunk development in schlich/dotfiles: inspect or sync main, validate with Prek, publish a JJ change as a GitHub PR, monitor CI, use GitHub merge queues, or inspect JJ-managed stacked PRs.
+description: "Use for JJ-first trunk development in schlich/dotfiles: inspect or sync main, validate with Prek, publish a JJ change as a GitHub PR, monitor CI, use GitHub merge queues, or inspect JJ-managed stacked PRs."
 ---
 
 # JJ-first trunk development
