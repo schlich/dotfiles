@@ -3,17 +3,10 @@
 
   inputs = {
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
-    flake-parts = {
-      url = "github:hercules-ci/flake-parts";
-      inputs.nixpkgs-lib.follows = "nixpkgs";
-    };
     determinate.url = "https://flakehub.com/f/DeterminateSystems/determinate/*";
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
-    };
-    nixos-wsl = {
-      url = "github:nix-community/nixos-wsl";
     };
     nixgl.url = "github:nix-community/nixGL";
     nuenv.url = "https://flakehub.com/f/xav-ie/nuenv/*.tar.gz";
@@ -21,11 +14,18 @@
       url = "github:yaxitech/ragenix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    marimo-pair.url = "github:schlich/marimo-pair";
-    # rust-docs-mcp = {
-    #   url = "github:christian-blades-cb/rust-docs-mcp/2d69d7acd57a36456f844df45e8aade257352257";
-    #   inputs.nixpkgs.follows = "nixpkgs";
-    # };
+    marimo-pair = {
+      url = "github:marimo-team/marimo-pair";
+      flake = false;
+    };
+    marimo-skills = {
+      url = "github:marimo-team/skills";
+      flake = false;
+    };
+    gh-stack = {
+      url = "github:github/gh-stack";
+      flake = false;
+    };
     jj-starship = {
       url = "gitlab:lanastara_foss/starship-jj";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -35,142 +35,180 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     noctalia = {
-      url = "github:noctalia-dev/noctalia-shell";
+      url = "github:noctalia-dev/noctalia/cachix";
+    };
+    noctalia-greeter = {
+      url = "github:noctalia-dev/noctalia-greeter";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    fh.url = "https://flakehub.com/f/DeterminateSystems/fh/*";
+    fh.url = "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz";
+    agent-skills.url = "github:Kyure-A/agent-skills-nix";
+    anthropic-skills = {
+      url = "github:anthropics/skills";
+      flake = false;
+    };
+    meta-quest-agentic-tools = {
+      url = "github:meta-quest/agentic-tools";
+      flake = false;
+    };
+    yazelix = {
+      url = "github:luccahuguet/yazelix/stable";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
     inputs@{
-      flake-parts,
       home-manager,
+      determinate,
+      agent-skills,
+      anthropic-skills,
       nixpkgs,
+      fh,
       ...
     }:
     let
-      # copilotCliVersion = "1.0.63";
-      # copilotCliOverlay = _: prev: {
-      #   github-copilot-cli = prev.github-copilot-cli.overrideAttrs (old: {
-      #     version = copilotCliVersion;
-      #     src = prev.fetchurl {
-      #       url = "https://github.com/github/copilot-cli/releases/download/v${copilotCliVersion}/github-copilot-${copilotCliVersion}.tgz";
-      #       hash = "sha256-0K+uVsaG9cndsqRhxIV8K399WsLjvVZAgbLreJdmJbs=";
-      #     };
-      #     preFixup = (old.preFixup or "") + ''
-      #       rm -rf \
-      #         "$out"/lib/github-copilot-cli/prebuilds/linuxmusl-arm64 \
-      #         "$out"/lib/github-copilot-cli/prebuilds/linuxmusl-x64
-      #     '';
-      #   });
-      # };
+      system = "x86_64-linux";
       overlays = [
+        (final: prev: {
+          github-copilot-cli = prev.github-copilot-cli.overrideAttrs (old: rec {
+            version = "1.0.73";
+            src = prev.fetchurl {
+              url = "https://github.com/github/copilot-cli/releases/download/v${version}/copilot-linux-x64.tar.gz";
+              hash = "sha256:8f9bb5f7e364c267265d1e24ac2aea69ed559ddb956719c6db12a353de6c5970";
+            };
+            sourceRoot = ".";
+            installPhase = ''
+              runHook preInstall
+              install -Dm755 copilot "$out/bin/copilot"
+              runHook postInstall
+            '';
+            postInstall = "";
+          });
+          nirimap = prev.stdenvNoCC.mkDerivation rec {
+            pname = "nirimap";
+            version = "0.2.0";
+
+            src = prev.fetchurl {
+              url = "https://github.com/alexandergknoll/nirimap/releases/download/v${version}/nirimap-v${version}-x86_64-linux.tar.gz";
+              hash = "sha256-YDflubbAGgrbCzzUgpTA8GnBIZBImI3XZzzpv2y7Z4g=";
+            };
+
+            sourceRoot = ".";
+            installPhase = ''
+              runHook preInstall
+              install -Dm755 nirimap "$out/bin/nirimap"
+              runHook postInstall
+            '';
+
+            meta = {
+              description = "Generate a visual map of a Niri workspace";
+              homepage = "https://github.com/alexandergknoll/nirimap";
+              license = prev.lib.licenses.mit;
+              platforms = [ "x86_64-linux" ];
+              mainProgram = "nirimap";
+            };
+          };
+        })
         inputs.jj-starship.overlays.default
         inputs.nuenv.overlays.default
-        # copilotCliOverlay
       ];
+      pkgs = import nixpkgs {
+        inherit system;
+        inherit overlays;
+        config.allowUnfree = true;
+      };
+      lib = nixpkgs.lib;
+
+      mkNixos =
+        modules:
+        lib.nixosSystem {
+          inherit system modules;
+          specialArgs = { inherit inputs; };
+        };
+
+      nixosConfigurations = {
+        asus = mkNixos [
+          determinate.nixosModules.default
+          inputs.noctalia-greeter.nixosModules.default
+          # inputs.ragenix.nixosModules.default
+          ./configuration.nix
+          {
+            environment.systemPackages = [ fh.packages.x86_64-linux.default ];
+          }
+        ];
+      };
+
+      homeConfigurations.schlich = home-manager.lib.homeManagerConfiguration {
+        inherit pkgs;
+        modules = [
+          agent-skills.homeManagerModules.default
+          ./home.nix
+        ];
+        extraSpecialArgs = {
+          inherit inputs;
+          username = "schlich";
+          homeDirectory = "/home/schlich";
+          stateVersion = "26.05";
+        };
+      };
     in
-    flake-parts.lib.mkFlake { inherit inputs; } {
-      imports = [
-        # Project-local development shells. Comment this import to disable them.
-        ./modules/reedline-dev.nix
-      ];
+    {
+      inherit nixosConfigurations homeConfigurations;
 
-      systems = [ "x86_64-linux" ];
+      packages.${system}.default = homeConfigurations.schlich.activationPackage;
 
-      perSystem =
-        { pkgs, system, ... }:
-        {
-          _module.args.pkgs = import nixpkgs {
-            inherit system;
-            inherit overlays;
-            config.allowUnfree = true;
-          };
+      formatter.${system} = pkgs.nixfmt-tree;
 
-          formatter = pkgs.nixfmt-tree;
-        };
-
-      flake =
-        let
-          mkNixos =
-            modules:
-            nixpkgs.lib.nixosSystem {
-              system = "x86_64-linux";
-              specialArgs = { inherit inputs; };
-              inherit modules;
-            };
-
-          mkHome =
+      checks.${system} = {
+        home-manager-nixos = homeConfigurations.schlich.activationPackage;
+        niri-config =
+          pkgs.runCommand "niri-config-check"
             {
-              username,
-              homeDirectory,
-              stateVersion,
-            }:
-            home-manager.lib.homeManagerConfiguration {
-              inherit pkgs;
-              modules = [
-                ./home.nix
-                # ./noctalia.nix
-                # inputs.niri.homeModules.niri
-              ];
-              extraSpecialArgs = {
-                inherit
-                  inputs
-                  username
-                  homeDirectory
-                  stateVersion
-                  ;
-                # nixgl = inputs.nixgl;
-              };
-            };
-
-          pkgs = import nixpkgs {
-            system = "x86_64-linux";
-            inherit overlays;
-            config.allowUnfree = true;
-          };
-        in
-        let
-          nixosConfigurations = {
-            nixos = mkNixos [
-              inputs.nixos-wsl.nixosModules.wsl
-              inputs.determinate.nixosModules.default
-              inputs.ragenix.nixosModules.default
-              ./configuration.nix
-            ];
-
-            # desktop = mkNixos [
-            #   inputs.ragenix.nixosModules.default
-            #   ./system/hardware-configuration.nix
-            #   ./system/configuration.nix
-            #   (
-            #     { pkgs, ... }:
-            #     {
-            #       environment.systemPackages = [
-            #         inputs.fh.packages.${pkgs.stdenv.hostPlatform.system}.default
-            #         inputs.ragenix.packages.${pkgs.stdenv.hostPlatform.system}.default
-            #       ];
-            #     }
-            #   )
-            # ];
-          };
-
-          homeConfigurations = {
-            nixos = mkHome {
-              username = "nixos";
-              homeDirectory = "/home/nixos";
-              stateVersion = "26.05";
-            };
-          };
-        in
-        {
-          inherit nixosConfigurations homeConfigurations;
-
-          checks.x86_64-linux = {
-            home-manager-nixos = homeConfigurations.nixos.activationPackage;
-            nixos-wsl = nixosConfigurations.nixos.config.system.build.toplevel;
-            # nixos-desktop = nixosConfigurations.desktop.config.system.build.toplevel;
-          };
-        };
+              nativeBuildInputs = [ pkgs.niri ];
+            }
+            ''
+              niri validate --config ${./niri/config.kdl}
+              touch "$out"
+            '';
+        zellij-config =
+          pkgs.runCommand "zellij-config-check"
+            {
+              nativeBuildInputs = [ pkgs.zellij ];
+            }
+            ''
+              config_dir="$TMPDIR/zellij"
+              mkdir -p "$config_dir/layouts"
+              cp ${./zellij/config.kdl} "$config_dir/config.kdl"
+              cp ${./zellij/layouts/default.kdl} "$config_dir/layouts/default.kdl"
+              ZELLIJ_CONFIG_DIR="$config_dir" zellij setup --check
+              touch "$out"
+            '';
+        whitespace =
+          pkgs.runCommand "whitespace-check"
+            {
+              nativeBuildInputs = [ pkgs.git ];
+              src = ./.;
+            }
+            ''
+              set +e
+              git --no-pager diff --check --no-index --no-patch /dev/null "$src"
+              status=$?
+              set -e
+              test "$status" -eq 1
+              touch "$out"
+            '';
+      };
     };
+  nixConfig = {
+    extra-substituters = [
+      "https://noctalia.cachix.org"
+      "https://yazelix.cachix.org"
+    ];
+    extra-trusted-public-keys = [
+      "noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4="
+      "yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM="
+    ];
+    trusted-users = [ "schlich" ];
+  };
 }

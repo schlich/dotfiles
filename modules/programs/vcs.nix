@@ -1,6 +1,19 @@
-{ ... }:
+{ pkgs, ... }:
 
 {
+  programs.git = {
+    enable = true;
+    settings.user = {
+      email = "ty.schlich@gmail.com";
+      name = "Ty Schlichenmeyer";
+    };
+  };
+  programs.gpg.enable = true;
+  programs.lazygit = {
+    enable = true;
+    enableNushellIntegration = true;
+    settings.os.editPreset = "helix";
+  };
   programs.jjui.enable = true;
 
   programs.jujutsu = {
@@ -16,6 +29,18 @@
         "$left"
         "$right"
       ];
+      git.push = "origin";
     };
   };
+
+  home.packages = [
+    (pkgs.nuenv.writeScriptBin {
+      name = "jj-describe";
+      script = builtins.readFile ../../jj/describe.nu;
+    })
+    (pkgs.nuenv.writeScriptBin {
+      name = "jj-flake";
+      script = builtins.readFile ../../jj/flake.nu;
+    })
+  ];
 }
