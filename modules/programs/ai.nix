@@ -109,6 +109,8 @@
   programs.github-copilot-cli = {
     enable = true;
     enableMcpIntegration = true;
+    agents.trunk-triage = ../../copilot/agents/trunk-triage.md;
+    skills.trunk-based-jj = ../../copilot/skills/trunk-based-jj;
   };
 
   programs.agent-skills = {
