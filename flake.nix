@@ -51,10 +51,6 @@
       url = "github:meta-quest/agentic-tools";
       flake = false;
     };
-    yazelix = {
-      url = "github:luccahuguet/yazelix/stable";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
   outputs =
@@ -203,11 +199,9 @@
   nixConfig = {
     extra-substituters = [
       "https://noctalia.cachix.org"
-      "https://yazelix.cachix.org"
     ];
     extra-trusted-public-keys = [
       "noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4="
-      "yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM="
     ];
     trusted-users = [ "schlich" ];
   };
