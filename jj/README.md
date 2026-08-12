@@ -31,7 +31,8 @@ untouched.
 ## Trunk workflow
 
 `jj-trunk` is the general JJ-first publication flow. It installs from this flake
-with `prek` and `gh-stack`; Home Manager installs the Prek hook for this checkout.
+with `prek` and `gh-stack`. Prek runs explicitly during validation because JJ
+changes do not invoke Git hooks.
 
 ```nu
 # Inspect the local JJ change and open PRs.

@@ -33,8 +33,8 @@
 
 ## Local gates and pull requests
 
-- `prek` is installed declaratively and its hook is installed by Home Manager.
-  Run `prek run --all-files` or `jj-trunk validate` before publication.
+- `prek` is installed declaratively. Run `prek run --all-files` or
+  `jj-trunk validate` before publication; JJ changes do not invoke Git hooks.
 - Use a concise JJ change description. Publish a validated ordinary change with
   `jj-trunk publish --auto-merge`; it creates or updates a PR and requests
   GitHub auto-merge against the current head SHA, then starts an empty
