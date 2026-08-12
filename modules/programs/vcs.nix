@@ -1,6 +1,4 @@
 {
-  config,
-  lib,
   pkgs,
   ...
 }:
@@ -53,11 +51,4 @@
       script = builtins.readFile ../../jj/trunk.nu;
     })
   ];
-
-  home.activation.installPrek = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    repo=${config.home.homeDirectory}/dotfiles
-    if [ -f "$repo/prek.toml" ] && [ -d "$repo/.git" ]; then
-      ${pkgs.prek}/bin/prek -C "$repo" install -f
-    fi
-  '';
 }
