@@ -36,8 +36,8 @@ def sync-main [] {
     }
 
     run-command "fetching origin" { ^jj git fetch --remote origin } | ignore
-    run-command "updating the main bookmark" {
-        ^jj bookmark set main -r main@origin --allow-backwards
+    run-command "advancing the main bookmark" {
+        ^jj bookmark move main --to main@origin
     } | ignore
     run-command "rebasing the working copy" { ^jj rebase -r @ -o main@origin } | ignore
 }
@@ -88,7 +88,7 @@ def github-reconcile [apply: bool] {
     print $"Branch protection: ($rule)"
     if not $apply {
         print $"Required checks: ($required_checks | str join ', ')"
-        print "Dry run only. Re-run with `jj-trunk github reconcile --apply` to enable auto-merge, branch deletion, and main protection."
+        print "Dry run only. Re-run with `jj-ci github reconcile --apply` to enable auto-merge, branch deletion, and main protection."
         return
     }
 
@@ -126,7 +126,7 @@ def stack-merge [target: string] {
 
 # Inspect, validate, publish, and reconcile JJ changes with GitHub trunk policy.
 def main [] {
-    print "Use `jj-trunk status`, `jj-trunk sync`, `jj-trunk validate`, `jj-trunk publish`, `jj-trunk github reconcile`, or `jj-trunk stack-merge`."
+    print "Use `jj-ci status`, `jj-ci sync`, `jj-ci validate`, `jj-ci publish`, `jj-ci github reconcile`, or `jj-ci stack-merge`."
 }
 
 # Show the current JJ change and open pull requests targeting main.
@@ -135,7 +135,7 @@ def "main status" [] {
     ^gh pr list --state open --base main --json number,headRefName,mergeStateStatus,mergeable,url
 }
 
-# Fetch origin and align an empty working copy with main@origin.
+# Fetch origin, advance main, and align an empty working copy with main@origin.
 def "main sync" [] {
     sync-main
 }
@@ -166,7 +166,7 @@ def "main publish" [--auto-merge] {
         $pr.stdout | str trim
     } else {
         run-command "creating the pull request" {
-            ^gh pr create --base main --head $branch --title $title --body "## Summary\n\n- $title\n\n## Validation\n\n- `prek run --all-files`"
+            ^gh pr create --base main --head $branch --title $title --body $"## Summary\n\n- ($title)\n\n## Validation\n\n- `prek run --all-files`"
         }
     }
     print $url

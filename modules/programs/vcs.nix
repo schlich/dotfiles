@@ -47,8 +47,8 @@
       script = builtins.readFile ../../jj/flake.nu;
     })
     (pkgs.nuenv.writeScriptBin {
-      name = "jj-trunk";
-      script = builtins.readFile ../../jj/trunk.nu;
+      name = "jj-ci";
+      script = builtins.readFile ../../jj/ci.nu;
     })
   ];
 }

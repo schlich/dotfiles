@@ -30,31 +30,31 @@ untouched.
 
 ## Trunk workflow
 
-`jj-trunk` is the general JJ-first publication flow. It installs from this flake
+`jj-ci` is the general JJ-first publication flow. It installs from this flake
 with `prek` and `gh-stack`. Prek runs explicitly during validation because JJ
 changes do not invoke Git hooks.
 
 ```nu
 # Inspect the local JJ change and open PRs.
-jj-trunk status
+jj-ci status
 
-# Update an empty working copy to origin/main.
-jj-trunk sync
+# Advance main and update an empty working copy to origin/main.
+jj-ci sync
 
 # Run deterministic local formatting and evaluation gates.
-jj-trunk validate
+jj-ci validate
 
 # Push the current described JJ change, create/update its PR, and enable auto-merge.
-jj-trunk publish --auto-merge
+jj-ci publish --auto-merge
 
 # Inspect GitHub settings, then explicitly reconcile safe repository defaults.
-jj-trunk github reconcile
-jj-trunk github reconcile --apply
+jj-ci github reconcile
+jj-ci github reconcile --apply
 ```
 
 For an ad hoc publication from a change based on `main`, use
 `jj git push --change @`. Jujutsu creates and pushes a `trunk/<change-id>`
-bookmark instead of updating `main`; use `jj-trunk publish --auto-merge` when
+bookmark instead of updating `main`; use `jj-ci publish --auto-merge` when
 the matching pull request should be created and queued automatically.
 
 Use JJ for all change, bookmark, rebase, and push operations. Git is for
@@ -71,7 +71,7 @@ bookmarks, link the existing PRs with `gh stack link`, inspect with
 `gh stack view --json`, and submit the fully green stack with:
 
 ```nu
-jj-trunk stack-merge <stack-or-pr>
+jj-ci stack-merge <stack-or-pr>
 ```
 
 Do not use `gh stack init`, `add`, `submit`, `sync`, or `rebase`: those commands

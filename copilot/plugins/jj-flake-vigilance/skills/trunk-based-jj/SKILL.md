@@ -10,7 +10,7 @@ resolution. Use Git only for read-only inspection. Use GitHub for PRs, required
 checks, auto-merge, merge queues, and stacked-PR metadata.
 
 Run `jj status`, `jj diff`, and `jj log` first. From a described conflict-free
-change, run `jj-trunk validate`, then `jj-trunk publish --auto-merge`.
+change, run `jj-ci validate`, then `jj-ci publish --auto-merge`.
 Publication starts an empty child changeset, so later edits do not rewrite the
 pushed revision. Explicitly return to the published changeset only to update
 its PR intentionally.
@@ -20,7 +20,7 @@ link existing PRs using `gh stack link`, inspect only with `gh stack view --json
 and after every current head is green run:
 
 ```nu
-jj-trunk stack-merge <stack-or-pr>
+jj-ci stack-merge <stack-or-pr>
 ```
 
 Never use `gh stack init`, `add`, `submit`, `sync`, or `rebase`; those mutate
