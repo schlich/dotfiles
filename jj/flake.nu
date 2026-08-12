@@ -41,6 +41,11 @@ def sync-main [] {
     }
 }
 
+def start-follow-up-change [] {
+    run-command "starting a follow-up change" { ^jj new @ } | ignore
+    print "Started a fresh follow-up change. Subsequent edits will not rewrite the published revision."
+}
+
 def publish-change [merge: bool] {
     ensure-flake-change
 
@@ -89,6 +94,8 @@ def publish-change [merge: bool] {
         } | ignore
         sync-main
         run-command "starting a fresh change" { ^jj new main@origin } | ignore
+    } else {
+        start-follow-up-change
     }
 }
 

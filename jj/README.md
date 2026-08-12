@@ -21,6 +21,8 @@ The command always starts from `main@origin`, requires an empty working-copy
 change, and accepts only `flake.lock` as update output. A failed update or check
 stays in the current JJ change for inspection. Use `jj undo` to reverse the last
 repository operation or `jj abandon @` to discard a failed update.
+After a non-merging `jj-flake publish`, the command starts an empty child
+changeset so later edits do not rewrite the pushed update.
 
 `jj-flake sync` fetches `origin`, aligns the local `main` bookmark with
 `main@origin`, and rebases an empty working-copy change. It leaves non-empty work
@@ -52,6 +54,11 @@ jj-trunk github reconcile --apply
 Use JJ for all change, bookmark, rebase, and push operations. Git is for
 read-only interoperability only. GitHub owns required checks, merge queues, and
 delivery to `main`.
+
+Publishing finishes the current changeset and starts an empty child changeset
+for follow-up work. Later edits therefore do not rewrite the pushed revision.
+To intentionally update an already published PR, explicitly return to that
+changeset before publishing it again.
 
 For an explicitly planned dependency stack, create and push the ordered JJ
 bookmarks, link the existing PRs with `gh stack link`, inspect with

@@ -27,8 +27,7 @@
       flake = false;
     };
     jj-starship = {
-      url = "gitlab:lanastara_foss/starship-jj";
-      inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:dmmulroy/jj-starship";
     };
     niri = {
       url = "github:sodiboo/niri-flake";
@@ -61,6 +60,7 @@
       anthropic-skills,
       nixpkgs,
       fh,
+      jj-starship,
       ...
     }:
     let
@@ -106,7 +106,7 @@
             };
           };
         })
-        inputs.jj-starship.overlays.default
+        jj-starship.overlays.default
         inputs.nuenv.overlays.default
       ];
       pkgs = import nixpkgs {
@@ -115,6 +115,7 @@
         config.allowUnfree = true;
       };
       lib = nixpkgs.lib;
+      profiles = import ./profiles;
 
       mkNixos =
         modules:
@@ -130,24 +131,61 @@
           # inputs.ragenix.nixosModules.default
           ./configuration.nix
           {
-            environment.systemPackages = [ fh.packages.x86_64-linux.default ];
+            environment.systemPackages = [
+              fh.packages.x86_64-linux.default
+              pkgs.jj-starship
+            ];
           }
         ];
       };
 
-      homeConfigurations.schlich = home-manager.lib.homeManagerConfiguration {
-        inherit pkgs;
-        modules = [
-          agent-skills.homeManagerModules.default
-          ./home.nix
-        ];
-        extraSpecialArgs = {
-          inherit inputs;
-          username = "schlich";
-          homeDirectory = "/home/schlich";
-          stateVersion = "26.05";
+      mkHome =
+        profileModule:
+        home-manager.lib.homeManagerConfiguration {
+          inherit pkgs;
+          modules = [
+            ./home.nix
+            profileModule
+          ];
+          extraSpecialArgs = {
+            inherit inputs;
+            username = "schlich";
+            homeDirectory = "/home/schlich";
+            stateVersion = "26.05";
+          };
         };
+
+      namedHomeConfigurations = lib.mapAttrs' (
+        name: profileModule: lib.nameValuePair "schlich-${name}" (mkHome profileModule)
+      ) profiles;
+
+      homeConfigurations = namedHomeConfigurations // {
+        schlich = namedHomeConfigurations.schlich-full;
       };
+
+      profileChecks = lib.mapAttrs' (
+        name: home:
+        lib.nameValuePair "home-${name}" (
+          pkgs.linkFarm "home-${name}-check" (
+            [
+              {
+                name = "activation";
+                path = home.activationPackage;
+              }
+            ]
+            ++ lib.mapAttrsToList (checkName: path: {
+              name = checkName;
+              inherit path;
+            }) home.config.dotfiles.tooling.checks
+          )
+        )
+      ) namedHomeConfigurations;
+
+      allProfileChecks = pkgs.linkFarm "home-profile-checks" (
+        lib.mapAttrsToList (name: path: {
+          inherit name path;
+        }) profileChecks
+      );
     in
     {
       inherit nixosConfigurations homeConfigurations;
@@ -156,8 +194,9 @@
 
       formatter.${system} = pkgs.nixfmt-tree;
 
-      checks.${system} = {
+      checks.${system} = profileChecks // {
         home-manager-nixos = homeConfigurations.schlich.activationPackage;
+        home-profiles = allProfileChecks;
         niri-config =
           pkgs.runCommand "niri-config-check"
             {

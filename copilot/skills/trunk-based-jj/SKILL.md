@@ -1,6 +1,6 @@
 ---
 name: trunk-based-jj
-description: Use for JJ-first trunk development in schlich/dotfiles: inspect or sync main, validate with Prek, publish a JJ change as a GitHub PR, monitor CI, use GitHub merge queues, or inspect JJ-managed stacked PRs.
+description: "Use for JJ-first trunk development in schlich/dotfiles: inspect or sync main, validate with Prek, publish a JJ change as a GitHub PR, monitor CI, use GitHub merge queues, or inspect JJ-managed stacked PRs."
 ---
 
 # JJ-first trunk development
@@ -27,6 +27,10 @@ intact. Use `jj-trunk sync` only from an empty working copy and run
    pass against the current head SHA.
 4. Use `jj-trunk github reconcile` to inspect GitHub policy. Use `--apply` only
    when explicitly reconciling the flake-declared repository defaults.
+
+Successful publication starts an empty child changeset. Make later edits there
+so they do not rewrite the pushed revision; explicitly return to the published
+changeset only when intentionally updating its PR.
 
 ## Stacked PRs
 

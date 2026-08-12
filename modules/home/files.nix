@@ -17,7 +17,7 @@
         ${pkgs.niri}/bin/niri completions nushell > "$out"
       '';
   xdg.configFile."niri/config.kdl".source = ../../niri/config.kdl;
-  xdg.configFile."niri/launch-kitty.nu".source = ../../niri/launch-kitty.nu;
+  xdg.configFile."niri/launch-terminal.nu".source = ../../niri/launch-terminal.nu;
   xdg.configFile."autostart/superproductivity.desktop".text = ''
     [Desktop Entry]
     Type=Application
