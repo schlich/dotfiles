@@ -26,17 +26,18 @@
 - Before risky history operations (`jj rebase`, `jj squash`, `jj abandon`,
   `jj split`, or `jj op restore`), create a checkpoint with
   `copilot/skills/jj/scripts/jj-checkpoint`.
-- Use `jj-trunk sync` only from an empty working copy. It fetches `origin` and
-  aligns the local `main` bookmark with `main@origin`.
-- Keep lock-file-only updates in `jj-flake`; use `jj-trunk` for general trunk
+- Use `jj-ci sync` only from an empty working copy. It fetches `origin`,
+  advances the local `main` bookmark to `main@origin`, and rebases the working
+  copy onto it.
+- Keep lock-file-only updates in `jj-flake`; use `jj-ci` for general trunk
   work.
 
 ## Local gates and pull requests
 
 - `prek` is installed declaratively. Run `prek run --all-files` or
-  `jj-trunk validate` before publication; JJ changes do not invoke Git hooks.
+  `jj-ci validate` before publication; JJ changes do not invoke Git hooks.
 - Use a concise JJ change description. Publish a validated ordinary change with
-  `jj-trunk publish --auto-merge`; it creates or updates a PR and requests
+  `jj-ci publish --auto-merge`; it creates or updates a PR and requests
   GitHub auto-merge against the current head SHA, then starts an empty
   follow-up changeset so later edits do not rewrite the pushed revision.
 - GitHub owns PR state, required checks, and delivery to `main`. Do not bypass
@@ -44,8 +45,8 @@
 - The required `nix-ci` checks evaluate Home Manager and build NixOS, Niri,
   Zellij, and whitespace checks. `main` uses strict required checks and linear
   history.
-- `jj-trunk github reconcile` reports the declared GitHub policy. Use
-  `jj-trunk github reconcile --apply` only when intentionally reconciling
+- `jj-ci github reconcile` reports the declared GitHub policy. Use
+  `jj-ci github reconcile --apply` only when intentionally reconciling
   auto-merge, branch deletion, and `main` protection.
 
 ## Stacked pull requests
@@ -56,7 +57,7 @@
   PRs with `gh stack link` and inspect them non-interactively with
   `gh stack view --json`.
 - Once every layer is green at its current head, submit the stack with
-  `jj-trunk stack-merge <stack-or-pr>`. GitHub handles queue-compatible delivery
+  `jj-ci stack-merge <stack-or-pr>`. GitHub handles queue-compatible delivery
   to `main`.
 - Do not run `gh stack init`, `add`, `submit`, `sync`, or `rebase`; they mutate
   Git-managed branches and violate the JJ boundary.

@@ -16,16 +16,16 @@ Use this skill for repository changes that should land through `main`.
 | GitHub | PRs, required checks, auto-merge, merge queues, stacked-PR metadata | Local history surgery |
 
 Run `jj status`, `jj diff`, and `jj log` before work. Keep unrelated changes
-intact. Use `jj-trunk sync` only from an empty working copy and run
-`jj-trunk validate` before publication.
+intact. Use `jj-ci sync` only from an empty working copy and run
+`jj-ci validate` before publication.
 
 ## Publication
 
 1. Describe and locally validate the current JJ change.
-2. Run `jj-trunk publish --auto-merge`.
+2. Run `jj-ci publish --auto-merge`.
 3. Let GitHub merge a same-repository non-draft PR only after required checks
    pass against the current head SHA.
-4. Use `jj-trunk github reconcile` to inspect GitHub policy. Use `--apply` only
+4. Use `jj-ci github reconcile` to inspect GitHub policy. Use `--apply` only
    when explicitly reconciling the flake-declared repository defaults.
 
 Successful publication starts an empty child changeset. Make later edits there
@@ -45,7 +45,7 @@ gh stack view --json
 After every layer's required checks is green at its current head, use:
 
 ```nu
-jj-trunk stack-merge <stack-or-pr>
+jj-ci stack-merge <stack-or-pr>
 ```
 
 This submits the stack to GitHub's merge queue. Never use `gh stack init`, `add`,
