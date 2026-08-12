@@ -1,7 +1,12 @@
-{ pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
-  programs.kitty = {
+  programs.kitty = lib.mkIf (config.dotfiles.primary.terminal == "kitty") {
     enable = true;
     enableGitIntegration = true;
     font.name = "Monaspace Krypton";
@@ -12,7 +17,7 @@
     ^${pkgs.kitty}/bin/kitty ...$class_args --directory $directory ...$args
   '';
 
-  programs.nushell.extraConfig = ''
+  programs.nushell.extraConfig = lib.mkIf (config.dotfiles.primary.terminal == "kitty") ''
     $env.config.use_kitty_protocol = true
   '';
 }

@@ -1,7 +1,12 @@
-{ pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
-  programs.rio.enable = true;
+  programs.rio.enable = config.dotfiles.primary.terminal == "rio";
 
   dotfiles.tooling.terminals.rio.launcher = ''
     let class_args = if ($class | is-empty) { [] } else { ["--app-id" $class] }
