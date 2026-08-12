@@ -1,9 +1,15 @@
-{ pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
-  programs.ghostty = {
+  programs.ghostty = lib.mkIf (config.dotfiles.primary.terminal == "ghostty") {
     enable = true;
     installBatSyntax = true;
+    settings.font-family = "Monaspace Krypton";
   };
 
   dotfiles.tooling.terminals.ghostty.launcher = ''
