@@ -166,6 +166,17 @@
     {
       inherit nixosConfigurations homeConfigurations;
 
+      templates.default = {
+        path = ./templates/default;
+        description = "Nushell and Jujutsu project starter";
+        welcomeText = ''
+          # Project initialized
+
+          Run `direnv allow` or `nix develop`, then replace the placeholder
+          project metadata and add the language-specific tools you need.
+        '';
+      };
+
       packages.${system}.default = homeConfigurations.schlich.activationPackage;
 
       formatter.${system} = pkgs.nixfmt-tree;

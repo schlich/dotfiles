@@ -7,6 +7,9 @@
 // Find the full list of options on the wiki:
 // https://github.com/YaLTeR/niri/wiki/Configuration:-Input
 input {
+    // Re-pressing a named workspace shortcut returns to the prior workspace.
+    workspace-auto-back-and-forth
+
     keyboard {
         xkb {
             // You can set rules, model, layout, variant and options.
@@ -300,10 +303,15 @@ window-rule {
   open-on-workspace "config"
 }
 
-// Keep the initial Zellij session and future browser windows in predictable places.
+// Keep the primary work tools in predictable places.
 window-rule {
   match app-id=r#"^niri-terminal$"#
   open-on-workspace "terminal"
+}
+
+window-rule {
+  match app-id=r#"^google-chrome$"#
+  open-on-workspace "web"
 }
 
 // Floating Noctalia settings window.
@@ -494,6 +502,14 @@ binds {
     // Mod+TouchpadScrollDown { spawn "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "0.02+"; }
     // Mod+TouchpadScrollUp   { spawn "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "0.02-"; }
 
+    // The primary named workspaces have stable direct shortcuts.
+    Mod+1 { focus-workspace "terminal"; }
+    Mod+2 { focus-workspace "web"; }
+    Mod+0 { focus-workspace "config"; }
+    Mod+Shift+1 { move-column-to-workspace "terminal"; }
+    Mod+Shift+2 { move-column-to-workspace "web"; }
+    Mod+Shift+0 { move-column-to-workspace "config"; }
+
     // You can refer to workspaces by index. However, keep in mind that
     // niri is a dynamic workspace system, so these commands are kind of
     // "best effort". Trying to refer to a workspace index bigger than
@@ -502,8 +518,6 @@ binds {
     //
     // For example, with 2 workspaces + 1 empty, indices 3, 4, 5 and so on
     // will all refer to the 3rd workspace.
-    Mod+1 { focus-workspace 1; }
-    Mod+2 { focus-workspace 2; }
     Mod+3 { focus-workspace 3; }
     Mod+4 { focus-workspace 4; }
     Mod+5 { focus-workspace 5; }
@@ -511,9 +525,6 @@ binds {
     Mod+7 { focus-workspace 7; }
     Mod+8 { focus-workspace 8; }
     Mod+9 { focus-workspace 9; }
-    Mod+0 { focus-workspace "config"; }
-    Mod+Shift+1 { move-column-to-workspace 1; }
-    Mod+Shift+2 { move-column-to-workspace 2; }
     Mod+Shift+3 { move-column-to-workspace 3; }
     Mod+Shift+4 { move-column-to-workspace 4; }
     Mod+Shift+5 { move-column-to-workspace 5; }
@@ -521,7 +532,6 @@ binds {
     Mod+Shift+7 { move-column-to-workspace 7; }
     Mod+Shift+8 { move-column-to-workspace 8; }
     Mod+Shift+9 { move-column-to-workspace 9; }
-    Mod+Shift+0 { move-column-to-workspace "config"; }
 
     // Alternatively, there are commands to move just a single window:
     // Mod+Ctrl+1 { move-window-to-workspace 1; }
