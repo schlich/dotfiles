@@ -44,7 +44,7 @@ jj-ci sync
 # Run deterministic local formatting and evaluation gates.
 jj-ci validate
 
-# Push the current described JJ change, create/update its PR, and enable auto-merge.
+# Describe the current JJ change if needed, create/update its PR, and enable auto-merge.
 jj-ci publish --auto-merge
 
 # Inspect GitHub settings, then explicitly reconcile safe repository defaults.
@@ -65,6 +65,10 @@ Publishing finishes the current changeset and starts an empty child changeset
 for follow-up work. Later edits therefore do not rewrite the pushed revision.
 To intentionally update an already published PR, explicitly return to that
 changeset before publishing it again.
+
+`jj-ci validate` and `jj-ci publish` invoke `jj-describe` automatically when a
+non-empty current change has no description. The command stops if the helper
+does not add a subject.
 
 For an explicitly planned dependency stack, create and push the ordered JJ
 bookmarks, link the existing PRs with `gh stack link`, inspect with
