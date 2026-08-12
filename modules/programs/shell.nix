@@ -36,6 +36,11 @@
     enable = true;
     enableNushellIntegration = true;
     settings = {
+      custom.jj = {
+        when = "jj-starship detect";
+        shell = [ "jj-starship" ];
+        format = "$output";
+      };
       gcloud.disabled = true;
       git_branch.disabled = true;
       git_commit.disabled = true;
