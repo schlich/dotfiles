@@ -115,8 +115,6 @@
         config.allowUnfree = true;
       };
       lib = nixpkgs.lib;
-      profiles = import ./profiles;
-
       mkNixos =
         modules:
         lib.nixosSystem {
@@ -139,52 +137,30 @@
         ];
       };
 
-      mkHome =
-        profileModule:
-        home-manager.lib.homeManagerConfiguration {
-          inherit pkgs;
-          modules = [
-            ./home.nix
-            profileModule
-          ];
-          extraSpecialArgs = {
-            inherit inputs;
-            username = "schlich";
-            homeDirectory = "/home/schlich";
-            stateVersion = "26.05";
-          };
+      mkHome = home-manager.lib.homeManagerConfiguration {
+        inherit pkgs;
+        modules = [ ./home.nix ];
+        extraSpecialArgs = {
+          inherit inputs;
+          username = "schlich";
+          homeDirectory = "/home/schlich";
+          stateVersion = "26.05";
         };
-
-      namedHomeConfigurations = lib.mapAttrs' (
-        name: profileModule: lib.nameValuePair "schlich-${name}" (mkHome profileModule)
-      ) profiles;
-
-      homeConfigurations = namedHomeConfigurations // {
-        schlich = namedHomeConfigurations.schlich-full;
       };
 
-      profileChecks = lib.mapAttrs' (
-        name: home:
-        lib.nameValuePair "home-${name}" (
-          pkgs.linkFarm "home-${name}-check" (
-            [
-              {
-                name = "activation";
-                path = home.activationPackage;
-              }
-            ]
-            ++ lib.mapAttrsToList (checkName: path: {
-              name = checkName;
-              inherit path;
-            }) home.config.dotfiles.tooling.checks
-          )
-        )
-      ) namedHomeConfigurations;
+      homeConfigurations.schlich = mkHome;
 
-      allProfileChecks = pkgs.linkFarm "home-profile-checks" (
-        lib.mapAttrsToList (name: path: {
-          inherit name path;
-        }) profileChecks
+      homeCheck = pkgs.linkFarm "home-manager-check" (
+        [
+          {
+            name = "activation";
+            path = mkHome.activationPackage;
+          }
+        ]
+        ++ lib.mapAttrsToList (checkName: path: {
+          name = checkName;
+          inherit path;
+        }) mkHome.config.dotfiles.tooling.checks
       );
     in
     {
@@ -194,9 +170,8 @@
 
       formatter.${system} = pkgs.nixfmt-tree;
 
-      checks.${system} = profileChecks // {
-        home-manager-nixos = homeConfigurations.schlich.activationPackage;
-        home-profiles = allProfileChecks;
+      checks.${system} = {
+        home-manager-nixos = homeCheck;
         niri-config =
           pkgs.runCommand "niri-config-check"
             {
