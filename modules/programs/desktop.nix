@@ -107,9 +107,18 @@
         widget = {
           taskbar.show_window_title = true;
           workspaces = {
-            display = "none";
-            style = "focus_hint";
-            pill_scale = 1.15;
+            # Keep the persistent workspace roles visible and distinguish their state.
+            style = "regular";
+            show_labels = true;
+            label_source = "name";
+            max_label_chars = 12;
+            pill_scale = 1.0;
+            active_pill_size = 2.75;
+            inactive_pill_size = 1.15;
+            focused_color = "primary";
+            occupied_color = "secondary";
+            empty_color = "outline";
+            urgent_color = "error";
           };
           active_window = {
             max_length = 72;
