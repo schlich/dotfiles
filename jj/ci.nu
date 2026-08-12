@@ -26,7 +26,12 @@ def require-ready-change [] {
         error make { msg: "The current JJ change is empty." }
     }
     if ((current-change "description.first_line()") | is-empty) {
-        error make { msg: "Describe the current JJ change before publishing." }
+        print "Describing the current JJ change."
+        run-command "describing the current JJ change" { ^jj-describe } | ignore
+
+        if ((current-change "description.first_line()") | is-empty) {
+            error make { msg: "jj-describe did not describe the current JJ change." }
+        }
     }
 }
 
