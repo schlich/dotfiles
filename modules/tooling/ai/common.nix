@@ -12,13 +12,6 @@
         command = "nu";
         args = [ "--mcp" ];
       };
-      jj = {
-        command = "npx";
-        args = [
-          "--yes"
-          "jj-mcp-server"
-        ];
-      };
     }
     // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
       # metavr ships binaries only for macOS and Windows, not Linux.

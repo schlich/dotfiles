@@ -1,5 +1,5 @@
 ---
-name: working-with-jj
+name: jj
 description: Expert guidance for using JJ (Jujutsu) version control system. Use when working with JJ, whatever the subject. Operations, revsets, templates, debugging change evolution, etc. Covers JJ commands, template system, evolog, operations log, and interoperability with git remotes.
 ---
 
@@ -49,7 +49,24 @@ jj rebase -r <rev> -o <dest>          # Rebase single revision onto <dest>
 
 jj file annotate <path>               # Blame: who changed each line
 jj bisect run -- <cmd>                # Binary search for bug-introducing commit
+jj run -r '<revset>' -- <cmd> <args>  # Run a command in a working copy of each selected revision
 ```
+
+## `jj run`
+
+`jj run` checks out each selected revision in an isolated working copy, runs an external command there, and incorporates resulting changes back into the corresponding revisions. It is useful for mechanical, repeatable changes across a revset.
+
+```bash
+jj run -r 'mine()' -- npm run format  # Rewrite each of your changes after formatting
+jj run -r '::@' --root -- cargo fmt   # Run from repository root for every ancestor
+jj run -r 'bookmarks()' -j 4 -- tool  # Process independent revisions in parallel
+jj run -r 'mine()' --ignore-changes -- check-command  # Inspect without rewriting revisions
+```
+
+- Use `--ignore-changes` for read-only checks; otherwise file changes rewrite each processed revision.
+- Use `--clean` when the command requires a clean working directory.
+- Use `--ignore-errors` only when independent failures should not stop processing.
+- Prefer a narrow, quoted revset and inspect `jj diff -r '<revset>'` before and after a rewriting run.
 
 ## Additional Commands
 
