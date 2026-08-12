@@ -129,20 +129,24 @@ def main [] {
     print "Use `jj-trunk status`, `jj-trunk sync`, `jj-trunk validate`, `jj-trunk publish`, `jj-trunk github reconcile`, or `jj-trunk stack-merge`."
 }
 
+# Show the current JJ change and open pull requests targeting main.
 def "main status" [] {
     ^jj status
     ^gh pr list --state open --base main --json number,headRefName,mergeStateStatus,mergeable,url
 }
 
+# Fetch origin and align an empty working copy with main@origin.
 def "main sync" [] {
     sync-main
 }
 
+# Check that the current change is publishable and run Prek validation.
 def "main validate" [] {
     require-ready-change
     validate-change
 }
 
+# Validate and publish the current change as a pull request.
 def "main publish" [--auto-merge] {
     require-ready-change
     validate-change
@@ -176,10 +180,12 @@ def "main publish" [--auto-merge] {
     start-follow-up-change
 }
 
+# Inspect or apply the repository's declared GitHub policy.
 def "main github reconcile" [--apply] {
     github-reconcile $apply
 }
 
+# Submit a linked, fully green pull request stack for squash merging.
 def "main stack-merge" [target: string] {
     stack-merge $target
 }

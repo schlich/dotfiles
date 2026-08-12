@@ -39,7 +39,7 @@
       custom.jj = {
         when = "jj-starship detect";
         shell = [ "jj-starship" ];
-        format = "$output";
+        format = "$output ";
       };
       gcloud.disabled = true;
       git_branch.disabled = true;
