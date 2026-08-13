@@ -36,6 +36,19 @@ let
     };
   };
 
+  opencodePluginType = types.submodule {
+    options = {
+      source = mkOption {
+        type = types.path;
+        description = "Source file for an OpenCode plugin.";
+      };
+      target = mkOption {
+        type = types.str;
+        description = "Plugin filename in OpenCode's global plugin directory.";
+      };
+    };
+  };
+
   terminal = cfg.tooling.terminals.${cfg.primary.terminal} or null;
   editor = cfg.tooling.editors.${cfg.primary.editor} or null;
   ai = cfg.tooling.ai.${cfg.primary.ai} or null;
@@ -70,6 +83,11 @@ in
       };
       ai = mkOption {
         type = types.attrsOf aiType;
+        default = { };
+        internal = true;
+      };
+      opencodeConfig = mkOption {
+        type = types.attrsOf opencodePluginType;
         default = { };
         internal = true;
       };

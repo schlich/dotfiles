@@ -68,5 +68,9 @@
   status, CI and PR summaries, stack inspection, and formatting-only fixes.
 - Escalate configuration edits, conflicts, failed validation, JJ mutations,
   GitHub writes, and merge decisions to the primary agent.
+- Do not inspect `/nix/store` routinely. Prefer workspace files and Nix MCP
+  package, option, and documentation queries; inspect the store only for an
+  explicit user request, a specific path reported by a failure, or necessary
+  source from an exact pinned flake input.
 - Keep Copilot plugins, skills, hooks, and agent definitions under `copilot/`
   and wire client exposure through `modules/programs/ai.nix`.
