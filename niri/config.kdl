@@ -102,7 +102,7 @@ input {
 
 // Keep the primary contexts available even when they have no windows.
 workspace "terminal"
-workspace "web"
+workspace "vcs"
 workspace "config"
 
 // Settings that influence how windows are positioned and sized.
@@ -309,11 +309,6 @@ window-rule {
   open-on-workspace "terminal"
 }
 
-window-rule {
-  match app-id=r#"^google-chrome$"#
-  open-on-workspace "web"
-}
-
 // Floating Noctalia settings window.
 window-rule {
   match app-id="dev.noctalia.Noctalia"
@@ -504,10 +499,10 @@ binds {
 
     // The primary named workspaces have stable direct shortcuts.
     Mod+1 { focus-workspace "terminal"; }
-    Mod+2 { focus-workspace "web"; }
+    Mod+2 { focus-workspace "vcs"; }
     Mod+0 { focus-workspace "config"; }
     Mod+Shift+1 { move-column-to-workspace "terminal"; }
-    Mod+Shift+2 { move-column-to-workspace "web"; }
+    Mod+Shift+2 { move-column-to-workspace "vcs"; }
     Mod+Shift+0 { move-column-to-workspace "config"; }
 
     // You can refer to workspaces by index. However, keep in mind that
