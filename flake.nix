@@ -26,6 +26,10 @@
       url = "github:github/gh-stack";
       flake = false;
     };
+    grill-me = {
+      url = "github:udecode/plate";
+      flake = false;
+    };
     jj-starship = {
       url = "github:dmmulroy/jj-starship";
     };

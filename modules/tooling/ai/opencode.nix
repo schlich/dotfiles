@@ -35,6 +35,7 @@
     skills = {
       immersive-songwriting-studio = ../../../copilot/skills/immersive-songwriting-studio;
       gh-stack = "${inputs.gh-stack}/skills/gh-stack";
+      grill-me = "${inputs.grill-me}/.agents/skills/grill-me";
       jj = ../../../copilot/skills/jj;
       # trunk-based-jj = ../../../copilot/skills/trunk-based-jj;
       marimo-pair = "${inputs.marimo-pair}/skills/marimo-pair";
