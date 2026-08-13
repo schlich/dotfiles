@@ -360,6 +360,22 @@
         "url": "https://flakehub.com/f/cachix/git-hooks.nix/0.1.941"
       }
     },
+    "grill-me": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786689165,
+        "narHash": "sha256-/optt9ibWJ+F4ru9vN4fhqQNEdFGkEe3zNJLqL1G9OI=",
+        "owner": "udecode",
+        "repo": "plate",
+        "rev": "91f4c0c2af4c2f7e9724d242d2828b3bc0c82246",
+        "type": "github"
+      },
+      "original": {
+        "owner": "udecode",
+        "repo": "plate",
+        "type": "github"
+      }
+    },
     "home-manager": {
       "inputs": {
         "nixpkgs": [
@@ -854,6 +870,7 @@
         "determinate": "determinate",
         "fh": "fh",
         "gh-stack": "gh-stack",
+        "grill-me": "grill-me",
         "home-manager": "home-manager_2",
         "jj-starship": "jj-starship",
         "marimo-pair": "marimo-pair",
