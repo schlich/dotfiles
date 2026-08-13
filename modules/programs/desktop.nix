@@ -74,6 +74,7 @@
               "volume"
               "brightness"
               "battery"
+              "elrondforwin/opencode-go-usage:bar"
             ];
           };
 
@@ -102,6 +103,18 @@
               "session"
             ];
           };
+        };
+
+        plugins = {
+          enabled = [ "elrondforwin/opencode-go-usage" ];
+          source = [
+            {
+              name = "opencode-go-usage";
+              kind = "git";
+              location = "https://github.com/kaivalagi/noctalia-opencode-usage-plugin";
+              enabled = true;
+            }
+          ];
         };
 
         widget = {
