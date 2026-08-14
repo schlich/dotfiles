@@ -6,6 +6,14 @@
   ...
 }:
 
+let
+  agentSource = ../../../copilot/plugins/jj-flake-vigilance/agents;
+  adaptAgentTools =
+    replacement: file:
+    lib.concatMapStringsSep "\n" (line: if lib.hasPrefix "tools:" line then replacement else line) (
+      lib.splitString "\n" (builtins.readFile file)
+    );
+in
 {
   imports = [ ./common.nix ];
 
@@ -48,7 +56,12 @@
       hz-vr-debug = "${inputs.meta-quest-agentic-tools}/skills/hz-vr-debug";
       metavr-cli = "${inputs.meta-quest-agentic-tools}/skills/metavr-cli";
     };
-    agents = ../../../copilot/plugins/jj-flake-vigilance/agents;
+    # Copilot agents declare tools as a list, while OpenCode expects a boolean
+    # map. Adapt only the copies installed in OpenCode's config.
+    agents = {
+      project-specialist = adaptAgentTools "" "${agentSource}/project-specialist.agent.md";
+      trunk-triage = adaptAgentTools "tools: { bash: false, edit: false, write: false, patch: false, task: false }" "${agentSource}/trunk-triage.agent.md";
+    };
     settings = {
       command.init-repo = {
         description = "Initialize the current directory as a Nix, Nushell, and Jujutsu project.";
