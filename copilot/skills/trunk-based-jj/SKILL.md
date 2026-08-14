@@ -1,6 +1,6 @@
 ---
 name: trunk-based-jj
-description: "Use for JJ-first trunk development in schlich/dotfiles: inspect or sync main, validate with Prek, publish a JJ change as a GitHub PR, monitor CI, use GitHub merge queues, or inspect JJ-managed stacked PRs."
+description: "Use for JJ-first trunk development and Nix flake changes in schlich/dotfiles: inspect or sync main, edit NixOS or Home Manager configuration, validate with Prek and Nix, publish a GitHub PR, monitor CI, use merge queues, or inspect JJ-managed stacks."
 ---
 
 # JJ-first trunk development
@@ -18,6 +18,27 @@ Use this skill for repository changes that should land through `main`.
 Run `jj status`, `jj diff`, and `jj log` before work. Keep unrelated changes
 intact. Use `jj-ci sync` only from an empty working copy and run
 `jj-ci validate` before publication.
+
+## Nix flake changes
+
+Preserve the repository's modular flake structure unless the user explicitly
+requests an architecture migration. Read `flake.nix`, the affected module, and
+nearby conventions before editing. Do not introduce the Dendritic Pattern as
+part of an unrelated change; adopting it requires deliberate top-level options,
+automatic module imports, and removal of cross-layer `specialArgs` plumbing.
+
+Query current packages, options, flakes, and cache information through the Nix
+MCP tools rather than relying on remembered names or versions. Keep input and
+lock-file changes intentional, format Nix edits with `nix fmt`, and run the
+smallest relevant build:
+
+```nu
+nix build .#homeConfigurations.schlich.activationPackage
+nix build .#nixosConfigurations.asus.config.system.build.toplevel
+```
+
+Use the Home Manager build for home-level changes and the NixOS build for
+system changes. Do not activate or switch a configuration unless requested.
 
 ## Publication
 

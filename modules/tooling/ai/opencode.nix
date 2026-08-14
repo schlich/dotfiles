@@ -37,7 +37,7 @@
       gh-stack = "${inputs.gh-stack}/skills/gh-stack";
       grill-me = "${inputs.grill-me}/.agents/skills/grill-me";
       jj = ../../../copilot/skills/jj;
-      # trunk-based-jj = ../../../copilot/skills/trunk-based-jj;
+      trunk-based-jj = ../../../copilot/skills/trunk-based-jj;
       marimo-pair = "${inputs.marimo-pair}/skills/marimo-pair";
       nu = ../../../copilot/skills/nushell;
       hz-immersive-designer = "${inputs.meta-quest-agentic-tools}/skills/hz-immersive-designer";
@@ -48,7 +48,7 @@
       hz-vr-debug = "${inputs.meta-quest-agentic-tools}/skills/hz-vr-debug";
       metavr-cli = "${inputs.meta-quest-agentic-tools}/skills/metavr-cli";
     };
-    agents = ../../../copilot/agents;
+    agents = ../../../copilot/plugins/jj-flake-vigilance/agents;
     settings = {
       command.init-repo = {
         description = "Initialize the current directory as a Nix, Nushell, and Jujutsu project.";
