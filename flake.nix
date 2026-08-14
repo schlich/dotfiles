@@ -26,6 +26,10 @@
       url = "github:github/gh-stack";
       flake = false;
     };
+    codex-desktop-linux = {
+      url = "github:ilysenko/codex-desktop-linux";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     grill-me = {
       url = "github:udecode/plate";
       flake = false;

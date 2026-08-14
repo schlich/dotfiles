@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ inputs, pkgs, ... }:
 
 {
   home.packages = with pkgs; [
@@ -45,5 +45,6 @@
     ripgrep
     wl-clipboard-rs
     gh-stack
+    inputs.codex-desktop-linux.packages.${pkgs.system}.default
   ];
 }
