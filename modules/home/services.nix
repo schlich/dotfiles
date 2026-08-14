@@ -8,5 +8,11 @@
       enableNushellIntegration = true;
     };
     gnome-keyring.enable = true;
+    udiskie = {
+      enable = true;
+      automount = true;
+      notify = true;
+      tray = "auto";
+    };
   };
 }

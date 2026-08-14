@@ -69,6 +69,7 @@
       nixpkgs,
       fh,
       jj-starship,
+      codex-desktop-linux,
       ...
     }:
     let
@@ -147,7 +148,15 @@
 
       mkHome = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
-        modules = [ ./home.nix ];
+        modules = [
+          codex-desktop-linux.homeManagerModules.default
+          {
+            programs.codexDesktopLinux = {
+              enable = true;
+            };
+          }
+          ./home.nix
+        ];
         extraSpecialArgs = {
           inherit inputs;
           username = "schlich";
