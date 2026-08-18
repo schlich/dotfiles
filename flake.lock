@@ -402,11 +402,11 @@
     "grill-me": {
       "flake": false,
       "locked": {
-        "lastModified": 1786689165,
-        "narHash": "sha256-/optt9ibWJ+F4ru9vN4fhqQNEdFGkEe3zNJLqL1G9OI=",
+        "lastModified": 1786822148,
+        "narHash": "sha256-fem9YGmoFoYFGFKe817tTweAce98UR6L5+N130qP6ZY=",
         "owner": "udecode",
         "repo": "plate",
-        "rev": "91f4c0c2af4c2f7e9724d242d2828b3bc0c82246",
+        "rev": "2f87593f95a1ff2e931cd42fcf73f052b1d0db41",
         "type": "github"
       },
       "original": {
