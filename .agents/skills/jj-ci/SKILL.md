@@ -22,6 +22,25 @@ trunk workflow.
 - Before a synchronization that rebases history, create a checkpoint with
   `.agents/skills/jj/scripts/jj-checkpoint`.
 
+## JJ MCP integration
+
+When the `jj` MCP server is available, use its read-only status, log, diff,
+show, file, bookmark, and operation-log tools for repository inspection. Read
+the server's workflow guidance before a non-trivial JJ operation.
+
+Use `jj-ci` for repository policy workflows even when the MCP server exposes
+equivalent low-level commands:
+
+- `jj-ci validate` for formatting and Prek gates;
+- `jj-ci publish` for bookmark, push, pull-request, and follow-up-change
+  handling;
+- `jj-ci github reconcile` for declared GitHub policy;
+- `jj-ci stack-merge` for validated stack submission.
+
+Do not use low-level MCP mutation tools such as restore, abandon, direct push,
+or rebase unless the user explicitly requests that specific operation and the
+repository workflow does not provide the appropriate policy command.
+
 ## Command routing
 
 Use the narrowest workflow that matches the request:

@@ -102,7 +102,7 @@ input {
 }
 
 // Keep the primary contexts available even when they have no windows.
-workspace "terminal"
+workspace "snorkel"
 workspace "vcs"
 workspace "config"
 workspace "scratch"
@@ -310,7 +310,7 @@ window-rule {
 // Keep the primary work tools in predictable places.
 window-rule {
   match app-id=r#"^niri-terminal$"#
-  open-on-workspace "terminal"
+  open-on-workspace "snorkel"
 }
 
 // Floating Noctalia settings window.
@@ -502,10 +502,10 @@ binds {
     // Mod+TouchpadScrollUp   { spawn "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "0.02-"; }
 
     // The primary named workspaces have stable direct shortcuts.
-    Mod+1 { focus-workspace "terminal"; }
+    Mod+1 { focus-workspace "snorkel"; }
     Mod+2 { focus-workspace "vcs"; }
     Mod+0 { focus-workspace "config"; }
-    Mod+Shift+1 { move-column-to-workspace "terminal"; }
+    Mod+Shift+1 { move-column-to-workspace "snorkel"; }
     Mod+Shift+2 { move-column-to-workspace "vcs"; }
     Mod+Shift+0 { move-column-to-workspace "config"; }
     Super+Ctrl+0 { move-window-to-workspace "scratch"; }

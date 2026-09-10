@@ -11,6 +11,13 @@
           "chrome-devtools-mcp@latest"
         ];
       };
+      jj = {
+        command = "npx";
+        args = [
+          "-y"
+          "jj-mcp@1.0.8"
+        ];
+      };
       nix = {
         command = "uvx";
         args = [ "mcp-nixos" ];
