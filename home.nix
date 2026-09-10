@@ -21,7 +21,6 @@
     ./modules/tooling/ai/claude-code.nix
     ./modules/tooling/ai/codex.nix
     ./modules/tooling/ai/copilot.nix
-    ./modules/tooling/ai/antigravity.nix
     ./modules/home
     ./modules/programs
   ];
