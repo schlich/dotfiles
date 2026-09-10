@@ -33,6 +33,7 @@
         "$left"
         "$right"
       ];
+      ui.diff-editor = "diffedit3";
       fix.tools.nixfmt = {
         command = [
           "nixfmt"

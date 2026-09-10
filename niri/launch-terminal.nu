@@ -13,10 +13,8 @@ let directory = if $is_config_workspace {
   $"($env.HOME)/dotfiles"
 } else if $is_snorkel_workspace {
   $"($env.HOME)/starfish-projects"
-} else if ($"($env.HOME)/code" | path exists) {
-  $"($env.HOME)/code"
 } else {
-  $"($env.HOME)/dotfiles"
+  $"($env.HOME)"
 }
 
 terminal --directory $directory
