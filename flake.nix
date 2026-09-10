@@ -49,7 +49,10 @@
       inputs.home-manager.follows = "home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    codex-desktop-linux.url = "github:ilysenko/codex-desktop-linux";
+    codex-desktop-linux = {
+      url = "github:ilysenko/codex-desktop-linux";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     anthropic-skills = {
       url = "github:anthropics/skills";
       flake = false;
