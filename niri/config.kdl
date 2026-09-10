@@ -444,9 +444,12 @@ binds {
     // Mod+Shift+Ctrl+Left  { move-window-to-monitor-left; }
     // ...
 
-    // And you can also move a whole workspace to another monitor:
-    // Mod+Shift+Ctrl+Left  { move-workspace-to-monitor-left; }
-    // ...
+    // Move the whole workspace to another monitor. The hotkey overlay lists
+    // these alongside the focused-column monitor shortcuts above.
+    Mod+Alt+Shift+Left  { move-workspace-to-monitor-left; }
+    Mod+Alt+Shift+Down  { move-workspace-to-monitor-down; }
+    Mod+Alt+Shift+Up    { move-workspace-to-monitor-up; }
+    Mod+Alt+Shift+Right { move-workspace-to-monitor-right; }
 
     // Page keys provide discoverable workspace navigation; U/I remain handy on the home row.
     Mod+Page_Down { focus-workspace-down; }
