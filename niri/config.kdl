@@ -105,6 +105,7 @@ input {
 workspace "terminal"
 workspace "vcs"
 workspace "config"
+workspace "scratch"
 
 // Settings that influence how windows are positioned and sized.
 // Find more information on the wiki:
@@ -507,6 +508,7 @@ binds {
     Mod+Shift+1 { move-column-to-workspace "terminal"; }
     Mod+Shift+2 { move-column-to-workspace "vcs"; }
     Mod+Shift+0 { move-column-to-workspace "config"; }
+    Super+Ctrl+0 { move-window-to-workspace "scratch"; }
 
     // You can refer to workspaces by index. However, keep in mind that
     // niri is a dynamic workspace system, so these commands are kind of
