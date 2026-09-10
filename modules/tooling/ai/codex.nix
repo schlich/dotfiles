@@ -15,13 +15,10 @@ in
   programs.codex = {
     enable = true;
     inherit skills;
+    context = ./global-agent-instructions.md;
   };
 
   home.file = {
-    ".codex/AGENTS.md" = {
-      force = true;
-      source = ./global-agent-instructions.md;
-    };
     ".codex/agents/jj-trunk-triage.toml".text = ''
       name = "jj_trunk_triage"
       description = "Lightweight read-only triage for JJ trunk status, PR checks, stack state, and formatting-only corrections."
