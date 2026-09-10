@@ -6,7 +6,6 @@
     bubblewrap
     super-productivity
     zotero
-    marimo
     nodejs
     ty
     wget
@@ -22,7 +21,6 @@
     uv
     glow
     bat
-    gcc
     nil
     nixd
     swaylock
@@ -43,7 +41,6 @@
     monaspace
     nerd-font-patcher
     nerd-fonts.symbols-only
-    pandoc
     prek
     ripgrep
     wl-clipboard-rs
