@@ -116,6 +116,7 @@
                   stateVersion = "26.05";
                 };
                 users.schlich = import ./home.nix;
+                backupFileExtension = "bak";
               };
               nixpkgs.overlays = overlays;
               environment.systemPackages = [
@@ -147,6 +148,22 @@
                 };
                 users.schlich = import ./home.nix;
               };
+              nixpkgs.overlays = overlays;
+              environment.systemPackages = [
+                fh.packages.x86_64-linux.default
+                pkgs.jj-starship
+              ];
+            }
+          ];
+        };
+        homelab = lib.nixosSystem {
+          inherit system;
+          specialArgs = { inherit inputs; };
+          modules = [
+            determinate.nixosModules.default
+            ./modules/nixos/server.nix
+            ./hosts/homelab
+            {
               nixpkgs.overlays = overlays;
               environment.systemPackages = [
                 fh.packages.x86_64-linux.default

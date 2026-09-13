@@ -37,35 +37,76 @@
 
   programs.nom = {
     enable = true;
-    settings.feeds = [
-      {
-        name = "adam-nyberg";
-        url = "https://adamnyberg.se/rss.xml";
-      }
-      {
-        name = "automerge";
-        url = "https://automerge.org/index.xml";
-      }
-      {
-        name = "ink-and-switch";
-        url = "https://www.inkandswitch.com/index.xml";
-      }
-      {
-        name = "lea-verou-phd";
-        url = "https://lea.verou.me/feed.xml";
-      }
-      {
-        name = "hacker-news";
-        url = "https://news.ycombinator.com/rss";
-      }
-      {
-        name = "nix-ci";
-        url = "https://blog.nix-ci.com/rss";
-      }
-      {
-        name = "Vicky Boykis";
-        url = "https://vickiboykis.com/rss";
-      }
-    ];
+    settings = {
+      autoread = false;
+      ordering = "desc";
+      showread = false;
+      feeds = [
+        {
+          name = "adam-nyberg";
+          tags = [
+            "nix"
+            "systems"
+          ];
+          url = "https://adamnyberg.se/rss.xml";
+        }
+        {
+          name = "automerge";
+          tags = [
+            "programming"
+            "collaboration"
+          ];
+          url = "https://automerge.org/index.xml";
+        }
+        {
+          name = "farid-zakaria";
+          tags = [
+            "nix"
+            "systems"
+          ];
+          url = "https://fzakaria.com/feed.xml";
+        }
+        {
+          name = "ink-and-switch";
+          tags = [
+            "programming"
+            "research"
+          ];
+          url = "https://www.inkandswitch.com/index.xml";
+        }
+        {
+          name = "lea-verou-phd";
+          tags = [
+            "web"
+            "programming"
+          ];
+          url = "https://lea.verou.me/feed.xml";
+        }
+        {
+          name = "hacker-news";
+          tags = [
+            "general"
+            "programming"
+          ];
+          url = "https://news.ycombinator.com/rss";
+        }
+        {
+          name = "nix-ci";
+          tags = [
+            "nix"
+            "tooling"
+          ];
+          url = "https://blog.nix-ci.com/rss";
+        }
+        {
+          name = "Vicky Boykis";
+          tags = [
+            "data"
+            "ai"
+          ];
+          url = "https://vickiboykis.com/rss";
+        }
+      ];
+    };
   };
 }

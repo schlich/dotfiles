@@ -11,6 +11,7 @@
       '';
   xdg.configFile."niri/config.kdl".source = ../../niri/config.kdl;
   xdg.configFile."niri/launch-terminal.nu".source = ../../niri/launch-terminal.nu;
+  xdg.configFile."niri/workspace-guard.nu".source = ../../niri/workspace-guard.nu;
   xdg.dataFile."wallpapers/niri-navigation.svg".source = ../../wallpapers/niri-navigation.svg;
   xdg.configFile."zellij/config.kdl".source = ../../zellij/config.kdl;
   xdg.configFile."zellij/layouts/default.kdl".source = ../../zellij/layouts/default.kdl;

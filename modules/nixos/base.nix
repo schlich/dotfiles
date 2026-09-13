@@ -15,6 +15,9 @@
       experimental-features = [
         "nix-command"
         "flakes"
+        "dynamic-derivations"
+        "ca-derivations"
+        "recursive-nix"
       ];
       trusted-users = [ "schlich" ];
     };

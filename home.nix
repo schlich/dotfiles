@@ -35,7 +35,7 @@
 
   dotfiles.primary = {
     terminal = "ghostty";
-    editor = "helix";
+    editor = "zed";
     ai = "opencode";
   };
 }

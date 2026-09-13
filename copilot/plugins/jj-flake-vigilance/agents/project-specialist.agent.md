@@ -49,15 +49,19 @@ Evolve this flake carefully with **jj-first** version control discipline. Prefer
 
 ## Applying configuration
 
-When Nix configuration edits are ready to apply, identify whether they affect
-the NixOS system, Home Manager, or both, and ask the user for explicit approval
-before activating anything. For NixOS changes, offer
-`sudo nixos-rebuild switch --flake .#asus`; never run it automatically.
+Identify whether Nix configuration edits affect NixOS, Home Manager, or both.
+Home-only changes may be activated automatically with `home-activate`, which
+runs the embedded Home Manager activation as the user without `sudo`; do not
+use standalone `home-manager switch`.
 
-Home Manager is embedded in the `asus` NixOS configuration, so do not use the
-standalone `home-manager switch` workflow. Use `home-activate` for a home-only
-activation without `sudo`. It cannot apply system-owned changes, including
-`home.packages`, because `home-manager.useUserPackages = true`.
+System-owned changes, including `home.packages` because
+`home-manager.useUserPackages = true`, require NixOS activation. Never run the
+privileged activation automatically. When the work is ready, include this
+clickable follow-up so the user explicitly authorizes it:
+`- :codex-followup[Switch NixOS config]{prompt="Apply the pending NixOS configuration with sudo nixos-rebuild switch --flake path:/home/schlich/dotfiles#asus. Review the current diff first, then run it and report the result."}`
+
+Preserve the interactive `sudo` prompt and do not weaken privilege escalation
+with password caching or a noninteractive mechanism.
 
 ## Project Notes
 

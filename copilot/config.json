@@ -1,0 +1,12 @@
+// User settings belong in settings.json.
+// This file is managed in the dotfiles repository so Copilot can update it
+// without requiring a Home Manager activation.
+{
+  "firstLaunchAt": "1970-01-01T00:00:00.000Z",
+  "notifications": true,
+  "appTipShown": true,
+  "reasoningSummariesCleanupDone": true,
+  "trustedFolders": [
+    "/home/schlich/starfish-projects"
+  ]
+}

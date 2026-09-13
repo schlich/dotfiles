@@ -1,6 +1,7 @@
 {
   config,
   inputs,
+  lib,
   pkgs,
   ...
 }:
@@ -32,8 +33,16 @@ in
     inherit package;
     enableMcpIntegration = true;
     agents.trunk-triage = ../../../copilot/plugins/jj-flake-vigilance/agents/trunk-triage.agent.md;
-    settings.notifications = true;
     skills = import ./shared-skills.nix { inherit inputs; };
+  };
+
+  # Copilot updates this file while running. Keep it editable in the repo
+  # instead of replacing it with a Home Manager store path on every switch.
+  home.file.".copilot/config.json" = {
+    source = lib.mkForce (
+      config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/dotfiles/copilot/config.json"
+    );
+    force = true;
   };
 
   dotfiles.tooling = {

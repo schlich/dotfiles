@@ -37,6 +37,7 @@ in
       };
 
       lsp.nil.settings.nil.nix.flake.autoArchive = true;
+      lsp.nil.settings.nil.nix.flake.autoEvalInputs = true;
 
       # Ty supplies Python type-checking diagnostics; Ruff supplies
       # formatting and linting. This also excludes Zed's default BasedPyright.

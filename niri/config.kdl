@@ -258,6 +258,7 @@ layout {
 // which may be more convenient to use.
 // See the binds section below for more spawn examples.
 // spawn-at-startup "noctalia-shell"
+spawn-at-startup "sh" "-c" "exec nu \"$HOME/.config/niri/workspace-guard.nu\" watch"
 
 hotkey-overlay {
     skip-at-startup
@@ -455,16 +456,20 @@ binds {
     // ...
 
     // Page keys provide discoverable workspace navigation; U/I remain handy on the home row.
-    Mod+Page_Down { focus-workspace-down; }
-    Mod+Page_Up   { focus-workspace-up; }
-    Mod+U         { focus-workspace-down; }
-    Mod+I         { focus-workspace-up; }
-    Mod+Ctrl+U { move-column-to-workspace-down; }
-    Mod+Ctrl+I { move-column-to-workspace-up; }
+    // The guard skips Niri's implicit empty workspace instead of creating it.
+    Mod+Page_Down { spawn-sh "exec nu \"$HOME/.config/niri/workspace-guard.nu\" focus down"; }
+    Mod+Page_Up   { spawn-sh "exec nu \"$HOME/.config/niri/workspace-guard.nu\" focus up"; }
+    Mod+U         { spawn-sh "exec nu \"$HOME/.config/niri/workspace-guard.nu\" focus down"; }
+    Mod+I         { spawn-sh "exec nu \"$HOME/.config/niri/workspace-guard.nu\" focus up"; }
+    Mod+Ctrl+U { spawn-sh "exec nu \"$HOME/.config/niri/workspace-guard.nu\" move down"; }
+    Mod+Ctrl+I { spawn-sh "exec nu \"$HOME/.config/niri/workspace-guard.nu\" move up"; }
+
+    // Creating a workspace is deliberately explicit and requires an extra leader modifier.
+    Mod+Ctrl+N hotkey-overlay-title="Create workspace" { spawn-sh "exec nu \"$HOME/.config/niri/workspace-guard.nu\" create"; }
 
     // Logitech thumb buttons switch to the previous and next workspace.
-    MouseBack    { focus-workspace-up; }
-    MouseForward { focus-workspace-down; }
+    MouseBack    { spawn-sh "exec nu \"$HOME/.config/niri/workspace-guard.nu\" focus up"; }
+    MouseForward { spawn-sh "exec nu \"$HOME/.config/niri/workspace-guard.nu\" focus down"; }
 
     // Alternatively, there are commands to move just a single window:
     // Mod+Ctrl+U { move-window-to-workspace-down; }
@@ -481,10 +486,10 @@ binds {
     // To avoid scrolling through workspaces really fast, you can use
     // the cooldown-ms property. The bind will be rate-limited to this value.
     // You can set a cooldown on any bind, but it's most useful for the wheel.
-    Mod+WheelScrollDown      cooldown-ms=150 { focus-workspace-down; }
-    Mod+WheelScrollUp        cooldown-ms=150 { focus-workspace-up; }
-    Mod+Ctrl+WheelScrollDown cooldown-ms=150 { move-column-to-workspace-down; }
-    Mod+Ctrl+WheelScrollUp   cooldown-ms=150 { move-column-to-workspace-up; }
+    Mod+WheelScrollDown      cooldown-ms=150 { spawn-sh "exec nu \"$HOME/.config/niri/workspace-guard.nu\" focus down"; }
+    Mod+WheelScrollUp        cooldown-ms=150 { spawn-sh "exec nu \"$HOME/.config/niri/workspace-guard.nu\" focus up"; }
+    Mod+Ctrl+WheelScrollDown cooldown-ms=150 { spawn-sh "exec nu \"$HOME/.config/niri/workspace-guard.nu\" move down"; }
+    Mod+Ctrl+WheelScrollUp   cooldown-ms=150 { spawn-sh "exec nu \"$HOME/.config/niri/workspace-guard.nu\" move up"; }
 
     Mod+WheelScrollRight      { focus-column-right; }
     Mod+WheelScrollLeft       { focus-column-left; }
@@ -516,28 +521,22 @@ binds {
     Mod+Shift+0 { move-column-to-workspace "config"; }
     Super+Ctrl+0 { move-window-to-workspace "scratch"; }
 
-    // You can refer to workspaces by index. However, keep in mind that
-    // niri is a dynamic workspace system, so these commands are kind of
-    // "best effort". Trying to refer to a workspace index bigger than
-    // the current workspace count will instead refer to the bottommost
-    // (empty) workspace.
-    //
-    // For example, with 2 workspaces + 1 empty, indices 3, 4, 5 and so on
-    // will all refer to the 3rd workspace.
-    Mod+3 { focus-workspace 3; }
-    Mod+4 { focus-workspace 4; }
-    Mod+5 { focus-workspace 5; }
-    Mod+6 { focus-workspace 6; }
-    Mod+7 { focus-workspace 7; }
-    Mod+8 { focus-workspace 8; }
-    Mod+9 { focus-workspace 9; }
-    Mod+Shift+3 { move-column-to-workspace 3; }
-    Mod+Shift+4 { move-column-to-workspace 4; }
-    Mod+Shift+5 { move-column-to-workspace 5; }
-    Mod+Shift+6 { move-column-to-workspace 6; }
-    Mod+Shift+7 { move-column-to-workspace 7; }
-    Mod+Shift+8 { move-column-to-workspace 8; }
-    Mod+Shift+9 { move-column-to-workspace 9; }
+    // Numeric workspace navigation is guarded too: an index without an
+    // existing named or occupied workspace is ignored instead of creating one.
+    Mod+3 { spawn-sh "exec nu \"$HOME/.config/niri/workspace-guard.nu\" focus-index 3"; }
+    Mod+4 { spawn-sh "exec nu \"$HOME/.config/niri/workspace-guard.nu\" focus-index 4"; }
+    Mod+5 { spawn-sh "exec nu \"$HOME/.config/niri/workspace-guard.nu\" focus-index 5"; }
+    Mod+6 { spawn-sh "exec nu \"$HOME/.config/niri/workspace-guard.nu\" focus-index 6"; }
+    Mod+7 { spawn-sh "exec nu \"$HOME/.config/niri/workspace-guard.nu\" focus-index 7"; }
+    Mod+8 { spawn-sh "exec nu \"$HOME/.config/niri/workspace-guard.nu\" focus-index 8"; }
+    Mod+9 { spawn-sh "exec nu \"$HOME/.config/niri/workspace-guard.nu\" focus-index 9"; }
+    Mod+Shift+3 { spawn-sh "exec nu \"$HOME/.config/niri/workspace-guard.nu\" move-index 3"; }
+    Mod+Shift+4 { spawn-sh "exec nu \"$HOME/.config/niri/workspace-guard.nu\" move-index 4"; }
+    Mod+Shift+5 { spawn-sh "exec nu \"$HOME/.config/niri/workspace-guard.nu\" move-index 5"; }
+    Mod+Shift+6 { spawn-sh "exec nu \"$HOME/.config/niri/workspace-guard.nu\" move-index 6"; }
+    Mod+Shift+7 { spawn-sh "exec nu \"$HOME/.config/niri/workspace-guard.nu\" move-index 7"; }
+    Mod+Shift+8 { spawn-sh "exec nu \"$HOME/.config/niri/workspace-guard.nu\" move-index 8"; }
+    Mod+Shift+9 { spawn-sh "exec nu \"$HOME/.config/niri/workspace-guard.nu\" move-index 9"; }
 
     // Alternatively, there are commands to move just a single window:
     // Mod+Ctrl+1 { move-window-to-workspace 1; }

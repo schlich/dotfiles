@@ -100,7 +100,7 @@ def create-workspace [] {
 
   if $empty != null {
     let marker = (state-file)
-    $marker | path dirname | mkdir
+    mkdir ($marker | path dirname)
     "" | save --force $marker
     ^niri msg action focus-workspace $empty.idx
   }

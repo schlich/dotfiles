@@ -68,9 +68,11 @@ Use the narrowest workflow that matches the request:
   but inspect the state first so the user understands the blocker.
 - Do not add `--auto-merge`, use `github reconcile --apply`, or run
   `stack-merge` unless the user explicitly asks for that external mutation.
-- Do not activate NixOS or Home Manager configuration as part of validation.
-  If configuration changes are ready, report the appropriate activation command
-  and request approval separately.
+- Do not activate NixOS configuration as part of validation. Home-only changes
+  may be activated with `home-activate` when that is part of the requested
+  implementation; it runs without `sudo`. For NixOS changes, keep the
+  privileged activation separate and obtain authorization through the standard
+  clickable follow-up defined in the repository's `AGENTS.md`.
 - Prefer `jj-ci` over manually reproducing its fetch, bookmark, push, PR, and
   validation sequence. Use raw JJ commands only for focused inspection or when
   the user explicitly asks for a different history operation.
