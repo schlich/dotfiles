@@ -32,8 +32,10 @@ Use `jj-ci` for repository policy workflows even when the MCP server exposes
 equivalent low-level commands:
 
 - `jj-ci validate` for formatting and Prek gates;
-- `jj-ci publish` for bookmark, push, pull-request, and follow-up-change
-  handling;
+- `jj-ci publish` for stable bookmark, push, and pull-request handling while
+  retaining the same working-copy change;
+- `jj-ci rebase` for updating that topic in place;
+- `jj-ci finish` for verified delivery and workspace cleanup before archiving;
 - `jj-ci github reconcile` for declared GitHub policy;
 - `jj-ci stack-merge` for validated stack submission.
 
@@ -50,7 +52,9 @@ Use the narrowest workflow that matches the request:
 | Inspect local and open-PR state | `jj-ci status` | Read-only, but includes GitHub PR state. |
 | Align an empty working copy with trunk | `jj-ci sync` | Fetches `origin`, advances `main`, and rebases onto `main@origin`. |
 | Check readiness and run repository gates | `jj-ci validate` | Describes an undescribed change, runs `jj fix -s @`, then `prek run --all-files`. |
-| Publish the current change | `jj-ci publish` | Validates, creates or updates a bookmark and PR, then starts a follow-up change. |
+| Publish the current change | `jj-ci publish` | Validates, creates or updates a stable bookmark and PR, and keeps editing the same change. |
+| Update a topic from trunk | `jj-ci rebase` | Checkpoints, fetches, and rebases the same change. |
+| Finish a merged topic | `jj-ci finish` | Verifies the current head was merged and leaves an empty workspace on main before archiving. |
 | Publish and request auto-merge | `jj-ci publish --auto-merge` | Requires an explicit user request because it changes GitHub PR state. |
 | Inspect declared GitHub policy | `jj-ci github reconcile` | Dry run by default. |
 | Apply GitHub policy changes | `jj-ci github reconcile --apply` | Requires an explicit user request. |
@@ -58,9 +62,8 @@ Use the narrowest workflow that matches the request:
 
 ## Safety rules
 
-- Do not run `jj-ci sync` while preserving an unreviewed assumption about the
-  current change. If the working copy is non-empty, explain that sync starts
-  a fresh empty change first and preserves the existing change above it.
+- `jj-ci sync` rejects nonempty changes and active Codex task ownership.
+  Use `jj-ci rebase` to update an active topic without creating another change.
 - Do not publish an empty or conflicted change. `jj-ci publish` enforces this,
   but inspect the state first so the user understands the blocker.
 - Do not add `--auto-merge`, use `github reconcile --apply`, or run
@@ -74,10 +77,18 @@ Use the narrowest workflow that matches the request:
 
 ## Publication expectations
 
-`jj-ci publish` derives a short bookmark from the first line of the current
-change description, pushes it to `origin`, creates or updates the PR, and
-starts an empty follow-up change. Report the PR URL and the new current change
-after publication.
+Keep one topic and one stable JJ change ID per task, in a dedicated workspace.
+`jj-ci publish` uses `jj-<full-change-id>` as its bookmark, preserving its identity
+through title changes and repeated edits. It does not start a follow-up change.
+Report the PR URL and existing change ID. Existing PRs published under old
+slug bookmarks need deliberate migration; do not create a duplicate PR for them.
+
+Enable auto-merge only at requested topic closeout. Once GitHub has merged the
+current head, `jj-ci finish` verifies that merge is on main and prepares a clean
+workspace. Then archive through the app tool. Leave the task open if delivery
+is pending or there are later local edits. SessionEnd also fires on exit and
+idle timeout, so it must never trigger publication or merging. A direct archive
+button click does not run this workflow.
 
 For stacked work, inspect the stack before acting. Use the repository's JJ and
 GitHub stack workflow; do not bypass it with direct branch or merge commands.

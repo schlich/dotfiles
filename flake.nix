@@ -186,6 +186,19 @@
 
       packages.${system} = {
         default = nixosConfigurations.asus.config.system.build.toplevel;
+        jj = pkgs.jujutsu;
+        jjui = pkgs.jjui;
+      };
+
+      apps.${system} = {
+        jj = {
+          type = "app";
+          program = "${pkgs.jujutsu}/bin/jj";
+        };
+        jjui = {
+          type = "app";
+          program = "${pkgs.jjui}/bin/jjui";
+        };
       };
 
       formatter.${system} = pkgs.nixfmt-tree;

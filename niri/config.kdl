@@ -313,6 +313,12 @@ window-rule {
   open-on-workspace "snorkel"
 }
 
+// The JJ dashboard is always reachable with Mod+2.
+window-rule {
+  match app-id=r#"^jj-dashboard$"#
+  open-on-workspace "vcs"
+}
+
 // Floating Noctalia settings window.
 window-rule {
   match app-id="dev.noctalia.Noctalia"
@@ -503,7 +509,7 @@ binds {
 
     // The primary named workspaces have stable direct shortcuts.
     Mod+1 { focus-workspace "snorkel"; }
-    Mod+2 { focus-workspace "vcs"; }
+    Mod+2 hotkey-overlay-title="JJ dashboard" { spawn "jj-dashboard"; }
     Mod+0 { focus-workspace "config"; }
     Mod+Shift+1 { move-column-to-workspace "snorkel"; }
     Mod+Shift+2 { move-column-to-workspace "vcs"; }

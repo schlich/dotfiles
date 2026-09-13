@@ -15,24 +15,44 @@ def run-command [label: string, command: closure] {
 }
 
 def current-change [template: string] {
-    ^jj log -r @ --no-graph -T $template | str trim
+    let result = (^jj log -r @ --no-graph -T $template | complete)
+    if $result.exit_code != 0 { error make { msg: ($result.stderr | str trim) } }
+    $result.stdout | str trim
 }
 
-def bookmark-name [title: string] {
-    let slug = ($title
-        | str lowercase
-        | str replace --all --regex '[^a-z0-9]+' '-'
-        | str trim --char '-')
-    let readable_slug = if ($slug | is-empty) {
-        "change"
-    } else {
-        $slug | split row "-" | first 4 | str join "-"
-    }
+def publication-bookmark [] {
+    # Stable across edits and title changes; independent topics cannot collide.
+    $"jj-(current-change 'change_id')"
+}
 
-    $readable_slug
+def checkpoint [label: string] {
+    let root = (run-command "locating the workspace" { ^jj root })
+    let operation = (run-command "recording a recovery point" {
+        ^jj op log -n 1 --no-graph -T 'self.id()'
+    })
+    let directory = ($root | path join ".jj" "jj-ci-checkpoints")
+    mkdir $directory
+    $operation | save --force ($directory | path join $"(date now | format date '%Y%m%dT%H%M%S%f')-($label)")
+    print $"Recovery point: jj op restore ($operation)"
+}
+
+def session-owner [] {
+    let root = (run-command "locating the workspace" { ^jj root })
+    let path = ($root | path join ".jj" "codex-session.json")
+    if ($path | path exists) { open $path } else { null }
+}
+
+def require-owned-change [] {
+    let owner = (session-owner)
+    if $owner != null and not ($owner.finished? | default false) {
+        if $owner.change_id != (current-change "change_id") {
+            error make { msg: "This workspace is on a different change from its active Codex task. Resolve ownership before continuing." }
+        }
+    }
 }
 
 def require-ready-change [] {
+    require-owned-change
     if (current-change "conflict") == "true" {
         error make { msg: "Resolve JJ conflicts before publishing." }
     }
@@ -50,11 +70,15 @@ def require-ready-change [] {
 }
 
 def sync-main [] {
+    let owner = (session-owner)
+    if $owner != null and not ($owner.finished? | default false) {
+        error make { msg: "An active Codex topic owns this workspace. Use `jj-ci rebase`, or finish the topic before syncing." }
+    }
     if (current-change "empty") != "true" {
-        run-command "starting an empty change for sync" { ^jj new @ } | ignore
-        print "Preserved the current change and started an empty change for sync."
+        error make { msg: "Sync needs an empty change. Use `jj-ci rebase` to update this topic in place." }
     }
 
+    checkpoint "sync"
     run-command "fetching origin" { ^jj git fetch --remote origin } | ignore
     run-command "advancing the main bookmark" {
         ^jj bookmark move main --to main@origin
@@ -65,11 +89,6 @@ def sync-main [] {
 def validate-change [] {
     run-command "fixing the current JJ change" { ^jj fix -s @ } | ignore
     run-command "running Prek" { ^prek run --all-files } | ignore
-}
-
-def start-follow-up-change [] {
-    run-command "starting a follow-up change" { ^jj new @ } | ignore
-    print "Started a fresh follow-up change. Subsequent edits will not rewrite the published revision."
 }
 
 def github-reconcile [apply: bool] {
@@ -146,7 +165,7 @@ def stack-merge [target: string] {
 
 # Inspect, validate, publish, and reconcile JJ changes with GitHub trunk policy.
 def main [] {
-    print "Use `jj-ci status`, `jj-ci sync`, `jj-ci validate`, `jj-ci publish`, `jj-ci github reconcile`, or `jj-ci stack-merge`."
+    print "Use `jj-ci status`, `jj-ci sync`, `jj-ci rebase`, `jj-ci finish`, `jj-ci validate`, `jj-ci publish`, `jj-ci github reconcile`, or `jj-ci stack-merge`."
 }
 
 # Show the current JJ change and open pull requests targeting main.
@@ -172,17 +191,24 @@ def "main publish" [--auto-merge] {
     validate-change
 
     let title = (current-change "description.first_line()")
-    let branch = (bookmark-name $title)
+    let branch = (publication-bookmark)
     let head = (current-change "commit_id")
 
+    let pr = (do { ^gh pr view $branch --json url,state } | complete)
+    if $pr.exit_code == 0 and (($pr.stdout | from json).state != "OPEN") {
+        error make { msg: "This topic's PR is closed or merged. Finish it before starting new work." }
+    }
     run-command "setting the publication bookmark" { ^jj bookmark set $branch -r @ } | ignore
     run-command "pushing the publication bookmark" {
         ^jj git push --remote origin --bookmark $branch
     } | ignore
 
-    let pr = (do { ^gh pr view $branch --json url --jq .url } | complete)
     let url = if $pr.exit_code == 0 {
-        $pr.stdout | str trim
+        let existing = ($pr.stdout | from json)
+        if $existing.state != "OPEN" {
+            error make { msg: "This topic's PR is already closed or merged. Finish the session and start a new topic." }
+        }
+        $existing.url
     } else {
         run-command "creating the pull request" {
             ^gh pr create --base main --head $branch --title $title --body $"## Summary\n\n- ($title)\n\n## Validation\n\n- `prek run --all-files`"
@@ -196,7 +222,7 @@ def "main publish" [--auto-merge] {
         } | ignore
     }
 
-    start-follow-up-change
+    print "Published this topic in place. Further edits update the same JJ change and PR."
 }
 
 # Inspect or apply the repository's declared GitHub policy.
@@ -207,4 +233,68 @@ def "main github reconcile" [--apply] {
 # Submit a linked, fully green pull request stack for squash merging.
 def "main stack-merge" [target: string] {
     stack-merge $target
+}
+
+# Fetch and rebase the current topic without creating another change.
+def "main rebase" [] {
+    require-owned-change
+    checkpoint "rebase"
+    run-command "fetching origin" { ^jj git fetch --remote origin } | ignore
+    run-command "rebasing the topic" { ^jj rebase -r @ -o main@origin } | ignore
+    if (current-change "conflict") == "true" {
+        error make { msg: "Rebase recorded conflicts in this same change. Resolve them before publishing." }
+    }
+}
+
+# Complete a merged topic. Call before archiving its Codex task.
+def "main finish" [] {
+    require-owned-change
+    let change = (current-change "change_id")
+    let head = (current-change "commit_id")
+    let branch = (publication-bookmark)
+    let empty = (current-change "empty") == "true"
+    let url = if $empty {
+        let prs = (run-command "checking for a published empty topic" {
+            ^gh pr list --state all --head $branch --json number
+        } | from json)
+        if ($prs | is-not-empty) {
+            error make { msg: "This empty topic has a published PR. Resolve its delivery or closure explicitly before releasing the workspace." }
+        }
+        "Unpublished empty topic"
+    } else {
+        let pr = (run-command "checking topic delivery" {
+            ^gh pr view $branch --json state,headRefOid,mergeCommit,url
+        } | from json)
+        if $pr.state != "MERGED" or $pr.headRefOid != $head {
+            error make { msg: "The current revision must be merged without subsequent local edits before finishing. Leave the task open." }
+        }
+        $pr.url
+    }
+    checkpoint "finish"
+    run-command "fetching main" { ^jj git fetch --remote origin } | ignore
+    if not $empty {
+        let pr = (run-command "reading the merge commit" {
+            ^gh pr view $branch --json mergeCommit
+        } | from json)
+        let merged = $pr.mergeCommit.oid
+        let delivered = (run-command "verifying delivery to main" {
+            ^jj log -r $"($merged) & ::main@origin" --no-graph -T commit_id
+        })
+        if ($delivered | is-empty) {
+            error make { msg: "The merge is not on main@origin yet. Leave the task open and retry later." }
+        }
+    }
+    run-command "advancing main" { ^jj bookmark move main --to main@origin } | ignore
+    run-command "leaving a clean workspace on main" { ^jj new main@origin } | ignore
+    let root = (run-command "locating the workspace" { ^jj root })
+    let owner_path = ($root | path join ".jj" "codex-session.json")
+    if ($owner_path | path exists) {
+        let owner = (open $owner_path)
+        if $owner.change_id == $change {
+            $owner | upsert finished true | to json | save --force $owner_path
+            let claim = ($root | path join ".jj" "codex-session-claim")
+            if ($claim | path exists) { rm --recursive $claim }
+        }
+    }
+    print $"Finished ($url). Workspace is on main; the Codex task can now be archived."
 }
