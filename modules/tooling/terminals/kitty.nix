@@ -8,7 +8,7 @@
 {
   programs.kitty = lib.mkIf (config.dotfiles.primary.terminal == "kitty") {
     enable = true;
-    enableGitIntegration = true;
+    enableGitIntegration = false;
     font.name = "Monaspace Krypton";
   };
 

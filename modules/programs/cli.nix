@@ -7,7 +7,16 @@
   programs.fd.enable = true;
   programs.gh = {
     enable = true;
-    gitCredentialHelper.enable = true;
+    # gh still discovers repositories through Git internally.
+    package = pkgs.symlinkJoin {
+      name = "gh-jj-transport";
+      paths = [ pkgs.gh ];
+      nativeBuildInputs = [ pkgs.makeWrapper ];
+      postBuild = ''
+        wrapProgram "$out/bin/gh" --prefix PATH : ${pkgs.git}/bin
+      '';
+    };
+    gitCredentialHelper.enable = false;
     extensions = [ pkgs.gh-stack ];
   };
   programs.gh-dash.enable = true;

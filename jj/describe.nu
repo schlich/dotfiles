@@ -12,7 +12,9 @@ def main [
     }
     let request = $"Describe this Jujutsu changeset. Return only the description text: an imperative subject of at most 72 characters and, only when useful, a concise body explaining why. Do not use markdown fences or preamble. Do not describe unrelated working-copy changes.\n\nChangeset:\n---\n($change)\n---\n($prompt_context)"
     let output_file = (mktemp | str trim)
-    let result = (^codex exec --sandbox read-only --skip-git-repo-check --color never --output-last-message $output_file $request | complete)
+    let result = (with-env { CODEX_JJ_SESSION_HOOK: "1" } {
+        ^codex exec --sandbox read-only --skip-git-repo-check --color never --output-last-message $output_file $request | complete
+    })
 
     if $result.exit_code != 0 {
         rm $output_file

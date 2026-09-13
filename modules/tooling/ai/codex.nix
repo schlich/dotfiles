@@ -16,6 +16,16 @@ in
     enable = true;
     inherit skills;
     context = ./global-agent-instructions.md;
+    settings.desktop = {
+      git-pr-watch-auto-merge = false;
+      custom_file_handlers.jj-dashboard = {
+        label = "JJ dashboard";
+        command = "jj-dashboard";
+        icon = "${../../../jj/icon.svg}";
+        input = "path";
+        supports_ssh = false;
+      };
+    };
   };
 
   home.file = {
