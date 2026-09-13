@@ -51,10 +51,12 @@ Use the narrowest workflow that matches the request:
 | --- | --- | --- |
 | Inspect local and open-PR state | `jj-ci status` | Read-only, but includes GitHub PR state. |
 | Align an empty working copy with trunk | `jj-ci sync` | Fetches `origin`, advances `main`, and rebases onto `main@origin`. |
-| Check readiness and run repository gates | `jj-ci validate` | Describes an undescribed change, runs `jj fix -s @`, then `prek run --all-files`. |
+| Check readiness and run repository gates | `jj-ci validate` | Describes an undescribed change, runs `jj fix -s @`, then Prek on the JJ file list. |
 | Publish the current change | `jj-ci publish` | Validates, creates or updates a stable bookmark and PR, and keeps editing the same change. |
 | Update a topic from trunk | `jj-ci rebase` | Checkpoints, fetches, and rebases the same change. |
 | Finish a merged topic | `jj-ci finish` | Verifies the current head was merged and leaves an empty workspace on main before archiving. |
+| Capture a review version | `jj-ci review snapshot <label>` | Records the exact base and series tip for a later interdiff. |
+| Compare review versions | `jj-ci interdiff <old> <new>` | Runs a commit-by-commit `git range-diff` between named snapshots. |
 | Publish and request auto-merge | `jj-ci publish --auto-merge` | Requires an explicit user request because it changes GitHub PR state. |
 | Inspect declared GitHub policy | `jj-ci github reconcile` | Dry run by default. |
 | Apply GitHub policy changes | `jj-ci github reconcile --apply` | Requires an explicit user request. |

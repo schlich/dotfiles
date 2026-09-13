@@ -15,6 +15,7 @@
       postBuild = ''
         wrapProgram "$out/bin/gh" --prefix PATH : ${pkgs.git}/bin
       '';
+      meta.mainProgram = "gh";
     };
     gitCredentialHelper.enable = false;
     extensions = [ pkgs.gh-stack ];

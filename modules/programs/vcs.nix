@@ -3,12 +3,21 @@
   ...
 }:
 
+let
+  jjCiScript = pkgs.writeNuScriptBin "jj-ci" (builtins.readFile ../../jj/ci.nu);
+  jjCi = pkgs.symlinkJoin {
+    name = "jj-ci";
+    paths = [ jjCiScript ];
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    postBuild = ''
+      wrapProgram "$out/bin/jj-ci" --prefix PATH : ${pkgs.git}/bin
+    '';
+  };
+in
 {
   programs.git.enable = false;
   programs.gpg.enable = true;
   programs.lazygit.enable = false;
-  # JJ invokes Git for transport; the executable is an explicit dependency,
-  # while authentication remains available without Home Manager's Git module.
   xdg.configFile."git/config".text = ''
     [credential "https://github.com"]
       helper =
@@ -56,7 +65,7 @@
 
   home.packages = [
     (pkgs.writeNuScriptBin "jj-describe" (builtins.readFile ../../jj/describe.nu))
-    (pkgs.writeNuScriptBin "jj-ci" (builtins.readFile ../../jj/ci.nu))
+    jjCi
     (pkgs.writeNuScriptBin "jj-dashboard" (builtins.readFile ../../jj/dashboard.nu))
   ];
 }

@@ -75,6 +75,7 @@
               "brightness"
               "battery"
               "elrondforwin/opencode-go-usage:bar"
+              "thepunkoff/pomodoro:widget"
             ];
           };
 
@@ -106,7 +107,10 @@
         };
 
         plugins = {
-          enabled = [ "elrondforwin/opencode-go-usage" ];
+          enabled = [
+            "elrondforwin/opencode-go-usage"
+            "thepunkoff/pomodoro"
+          ];
           source = [
             {
               name = "opencode-go-usage";
@@ -115,6 +119,14 @@
               enabled = true;
             }
           ];
+        };
+        plugin_settings."thepunkoff/pomodoro" = {
+          work-duration = 25;
+          short-break-duration = 5;
+          long-break-duration = 15;
+          sessions-before-long-break = 4;
+          auto-start-work = false;
+          auto-start-breaks = false;
         };
 
         widget = {

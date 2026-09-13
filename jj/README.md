@@ -1,59 +1,103 @@
 # JJ project workflow
 
-One task owns one topic, one JJ workspace, and one stable change ID. Edits and
-repeated publication rewrite that change. Start a new task for a new topic.
+One task owns one topic, one JJ workspace, and one stable change ID. A topic
+may contain a series of logically separate JJ changes. Review fixes should be
+absorbed into the appropriate change instead of appended as "address review"
+commits.
 
 ```nu
 jj-ci status
-jj-ci rebase                  # Fetch trunk and rebase this topic in place.
+jj-ci rebase                  # Fetch trunk and rebase the whole topic stack.
 jj-ci validate                # Run the repository gates when requested.
-jj-ci publish                 # Create/update the same PR; keep editing here.
-# At topic closeout, when delivery has been requested:
+jj-ci review snapshot v1      # Capture the current series for interdiff review.
+jj-ci publish                 # Create/update the same PR and bookmark.
+# After editing or absorbing review fixes:
+jj-ci review snapshot v2
+jj-ci interdiff v1 v2
+# At topic closeout:
 jj-ci publish --auto-merge
-# After GitHub merges the current revision:
 jj-ci finish
 ```
 
-`finish` checks that GitHub merged the exact current head and that its merge
-commit is on `main@origin`. It then advances local main, leaves an empty working
-copy on main, and releases this workspace's Codex ownership. It also permits
-an unpublished empty topic to finish after confirming it has no PR. Checks,
-conflicts, or newer local edits leave the task open. After success, ask Codex
-to archive the task. Auto-merge should only be enabled when edits are finished.
+## Patch-series review
 
-Bookmarks use `jj-<full-change-id>`, so title changes cannot send another topic
-to the same PR. Existing PRs using the older title-based bookmarks need an
-explicit migration before using this publication flow; do not duplicate them.
-`publish` runs `jj fix -s @` and Prek, then pushes using JJ and creates the PR
-using GitHub CLI. GitHub owns protection, checks, and merging.
+The intended review model is an evolving patch series:
 
-`jj-ci sync` is for an empty workspace with no active Codex topic. It refuses
-to move an owned workspace, including webhook-triggered sync. Use `rebase`
-during a topic. Recovery operation IDs are saved under `.jj/jj-ci-checkpoints`.
+```
+v1: A1 -> B1 -> C1
+v2: A2 -> B2 -> C2
+```
+
+Each commit should have one logical purpose and should be readable as part of
+the series. Use `jj edit` to select an earlier change, or use `jj absorb` to
+move an unambiguous fix into the change that introduced the affected lines.
+Descendants are rewritten as needed while retaining their change identities.
+
+Before each review update, run `jj-ci review snapshot <label>`. Snapshots are
+stored in the workspace's `.jj/jj-ci-review-versions.json`; this is local
+review metadata and is not committed. `jj-ci interdiff old new` runs
+`git range-diff` over the exact base and tip recorded for both snapshots.
+That preserves the pairwise, commit-by-commit review signal described by the
+interdiff model.
+
+The PR bookmark identifies the topic, not an individual patch. Publishing moves
+the same bookmark to the current series tip. GitHub sees the updated PR branch;
+the local range-diff command supplies the true interdiff between review rounds.
+
+## Topic lifecycle
+
+`jj-ci sync` is for an empty workspace with no active topic. It refuses to move
+an owned workspace. Use `jj-ci rebase` during an active topic; it fetches trunk
+and rebases the whole series in place.
+
+`jj-ci publish` validates, pushes the stable `jj-<full-change-id>` bookmark,
+and creates or updates the matching PR. It does not create a follow-up change.
+Further edits to the series therefore update the same review topic.
+
+`jj-ci finish` checks that GitHub merged the exact current head and that the
+merge is on `main@origin`. It then advances local main, leaves an empty
+workspace on main, and releases workspace ownership. Archive the task only
+after it succeeds.
+
+## Merge strategy
+
+The permanent default is one PR per ordinary JJ topic. The publication
+bookmark is a stable `jj-<change-id>` branch, and GitHub auto-merges it with
+**squash** after all required checks pass. Squash keeps `main` linear and
+turns a mutable review series into one atomic configuration change. Branches
+from older sessions may retain their descriptive names, but new topics should
+use the `jj-` prefix.
+
+Use a stacked PR only when every layer is independently reviewable and the
+layers must land in dependency order. Name those branches
+`stack/<series>/<layer>`, link the stack with `gh stack link`, and inspect it
+with `gh stack view --json`. Submit the complete stack with:
+
+```nu
+jj-ci stack-merge STACK_OR_PR
+```
+
+That wrapper uses `gh stack merge --yes --squash`, so each layer remains a
+linear, atomic change without merge commits. The ordinary auto-merge workflow
+intentionally ignores `stack/` branches; stack submission is the explicit
+ordering decision. Use a rebase merge only when preserving the individual
+patch-series commits on `main` is more valuable than a single atomic commit.
+
+Merge commits are not part of the repository policy: `main` has required
+linear history and GitHub allows only squash or rebase merges.
 
 ## Desktop
 
-Press **Mod+2** to open or focus jjui on Niri's `vcs` workspace. From a terminal,
-`jj-dashboard /path/to/workspace` opens a dashboard for that workspace. The
-Codex **Open in → JJ dashboard** handler accepts a project directory or file.
-Inside jjui, use its help view for current bindings and its Git menu for JJ
-push/fetch operations. These are JJ operations using GitHub transport.
+Press **Mod+2** to open or focus jjui on Niri's `vcs` workspace. From a
+terminal, `jj-dashboard /path/to/workspace` opens a dashboard for that
+workspace. The Codex **Open in -> JJ dashboard** handler accepts a project
+directory or file.
 
 Git and lazygit are disabled as Home Manager programs. JJ retains an explicit
 Git executable dependency, and gh gets its own internal Git PATH for repository
 discovery. GitHub credential-helper configuration remains available to JJ.
-This does not remove Git from transitive dependencies or prevent other apps
-from invoking their bundled Git.
-
-The observed desktop PR auto-merge watcher is disabled declaratively. A global
-switch to disable all native Git controls has not been established. Avoid its
-Git commit/worktree/handoff/push actions for JJ tasks. Keep this repository
-colocated for existing Git-based tools such as Prek and GitHub discovery.
-
-Codex's documented SessionEnd event also fires on app exit and idle timeout,
-and is advisory. It cannot distinguish an archive click or prevent one. There
-is therefore **no merge-on-archive-button hook**. Use the explicit
-finish-then-archive workflow; closing the app never publishes code.
+Keep this repository colocated for existing Git-based tools such as Prek and
+GitHub discovery.
 
 ## Concurrent tasks
 
@@ -63,25 +107,16 @@ Create a separate JJ workspace before opening a new local project task:
 jj workspace add --revision main@origin --name topic-name ../project-topic-name
 ```
 
-Use that directory as a **local** Codex project, avoiding Git worktrees. The
-session hook starts an independent topic at `main@origin`, records ownership in
-`.jj/codex-session.json`, and guards subsequent prompts and tool calls against
-change-ID drift. It never automatically switches another task's working copy.
-Hook guards are not a security boundary; native UI and external terminal
-operations can bypass them.
-
-Session markers also live in `$XDG_STATE_HOME/codex-jj-sessions` (default
-`~/.local/state/codex-jj-sessions`). Older session markers are adopted only when
-the recorded change is still checked out. An interrupted startup can leave
-`.jj/codex-session-claim`; inspect the owner marker, task state, and `jj op log`
-before recovering it. Do not delete another live task's claim.
+Use that directory as a local Codex project. The session hook starts an
+independent topic at `main@origin`, records ownership in
+`.jj/codex-session.json`, and guards prompts and tool calls against change-ID
+drift. It never automatically switches another task's working copy.
 
 ## Nix and GitHub
 
-Git-backed flakes include unstaged edits to tracked files, but omit untracked
-files. The activation wrappers now use `path:/home/schlich/dotfiles`, so new
-files are included without Git staging. Use explicit path references for other
-local commands too:
+Git-backed flakes can omit untracked files. The activation wrappers use
+`path:/home/schlich/dotfiles`, so new files are included without Git staging.
+Use explicit path references for other local commands too:
 
 ```nu
 nix develop path:.
@@ -90,21 +125,6 @@ nix run path:.#jj -- git push --remote origin --bookmark BOOKMARK
 nix run path:.#jjui
 ```
 
-These apps use the flake's pinned Jujutsu and jjui packages. A push transfers a
-bookmark; use `jj-ci publish` when a PR is also needed. Existing GitHub auth
-continues through `gh auth git-credential`; `gh auth login` sets up a new login.
-
-Path sources include ignored files and repository metadata as well. Keep
-plaintext secrets and bulky generated output outside the selected source root.
-Activation still requires approval; these changes affect system packages,
-Home Manager, and system-owned Codex hooks, so use a NixOS activation for the
-complete migration.
-
-For a deliberately planned dependency stack, use JJ to create and push layers,
-`gh stack link` to link their PRs, and `jj-ci stack-merge` to submit the green
-stack. Do not use Git-managed stack mutations or direct pushes to main.
-
-References: [Codex hooks](https://learn.chatgpt.com/docs/hooks),
-[custom file handlers](https://learn.chatgpt.com/docs/config-file/config-reference),
-[JJ transport](https://docs.jj-vcs.dev/latest/config/#git-subprocessing-behavior),
-[Nix flake inputs](https://nix.dev/manual/nix/2.26/command-ref/new-cli/nix3-flake.html).
+Use JJ for change, bookmark, rebase, and push operations. GitHub owns required
+checks, merge queues, and delivery to `main`. Keep plaintext secrets and
+bulky generated output outside the selected flake source root.

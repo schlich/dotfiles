@@ -3,12 +3,17 @@
 
   inputs = {
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
-    determinate.url = "https://flakehub.com/f/DeterminateSystems/determinate/*";
+    determinate = {
+      url = "https://flakehub.com/f/DeterminateSystems/determinate/*";
+    };
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    nushellWith.url = "github:YPares/nushellWith/master";
+    nushellWith = {
+      url = "github:YPares/nushellWith/master";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     marimo-pair = {
       url = "github:marimo-team/marimo-pair";
       flake = false;
@@ -31,6 +36,7 @@
     };
     jj-starship = {
       url = "github:dmmulroy/jj-starship";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
     niri = {
       url = "github:epireyn/niri-flake";
@@ -38,12 +44,16 @@
     };
     noctalia = {
       url = "github:noctalia-dev/noctalia/cachix";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
     noctalia-greeter = {
       url = "github:noctalia-dev/noctalia-greeter";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    fh.url = "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz";
+    fh = {
+      url = "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     agent-skills = {
       url = "github:Kyure-A/agent-skills-nix";
       inputs.home-manager.follows = "home-manager";
@@ -225,6 +235,27 @@
               cp ${./zellij/config.kdl} "$config_dir/config.kdl"
               cp ${./zellij/layouts/default.kdl} "$config_dir/layouts/default.kdl"
               ZELLIJ_CONFIG_DIR="$config_dir" zellij setup --check
+              touch "$out"
+            '';
+        whitespace =
+          pkgs.runCommand "whitespace-check"
+            {
+              nativeBuildInputs = [ pkgs.ripgrep ];
+            }
+            ''
+              matches="$(${pkgs.ripgrep}/bin/rg \
+                --hidden \
+                --glob '!.git/**' \
+                --glob '!.jj/**' \
+                --glob '!.direnv/**' \
+                --glob '!packages/**' \
+                --glob '!**/node_modules/**' \
+                --glob '!result*' \
+                '[[:blank:]]$' . || true)"
+              if [ -n "$matches" ]; then
+                printf '%s\n' "$matches"
+                exit 1
+              fi
               touch "$out"
             '';
       };
