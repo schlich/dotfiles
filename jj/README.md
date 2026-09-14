@@ -1,5 +1,11 @@
 # JJ project workflow
 
+Codex shell commands and OpenCode server shell execution receive a no-op
+`JJ_EDITOR` and an unpaginated `PAGER`. This keeps agent-run JJ commands from
+blocking on an editor or pager while leaving the normal interactive shell
+unchanged. Explicitly supply messages, filesets, revsets, and any available
+non-interactive flags for commands that prompt for other input.
+
 One task owns one topic, one JJ workspace, and one stable change ID. A topic
 may contain a series of logically separate JJ changes. Review fixes should be
 absorbed into the appropriate change instead of appended as "address review"
