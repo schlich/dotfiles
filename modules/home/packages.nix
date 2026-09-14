@@ -38,8 +38,6 @@
     dust
     font-awesome
     fx
-    jjui
-    lazyjj
     monaspace
     nerd-font-patcher
     nerd-fonts.symbols-only

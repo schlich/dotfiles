@@ -53,6 +53,7 @@ in
     configFile.source = ../../config.nu;
     extraConfig = ''
       source ${atuinNushellConfig}
+      source ${../../mcp/agent-shell.nu}
     '';
   };
 
