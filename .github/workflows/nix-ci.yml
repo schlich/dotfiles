@@ -21,19 +21,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Free runner disk space
-        run: |
-          sudo rm -rf \
-            /opt/ghc \
-            /opt/hostedtoolcache/CodeQL \
-            /usr/local/lib/android \
-            /usr/local/lib/node_modules \
-            /usr/local/share/chromium \
-            /usr/local/share/powershell \
-            /usr/share/dotnet
-          sudo apt-get clean
-          sudo docker system prune --all --force
-          df -h
       - uses: DeterminateSystems/determinate-nix-action@v3.21.9
       - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
       - name: Build headless system
@@ -45,19 +32,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Free runner disk space
-        run: |
-          sudo rm -rf \
-            /opt/ghc \
-            /opt/hostedtoolcache/CodeQL \
-            /usr/local/lib/android \
-            /usr/local/lib/node_modules \
-            /usr/local/share/chromium \
-            /usr/local/share/powershell \
-            /usr/share/dotnet
-          sudo apt-get clean
-          sudo docker system prune --all --force
-          df -h
       - uses: DeterminateSystems/determinate-nix-action@v3.21.9
       - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
       - name: Build desktop system
@@ -69,19 +43,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Free runner disk space
-        run: |
-          sudo rm -rf \
-            /opt/ghc \
-            /opt/hostedtoolcache/CodeQL \
-            /usr/local/lib/android \
-            /usr/local/lib/node_modules \
-            /usr/local/share/chromium \
-            /usr/local/share/powershell \
-            /usr/share/dotnet
-          sudo apt-get clean
-          sudo docker system prune --all --force
-          df -h
       - uses: DeterminateSystems/determinate-nix-action@v3.21.9
       - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
       - name: Build Home Manager modules
@@ -103,19 +64,6 @@ jobs:
             command: build .#checks.x86_64-linux.whitespace --print-build-logs
     steps:
       - uses: actions/checkout@v6
-      - name: Free runner disk space
-        run: |
-          sudo rm -rf \
-            /opt/ghc \
-            /opt/hostedtoolcache/CodeQL \
-            /usr/local/lib/android \
-            /usr/local/lib/node_modules \
-            /usr/local/share/chromium \
-            /usr/local/share/powershell \
-            /usr/share/dotnet
-          sudo apt-get clean
-          sudo docker system prune --all --force
-          df -h
       - uses: DeterminateSystems/determinate-nix-action@v3.21.9
       - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
       - name: Build ${{ matrix.name }}
