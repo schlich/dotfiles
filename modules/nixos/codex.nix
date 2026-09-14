@@ -5,6 +5,13 @@ let
     builtins.readFile ../../jj/codex-session.nu
   );
   codexConfig = (pkgs.formats.toml { }).generate "codex-system-config" {
+    # JJ has no global non-interactive environment switch. Codex shell tools
+    # are non-interactive, so prevent an accidental editor or pager from
+    # blocking them while leaving interactive terminals unchanged.
+    shell_environment_policy.set = {
+      JJ_EDITOR = "${pkgs.coreutils}/bin/true";
+      PAGER = "${pkgs.coreutils}/bin/cat";
+    };
     hooks = {
       SessionStart = [
         {

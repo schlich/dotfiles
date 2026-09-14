@@ -32,6 +32,14 @@ script, use valid Nushell syntax.
 Do not invoke `jj` in interactive mode. Use only non-interactive invocations,
 supplying every required argument or message flag explicitly.
 
+Codex shell commands and OpenCode server shell execution receive a no-op
+`JJ_EDITOR` and an unpaginated `PAGER`. This prevents an accidental editor or
+pager from blocking an agent command; it does not replace explicit
+non-interactive flags for commands that prompt for other input. Use
+`-m`/`--message`, explicit filesets and revsets, and `--no-interactive` where
+the command provides it. Use `jjui` or the JJ dashboard for genuinely
+interactive revision work in a terminal.
+
 ## Project task discipline
 
 For JJ projects, use one topic, one dedicated JJ workspace, and one stable
