@@ -12,6 +12,10 @@
       dates = [ "weekly" ];
     };
     settings = {
+      # Keep local builds serial and single-core so memory pressure does not
+      # take down the interactive system.
+      max-jobs = 1;
+      cores = 1;
       experimental-features = [
         "nix-command"
         "flakes"
