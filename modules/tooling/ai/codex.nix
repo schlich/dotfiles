@@ -2,9 +2,11 @@
 
 let
   skills = import ./shared-skills.nix { inherit inputs; };
+  # Codex Desktop writes to $CODEX_HOME/config.toml. Keep static settings on
+  # the executable instead of letting Home Manager manage that mutable file.
   codex = pkgs.writeNuScriptBin "codex" ''
     def --wrapped main [...args] {
-      ^secretspec run --file ${../../secretspec.toml} --provider keyring -- ${pkgs.codex}/bin/codex ...$args
+      ^secretspec run --file ${../../secretspec.toml} --provider keyring -- ${pkgs.codex}/bin/codex --config 'desktop.git-pr-watch-auto-merge=false' --config 'desktop.custom_file_handlers.jj-dashboard={label = "JJ dashboard", command = "jj-dashboard", icon = "${../../../jj/icon.svg}", input = "path", supports_ssh = false}' ...$args
     }
   '';
 in
@@ -14,8 +16,15 @@ in
 
   programs.codex = {
     enable = true;
+    package = codex;
     inherit skills;
     context = ./global-agent-instructions.md;
+  };
+
+  programs.codexDesktopLinux = {
+    enable = true;
+    # The desktop launcher must use the same configured wrapper as the CLI.
+    cliPackage = codex;
   };
 
   home.file = {

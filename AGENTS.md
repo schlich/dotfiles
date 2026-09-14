@@ -30,6 +30,17 @@
 - Add user packages in `modules/home/packages.nix`, version-control wrappers in
   `modules/programs/vcs.nix`, and AI client configuration in
   `modules/programs/ai.nix`.
+- Treat application-owned, self-mutating configuration as runtime state. Do
+  not manage such files with `home.file`, `xdg.configFile`, or a Home Manager
+  `programs.*.settings` option. When the application supports it, couple
+  immutable defaults to the package with a wrapper or command-line override;
+  otherwise use the application's system-level configuration layer. In
+  particular, Codex Desktop rewrites `$CODEX_HOME/config.toml`, so static
+  Codex defaults belong on its wrapped package, while Home Manager may still
+  manage non-mutating skills and context files.
+- Use `path:` flake references for local work so new files are included without
+  Git staging. For example, `nix build path:.#OUTPUT`. This includes ignored
+  files as well; keep generated output and plaintext secrets outside that root.
 - Format Nix changes with `nix fmt`. Do not run Nix builds or other build/test
   validation during agent responses unless the user explicitly requests it.
   When explicitly requested, use the smallest relevant build:
@@ -60,7 +71,8 @@
 - Before risky history operations (`jj rebase`, `jj squash`, `jj abandon`,
   `jj split`, or `jj op restore`), create a checkpoint with
   `.agents/skills/jj/scripts/jj-checkpoint`.
-- Use `jj-ci sync` only from an empty working copy. It fetches `origin`,
+- Use `jj-ci sync` only from an empty working copy without an active task owner.
+  It fetches `origin`,
   advances the local `main` bookmark to `main@origin`, and rebases the working
   copy onto it.
 - Use `jj-ci` for all trunk work, including lock-file-only updates.
@@ -71,13 +83,20 @@
   `jj-ci validate` before publication; JJ changes do not invoke Git hooks.
 - Use a concise JJ change description. Publish a validated ordinary change with
   `jj-ci publish --auto-merge`; it creates or updates a PR and requests
-  GitHub auto-merge against the current head SHA, then starts an empty
-  follow-up changeset so later edits do not rewrite the pushed revision.
+  GitHub auto-merge against the current head SHA. Ordinary publication keeps
+  editing the same change ID; enable auto-merge only at topic closeout.
+- Keep one topic and one stable JJ change per Codex task. Do not create a
+  follow-up change after publication. Use separate JJ workspaces for concurrent
+  tasks, and `jj-ci rebase` to update a topic in place.
+- Before archiving a delivered topic, run `jj-ci finish` and confirm success.
+  It verifies delivery of the current head and leaves an empty change on main.
+  Pending checks, conflicts, or unpublished edits keep the task open. Native
+  archive-button clicks are not a closeout hook.
 - GitHub owns PR state, required checks, and delivery to `main`. Do not bypass
   protection with direct pushes or manual merge commands.
-- The required `nix-ci` checks evaluate Home Manager and build NixOS, Niri,
-  Zellij, and whitespace checks. `main` uses strict required checks and linear
-  history.
+- The required `nix-ci` checks build the headless NixOS bootstrap first, then
+  the desktop NixOS system and Home Manager, alongside Niri, Zellij, and
+  whitespace checks. `main` uses strict required checks and linear history.
 - `jj-ci github reconcile` reports the declared GitHub policy. Use
   `jj-ci github reconcile --apply` only when intentionally reconciling
   auto-merge, branch deletion, and `main` protection.

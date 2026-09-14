@@ -2,6 +2,23 @@
 
 This directory contains a centralized MCP (Model Context Protocol) server setup that can be used across multiple MCP clients.
 
+## Agent shell results
+
+The configured Nushell MCP server exposes the `agent-shell` command. Use it
+when an agent needs to run a terminal command and receive a stable structured
+result instead of parsing terminal text:
+
+```nu
+agent-shell "jj status"
+agent-shell "nix fmt -- --check" --max-output 4000
+```
+
+It returns a `nushell.ai/v1` record containing `ok`, `kind`, `command`, `cwd`,
+`exit_code`, separate `stdout` and `stderr`, truncation flags, and a summary.
+The command runs in a clean child Nushell with startup configuration and
+history disabled. The MCP server keeps the record structured for the agent;
+the same command is also available in an interactive Nushell session.
+
 ## Directory Structure
 
 ```

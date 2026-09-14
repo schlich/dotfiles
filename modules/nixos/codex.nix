@@ -5,16 +5,35 @@ let
     builtins.readFile ../../jj/codex-session.nu
   );
   codexConfig = (pkgs.formats.toml { }).generate "codex-system-config" {
+    # JJ has no global non-interactive environment switch. Codex shell tools
+    # are non-interactive, so prevent an accidental editor or pager from
+    # blocking them while leaving interactive terminals unchanged.
+    shell_environment_policy.set = {
+      JJ_EDITOR = "${pkgs.coreutils}/bin/true";
+      PAGER = "${pkgs.coreutils}/bin/cat";
+    };
     hooks = {
       SessionStart = [
         {
-          matcher = "startup";
+          matcher = "startup|resume";
           hooks = [
             {
               type = "command";
               command = "${codexJjSession}/bin/codex-jj-session session-start";
               timeout = 10;
-              statusMessage = "Starting a fresh JJ change";
+              statusMessage = "Checking JJ topic ownership";
+            }
+          ];
+        }
+      ];
+      PreToolUse = [
+        {
+          hooks = [
+            {
+              type = "command";
+              command = "${codexJjSession}/bin/codex-jj-session guard";
+              timeout = 10;
+              statusMessage = "Checking JJ topic ownership";
             }
           ];
         }
@@ -26,7 +45,7 @@ let
               type = "command";
               command = "${codexJjSession}/bin/codex-jj-session first-prompt";
               timeout = 120;
-              statusMessage = "Naming the JJ change";
+              statusMessage = "Checking and naming the JJ topic";
             }
           ];
         }

@@ -68,7 +68,28 @@ in
         "x-systemd.device-timeout=1s"
       ];
     };
+    "/mnt/seagate" = {
+      device = "/dev/disk/by-uuid/53aa40c5-dd3c-4372-8280-8c0c61b15b02";
+      fsType = "ext4";
+      options = [
+        "nofail"
+        "x-systemd.device-timeout=5s"
+      ];
+    };
   };
 
-  swapDevices = [ ];
+  zramSwap = {
+    enable = true;
+    algorithm = "zstd";
+    memoryPercent = 100;
+    priority = 100;
+  };
+
+  swapDevices = [
+    {
+      device = "/mnt/seagate/.nixos-swapfile";
+      size = 8 * 1024;
+      priority = 10;
+    }
+  ];
 }

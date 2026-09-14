@@ -1,2 +1,10 @@
-result*
+# Nix, direnv, and JJ workspace state
+/result
+/result-*
+/.direnv/
+/.jj/
+/packages/
+
+# Local tooling state and dependency trees
 .aider*
+**/node_modules/

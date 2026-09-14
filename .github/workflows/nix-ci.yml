@@ -16,27 +16,107 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: build ${{ matrix.name }}
+  headless-system:
+    name: build headless NixOS
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Free runner disk space
+        run: |
+          sudo rm -rf \
+            /opt/ghc \
+            /opt/hostedtoolcache/CodeQL \
+            /usr/local/lib/android \
+            /usr/local/lib/node_modules \
+            /usr/local/share/chromium \
+            /usr/local/share/powershell \
+            /usr/share/dotnet
+          sudo apt-get clean
+          sudo docker system prune --all --force
+          df -h
+      - uses: DeterminateSystems/determinate-nix-action@v3.21.9
+      - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
+      - name: Build headless system
+        run: nix --accept-flake-config build .#nixosConfigurations.asus-headless.config.system.build.toplevel --print-build-logs
+
+  desktop-system:
+    name: build NixOS (shell and compositor)
+    needs: headless-system
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Free runner disk space
+        run: |
+          sudo rm -rf \
+            /opt/ghc \
+            /opt/hostedtoolcache/CodeQL \
+            /usr/local/lib/android \
+            /usr/local/lib/node_modules \
+            /usr/local/share/chromium \
+            /usr/local/share/powershell \
+            /usr/share/dotnet
+          sudo apt-get clean
+          sudo docker system prune --all --force
+          df -h
+      - uses: DeterminateSystems/determinate-nix-action@v3.21.9
+      - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
+      - name: Build desktop system
+        run: nix --accept-flake-config build .#nixosConfigurations.asus.config.system.build.toplevel --print-build-logs
+
+  home-manager:
+    name: build Home Manager modules (shell, editor, and desktop)
+    needs: desktop-system
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Free runner disk space
+        run: |
+          sudo rm -rf \
+            /opt/ghc \
+            /opt/hostedtoolcache/CodeQL \
+            /usr/local/lib/android \
+            /usr/local/lib/node_modules \
+            /usr/local/share/chromium \
+            /usr/local/share/powershell \
+            /usr/share/dotnet
+          sudo apt-get clean
+          sudo docker system prune --all --force
+          df -h
+      - uses: DeterminateSystems/determinate-nix-action@v3.21.9
+      - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
+      - name: Build Home Manager modules
+        run: nix --accept-flake-config build .#checks.x86_64-linux.home-manager-nixos --print-build-logs
+
+  config-checks:
+    name: ${{ matrix.name }}
+    needs: headless-system
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-          - name: Home Manager modules (shell, editor, and desktop)
-            command: nix build .#checks.x86_64-linux.home-manager-nixos --print-build-logs
-          - name: NixOS (shell and compositor)
-            command: nix build .#nixosConfigurations.asus.config.system.build.toplevel --print-build-logs
           - name: niri compositor config
-            command: nix build .#checks.x86_64-linux.niri-config --print-build-logs
+            command: build .#checks.x86_64-linux.niri-config --print-build-logs
           - name: zellij shell config
-            command: nix build .#checks.x86_64-linux.zellij-config --print-build-logs
+            command: build .#checks.x86_64-linux.zellij-config --print-build-logs
+          - name: whitespace
+            command: build .#checks.x86_64-linux.whitespace --print-build-logs
     steps:
       - uses: actions/checkout@v6
-      - uses: DeterminateSystems/determinate-nix-action@v3
-      - uses: DeterminateSystems/flakehub-cache-action@main
-      - name: Enable FlakeHub Cache
-        if: matrix.name == 'NixOS (shell and compositor)'
-        uses: DeterminateSystems/flakehub-cache-action@v3.21.9
+      - name: Free runner disk space
+        run: |
+          sudo rm -rf \
+            /opt/ghc \
+            /opt/hostedtoolcache/CodeQL \
+            /usr/local/lib/android \
+            /usr/local/lib/node_modules \
+            /usr/local/share/chromium \
+            /usr/local/share/powershell \
+            /usr/share/dotnet
+          sudo apt-get clean
+          sudo docker system prune --all --force
+          df -h
+      - uses: DeterminateSystems/determinate-nix-action@v3.21.9
+      - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
       - name: Build ${{ matrix.name }}
-        run: ${{ matrix.command }}
+        run: nix --accept-flake-config ${{ matrix.command }}

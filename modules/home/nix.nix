@@ -16,13 +16,13 @@
     (pkgs.writeNuScriptBin "nixos-activate" ''
       # Rebuild and activate the NixOS configuration for this machine.
       def --wrapped main [...args] {
-        ^sudo nixos-rebuild switch --flake "/home/schlich/dotfiles#asus" ...$args
+        ^sudo nixos-rebuild switch --flake "path:/home/schlich/dotfiles#asus" ...$args
       }
     '')
     (pkgs.writeNuScriptBin "home-activate" ''
       # Build and activate the Home Manager configuration embedded in NixOS.
       def main [] {
-        let flake = "/home/schlich/dotfiles#nixosConfigurations.asus.config.home-manager.users.schlich.home.activationPackage"
+        let flake = "path:/home/schlich/dotfiles#nixosConfigurations.asus.config.home-manager.users.schlich.home.activationPackage"
         let activation = (^/run/current-system/sw/bin/nix build --no-link --print-out-paths $flake | str trim)
 
         if ($activation | is-empty) {
