@@ -43,11 +43,11 @@
     "archify": {
       "flake": false,
       "locked": {
-        "lastModified": 1789029580,
-        "narHash": "sha256-VB2lDFDBVQXcrNrucpw+YnA+v/0Royo3CzTz9nvnvn8=",
+        "lastModified": 1789095417,
+        "narHash": "sha256-FLehfk4Q2QZzvYif91zJzK59UudLYr+exanG9SWricU=",
         "owner": "tt-a1i",
         "repo": "archify",
-        "rev": "18911058008f17dc065af23a2cdc9bfeff6d3f7a",
+        "rev": "bb71ccdd64cd3a74ba7cbd25bbacc7382da34410",
         "type": "github"
       },
       "original": {
