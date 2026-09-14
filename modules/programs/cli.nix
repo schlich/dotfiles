@@ -67,6 +67,10 @@
         name = "Vicky Boykis";
         url = "https://vickiboykis.com/rss";
       }
+      {
+        name = "graham-dumpleton";
+        url = "https://grahamdumpleton.me/feed.xml";
+      }
     ];
   };
 }

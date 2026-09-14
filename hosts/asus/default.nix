@@ -6,7 +6,7 @@
     limine = {
       enable = true;
       efiSupport = true;
-      maxGenerations = 10;
+      maxGenerations = 3;
       biosSupport = false;
       extraEntries = ''
         /Windows
