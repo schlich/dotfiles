@@ -1,47 +1,11 @@
 { pkgs, ... }:
 
 {
-  nix = {
-    gc = {
-      automatic = true;
-      dates = "weekly";
-      options = "--delete-older-than 14d";
-    };
-    optimise = {
-      automatic = true;
-      dates = [ "weekly" ];
-    };
-    settings = {
-      # Keep local builds serial and single-core so memory pressure does not
-      # take down the interactive system.
-      max-jobs = 1;
-      cores = 1;
-      experimental-features = [
-        "nix-command"
-        "flakes"
-      ];
-      trusted-users = [ "schlich" ];
-    };
-  };
-  nixpkgs.config.allowUnfree = true;
+  imports = [ ./core.nix ];
 
   environment.systemPackages = [ pkgs.google-chrome ];
-  time.timeZone = "America/Chicago";
-  i18n.defaultLocale = "en_US.UTF-8";
-  i18n.extraLocaleSettings = {
-    LC_ADDRESS = "en_US.UTF-8";
-    LC_IDENTIFICATION = "en_US.UTF-8";
-    LC_MEASUREMENT = "en_US.UTF-8";
-    LC_MONETARY = "en_US.UTF-8";
-    LC_NAME = "en_US.UTF-8";
-    LC_NUMERIC = "en_US.UTF-8";
-    LC_PAPER = "en_US.UTF-8";
-    LC_TELEPHONE = "en_US.UTF-8";
-    LC_TIME = "en_US.UTF-8";
-  };
 
   services = {
-    dbus.implementation = "broker";
     udisks2.enable = true;
     pipewire = {
       enable = true;
@@ -51,14 +15,12 @@
     };
   };
 
-  hardware.enableAllFirmware = true;
   hardware.bluetooth = {
     enable = true;
     powerOnBoot = true;
     settings.General.Experimental = true;
   };
 
-  programs.nix-ld.enable = true;
   programs.immersed.enable = true;
   xdg = {
     portal = {
@@ -78,5 +40,4 @@
     };
     autostart.enable = true;
   };
-  security.polkit.enable = true;
 }
