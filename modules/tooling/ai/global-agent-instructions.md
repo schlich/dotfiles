@@ -17,6 +17,16 @@ script, use valid Nushell syntax.
 - Before saving a multi-command IntelliShell template, validate it with
   `nu -c` when practical.
 
+# Nix configuration
+
+- Treat application-owned, self-mutating configuration as runtime state. Do
+  not put such files under Home Manager's `home.file`, `xdg.configFile`, or
+  `programs.*.settings`; couple immutable defaults to the package with a
+  wrapper or command-line override, or use the application's system-level
+  configuration layer. Codex Desktop rewrites `$CODEX_HOME/config.toml`, so
+  static Codex defaults belong on its wrapped package; Home Manager can still
+  manage non-mutating skills and context files.
+
 # Jujutsu
 
 Do not invoke `jj` in interactive mode. Use only non-interactive invocations,

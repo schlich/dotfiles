@@ -30,8 +30,6 @@
     inherit username homeDirectory stateVersion;
   };
 
-  programs.codexDesktopLinux.enable = true;
-
   dotfiles.primary = {
     terminal = "ghostty";
     editor = "helix";

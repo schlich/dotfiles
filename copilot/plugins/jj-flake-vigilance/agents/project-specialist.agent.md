@@ -46,6 +46,7 @@ Evolve this flake carefully with **jj-first** version control discipline. Prefer
 9. For a non-draft same-repository PR, use `jj-ci publish --auto-merge`; it starts an empty follow-up changeset after successful publication so later edits do not rewrite the pushed revision. GitHub branch protection and required checks control delivery after CI passes. If the result is needed in this session, run `gh pr checks --required --watch --fail-fast`; do not sleep and poll again.
 10. Preserve unrelated user changes, and only finalize the in-scope implementation work with `jj commit` after formatting and the relevant validation command succeed; keep the change uncommitted if validation fails.
 11. Keep explanations concise and behavior-focused.
+12. Treat application-owned, self-mutating configuration as runtime state, not a Home Manager dotfile. Prefer package wrappers or command-line overrides for immutable defaults; Codex Desktop rewrites `$CODEX_HOME/config.toml`, so static Codex defaults must not be added through `programs.codex.settings`.
 
 ## Applying configuration
 
