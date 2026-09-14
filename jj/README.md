@@ -78,10 +78,11 @@ jj-ci stack-merge STACK_OR_PR
 ```
 
 That wrapper uses `gh stack merge --yes --squash`, so each layer remains a
-linear, atomic change without merge commits. The ordinary auto-merge workflow
-intentionally ignores `stack/` branches; stack submission is the explicit
-ordering decision. Use a rebase merge only when preserving the individual
-patch-series commits on `main` is more valuable than a single atomic commit.
+linear, atomic change without merge commits. Ordinary topics are queued for
+auto-merge only when the publisher explicitly passes `--auto-merge`; stack
+submission remains the explicit ordering decision. Use a rebase merge only
+when preserving the individual patch-series commits on `main` is more valuable
+than a single atomic commit.
 
 Merge commits are not part of the repository policy: `main` has required
 linear history and GitHub allows only squash or rebase merges.
