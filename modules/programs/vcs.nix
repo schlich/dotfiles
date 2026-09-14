@@ -15,7 +15,7 @@ let
   };
 in
 {
-  programs.git.enable = false;
+  programs.git.enable = true;
   programs.gpg.enable = true;
   programs.lazygit.enable = false;
   xdg.configFile."git/config".text = ''

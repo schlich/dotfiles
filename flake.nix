@@ -135,6 +135,15 @@
             }
           ];
         };
+        asus-headless = lib.nixosSystem {
+          inherit system;
+          specialArgs = { inherit inputs; };
+          modules = [
+            determinate.nixosModules.default
+            ./configuration-headless.nix
+            ./hosts/asus/storage-internal.nix
+          ];
+        };
         asus-usb = lib.nixosSystem {
           inherit system;
           specialArgs = { inherit inputs; };
@@ -196,6 +205,7 @@
 
       packages.${system} = {
         default = nixosConfigurations.asus.config.system.build.toplevel;
+        headless = nixosConfigurations.asus-headless.config.system.build.toplevel;
         jj = pkgs.jujutsu;
         jjui = pkgs.jjui;
       };

@@ -86,9 +86,9 @@
   archive-button clicks are not a closeout hook.
 - GitHub owns PR state, required checks, and delivery to `main`. Do not bypass
   protection with direct pushes or manual merge commands.
-- The required `nix-ci` checks evaluate Home Manager and build NixOS, Niri,
-  Zellij, and whitespace checks. `main` uses strict required checks and linear
-  history.
+- The required `nix-ci` checks build the headless NixOS bootstrap first, then
+  the desktop NixOS system and Home Manager, alongside Niri, Zellij, and
+  whitespace checks. `main` uses strict required checks and linear history.
 - `jj-ci github reconcile` reports the declared GitHub policy. Use
   `jj-ci github reconcile --apply` only when intentionally reconciling
   auto-merge, branch deletion, and `main` protection.

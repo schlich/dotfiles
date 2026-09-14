@@ -9,6 +9,7 @@
     marimo
     nodejs
     ty
+    git
     wget
     nixfmt
     ruff

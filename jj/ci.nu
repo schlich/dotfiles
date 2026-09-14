@@ -128,10 +128,12 @@ def validate-change [] {
 
 def github-reconcile [apply: bool] {
     let required_checks = [
-        "build Home Manager modules (shell, editor, and desktop)"
+        "build headless NixOS"
         "build NixOS (shell and compositor)"
+        "build Home Manager modules (shell, editor, and desktop)"
         "build niri compositor config"
         "build zellij shell config"
+        "whitespace"
     ]
     let repository = (run-command "reading repository metadata" {
         github repo view --json nameWithOwner --jq .nameWithOwner
