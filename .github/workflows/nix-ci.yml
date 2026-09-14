@@ -48,7 +48,7 @@ jobs:
           sudo apt-get clean
           sudo docker system prune --all --force
           df -h
-      - uses: DeterminateSystems/determinate-nix-action@v3.21.9
+      - uses: DeterminateSystems/determinate-nix-action@v3.22.3
       - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
       - name: Build ${{ matrix.name }}
         run: nix --accept-flake-config ${{ matrix.command }}
