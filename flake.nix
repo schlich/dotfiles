@@ -144,6 +144,14 @@
             ./hosts/asus/storage-internal.nix
           ];
         };
+        homelab = lib.nixosSystem {
+          inherit system;
+          specialArgs = { inherit inputs; };
+          modules = [
+            determinate.nixosModules.default
+            ./configuration-homelab.nix
+          ];
+        };
         asus-usb = lib.nixosSystem {
           inherit system;
           specialArgs = { inherit inputs; };
