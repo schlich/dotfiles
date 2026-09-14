@@ -3,6 +3,10 @@
 ## Development
 
 - Keep project tooling and checks declarative in `flake.nix`.
+- Treat application-owned, self-mutating configuration as runtime state. Use a
+  package wrapper or command-line override for immutable defaults instead of
+  Home Manager-managed dotfiles; reserve Home Manager for files the
+  application does not rewrite.
 - Target only `x86_64-linux` for all flake outputs unless explicitly requested to support additional architectures.
 - Enter the environment with `direnv allow` or `nix develop`.
 - Prefer Nushell for scripts and structured data pipelines. Use `.nu` files and
