@@ -1,6 +1,7 @@
 { pkgs, ... }:
 
 {
+  programs.git.enable = true;
   programs.home-manager.enable = true;
   programs.htop.enable = true;
   programs.bat.enable = true;
