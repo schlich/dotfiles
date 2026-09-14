@@ -1,5 +1,11 @@
 # JJ project workflow
 
+Codex shell commands and OpenCode server shell execution receive a no-op
+`JJ_EDITOR` and an unpaginated `PAGER`. This keeps agent-run JJ commands from
+blocking on an editor or pager while leaving the normal interactive shell
+unchanged. Explicitly supply messages, filesets, revsets, and any available
+non-interactive flags for commands that prompt for other input.
+
 One task owns one topic, one JJ workspace, and one stable change ID. A topic
 may contain a series of logically separate JJ changes. Review fixes should be
 absorbed into the appropriate change instead of appended as "address review"
@@ -78,10 +84,11 @@ jj-ci stack-merge STACK_OR_PR
 ```
 
 That wrapper uses `gh stack merge --yes --squash`, so each layer remains a
-linear, atomic change without merge commits. The ordinary auto-merge workflow
-intentionally ignores `stack/` branches; stack submission is the explicit
-ordering decision. Use a rebase merge only when preserving the individual
-patch-series commits on `main` is more valuable than a single atomic commit.
+linear, atomic change without merge commits. Ordinary topics are queued for
+auto-merge only when the publisher explicitly passes `--auto-merge`; stack
+submission remains the explicit ordering decision. Use a rebase merge only
+when preserving the individual patch-series commits on `main` is more valuable
+than a single atomic commit.
 
 Merge commits are not part of the repository policy: `main` has required
 linear history and GitHub allows only squash or rebase merges.

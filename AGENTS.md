@@ -30,6 +30,14 @@
 - Add user packages in `modules/home/packages.nix`, version-control wrappers in
   `modules/programs/vcs.nix`, and AI client configuration in
   `modules/programs/ai.nix`.
+- Treat application-owned, self-mutating configuration as runtime state. Do
+  not manage such files with `home.file`, `xdg.configFile`, or a Home Manager
+  `programs.*.settings` option. When the application supports it, couple
+  immutable defaults to the package with a wrapper or command-line override;
+  otherwise use the application's system-level configuration layer. In
+  particular, Codex Desktop rewrites `$CODEX_HOME/config.toml`, so static
+  Codex defaults belong on its wrapped package, while Home Manager may still
+  manage non-mutating skills and context files.
 - Use `path:` flake references for local work so new files are included without
   Git staging. For example, `nix build path:.#OUTPUT`. This includes ignored
   files as well; keep generated output and plaintext secrets outside that root.

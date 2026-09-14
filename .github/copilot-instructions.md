@@ -28,3 +28,7 @@
 - Keep shared state in `modules/home` and `modules/programs`; keep selectable tools isolated under `modules/tooling/<category>/<tool>.nix`.
 - Add or remove selectable tooling through profile imports. Do not reintroduce central enums, duplicated package lists, or client-specific settings in shared modules.
 - When editing Nix support tooling, preserve the flake output names and option paths used by `nixd`, Home Manager builds, and the AI client configuration unless you intentionally update all of those call sites together.
+- Treat application-owned, self-mutating configuration as runtime state, not a
+  Home Manager dotfile. Prefer package wrappers or command-line overrides for
+  immutable defaults; Codex Desktop rewrites `$CODEX_HOME/config.toml`, so
+  static Codex defaults must not be added through `programs.codex.settings`.

@@ -16,6 +16,12 @@ Conventions and rules for authoring, modifying, and maintaining Nix flakes and N
 ## Flake Structure and Modularity
 
 - Keep tooling, shell wrappers, agent assets, and workflow enablement declarative through `flake.nix`, `home.nix`, and `modules/`.
+- Treat application-owned, self-mutating configuration as runtime state rather
+  than a Home Manager dotfile. Prefer a package wrapper or command-line
+  override for immutable defaults; use the application's system-level config
+  layer when no wrapper interface exists. Codex Desktop rewrites
+  `$CODEX_HOME/config.toml`, so do not add static Codex defaults through
+  `programs.codex.settings` or `home.file`.
 - Preserve the existing modular flake structure. Avoid introducing the Dendritic Pattern as part of an unrelated change; adopting it requires a deliberate architecture migration.
 - Add user packages in `modules/home/packages.nix`, version-control wrappers in `modules/programs/vcs.nix`, and AI client configuration in `modules/tooling/ai/` and `modules/programs/`.
 

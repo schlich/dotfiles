@@ -17,10 +17,28 @@ script, use valid Nushell syntax.
 - Before saving a multi-command IntelliShell template, validate it with
   `nu -c` when practical.
 
+# Nix configuration
+
+- Treat application-owned, self-mutating configuration as runtime state. Do
+  not put such files under Home Manager's `home.file`, `xdg.configFile`, or
+  `programs.*.settings`; couple immutable defaults to the package with a
+  wrapper or command-line override, or use the application's system-level
+  configuration layer. Codex Desktop rewrites `$CODEX_HOME/config.toml`, so
+  static Codex defaults belong on its wrapped package; Home Manager can still
+  manage non-mutating skills and context files.
+
 # Jujutsu
 
 Do not invoke `jj` in interactive mode. Use only non-interactive invocations,
 supplying every required argument or message flag explicitly.
+
+Codex shell commands and OpenCode server shell execution receive a no-op
+`JJ_EDITOR` and an unpaginated `PAGER`. This prevents an accidental editor or
+pager from blocking an agent command; it does not replace explicit
+non-interactive flags for commands that prompt for other input. Use
+`-m`/`--message`, explicit filesets and revsets, and `--no-interactive` where
+the command provides it. Use `jjui` or the JJ dashboard for genuinely
+interactive revision work in a terminal.
 
 ## Project task discipline
 
