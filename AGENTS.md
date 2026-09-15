@@ -76,6 +76,20 @@
   advances the local `main` bookmark to `main@origin`, and rebases the working
   copy onto it.
 - Use `jj-ci` for all trunk work, including lock-file-only updates.
+- Before implementing or publishing, inspect the working-copy diff for mixed
+  deliverables. Split unrelated work into separate JJ changes instead of
+  carrying it in one change. Choose the graph shape by semantic dependency:
+  use a parent/child chain only when the child needs the parent's code, schema,
+  configuration, or other behavior to build, test, or make sense; use sibling
+  changes when each part is independently reviewable and can land without the
+  other. Do not make changes parent/child merely because they touch related
+  files or were discovered in the same task.
+- JJ has this split built in: `jj split` (or `jj split -r <rev>`) creates a
+  parent/child pair, while `jj split --parallel -r <rev>` creates siblings.
+  Use explicit descriptions for both resulting changes, verify the resulting
+  graph with `jj log`, and checkpoint before the split as with other history
+  surgery. If more than two coherent changes are present, repeat the split
+  and re-evaluate the dependency graph after each operation.
 
 ## Local gates and pull requests
 
@@ -85,9 +99,11 @@
   `jj-ci publish --auto-merge`; it creates or updates a PR and requests
   GitHub auto-merge against the current head SHA. Ordinary publication keeps
   editing the same change ID; enable auto-merge only at topic closeout.
-- Keep one topic and one stable JJ change per Codex task. Do not create a
-  follow-up change after publication. Use separate JJ workspaces for concurrent
-  tasks, and `jj-ci rebase` to update a topic in place.
+- Keep one coherent topic per Codex task. Use one stable JJ change for a single
+  deliverable, but allow a small stack of changes when the task contains
+  multiple deliverables that should be split. Do not create unrelated
+  follow-up changes after publication. Use separate JJ workspaces for
+  concurrent tasks, and `jj-ci rebase` to update a topic in place.
 - Before archiving a delivered topic, run `jj-ci finish` and confirm success.
   It verifies delivery of the current head and leaves an empty change on main.
   Pending checks, conflicts, or unpublished edits keep the task open. Native

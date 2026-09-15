@@ -34,18 +34,19 @@ Use this skill for routine repository tasks that should follow a repeatable patt
 
 1. Inspect `flake.nix`, the touched modules, and any affected host entrypoints before editing.
 2. Use `jj status`, `jj diff`, and `jj log` to understand current work, decide whether you are extending or reconciling an existing change, and avoid switching to mutating `git`.
-3. For implementation or repo-reconciliation requests, draft a concise jj change description from the user request, set it on `@` with `jj describe` once the intended change is clear, and revise it if the actual scope shifts.
-4. If the task may require `jj rebase`, `jj squash`, `jj abandon`, `jj split`, or `jj op restore`, run `.agents/skills/jj/scripts/jj-checkpoint` first.
-5. Make the smallest coherent change that preserves existing flake output names and host wiring. Target only `x86_64-linux` for all flake outputs unless explicitly asked for more.
-6. Run `nix fmt` after Nix edits.
-7. Choose validation based on the touched surface:
+3. Before implementation or publication, inspect the diff for mixed deliverables. Split unrelated deliverables into separate changes; use parent/child only when the later change depends on the earlier one to build, test, or make sense, and use siblings when both can land independently. `jj split` creates parent/child changes by default; `jj split --parallel` creates siblings. Set explicit descriptions and confirm the graph with `jj log`.
+4. For implementation or repo-reconciliation requests, draft concise jj change descriptions from the user request, set them with `jj describe` once the intended scope is clear, and revise them if the scope shifts.
+5. If the task may require `jj rebase`, `jj squash`, `jj abandon`, `jj split`, or `jj op restore`, run `.agents/skills/jj/scripts/jj-checkpoint` first.
+6. Make the smallest coherent change that preserves existing flake output names and host wiring. Target only `x86_64-linux` for all flake outputs unless explicitly asked for more.
+7. Run `nix fmt` after Nix edits.
+8. Choose validation based on the touched surface:
    - home-level changes: `nix build .#homeConfigurations.schlich.activationPackage`
    - system changes: `nix build .#nixosConfigurations.asus.config.system.build.toplevel`
-8. Treat local validation as the fast gate and GitHub Actions as the comprehensive gate. `.github/workflows/nix-ci.yml` evaluates Home Manager and builds the NixOS, Niri, Zellij, and whitespace checks on the PR.
-9. Preserve unrelated user changes, and only after formatting and the relevant validation command succeed, finalize the in-scope work with `jj commit` using the up-to-date description. If validation fails or the request is analysis-only, stop without committing.
-10. If the user wants the change published, ensure the committed revision has a bookmark, push it to `origin`, and open or update a PR against `main`. When subsequent work depends on CI, run `gh pr checks --required --watch --fail-fast` rather than sleeping and checking again. Queue auto-merge only when the user explicitly requests delivery, using `jj-ci publish --auto-merge`; otherwise leave the PR for review after the required checks pass.
-11. If that publication flow creates or reuses a non-`main` bookmark, treat that bookmark push as implicit PR intent and open or update the PR immediately after pushing instead of waiting for a follow-up request.
-12. Summarize behavioral impact and any jj/history operations explicitly.
+9. Treat local validation as the fast gate and GitHub Actions as the comprehensive gate. `.github/workflows/nix-ci.yml` evaluates Home Manager and builds the NixOS, Niri, Zellij, and whitespace checks on the PR.
+10. Preserve unrelated user changes, and only after formatting and the relevant validation command succeed, finalize the in-scope work with `jj commit` using the up-to-date description. If validation fails or the request is analysis-only, stop without committing.
+11. If the user wants the change published, ensure the committed revision has a bookmark, push it to `origin`, and open or update a PR against `main`. When subsequent work depends on CI, run `gh pr checks --required --watch --fail-fast` rather than sleeping and checking again. Queue auto-merge only when the user explicitly requests delivery, using `jj-ci publish --auto-merge`; otherwise leave the PR for review after the required checks pass.
+12. If that publication flow creates or reuses a non-`main` bookmark, treat that bookmark push as implicit PR intent and open or update the PR immediately after pushing instead of waiting for a follow-up request.
+13. Summarize behavioral impact and any jj/history operations explicitly.
 
 ## Project notes
 
