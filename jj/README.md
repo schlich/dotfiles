@@ -77,9 +77,11 @@ not run `jj-ci rebase` again while conflicts remain; doing so would attempt to
 move an already-rebased topic a second time. If a resolution goes wrong, use
 the printed checkpoint with `jj op restore` and retry from the pre-rebase state.
 
-`jj-ci publish` validates, pushes the stable `jj-<full-change-id>` bookmark,
-and creates or updates the matching PR. It does not create a follow-up change.
-Further edits to the series therefore update the same review topic.
+`jj-ci publish` validates, pushes the stable `jj-<full-change-id>` bookmark to
+both the `origin` (GitHub) and `tangled` remotes, and creates or updates the
+matching PR. It does not create a follow-up change. After GitHub delivery,
+`jj-ci finish` also mirrors `main` to Tangled. Further edits to the series
+therefore update the same review topic.
 
 `jj-ci finish` checks that GitHub merged the exact current head and that the
 merge is on `main@origin`. It then advances local main, leaves an empty
