@@ -56,8 +56,10 @@ the local range-diff command supplies the true interdiff between review rounds.
 an owned workspace. Use `jj-ci rebase` during an active topic; it fetches trunk
 and rebases the whole series in place.
 
-`jj-ci publish` validates, pushes the stable `jj-<full-change-id>` bookmark,
-and creates or updates the matching PR. It does not create a follow-up change.
+`jj-ci publish` validates, pushes the stable `jj-<full-change-id>` bookmark to
+both the `origin` (GitHub) and `tangled` remotes, and creates or updates the
+matching PR. It does not create a follow-up change. After GitHub delivery,
+`jj-ci finish` also mirrors `main` to Tangled.
 Further edits to the series therefore update the same review topic.
 
 `jj-ci finish` checks that GitHub merged the exact current head and that the

@@ -41,6 +41,18 @@ def publication-bookmark [] {
     $"jj-(current-topic-id)"
 }
 
+def push-bookmark [remote: string, bookmark: string] {
+    run-command $"pushing ($bookmark) to ($remote)" {
+        ^jj git push --remote $remote --bookmark $bookmark
+    } | ignore
+}
+
+def push-topic-bookmark [bookmark: string] {
+    for remote in [origin tangled] {
+        push-bookmark $remote $bookmark
+    }
+}
+
 def checkpoint [label: string] {
     let root = (run-command "locating the workspace" { ^jj root })
     let operation = (run-command "recording a recovery point" {
@@ -279,9 +291,7 @@ def "main publish" [--auto-merge] {
         error make { msg: "This topic's PR is closed or merged. Finish it before starting new work." }
     }
     run-command "setting the publication bookmark" { ^jj bookmark set $branch -r @ } | ignore
-    run-command "pushing the publication bookmark" {
-        ^jj git push --remote origin --bookmark $branch
-    } | ignore
+    push-topic-bookmark $branch
     let url = if $pr.exit_code == 0 {
         let existing = ($pr.stdout | from json)
         if $existing.state != "OPEN" {
@@ -348,6 +358,7 @@ def "main finish" [] {
         }
     }
     run-command "advancing main" { ^jj bookmark move main --to main@origin } | ignore
+    push-bookmark tangled main
     run-command "leaving a clean workspace on main" { ^jj new main@origin } | ignore
     let root = (run-command "locating the workspace" { ^jj root })
     let owner_path = ($root | path join ".jj" "codex-session.json")
