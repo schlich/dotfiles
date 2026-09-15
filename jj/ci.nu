@@ -84,6 +84,61 @@ def require-ready-change [] {
     }
 }
 
+def conflicted-revisions [] {
+    let result = (^jj log -r 'conflicted() & ::@' --no-graph -T 'change_id ++ "\t" ++ description.first_line() ++ "\n"' | complete)
+    if $result.exit_code != 0 { error make { msg: ($result.stderr | str trim) } }
+    $result.stdout | lines | where {|line| $line | str trim | is-not-empty } | each {|line|
+        let fields = ($line | split row "\t")
+        {
+            change_id: ($fields | first)
+            description: ($fields | skip 1 | str join "\t")
+        }
+    }
+}
+
+def print-conflicts [context: string] {
+    let revisions = (conflicted-revisions)
+    if ($revisions | is-empty) {
+        print $"($context): no conflicts in the current topic stack."
+        return false
+    }
+
+    print $"($context): ($revisions | length) conflicted revision(s):"
+    for $revision in $revisions {
+        print $"  ($revision.change_id) ($revision.description)"
+        let files = (^jj resolve --list -r $revision.change_id | complete)
+        if $files.exit_code == 0 {
+            let paths = ($files.stdout | lines | where {|line| $line | str trim | is-not-empty })
+            for $path in $paths { print $"    ($path)" }
+        }
+    }
+    print ""
+    print $"Topic tip before selecting a revision: (current-topic-id)"
+    print "Resolve each revision in order, then run `jj-ci conflicts` again."
+    print "For a revision that is not @: run `jj edit CHANGE_ID`, edit or `jj resolve` its files, then return with `jj edit TOPIC_TIP`."
+    print "Do not re-run `jj-ci rebase` until the current topic is conflict-free; the rebase already completed."
+    true
+}
+
+def fetch-origin [] {
+    run-command "fetching origin" { ^jj git fetch --remote origin } | ignore
+}
+
+def rebase-topic [] {
+    require-owned-change
+    if (print-conflicts "Before rebase") {
+        error make { msg: "Resolve existing conflicts before rebasing onto main@origin." }
+    }
+    checkpoint "rebase"
+    fetch-origin
+    run-command "rebasing the topic stack" {
+        ^jj rebase -s 'roots(main@origin..@)' -o main@origin
+    } | ignore
+    if (print-conflicts "Rebase completed") {
+        error make { msg: "Rebase completed with conflicts. Resolve them before continuing." }
+    }
+}
+
 def sync-main [] {
     let owner = (session-owner)
     if $owner != null and not ($owner.finished? | default false) {
@@ -93,7 +148,7 @@ def sync-main [] {
         error make { msg: "Sync needs an empty change. Use `jj-ci rebase` to update this topic in place." }
     }
     checkpoint "sync"
-    run-command "fetching origin" { ^jj git fetch --remote origin } | ignore
+    fetch-origin
     run-command "advancing the main bookmark" { ^jj bookmark move main --to main@origin } | ignore
     run-command "rebasing the working copy" { ^jj rebase -r @ -o main@origin } | ignore
 }
@@ -196,7 +251,7 @@ def stack-merge [target: string] {
 }
 
 def main [] {
-    print "Use `jj-ci status`, `jj-ci sync`, `jj-ci rebase`, `jj-ci review snapshot`, `jj-ci interdiff`, `jj-ci finish`, `jj-ci validate`, `jj-ci publish`, `jj-ci github reconcile`, or `jj-ci stack-merge`."
+    print "Use `jj-ci status`, `jj-ci sync`, `jj-ci rebase`, `jj-ci conflicts`, `jj-ci review snapshot`, `jj-ci interdiff`, `jj-ci finish`, `jj-ci validate`, `jj-ci publish`, `jj-ci github reconcile`, or `jj-ci stack-merge`."
 }
 
 def "main status" [] {
@@ -257,18 +312,19 @@ def "main interdiff" [old: string, new: string] {
 }
 
 def "main rebase" [] {
+    rebase-topic
+}
+
+def "main conflicts" [] {
     require-owned-change
-    checkpoint "rebase"
-    run-command "fetching origin" { ^jj git fetch --remote origin } | ignore
-    run-command "rebasing the topic stack" {
-        ^jj rebase -s 'roots(main@origin..@)' -o main@origin
-    } | ignore
-    if (current-change "conflict") == "true" {
-        error make { msg: "Rebase recorded conflicts in this same change. Resolve them before publishing." }
+    if (print-conflicts "Conflict status") {
+        error make { msg: "The current topic has unresolved conflicts." }
     }
 }
 
 def "main publish" [--auto-merge] {
+    require-ready-change
+    rebase-topic
     require-ready-change
     validate-change
     let title = (current-change "description.first_line()")
@@ -307,6 +363,10 @@ def "main github reconcile" [--apply] {
 }
 
 def "main stack-merge" [target: string] {
+    require-ready-change
+    rebase-topic
+    require-ready-change
+    validate-change
     stack-merge $target
 }
 

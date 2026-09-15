@@ -76,15 +76,22 @@
   advances the local `main` bookmark to `main@origin`, and rebases the working
   copy onto it.
 - Use `jj-ci` for all trunk work, including lock-file-only updates.
+- Keep active work continuously integrated: start each dedicated workspace at
+  `main@origin`, rebase after trunk advances and before review or queue updates,
+  and never share a mutable topic worktree.
+- Herdr or Paseo may monitor one existing JJ workspace per topic and notify its
+  owner about stale trunk or PR state; do not use unattended auto-rebase or
+  automatic conflict resolution.
 
 ## Local gates and pull requests
 
 - `prek` is installed declaratively. Run `prek run --all-files` or
   `jj-ci validate` before publication; JJ changes do not invoke Git hooks.
 - Use a concise JJ change description. Publish a validated ordinary change with
-  `jj-ci publish --auto-merge`; it creates or updates a PR and requests
-  GitHub auto-merge against the current head SHA. Ordinary publication keeps
-  editing the same change ID; enable auto-merge only at topic closeout.
+  `jj-ci publish --auto-merge`; publication first rebases onto the latest
+  `main@origin`, validates that head, and then requests GitHub auto-merge
+  against it. Ordinary publication keeps editing the same change ID; enable
+  auto-merge only at topic closeout.
 - Keep one topic and one stable JJ change per Codex task. Do not create a
   follow-up change after publication. Use separate JJ workspaces for concurrent
   tasks, and `jj-ci rebase` to update a topic in place.
@@ -105,12 +112,15 @@
 
 - Use a stack only for a preplanned chain of dependent, independently reviewable
   JJ changes. Keep unrelated work in separate branches.
+- Prefer one ordinary PR when the work can land atomically. For stacks, keep
+  every child based on its immediate parent, land parents before children, and
+  rebase the remaining stack after each parent lands.
 - JJ creates, describes, rebases, and pushes every layer. Link existing GitHub
   PRs with `gh stack link` and inspect them non-interactively with
   `gh stack view --json`.
 - Once every layer is green at its current head, submit the stack with
   `jj-ci stack-merge <stack-or-pr>`. GitHub handles queue-compatible delivery
-  to `main`.
+  to `main`; the command performs one final rebase and validation first.
 - Do not run `gh stack init`, `add`, `submit`, `sync`, or `rebase`; they mutate
   Git-managed branches and violate the JJ boundary.
 

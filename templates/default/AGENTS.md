@@ -24,6 +24,8 @@
   throughout the task; publication does not create a follow-up change.
 - Use a dedicated JJ workspace per concurrent task and open it as a local
   project. Do not use the desktop Git worktree or commit actions.
+- Start each workspace from `main@origin`, rebase after trunk advances and
+  before review or queue updates, and never share a mutable topic worktree.
 - Use `path:` references such as `nix develop path:.` to include new files in
   local flakes without Git staging. Path sources also include ignored files.
 - Where available, use `jj-ci rebase`, `jj-ci publish`, and `jj-ci finish` for
