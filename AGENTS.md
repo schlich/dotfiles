@@ -76,12 +76,6 @@
   advances the local `main` bookmark to `main@origin`, and rebases the working
   copy onto it.
 - Use `jj-ci` for all trunk work, including lock-file-only updates.
-- Keep active work continuously integrated: start each dedicated workspace at
-  `main@origin`, rebase after trunk advances and before review or queue updates,
-  and never share a mutable topic worktree.
-- Herdr or Paseo may monitor one existing JJ workspace per topic and notify its
-  owner about stale trunk or PR state; do not use unattended auto-rebase or
-  automatic conflict resolution.
 - Before implementing or publishing, inspect the working-copy diff for mixed
   deliverables. Split unrelated work into separate JJ changes instead of
   carrying it in one change. Choose the graph shape by semantic dependency:
@@ -96,19 +90,28 @@
   graph with `jj log`, and checkpoint before the split as with other history
   surgery. If more than two coherent changes are present, repeat the split
   and re-evaluate the dependency graph after each operation.
+- Keep active work continuously integrated: start each dedicated workspace at
+  `main@origin`, rebase after trunk advances and before review or queue updates,
+  and never share a mutable topic worktree.
+- Herdr or Paseo may monitor one existing JJ workspace per topic and notify its
+  owner about stale trunk or PR state; do not use unattended auto-rebase or
+  automatic conflict resolution.
 
 ## Local gates and pull requests
 
 - `prek` is installed declaratively. Run `prek run --all-files` or
   `jj-ci validate` before publication; JJ changes do not invoke Git hooks.
 - Use a concise JJ change description. Publish a validated ordinary change with
-  `jj-ci publish --auto-merge`; publication first rebases onto the latest
-  `main@origin`, validates that head, and then requests GitHub auto-merge
-  against it. Ordinary publication keeps editing the same change ID; enable
-  auto-merge only at topic closeout.
-- Keep one topic and one stable JJ change per Codex task. Do not create a
-  follow-up change after publication. Use separate JJ workspaces for concurrent
-  tasks, and `jj-ci rebase` to update a topic in place.
+  `jj-ci publish --auto-merge`; it creates or updates a PR and requests
+  GitHub auto-merge against the current head SHA. Ordinary publication keeps
+  editing the same change ID; enable auto-merge only at topic closeout.
+- Keep one coherent topic per Codex task. Use one stable JJ change for a single
+  deliverable, but allow a small stack of changes when the task contains
+  multiple deliverables that should be split. Do not create unrelated
+  follow-up changes after publication. Use separate JJ workspaces for
+  concurrent tasks, and `jj-ci rebase` to update a topic in place.
+- Before requesting queue entry or updating a review, rebase the topic onto
+  the latest `main@origin` and validate the resulting head.
 - Before archiving a delivered topic, run `jj-ci finish` and confirm success.
   It verifies delivery of the current head and leaves an empty change on main.
   Pending checks, conflicts, or unpublished edits keep the task open. Native

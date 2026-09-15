@@ -96,16 +96,18 @@ Use the narrowest workflow that matches the request:
 
 Keep one coherent topic in a dedicated workspace. Use one stable JJ change ID
 for a single deliverable, or a small stack of stable change IDs when mixed
-deliverables were intentionally split. Start each workspace from `main@origin`;
-do not work on a shared checkout or base an unrelated topic on another topic.
-Rebase after trunk advances and before every review update or queue request.
-Herdr and Paseo may supervise one existing JJ workspace each and report stale
-trunk or PR state, but must not silently auto-rebase or resolve conflicts.
-`jj-ci publish` uses `jj-<full-change-id>` as each bookmark, preserving each
-identity through title changes and repeated edits. It does not start an
-unrelated follow-up change. Report the PR URL and existing change IDs. Existing
-PRs published under old slug bookmarks need deliberate migration; do not create
-duplicate PRs for them.
+deliverables were intentionally split. `jj-ci publish` uses
+`jj-<full-change-id>` as each bookmark, preserving each identity through title
+changes and repeated edits. It does not start an unrelated follow-up change.
+Report the PR URL and existing change IDs. Existing PRs published under old
+slug bookmarks need deliberate migration; do not create duplicate PRs for
+them.
+
+Start each workspace from `main@origin`; do not work on a shared checkout or
+base an unrelated topic on another topic. Rebase after trunk advances and
+before every review update or queue request. Herdr and Paseo may supervise one
+existing JJ workspace each and report stale trunk or PR state, but must not
+silently auto-rebase or resolve conflicts.
 
 Enable auto-merge only at requested topic closeout. Once GitHub has merged the
 current head, `jj-ci finish` verifies that merge is on main and prepares a clean
