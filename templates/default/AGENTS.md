@@ -20,8 +20,10 @@
   resolution, and pushes. Use Git only for read-only interoperability.
 - Start work by inspecting `jj status`, `jj diff`, and `jj log`.
 - Preserve unrelated working-copy changes.
-- Keep one topic and one stable JJ change ID per Codex task. Rewrite that change
-  throughout the task; publication does not create a follow-up change.
+- Keep one coherent topic per Codex task. Use one stable JJ change ID for a
+  single deliverable, but use a small stack when the task contains multiple
+  deliverables that should be split. Rewrite each in-scope change throughout
+  the task; publication does not create unrelated follow-up changes.
 - Use a dedicated JJ workspace per concurrent task and open it as a local
   project. Do not use the desktop Git worktree or commit actions.
 - Start each workspace from `main@origin`, rebase after trunk advances and
@@ -31,5 +33,12 @@
 - Where available, use `jj-ci rebase`, `jj-ci publish`, and `jj-ci finish` for
   updating, publishing, and closing out the topic. Archive only after verified
   delivery of the current head to main.
+- Before implementation or publication, inspect for mixed deliverables and
+  split them into separate JJ changes. Use a parent/child chain only when a
+  later change depends on the earlier change to build, test, or make sense;
+  use sibling changes when the parts are independently reviewable and can land
+  independently. `jj split` creates parent/child changes by default, and
+  `jj split --parallel` creates siblings. Check the resulting graph with
+  `jj log`, and checkpoint before splitting or other history surgery.
 - Do not push directly to `main`; publish a change bookmark and merge it through
   a pull request.
