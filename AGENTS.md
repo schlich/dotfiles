@@ -82,6 +82,20 @@
 - Herdr or Paseo may monitor one existing JJ workspace per topic and notify its
   owner about stale trunk or PR state; do not use unattended auto-rebase or
   automatic conflict resolution.
+- Before implementing or publishing, inspect the working-copy diff for mixed
+  deliverables. Split unrelated work into separate JJ changes instead of
+  carrying it in one change. Choose the graph shape by semantic dependency:
+  use a parent/child chain only when the child needs the parent's code, schema,
+  configuration, or other behavior to build, test, or make sense; use sibling
+  changes when each part is independently reviewable and can land without the
+  other. Do not make changes parent/child merely because they touch related
+  files or were discovered in the same task.
+- JJ has this split built in: `jj split` (or `jj split -r <rev>`) creates a
+  parent/child pair, while `jj split --parallel -r <rev>` creates siblings.
+  Use explicit descriptions for both resulting changes, verify the resulting
+  graph with `jj log`, and checkpoint before the split as with other history
+  surgery. If more than two coherent changes are present, repeat the split
+  and re-evaluate the dependency graph after each operation.
 
 ## Local gates and pull requests
 
