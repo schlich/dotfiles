@@ -41,6 +41,7 @@ jj restore <fileset>                    # Discard changes to files
 jj restore --from <commit-id> <fileset> # Restore from another revision/commit
 
 jj split -r <rev> <paths> -m "text"   # Split into two revisions
+jj split --parallel -r <rev> <paths>   # Split into sibling revisions
 jj absorb                             # Auto-squash changes into ancestor commits
 
 jj rebase -s <src> -o <dest>          # Rebase with descendants onto <dest>
@@ -119,20 +120,32 @@ jj new parent -m "A"; jj new -m "B"                             # ❌ B is child
 jj new --no-edit parent -m "A"; jj new --no-edit parent -m "B"  # ✅ Both children of parent
 ```
 
-### 3. Quote revsets in shell
+### 3. Choose split topology by dependency
+
+When a revision contains multiple coherent deliverables, split it before
+publishing. Use a parent/child chain when the later deliverable depends on the
+earlier one to build, test, or make sense. Use `jj split --parallel` when both
+deliverables are independently reviewable and can land independently. The
+default `jj split` shape is parent/child; do not accept it just because it is
+the default. File proximity, a shared task, or touching the same subsystem is
+not enough to establish a dependency. After splitting, set descriptions and
+inspect `jj log` to confirm the graph; repeat the classification for any
+remaining mixed change.
+
+### 4. Quote revsets in shell
 
 ```bash
 jj log -r 'description(substring:"[todo]")'    # ✅
 ```
 
-### 4. Use `-o`/`--onto` instead of `-d`/`--destination` (v0.36+)
+### 5. Use `-o`/`--onto` instead of `-d`/`--destination` (v0.36+)
 
 ```bash
 jj rebase -s xyz -o main   # ✅ New syntax
 jj rebase -s xyz -d main   # ⚠️ Deprecated (still works but warns)
 ```
 
-### 5. Symbol expressions are stricter (v0.32+)
+### 6. Symbol expressions are stricter (v0.32+)
 
 Revset symbols no longer resolve to multiple revisions:
 
@@ -142,7 +155,7 @@ jj log -r 'change_id(abc)' # ✅ Explicitly query by prefix
 jj log -r 'bookmarks(abc)' # ✅ For bookmark name patterns
 ```
 
-### 6. Glob patterns are default in filesets (v0.36+)
+### 7. Glob patterns are default in filesets (v0.36+)
 
 ```bash
 jj diff 'src/*.rs'         # Matches glob pattern by default
