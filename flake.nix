@@ -10,6 +10,9 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    den = {
+      url = "github:denful/den/v0.18.0";
+    };
     nushellWith = {
       url = "github:YPares/nushellWith/master";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -104,7 +107,7 @@
         config.allowUnfree = true;
       };
       lib = nixpkgs.lib;
-      nixosConfigurations = {
+      legacyNixosConfigurations = {
         asus = lib.nixosSystem {
           inherit system;
           specialArgs = { inherit inputs; };
@@ -184,21 +187,62 @@
         };
       };
 
+      denEval = lib.evalModules {
+        modules = [
+          inputs.den.flakeModule
+          ./modules/den
+        ];
+        specialArgs = { inherit inputs; };
+      };
+      denFlake = denEval.config.flake;
+      denAsus = denFlake.nixosConfigurations.asus;
+      denInventory = pkgs.writeText "den-inventory.json" (
+        builtins.toJSON (
+          lib.mapAttrs (_: host: {
+            profile = host.profile;
+            policy = host.policy;
+            users = lib.mapAttrs (_: user: {
+              classes = user.classes;
+              primary = user.primary;
+            }) host.users;
+          }) denEval.config.den.hosts.x86_64-linux
+        )
+      );
       homeCheck = pkgs.linkFarm "home-manager-check" (
         [
           {
             name = "activation";
-            path = nixosConfigurations.asus.config.home-manager.users.schlich.home.activationPackage;
+            path = denAsus.config.home-manager.users.schlich.home.activationPackage;
           }
         ]
         ++ lib.mapAttrsToList (checkName: path: {
           name = checkName;
           inherit path;
-        }) nixosConfigurations.asus.config.home-manager.users.schlich.dotfiles.tooling.checks
+        }) denAsus.config.home-manager.users.schlich.dotfiles.tooling.checks
       );
+      denHostEvaluationCheck = pkgs.runCommand "den-host-evaluation-check" { } ''
+        cat > "$out" <<'EOF'
+        ${lib.concatStringsSep "" (
+          lib.mapAttrsToList (
+            name: host: "${name}: ${host.config.networking.hostName}\n"
+          ) denFlake.nixosConfigurations
+        )}
+        EOF
+      '';
+      denPolicyCheck =
+        pkgs.runCommand "den-policy-check"
+          {
+            nativeBuildInputs = [ pkgs.jq ];
+          }
+          ''
+            jq --exit-status 'length == 4 and all(.[]; .policy.autoDeploy == false and .policy.requireReview == true and .policy.rollback == true)' ${denInventory}
+            touch "$out"
+          '';
     in
     {
-      inherit nixosConfigurations;
+      nixosConfigurations = denFlake.nixosConfigurations;
+      legacyNixosConfigurations = legacyNixosConfigurations;
+      den = denEval.config.den;
 
       templates.default = {
         path = ./templates/default;
@@ -212,8 +256,8 @@
       };
 
       packages.${system} = {
-        default = nixosConfigurations.asus.config.system.build.toplevel;
-        headless = nixosConfigurations.asus-headless.config.system.build.toplevel;
+        default = denFlake.nixosConfigurations.asus.config.system.build.toplevel;
+        headless = denFlake.nixosConfigurations.asus-headless.config.system.build.toplevel;
         jj = pkgs.jujutsu;
         jjui = pkgs.jjui;
       };
@@ -232,6 +276,8 @@
       formatter.${system} = pkgs.nixfmt-tree;
 
       checks.${system} = {
+        den-host-evaluation = denHostEvaluationCheck;
+        den-policy = denPolicyCheck;
         home-manager-nixos = homeCheck;
         niri-config =
           pkgs.runCommand "niri-config-check"
