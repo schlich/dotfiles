@@ -21,6 +21,13 @@ trunk workflow.
 - Inspect conflicts and emptiness before choosing a workflow.
 - Before a synchronization that rebases history, create a checkpoint with
   `.agents/skills/jj/scripts/jj-checkpoint`.
+- Before validation or publication, inspect the diff for mixed deliverables.
+  Split independent deliverables into separate changes. Choose parent/child
+  only when the later change depends on the earlier one to build, test, or
+  make sense; choose siblings when both can be reviewed and landed
+  independently. `jj split` creates parent/child changes by default, while
+  `jj split --parallel` creates siblings. Checkpoint before splitting, assign
+  explicit descriptions, and verify the resulting graph with `jj log`.
 
 ## JJ MCP integration
 
@@ -79,11 +86,13 @@ Use the narrowest workflow that matches the request:
 
 ## Publication expectations
 
-Keep one topic and one stable JJ change ID per task, in a dedicated workspace.
-`jj-ci publish` uses `jj-<full-change-id>` as its bookmark, preserving its identity
-through title changes and repeated edits. It does not start a follow-up change.
-Report the PR URL and existing change ID. Existing PRs published under old
-slug bookmarks need deliberate migration; do not create a duplicate PR for them.
+Keep one coherent topic in a dedicated workspace. Use one stable JJ change ID
+for a single deliverable, or a small stack of stable change IDs when mixed
+deliverables were intentionally split. `jj-ci publish` uses
+`jj-<full-change-id>` as each bookmark, preserving each identity through title
+changes and repeated edits. It does not start an unrelated follow-up change.
+Report the PR URL and existing change IDs. Existing PRs published under old
+slug bookmarks need deliberate migration; do not create duplicate PRs for them.
 
 Enable auto-merge only at requested topic closeout. Once GitHub has merged the
 current head, `jj-ci finish` verifies that merge is on main and prepares a clean
