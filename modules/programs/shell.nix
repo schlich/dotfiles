@@ -39,17 +39,6 @@ in
     environmentVariables = {
       COLORTERM = "truecolor";
     };
-    extraEnv = ''
-      try {
-        $env.GITHUB_TOKEN = (
-          ^${pkgs.secretspec}/bin/secretspec get
-            --file ${../secretspec.toml}
-            --provider keyring
-            GITHUB_TOKEN
-          | str trim
-        )
-      }
-    '';
     configFile.source = ../../config.nu;
     extraConfig = ''
       source ${atuinNushellConfig}

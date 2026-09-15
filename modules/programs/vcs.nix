@@ -1,5 +1,6 @@
 {
   pkgs,
+  config,
   ...
 }:
 
@@ -15,7 +16,11 @@ let
   };
 in
 {
-  programs.git.enable = true;
+  programs.git = {
+    enable = true;
+    userName = config.accounts.email.accounts.personal.userName;
+    userEmail = config.accounts.email.accounts.personal.address;
+  };
   programs.gpg.enable = true;
   programs.lazygit.enable = false;
   xdg.configFile."git/config".text = ''
