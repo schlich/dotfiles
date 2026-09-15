@@ -42,14 +42,28 @@ interactive revision work in a terminal.
 
 ## Project task discipline
 
-For JJ projects, use one topic, one dedicated JJ workspace, and one stable
-change ID per Codex task. Treat the session hook's recorded change as the task's
-revision. Rewrite that change throughout the task; do not run `jj new`,
-`jj commit`, or create a follow-up revision after publishing. A new topic needs
-a new task and a separate workspace; do not switch a working copy owned by
-another active task. Use `jj workspace add --revision main@origin --name NAME
-PATH` from the repository, then open that directory as a local Codex project.
+For JJ projects, use one coherent topic, one dedicated JJ workspace, and one
+stable change ID for a single deliverable. When a task contains multiple
+deliverables that should be split, keep them in one small stack in that
+workspace and rewrite each in-scope change as needed; do not create unrelated
+follow-up revisions after publishing. A new topic needs a new task and a
+separate workspace; do not switch a working copy owned by another active task.
+Use `jj workspace add --revision main@origin --name NAME PATH` from the
+repository, then open that directory as a local Codex project.
 The hook creates the topic revision when its task starts.
+
+When the working-copy diff contains multiple coherent deliverables, split it
+into separate JJ changes before publishing or treating the work as complete.
+Choose the topology from the dependency, not from file proximity: make a
+parent/child chain only when the later change needs the earlier one to build,
+test, or make sense; make siblings when both changes are independently
+reviewable and can land independently. JJ provides this directly: `jj split`
+creates a parent/child pair by default, and `jj split --parallel` creates two
+sibling changes. After every split, set explicit descriptions, inspect `jj log`,
+and repeat the classification if more than two changes remain. Create a
+checkpoint before splitting, as for other history surgery. Do not use the
+default parent/child shape just because it is convenient, and do not combine
+changes merely because they touch related files.
 
 Use JJ for version-control mutations. Do not use the desktop app's Git commit,
 stage, branch, worktree, handoff, push, or merge actions for these tasks.
