@@ -90,12 +90,6 @@
   graph with `jj log`, and checkpoint before the split as with other history
   surgery. If more than two coherent changes are present, repeat the split
   and re-evaluate the dependency graph after each operation.
-- Keep active work continuously integrated: start each dedicated workspace at
-  `main@origin`, rebase after trunk advances and before review or queue updates,
-  and never share a mutable topic worktree.
-- Herdr or Paseo may monitor one existing JJ workspace per topic and notify its
-  owner about stale trunk or PR state; do not use unattended auto-rebase or
-  automatic conflict resolution.
 
 ## Local gates and pull requests
 
@@ -110,8 +104,6 @@
   multiple deliverables that should be split. Do not create unrelated
   follow-up changes after publication. Use separate JJ workspaces for
   concurrent tasks, and `jj-ci rebase` to update a topic in place.
-- Before requesting queue entry or updating a review, rebase the topic onto
-  the latest `main@origin` and validate the resulting head.
 - Before archiving a delivered topic, run `jj-ci finish` and confirm success.
   It verifies delivery of the current head and leaves an empty change on main.
   Pending checks, conflicts, or unpublished edits keep the task open. Native
@@ -129,15 +121,12 @@
 
 - Use a stack only for a preplanned chain of dependent, independently reviewable
   JJ changes. Keep unrelated work in separate branches.
-- Prefer one ordinary PR when the work can land atomically. For stacks, keep
-  every child based on its immediate parent, land parents before children, and
-  rebase the remaining stack after each parent lands.
 - JJ creates, describes, rebases, and pushes every layer. Link existing GitHub
   PRs with `gh stack link` and inspect them non-interactively with
   `gh stack view --json`.
 - Once every layer is green at its current head, submit the stack with
   `jj-ci stack-merge <stack-or-pr>`. GitHub handles queue-compatible delivery
-  to `main`; the command performs one final rebase and validation first.
+  to `main`.
 - Do not run `gh stack init`, `add`, `submit`, `sync`, or `rebase`; they mutate
   Git-managed branches and violate the JJ boundary.
 
@@ -167,3 +156,27 @@
 - Keep provider-neutral agent skills under `.agents/skills/`. Keep Copilot
   plugins, hooks, and plugin-bundled agent definitions under `copilot/`, and
   wire client exposure through `modules/tooling/ai/`.
+
+
+## Continuous integration and merge-conflict policy
+
+Keep active work continuously integrated: start each dedicated JJ workspace at
+`main@origin`, rebase after trunk advances and before review or queue updates,
+and never share a mutable topic worktree. `jj-ci publish` performs the final
+rebase and validation before updating GitHub; `jj-ci stack-merge` does the same
+before submitting a stack.
+
+Use `jj-ci conflicts` after a rebase to list conflicted revisions and files.
+A conflicted rebase has already rewritten the topic, so resolve revisions from
+oldest to newest and validate only after the conflict report is clear. Do not
+run unattended auto-rebase or automatic conflict resolution.
+
+Herdr or Paseo may monitor one existing JJ workspace per topic and notify its
+owner about stale trunk, PR, check, or queue state. They must not take
+ownership of the workspace or silently rebase, resolve conflicts, publish, enter
+a queue, or advance a stack.
+
+Prefer one ordinary PR for a coherent topic. Use a stack only for independently
+reviewable changes with real dependency order; keep children based on their
+immediate parent and rebase the remaining stack after each parent lands.
+

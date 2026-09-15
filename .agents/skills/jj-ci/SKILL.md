@@ -42,7 +42,6 @@ equivalent low-level commands:
 - `jj-ci publish` for stable bookmark, push, and pull-request handling while
   retaining the same working-copy change;
 - `jj-ci rebase` for updating that topic in place;
-- `jj-ci conflicts` for listing conflicted revisions and files after a rebase;
 - `jj-ci finish` for verified delivery and workspace cleanup before archiving;
 - `jj-ci github reconcile` for declared GitHub policy;
 - `jj-ci stack-merge` for validated stack submission.
@@ -76,13 +75,6 @@ Use the narrowest workflow that matches the request:
   Use `jj-ci rebase` to update an active topic without creating another change.
 - Do not publish an empty or conflicted change. `jj-ci publish` enforces this,
   but inspect the state first so the user understands the blocker.
-- A rebase that reports conflicts has already completed its history rewrite. Do
-  not rerun `jj-ci rebase` as a continuation step. Resolve conflicted revisions
-  from oldest to newest, using `jj edit` for non-working-copy revisions, and
-  confirm with `jj-ci conflicts` before validating.
-- `jj-ci publish` and `jj-ci stack-merge` rebase the topic onto the latest
-  `main@origin` before validating or updating GitHub. Treat that final rebase
-  as the queue-entry freshness check.
 - Do not add `--auto-merge`, use `github reconcile --apply`, or run
   `stack-merge` unless the user explicitly asks for that external mutation.
 - Do not activate NixOS or Home Manager configuration as part of validation.
@@ -102,12 +94,6 @@ changes and repeated edits. It does not start an unrelated follow-up change.
 Report the PR URL and existing change IDs. Existing PRs published under old
 slug bookmarks need deliberate migration; do not create duplicate PRs for them.
 
-Start each workspace from `main@origin`; do not work on a shared checkout or
-base an unrelated topic on another topic. Rebase after trunk advances and
-before every review update or queue request. Herdr and Paseo may supervise one
-existing JJ workspace each and report stale trunk or PR state, but must not
-silently auto-rebase or resolve conflicts.
-
 Enable auto-merge only at requested topic closeout. Once GitHub has merged the
 current head, `jj-ci finish` verifies that merge is on main and prepares a clean
 workspace. Then archive through the app tool. Leave the task open if delivery
@@ -115,9 +101,31 @@ is pending or there are later local edits. SessionEnd also fires on exit and
 idle timeout, so it must never trigger publication or merging. A direct archive
 button click does not run this workflow.
 
-For stacked work, prefer an ordinary one-PR topic unless dependent layers must
-land separately. Keep each child based on its immediate parent, keep the stack
-topological, and rebase the remaining layers after every parent lands. Inspect
-the stack before acting and require a clean final rebase before submission. Use
-the repository's JJ and GitHub stack workflow; do not bypass it with direct
-branch or merge commands.
+For stacked work, inspect the stack before acting. Use the repository's JJ and
+GitHub stack workflow; do not bypass it with direct branch or merge commands.
+
+
+## Continuous integration and conflict handling
+
+The canonical checkout tracks `main`; active work belongs in a dedicated JJ
+workspace created from `main@origin`. Rebase after `main` advances, before
+each review update, and before queue entry. `jj-ci publish` and
+`jj-ci stack-merge` perform a final rebase and validation before updating
+GitHub, so stale heads cannot enter the queue.
+
+Use `jj-ci conflicts` after a rebase to list conflicted revisions and files.
+A conflicted rebase has already rewritten the topic: resolve revisions from
+oldest to newest, then verify with `jj-ci conflicts` before validating.
+Never run an unattended auto-rebase or automatic conflict resolver.
+
+Herdr and Paseo may supervise one existing JJ workspace per topic, monitor
+trunk, PR freshness, checks, and queue state, and notify the owner when
+integration is needed. They must not take ownership of the workspace or
+silently rebase, resolve conflicts, publish, enter a queue, or advance a
+stack.
+
+Prefer one ordinary PR per coherent topic. Use stacked PRs only for
+independently reviewable changes with real dependency order; keep each child
+based on its immediate parent and rebase the remaining stack after every parent
+lands. Keep unrelated work in separate sibling changes.
+
