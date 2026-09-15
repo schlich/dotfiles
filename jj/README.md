@@ -57,6 +57,17 @@ the local range-diff command supplies the true interdiff between review rounds.
 an owned workspace. Use `jj-ci rebase` during an active topic; it fetches trunk
 and rebases the whole series in place.
 
+`jj-ci publish` validates, pushes the stable `jj-<full-change-id>` bookmark to
+both the `origin` (GitHub) and `tangled` remotes, and creates or updates the
+matching PR. It does not create a follow-up change. After GitHub delivery,
+`jj-ci finish` also mirrors `main` to Tangled.
+Further edits to the series therefore update the same review topic.
+
+`jj-ci finish` checks that GitHub merged the exact current head and that the
+merge is on `main@origin`. It then advances local main, leaves an empty
+workspace on main, and releases workspace ownership. Archive the task only
+after it succeeds.
+
 ### Rebasing with conflicts
 
 `jj-ci rebase` creates a JJ operation checkpoint, fetches `origin`, and rebases
@@ -68,25 +79,13 @@ Resolve the revisions from oldest to newest. For a conflicted revision that is
 not the working copy, select it with `jj edit CHANGE_ID`; resolve its files by
 editing the conflict markers or using `jj resolve`; then return to the original
 topic tip with `jj edit TOPIC_TIP` (record the tip before selecting a revision).
-Run `jj-ci conflicts`
-between revisions. Once it reports no conflicts, run `jj-ci validate` before
-publishing.
+Run `jj-ci conflicts` between revisions. Once it reports no conflicts, run
+`jj-ci validate` before publishing.
 
 The rebase itself has already completed when the conflict report appears. Do
 not run `jj-ci rebase` again while conflicts remain; doing so would attempt to
 move an already-rebased topic a second time. If a resolution goes wrong, use
 the printed checkpoint with `jj op restore` and retry from the pre-rebase state.
-
-`jj-ci publish` validates, pushes the stable `jj-<full-change-id>` bookmark to
-both the `origin` (GitHub) and `tangled` remotes, and creates or updates the
-matching PR. It does not create a follow-up change. After GitHub delivery,
-`jj-ci finish` also mirrors `main` to Tangled. Further edits to the series
-therefore update the same review topic.
-
-`jj-ci finish` checks that GitHub merged the exact current head and that the
-merge is on `main@origin`. It then advances local main, leaves an empty
-workspace on main, and releases workspace ownership. Archive the task only
-after it succeeds.
 
 ## Continuous integration and conflict avoidance
 
