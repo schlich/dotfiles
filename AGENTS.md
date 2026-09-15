@@ -179,4 +179,3 @@ a queue, or advance a stack.
 Prefer one ordinary PR for a coherent topic. Use a stack only for independently
 reviewable changes with real dependency order; keep children based on their
 immediate parent and rebase the remaining stack after each parent lands.
-

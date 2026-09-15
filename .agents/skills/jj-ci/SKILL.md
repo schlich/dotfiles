@@ -128,4 +128,3 @@ Prefer one ordinary PR per coherent topic. Use stacked PRs only for
 independently reviewable changes with real dependency order; keep each child
 based on its immediate parent and rebase the remaining stack after every parent
 lands. Keep unrelated work in separate sibling changes.
-
