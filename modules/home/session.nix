@@ -1,8 +1,8 @@
-{ ... }:
+{ pkgs, ... }:
 
 {
   home.sessionVariables = {
-    SHELL = "nu";
+    SHELL = "${pkgs.nushell}/bin/nu";
     NIXOS_OZONE_WL = "1";
   };
 }

@@ -187,10 +187,16 @@ drift. It never automatically switches another task's working copy.
 ## Git worktrees and the devshell
 
 This repository's default devshell provides the Nushell, JJ, GitHub CLI,
-Prek, and `jj-ci` tools used by the workflow. From any checkout, enter it with:
+Prek, and `jj-ci` for the workflow. From any checkout, enter it with:
 
 ```nu
 nix develop path:.
+```
+
+Codex may create ordinary Git worktrees rather than JJ workspaces. Inspect
+every checkout against the latest fetched trunk with:
+
+```nu
 jj-ci worktree-status
 ```
 
