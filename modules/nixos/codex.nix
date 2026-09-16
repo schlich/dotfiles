@@ -78,6 +78,10 @@ let
         command = "nu";
         args = [ "--mcp" ];
       };
+      atuin = {
+        command = "atuin";
+        args = [ "mcp" ];
+      };
     };
   };
 in

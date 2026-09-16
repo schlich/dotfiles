@@ -35,6 +35,10 @@ in
         command = "${pkgs.nushell}/bin/nu";
         args = [ "--mcp" ];
       };
+      context_servers.atuin = {
+        command = "${pkgs.atuin}/bin/atuin";
+        args = [ "mcp" ];
+      };
 
       lsp.nil.settings.nil.nix.flake.autoArchive = true;
 
