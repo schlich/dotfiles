@@ -103,3 +103,28 @@ button click does not run this workflow.
 
 For stacked work, inspect the stack before acting. Use the repository's JJ and
 GitHub stack workflow; do not bypass it with direct branch or merge commands.
+
+
+## Continuous integration and conflict handling
+
+The canonical checkout tracks `main`; active work belongs in a dedicated JJ
+workspace created from `main@origin`. Rebase after `main` advances, before
+each review update, and before queue entry. `jj-ci publish` and
+`jj-ci stack-merge` perform a final rebase and validation before updating
+GitHub, so stale heads cannot enter the queue.
+
+Use `jj-ci conflicts` after a rebase to list conflicted revisions and files.
+A conflicted rebase has already rewritten the topic: resolve revisions from
+oldest to newest, then verify with `jj-ci conflicts` before validating.
+Never run an unattended auto-rebase or automatic conflict resolver.
+
+Herdr and Paseo may supervise one existing JJ workspace per topic, monitor
+trunk, PR freshness, checks, and queue state, and notify the owner when
+integration is needed. They must not take ownership of the workspace or
+silently rebase, resolve conflicts, publish, enter a queue, or advance a
+stack.
+
+Prefer one ordinary PR per coherent topic. Use stacked PRs only for
+independently reviewable changes with real dependency order; keep each child
+based on its immediate parent and rebase the remaining stack after every parent
+lands. Keep unrelated work in separate sibling changes.
