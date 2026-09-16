@@ -98,6 +98,41 @@ def push-topic-bookmark [bookmark: string] {
     }
 }
 
+def topic-revisions [] {
+    let result = (^jj log -r 'main@origin..@' --no-graph -T 'change_id ++ "\t" ++ commit_id ++ "\t" ++ description.first_line() ++ "\n"' | complete)
+    if $result.exit_code != 0 { error make { msg: ($result.stderr | str trim) } }
+    $result.stdout
+    | lines
+    | where {|line| $line | str trim | is-not-empty }
+    | reverse
+    | each {|line|
+        let fields = ($line | split row "\t")
+        {
+            change_id: ($fields | get 0)
+            commit_id: ($fields | get 1)
+            description: ($fields | skip 2 | str join "\t")
+        }
+    }
+}
+
+def push-tangled-stack [] {
+    let series = (current-topic-id)
+    let revisions = (topic-revisions)
+    if ($revisions | is-empty) {
+        error make { msg: "The current topic has no revisions above main@origin." }
+    }
+
+    print $"Publishing ($revisions | length) Tangled stack layer(s) for series ($series):"
+    for revision in $revisions {
+        let branch = $"stack/($series)/($revision.change_id)"
+        run-command $"pushing ($branch) to tangled" {
+            ^jj git push --remote tangled --named $"($branch)=($revision.commit_id)"
+        } | ignore
+        print $"  ($branch): ($revision.description)"
+    }
+    print "Select `Submit as stacked PRs` in Tangled for these branches."
+}
+
 def checkpoint [label: string] {
     let root = (run-command "locating the workspace" { ^jj root })
     let operation = (run-command "recording a recovery point" {
@@ -142,7 +177,7 @@ def require-ready-change [] {
 }
 
 def conflicted-revisions [] {
-    let result = (^jj log -r 'conflicted() & ::@' --no-graph -T 'change_id ++ "\t" ++ description.first_line() ++ "\n"' | complete)
+    let result = (^jj log -r 'conflicts() & ::@' --no-graph -T 'change_id ++ "\t" ++ description.first_line() ++ "\n"' | complete)
     if $result.exit_code != 0 { error make { msg: ($result.stderr | str trim) } }
     $result.stdout | lines | where {|line| $line | str trim | is-not-empty } | each {|line|
         let fields = ($line | split row "\t")
@@ -308,7 +343,7 @@ def stack-merge [target: string] {
 }
 
 def main [] {
-    print "Use `jj-ci status`, `jj-ci sync`, `jj-ci rebase`, `jj-ci conflicts`, `jj-ci review snapshot`, `jj-ci interdiff`, `jj-ci finish`, `jj-ci validate`, `jj-ci publish`, `jj-ci github reconcile`, or `jj-ci stack-merge`."
+    print "Use `jj-ci status`, `jj-ci sync`, `jj-ci rebase`, `jj-ci conflicts`, `jj-ci review snapshot`, `jj-ci interdiff`, `jj-ci finish`, `jj-ci validate`, `jj-ci publish`, `jj-ci github reconcile`, `jj-ci stack-merge`, or `jj-ci tangled stack-publish`."
 }
 
 def "main status" [] {
@@ -442,6 +477,14 @@ def "main stack-merge" [target: string] {
     require-ready-change
     validate-change
     stack-merge $target
+}
+
+def "main tangled stack-publish" [] {
+    require-ready-change
+    rebase-topic
+    require-ready-change
+    validate-change
+    push-tangled-stack
 }
 
 def "main finish" [] {
