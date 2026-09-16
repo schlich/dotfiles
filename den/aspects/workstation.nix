@@ -12,9 +12,9 @@
       { pkgs, ... }:
       {
         imports = [
-          ../../../modules/nixos/codex.nix
-          ../../../modules/nixos/docker.nix
-          ../../../modules/nixos/jj-ci-webhook.nix
+          ../../modules/nixos/codex.nix
+          ../../modules/nixos/docker.nix
+          ../../modules/nixos/jj-ci-webhook.nix
         ];
         nixpkgs.overlays = [
           inputs.jj-starship.overlays.default
@@ -27,12 +27,7 @@
         home-manager = {
           useGlobalPkgs = true;
           useUserPackages = true;
-          extraSpecialArgs = {
-            inherit inputs;
-            username = "schlich";
-            homeDirectory = "/home/schlich";
-            stateVersion = "26.05";
-          };
+          extraSpecialArgs = { inherit inputs; };
         };
       };
   };

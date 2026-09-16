@@ -1,0 +1,27 @@
+name: Check Niri configuration
+
+when:
+  - event: ["push", "manual"]
+    branch: ["main"]
+  - event: ["pull_request"]
+    branch: ["main"]
+
+engine: microvm
+image: nixos
+
+dependencies:
+  - nix
+  - git
+  - cacert
+
+cache:
+  - key: nix-store
+    hash:
+      - flake.lock
+    paths:
+      - /nix/store
+      - /nix/var/nix/db
+
+steps:
+  - name: "Check Niri compositor config"
+    command: "nix --accept-flake-config build .#checks.x86_64-linux.niri-config --print-build-logs"
