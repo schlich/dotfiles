@@ -5,7 +5,7 @@
 }:
 
 let
-  jjCiScript = pkgs.writeNuScriptBin "jj-ci" (builtins.readFile ../../jj/ci.nu);
+  jjCiScript = pkgs.writeNuScriptBin "jj-ci" (builtins.readFile ../../tools/jj/ci.nu);
   jjCi = pkgs.symlinkJoin {
     name = "jj-ci";
     paths = [ jjCiScript ];
@@ -71,8 +71,8 @@ in
   };
 
   home.packages = [
-    (pkgs.writeNuScriptBin "jj-describe" (builtins.readFile ../../jj/describe.nu))
+    (pkgs.writeNuScriptBin "jj-describe" (builtins.readFile ../../tools/jj/describe.nu))
     jjCi
-    (pkgs.writeNuScriptBin "jj-dashboard" (builtins.readFile ../../jj/dashboard.nu))
+    (pkgs.writeNuScriptBin "jj-dashboard" (builtins.readFile ../../tools/jj/dashboard.nu))
   ];
 }

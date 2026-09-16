@@ -7,7 +7,7 @@
 }:
 
 let
-  agentSource = ../../../copilot/plugins/jj-flake-vigilance/agents;
+  agentSource = ../../../ai/copilot/plugins/jj-flake-vigilance/agents;
   skills = import ./shared-skills.nix { inherit inputs; };
   adaptAgentTools =
     replacement: file:

@@ -122,7 +122,7 @@ in
           profile = mkOption {
             type = profileType;
             default = { };
-            description = "Typed facts used by the master host resolver.";
+            description = "Typed facts used by the host-profile resolver.";
           };
           policy = mkOption {
             type = policyType;

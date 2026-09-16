@@ -3,6 +3,10 @@
 
   inputs = {
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
+    treefmt-nix = {
+      url = "github:numtide/treefmt-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     determinate = {
       url = "https://flakehub.com/f/DeterminateSystems/determinate/*";
     };
@@ -113,7 +117,12 @@
         inherit system overlays;
         config.allowUnfree = true;
       };
-      jjCiScript = pkgs.writeNuScriptBin "jj-ci" (builtins.readFile ./jj/ci.nu);
+      treefmtEval = inputs.treefmt-nix.lib.evalModule pkgs {
+        projectRootFile = "flake.nix";
+        programs.nixfmt.enable = true;
+        programs.ruff-format.enable = true;
+      };
+      jjCiScript = pkgs.writeNuScriptBin "jj-ci" (builtins.readFile ./tools/jj/ci.nu);
       jjCi = pkgs.symlinkJoin {
         name = "jj-ci";
         paths = [ jjCiScript ];
@@ -233,10 +242,11 @@
         };
       };
 
-      formatter.${system} = pkgs.nixfmt-tree;
+      formatter.${system} = treefmtEval.config.build.wrapper;
       services.hercules-ci-agent.enable = true;
 
       checks.${system} = {
+        formatting = treefmtEval.config.build.check inputs.self;
         den-host-evaluation = denHostEvaluationCheck;
         den-policy = denPolicyCheck;
         dev-shell = pkgs.runCommand "dev-shell-check" { } ''
@@ -252,7 +262,7 @@
               nativeBuildInputs = [ pkgs.niri ];
             }
             ''
-              niri validate --config ${./niri/config.kdl}
+              niri validate --config ${./config/niri/config.kdl}
               touch "$out"
             '';
         zellij-config =
@@ -263,8 +273,8 @@
             ''
               config_dir="$TMPDIR/zellij"
               mkdir -p "$config_dir/layouts"
-              cp ${./zellij/config.kdl} "$config_dir/config.kdl"
-              cp ${./zellij/layouts/default.kdl} "$config_dir/layouts/default.kdl"
+              cp ${./config/zellij/config.kdl} "$config_dir/config.kdl"
+              cp ${./config/zellij/layouts/default.kdl} "$config_dir/layouts/default.kdl"
               ZELLIJ_CONFIG_DIR="$config_dir" zellij setup --check
               touch "$out"
             '';

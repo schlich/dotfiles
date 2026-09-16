@@ -5,11 +5,15 @@
   ...
 }:
 {
-  den.aspects.master = {
-    meta = config.myConfig.aspectPolicy.master;
+  den.aspects.host-profile = {
+    meta = config.myConfig.aspectPolicy.host-profile;
     includes = [
       (
         { host }:
+        let
+          platform = builtins.getAttr host.profile.platform den.aspects.platforms;
+          storage = builtins.getAttr "${host.profile.platform}-${host.profile.storage}" den.aspects.storage;
+        in
         {
           includes = [
             (
@@ -20,9 +24,8 @@
               else
                 den.aspects.wsl
             )
-            (
-              if host.profile.platform == "asus" then den.aspects.asus-platform else den.aspects.homelab-platform
-            )
+            platform
+            storage
           ]
           ++ lib.optionals (host.profile.role == "server") [ den.aspects.headless ]
           ++ lib.optionals (host.profile.desktop == "niri") [ den.aspects.desktop-niri ]
@@ -31,17 +34,11 @@
           ++ lib.optionals host.profile.remote [ den.aspects.remote ]
           ++ lib.optionals host.profile.xr [ den.aspects.xr ]
           ++ lib.optionals (host.profile.gpu == "amd") [ den.aspects.gpu-amd ]
-          ++ lib.optionals host.profile.secrets [ den.aspects.secrets ]
-          ++ lib.optionals (host.profile.platform == "asus" && host.profile.storage == "internal") [
-            den.aspects.asus-storage
-          ]
-          ++ lib.optionals (host.profile.platform == "asus" && host.profile.storage == "usb") [
-            den.aspects.asus-usb-hardware
-          ];
+          ++ lib.optionals host.profile.secrets [ den.aspects.secrets ];
         }
       )
     ];
   };
 
-  den.schema.host.includes = [ den.aspects.master ];
+  den.schema.host.includes = [ den.aspects.host-profile ];
 }

@@ -76,7 +76,7 @@ The scaffold hosts files in the selected project repository:
 
 The scaffold hosts files in the selected dotfiles repository:
 
-- plugin directory default: `<dotfilesRepoDir>/copilot/plugins/<pluginName>`
+- plugin directory default: `<dotfilesRepoDir>/ai/copilot/plugins/<pluginName>`
 - overlay directory default: `<dotfilesRepoDir>`
 
 If `dotfilesRepoDir` is omitted, the scaffold tries:

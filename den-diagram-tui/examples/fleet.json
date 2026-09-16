@@ -1,0 +1,25 @@
+{
+  "name": "dotfiles fleet",
+  "scopes": [
+    { "id": "fleet", "label": "dotfiles fleet", "kind": "fleet" },
+    { "id": "asus", "label": "asus", "kind": "host", "parent": "fleet" },
+    { "id": "homelab", "label": "homelab", "kind": "host", "parent": "fleet" }
+  ],
+  "nodes": [
+    { "id": "fleet", "label": "dotfiles fleet", "kind": "fleet", "scope": "fleet" },
+    { "id": "asus", "label": "asus", "kind": "host", "scope": "asus", "host": "asus" },
+    { "id": "asus-headless", "label": "asus-headless", "kind": "host", "scope": "asus", "host": "asus-headless" },
+    { "id": "asus-usb", "label": "asus-usb", "kind": "host", "scope": "asus", "host": "asus-usb" },
+    { "id": "homelab", "label": "homelab", "kind": "host", "scope": "homelab", "host": "homelab" },
+    { "id": "niri", "label": "niri workstation", "kind": "profile", "scope": "asus", "class": "nixos" },
+    { "id": "schlich", "label": "schlich", "kind": "user", "scope": "asus", "class": "homeManager" }
+  ],
+  "edges": [
+    { "from": "fleet", "to": "asus", "label": "contains" },
+    { "from": "fleet", "to": "homelab", "label": "contains" },
+    { "from": "asus", "to": "asus-headless", "label": "variant" },
+    { "from": "asus", "to": "asus-usb", "label": "variant" },
+    { "from": "asus", "to": "niri", "label": "profile" },
+    { "from": "asus", "to": "schlich", "label": "user" }
+  ]
+}

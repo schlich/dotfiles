@@ -5,7 +5,7 @@
       risk = "medium";
       reviewers = [ "nix" ];
     };
-    master = {
+    host-profile = {
       risk = "medium";
       reviewers = [ "nix" ];
     };

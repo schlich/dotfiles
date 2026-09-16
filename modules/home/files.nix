@@ -9,11 +9,11 @@
       ''
         ${pkgs.niri}/bin/niri completions nushell > "$out"
       '';
-  xdg.configFile."niri/config.kdl".source = ../../niri/config.kdl;
-  xdg.configFile."niri/launch-terminal.nu".source = ../../niri/launch-terminal.nu;
-  xdg.dataFile."wallpapers/niri-navigation.svg".source = ../../wallpapers/niri-navigation.svg;
-  xdg.configFile."zellij/config.kdl".source = ../../zellij/config.kdl;
-  xdg.configFile."zellij/layouts/default.kdl".source = ../../zellij/layouts/default.kdl;
+  xdg.configFile."niri/config.kdl".source = ../../config/niri/config.kdl;
+  xdg.configFile."niri/launch-terminal.nu".source = ../../config/niri/launch-terminal.nu;
+  xdg.dataFile."wallpapers/niri-navigation.svg".source = ../../config/wallpapers/niri-navigation.svg;
+  xdg.configFile."zellij/config.kdl".source = ../../config/zellij/config.kdl;
+  xdg.configFile."zellij/layouts/default.kdl".source = ../../config/zellij/layouts/default.kdl;
   xdg.userDirs = {
     enable = true;
     createDirectories = true;

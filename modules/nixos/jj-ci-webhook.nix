@@ -12,7 +12,7 @@ let
     name = "jj-ci-webhook";
     runtimeInputs = [ pkgs.python3 ];
     text = ''
-      exec python3 ${../../scripts/jj-ci-webhook.py}
+      exec python3 ${../../tools/scripts/jj-ci-webhook.py}
     '';
   };
 in

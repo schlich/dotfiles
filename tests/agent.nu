@@ -1,6 +1,6 @@
 use std/assert
 
-source ../agent/agent.nu
+source ../tools/agent/agent.nu
 
 let allow = (agent policy "jj.read").effect
 assert equal $allow "allow"
@@ -17,4 +17,3 @@ assert equal $dry.reason "dry-run"
 
 let malformed = (agent run {operation: "nix.check"})
 assert equal $malformed.reason "malformed-plan"
-

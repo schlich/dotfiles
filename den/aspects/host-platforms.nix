@@ -1,26 +1,35 @@
 { config, ... }:
 {
-  den.aspects.asus-platform = {
-    meta = config.myConfig.aspectPolicy.master;
-    nixos.imports = [ ../../hosts/asus/default.nix ];
+  den.aspects.platforms = {
+    provides.asus = {
+      meta = config.myConfig.aspectPolicy.host-profile;
+      nixos.imports = [ ../../hosts/asus/default.nix ];
+    };
+
+    provides.homelab = {
+      meta = config.myConfig.aspectPolicy.host-profile;
+      nixos.imports = [
+        ../../hosts/homelab/default.nix
+        ../../modules/nixos/homelab.nix
+      ];
+    };
   };
 
-  den.aspects.asus-storage = {
-    meta = config.myConfig.aspectPolicy.storage;
-    nixos.imports = [ ../../hosts/asus/storage-internal.nix ];
-  };
+  den.aspects.storage = {
+    provides."asus-internal" = {
+      meta = config.myConfig.aspectPolicy.storage;
+      nixos.imports = [ ../../hosts/asus/storage-internal.nix ];
+    };
 
-  den.aspects.asus-usb-hardware = {
-    meta = config.myConfig.aspectPolicy.storage;
-    nixos.imports = [ ../../hosts/asus/hardware-configuration.nix ];
-  };
+    provides."asus-usb" = {
+      meta = config.myConfig.aspectPolicy.storage;
+      nixos.imports = [ ../../hosts/asus/hardware-configuration.nix ];
+    };
 
-  den.aspects.homelab-platform = {
-    meta = config.myConfig.aspectPolicy.master;
-    nixos.imports = [
-      ../../hosts/homelab/default.nix
-      ../../modules/nixos/homelab.nix
-    ];
+    # Homelab storage is fully described by its platform hardware module.
+    provides."homelab-internal" = {
+      meta = config.myConfig.aspectPolicy.storage;
+    };
   };
 
   den.aspects.headless = {

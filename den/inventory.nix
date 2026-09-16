@@ -132,6 +132,8 @@ let
       throw "host ${name}: xr=true requires a graphical workstation"
     else if profile.desktop == "niri" && !graphical then
       throw "host ${name}: desktop=niri must select graphical infrastructure"
+    else if profile.platform == "homelab" && profile.storage != "internal" then
+      throw "host ${name}: homelab only supports storage=internal"
     else if profile.secrets && !hasSecretsMechanism then
       throw "host ${name}: secrets=true requires secrets/secrets.nix"
     else if

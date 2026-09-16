@@ -12,13 +12,13 @@
       "name": "jj-flake-vigilance",
       "description": "JJ-first Copilot workflow for careful flake evolution in schlich/dotfiles with repo-state reconciliation, GitHub-aware publication, CI-backed validation, and validation-gated commits.",
       "version": "0.2.1",
-      "source": "copilot/plugins/jj-flake-vigilance"
+      "source": "ai/copilot/plugins/jj-flake-vigilance"
     },
     {
       "name": "project-plugin-factory",
       "description": "Design and scaffold project-specific GitHub Copilot CLI plugins plus companion repo-local prompts and instructions.",
       "version": "0.1.0",
-      "source": "copilot/plugins/project-plugin-factory"
+      "source": "ai/copilot/plugins/project-plugin-factory"
     }
   ]
 }

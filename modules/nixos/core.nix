@@ -12,10 +12,10 @@
       dates = [ "weekly" ];
     };
     settings = {
-      # Keep local builds serial and single-core so memory pressure does not
-      # take down the interactive system.
-      max-jobs = 1;
-      cores = 1;
+      # Allow modest parallelism without saturating the 8-core/14 GiB host:
+      # at most two derivations, each capped at two build cores.
+      max-jobs = 2;
+      cores = 2;
       experimental-features = [
         "nix-command"
         "flakes"

@@ -38,7 +38,7 @@ Avoid putting the wrong concerns into the wrong customization surface or the wro
 - the behavior is meant to follow the user across repositories
 - the guidance is about preferred tooling, prompts, or orchestration habits rather than one repository's policy
 
-For user-specific plugins, the generated plugin should live under the dotfiles repo's `copilot/plugins/` tree, and the generated prompts and instructions should also target that dotfiles repo.
+For user-specific plugins, the generated plugin should live under the dotfiles repo's `ai/copilot/plugins/` tree, and the generated prompts and instructions should also target that dotfiles repo.
 
 ### Generate in the target project repo when
 

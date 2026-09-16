@@ -69,13 +69,13 @@ Direct installs still work today, but Copilot CLI now warns that marketplace ins
 From this repository root:
 
 ```bash
-copilot plugin install ./copilot/plugins/project-plugin-factory
+copilot plugin install ./ai/copilot/plugins/project-plugin-factory
 ```
 
 Or from GitHub by subdirectory:
 
 ```bash
-copilot plugin install schlich/dotfiles:copilot/plugins/project-plugin-factory
+copilot plugin install schlich/dotfiles:ai/copilot/plugins/project-plugin-factory
 ```
 
 ### Marketplace from this repository
@@ -92,8 +92,8 @@ copilot plugin install project-plugin-factory@schlich-dotfiles
 3. Run the scaffold script:
 
 ```bash
-nu copilot/plugins/project-plugin-factory/skills/project-plugin-factory/scripts/scaffold.nu \
-  copilot/plugins/project-plugin-factory/skills/project-plugin-factory/examples/project-plugin-spec.example.json
+nu ai/copilot/plugins/project-plugin-factory/skills/project-plugin-factory/scripts/scaffold.nu \
+  ai/copilot/plugins/project-plugin-factory/skills/project-plugin-factory/examples/project-plugin-spec.example.json
 ```
 
 The script emits two trees:
@@ -112,7 +112,7 @@ Use `customizationScope: "user"` when the plugin captures your personal workflow
 
 Default placement:
 
-- plugin: `<dotfilesRepoDir>/copilot/plugins/<pluginName>`
+- plugin: `<dotfilesRepoDir>/ai/copilot/plugins/<pluginName>`
 - prompt overlay: `<dotfilesRepoDir>/.github/prompts/use-<pluginName>.prompt.md`
 - instruction overlay: `<dotfilesRepoDir>/.github/instructions/<pluginName>.instructions.md`
 

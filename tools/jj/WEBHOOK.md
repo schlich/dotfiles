@@ -32,7 +32,7 @@ tailscale funnel status
 Then create or update the repository webhook using the local helper:
 
 ```nu
-nu /home/schlich/dotfiles/jj/webhook-setup.nu https://asus.<tailnet>.ts.net
+nu /home/schlich/dotfiles/tools/jj/webhook-setup.nu https://asus.<tailnet>.ts.net
 ```
 
 The helper resolves the secret through SecretSpec and configures only the

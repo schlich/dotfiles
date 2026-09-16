@@ -6,7 +6,7 @@
     ./policy.nix
     ./inventory.nix
     ./aspects/base.nix
-    ./aspects/master.nix
+    ./aspects/host-profile.nix
     ./aspects/workstation.nix
     ./aspects/server.nix
     ./aspects/system-files.nix
@@ -19,6 +19,7 @@
     ./aspects/gpu-amd.nix
     ./aspects/xr.nix
     ./aspects/users/terminal.nix
+    ./aspects/users/packages.nix
     ./aspects/users/schlich.nix
     ./aspects/host-platforms.nix
     ./hosts.nix

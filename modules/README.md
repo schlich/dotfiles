@@ -5,6 +5,8 @@ ordinary NixOS and Home Manager modules that are imported by Den aspects.
 
 - `nixos/` contains system implementation modules.
 - `home/` contains shared Home Manager state.
+- `home/packages/` contains Home Manager package groups and package-specific
+  implementation files.
 - `programs/` contains program integrations.
 - `tooling/` contains reusable terminal, editor, and AI integrations.
 

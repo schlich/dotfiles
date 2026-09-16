@@ -1,4 +1,4 @@
-{ inputs, pkgs, ... }:
+{ pkgs, ... }:
 
 let
   acreomApp =
@@ -33,55 +33,17 @@ let
 in
 {
   home.packages = with pkgs; [
-    (callPackage ./openchamber.nix { })
-    xdg-user-dirs
-    bubblewrap
     acreomApp
     super-productivity
     zotero
-    marimo
-    nodejs
-    ty
-    git
-    wget
-    nixfmt
-    ruff
-    systemctl-tui
-    systemd-manager-tui
-    nix-search-tv
-    difftastic
-    fzf
-    lsp-ai
-    pixi
-    uv
-    glow
-    bat
-    gcc
-    nil
-    nixd
     swaylock
     pavucontrol
-    vscode-json-languageserver
-    jj-starship
     xwayland-satellite
-    dhall
-    skills
     gcr_4
     clipboard-jh
-    diffedit3
-    dust
     font-awesome
-    fx
     monaspace
     nerd-font-patcher
     nerd-fonts.symbols-only
-    pandoc
-    prek
-    ripgrep
-    wl-clipboard-rs
-    gh-stack
-    secretspec
-    inputs.xs.packages.${pkgs.stdenv.hostPlatform.system}.default
-    inputs.ai-usagebar.packages.${pkgs.stdenv.hostPlatform.system}.default
   ];
 }

@@ -4,6 +4,10 @@
     includes = [
       den.batteries.define-user
       den.aspects.user-terminal
+      den.aspects.user-packages-baseline
+      den.aspects.user-packages-development
+      den.aspects.user-packages-desktop
+      den.aspects.user-packages-ai
     ];
     nixos =
       { pkgs, ... }:

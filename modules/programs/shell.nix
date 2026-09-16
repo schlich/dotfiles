@@ -48,12 +48,12 @@ in
     environmentVariables = {
       COLORTERM = "truecolor";
     };
-    configFile.source = ../../config.nu;
+    configFile.source = ../../config/nushell/config.nu;
     extraConfig = ''
       source ${atuinPtyProxyNushellConfig}
       source ${atuinNushellConfig}
-      source ${../../mcp/agent-shell.nu}
-      source ${../../mcp/terminal-events.nu}
+      source ${../../tools/mcp/agent-shell.nu}
+      source ${../../tools/mcp/terminal-events.nu}
       setup-terminal-events
     '';
   };

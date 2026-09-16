@@ -2,7 +2,7 @@
 
 let
   codexJjSession = pkgs.writeNuScriptBin "codex-jj-session" (
-    builtins.readFile ../../jj/codex-session.nu
+    builtins.readFile ../../tools/jj/codex-session.nu
   );
   codexConfig = (pkgs.formats.toml { }).generate "codex-system-config" {
     # JJ has no global non-interactive environment switch. Codex shell tools

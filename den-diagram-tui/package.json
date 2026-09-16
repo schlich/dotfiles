@@ -1,0 +1,18 @@
+{
+  "name": "den-diagram-tui",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Interactive OpenTUI viewer for den-diagram Graph IR and Mermaid output",
+  "type": "module",
+  "scripts": {
+    "start": "bun src/main.ts",
+    "build": "bun build --target bun --external '@opentui/core-*' src/main.ts --outdir dist",
+    "check": "bun test"
+  },
+  "dependencies": {
+    "@opentui/core": "0.5.11"
+  },
+  "devDependencies": {
+    "bun-types": "1.4.2"
+  }
+}

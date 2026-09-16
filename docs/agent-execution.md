@@ -52,8 +52,7 @@ contain an agent that has unrestricted shell access. Hard containment remains a
 future concern for deliberately restricted environments.
 
 To add a capability, add a policy entry, describe its operation in
-`agent/agent.nu`, and add a backend branch that returns the standard result
+`tools/agent/agent.nu`, and add a backend branch that returns the standard result
 record. Prefer machine-readable backend output when the tool provides it;
 otherwise preserve stdout/stderr rather than inventing structure by parsing
 human-oriented text.
-

@@ -17,7 +17,7 @@
 - `home.nix` imports shared modules. Each profile imports self-contained terminal, editor, and AI modules from `modules/tooling/` and selects one primary tool per category.
 - Importing a tool module is the enablement boundary. Its package, settings, integrations, launcher capability, and checks must remain in that module so removing one profile import removes the complete tool.
 - `modules/tooling/interface.nix` validates profile primaries and generates the generic `terminal`, `editor`, `ai`, and `ai-run` commands.
-- Copilot-specific assets live under `copilot/`. Only profiles importing `modules/tooling/ai/copilot.nix` install the Copilot CLI and its projected assets.
+- Copilot-specific assets live under `ai/copilot/`. Only profiles importing `modules/tooling/ai/copilot.nix` install the Copilot CLI and its projected assets.
 - Helix's `nixd` setup reads flake outputs directly for Home Manager and NixOS option awareness, so broken output names or moved flake attrs will also break editor assistance.
 
 ## Key conventions

@@ -88,7 +88,7 @@ The spec should be concrete enough to generate:
 Run:
 
 ```bash
-nu copilot/plugins/project-plugin-factory/skills/project-plugin-factory/scripts/scaffold.nu SPEC_PATH
+nu ai/copilot/plugins/project-plugin-factory/skills/project-plugin-factory/scripts/scaffold.nu SPEC_PATH
 ```
 
 If you are not in this repository, adapt the path to the installed plugin location.

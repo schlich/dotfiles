@@ -50,7 +50,7 @@ in
     };
     Service = {
       Type = "oneshot";
-      ExecStart = "${pkgs.nushell}/bin/nu ${../../mcp/xs-bootstrap.nu} %h/.local/share/cross.stream/store";
+      ExecStart = "${pkgs.nushell}/bin/nu ${../../tools/mcp/xs-bootstrap.nu} %h/.local/share/cross.stream/store";
       RemainAfterExit = true;
     };
     Install = {
