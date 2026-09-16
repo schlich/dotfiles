@@ -8,9 +8,18 @@ def run-command [label: string, command: closure] {
     $result.stdout | str trim
 }
 
+def read-secret [label: string, command: closure] {
+    let result = (do $command | complete)
+    if ($result.stderr | is-not-empty) { print --stderr --no-newline $result.stderr }
+    if $result.exit_code != 0 {
+        error make { msg: $"($label) failed with exit code ($result.exit_code)" }
+    }
+    $result.stdout | str trim
+}
+
 def main [endpoint: string] {
     let manifest = "/home/schlich/dotfiles/modules/secretspec.toml"
-    let secret = (run-command "reading webhook secret from secretspec" {
+    let secret = (read-secret "reading webhook secret from secretspec" {
         ^secretspec get --file $manifest --provider keyring --reason "register GitHub workflow webhook" JJ_CI_WEBHOOK_SECRET
     })
     if ($secret | is-empty) {
