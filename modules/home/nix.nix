@@ -10,6 +10,7 @@
     address = "ty.schlich@gmail.com";
     primary = true;
     realName = "Ty Schlichenmeyer";
+    userName = "schlich";
   };
   fonts.fontconfig.enable = true;
   home.packages = [
