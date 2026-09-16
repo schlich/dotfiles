@@ -68,11 +68,12 @@ nu ~/.mcp/setup.nu
 ```
 
 The interactive menu provides options for:
+
 1. Linking config to current directory (Claude Code CLI)
-2. Setting up Claude Desktop
-3. Viewing Cline/VSCode instructions
-4. Testing custom servers
-5. Viewing configuration
+1. Setting up Claude Desktop
+1. Viewing Cline/VSCode instructions
+1. Testing custom servers
+1. Viewing configuration
 
 ## Configuration Management
 

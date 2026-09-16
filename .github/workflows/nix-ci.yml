@@ -1,5 +1,4 @@
 name: nix-ci
-
 on:
   pull_request:
   merge_group:
@@ -8,16 +7,37 @@ on:
     branches:
       - main
   workflow_dispatch:
-
 permissions:
   contents: read
   id-token: write
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
 jobs:
+  checkmate:
+    name: Checkmate formatting and unit-test skeleton
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: DeterminateSystems/determinate-nix-action@v3.21.9
+      - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
+      - name: Check formatting with Checkmate
+        shell: bash
+        env:
+          DIFF_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || '' }}
+        run: |
+          if [[ -z "$DIFF_BASE" || "$DIFF_BASE" =~ ^0+$ ]]; then
+            DIFF_BASE=HEAD^
+          fi
+          mapfile -d '' changed_files < <(git diff --name-only --diff-filter=ACMRT -z "$DIFF_BASE" HEAD)
+          if (( ${#changed_files[@]} == 0 )); then
+            exit 0
+          fi
+          nix run --no-update-lock-file github:denful/checkmate#fmt --override-input target github:$GITHUB_REPOSITORY/$GITHUB_SHA -- --ci --on-unmatched warn "${changed_files[@]}"
+      - name: Run Checkmate nix-unit tests
+        run: nix build --no-update-lock-file -L github:denful/checkmate#checks.x86_64-linux.nix-unit --override-input target github:$GITHUB_REPOSITORY/$GITHUB_SHA
   headless-system:
     name: build headless NixOS
     runs-on: ubuntu-latest
@@ -40,7 +60,6 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
       - name: Build headless system
         run: nix --accept-flake-config build .#nixosConfigurations.asus-headless.config.system.build.toplevel --print-build-logs
-
   desktop-system:
     name: build NixOS (shell and compositor)
     runs-on: ubuntu-latest
@@ -63,7 +82,6 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
       - name: Build desktop system
         run: nix --accept-flake-config build .#nixosConfigurations.asus.config.system.build.toplevel --print-build-logs
-
   home-manager:
     name: build Home Manager modules (shell, editor, and desktop)
     runs-on: ubuntu-latest
@@ -86,7 +104,6 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
       - name: Build Home Manager modules
         run: nix --accept-flake-config build .#checks.x86_64-linux.home-manager-nixos --print-build-logs
-
   config-checks:
     name: ${{ matrix.name }}
     runs-on: ubuntu-latest

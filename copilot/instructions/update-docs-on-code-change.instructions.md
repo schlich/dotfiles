@@ -1,7 +1,6 @@
 ---
-description: 'Automatically update README.md and documentation files when application code changes require documentation updates'
-applyTo: '**/*.{md,js,mjs,cjs,ts,tsx,jsx,py,java,cs,go,rb,php,rs,cpp,c,h,hpp}'
----
+
+## description: 'Automatically update README.md and documentation files when application code changes require documentation updates' applyTo: '\*\*/\*.{md,js,mjs,cjs,ts,tsx,jsx,py,java,cs,go,rb,php,rs,cpp,c,h,hpp}'
 
 # Update Documentation on Code Change
 
@@ -22,7 +21,7 @@ custom cases and conditions for when and how to implement certain sections of th
 ### Instruction Sections and Configurable Instruction Sections
 
 There are several instruction sections in this document. The start of an instruction section is
-indicated by a level two header. Call this an **INSTRUCTION SECTION**.  Some instruction
+indicated by a level two header. Call this an **INSTRUCTION SECTION**. Some instruction
 sections are configurable. Some are not configurable and will always be used.
 
 Instruction sections that ARE configurable are not required, and are subject to additional context
@@ -48,8 +47,10 @@ Before resolving on how to apply a **configurable instruction section**, check t
 default the `apply-condition` for each **configurable property** is unset, but an example of a set
 `apply-condition` could be something like:
 
-    - **apply-condition** :
-      ` this.parent.property = (git.branch == "master") ? this.parent.property = true : this.parent.property = false; `
+```
+- **apply-condition** :
+  ` this.parent.property = (git.branch == "master") ? this.parent.property = true : this.parent.property = false; `
+```
 
 The sum of all the **constant instructions sections**, and **configurable instruction sections**
 will determine the complete instructions to follow. Call this the **COMPILED INSTRUCTIONS**.
@@ -93,6 +94,7 @@ of instructions that are independent of the entirety of this instruction file. C
 | apply-maintenance-schedule    | true    | Schedules regular documentation maintenance.                                | Disable if maintenance is managed differently.              |
 | apply-git-integration         | false   | Integrates documentation updates with Git workflows.                        | Enable if you want automatic Git integration.               |
 -->
+
 ## When to Update Documentation
 
 ### Trigger Conditions
@@ -241,19 +243,21 @@ Maintain these documentation files and update as needed:
 
 **Changelog format:**
 
-    ```markdown
-    ## [Version] - YYYY-MM-DD
+````
+```markdown
+## [Version] - YYYY-MM-DD
 
-    ### Added
-    - New feature description with reference to PR/issue
+### Added
+- New feature description with reference to PR/issue
 
-    ### Changed
-    - **BREAKING**: Description of breaking change
-    - Other changes
+### Changed
+- **BREAKING**: Description of breaking change
+- Other changes
 
-    ### Fixed
-    - Bug fix description
-    ```
+### Fixed
+- Bug fix description
+```
+````
 
 ## Documentation Verification `apply-doc-verification`
 
@@ -264,11 +268,11 @@ If `apply-doc-verification == true`, then apply the following configurable instr
 **Check documentation completeness:**
 
 1. All new public APIs are documented
-2. Code examples compile and run
-3. Links in documentation are valid
-4. Configuration examples are accurate
-5. Installation steps are current
-6. README.md reflects current state
+1. Code examples compile and run
+1. Links in documentation are valid
+1. Configuration examples are accurate
+1. Installation steps are current
+1. README.md reflects current state
 
 ### Documentation Tests
 
@@ -277,16 +281,19 @@ If `apply-doc-verification == true`, then apply the following configurable instr
 #### Example Tasks
 
 - Verify code examples in docs compile/run
+
 - Check for broken internal/external links
+
 - Validate configuration examples against schemas
+
 - Ensure API examples match current implementation
 
-    ```bash
-    # Example validation commands
-    npm run docs:check         # Verify docs build
-    npm run docs:test-examples # Test code examples
-    npm run docs:lint         # Check for issues
-    ```
+  ```bash
+  # Example validation commands
+  npm run docs:check         # Verify docs build
+  npm run docs:test-examples # Test code examples
+  npm run docs:lint         # Check for issues
+  ```
 
 ## Documentation Quality Standards `apply-doc-quality-standard`
 
@@ -303,46 +310,50 @@ If `apply-doc-quality-standard == true`, then apply the following configurable i
 
 ### Code Example Format
 
-    ```markdown
-    ### Example: [Clear description of what example demonstrates]
+````
+```markdown
+### Example: [Clear description of what example demonstrates]
 
-    \`\`\`language
-    // Include necessary imports/setup
-    import { function } from 'package';
+\`\`\`language
+// Include necessary imports/setup
+import { function } from 'package';
 
-    // Complete, runnable example
-    const result = function(parameter);
-    console.log(result);
-    \`\`\`
+// Complete, runnable example
+const result = function(parameter);
+console.log(result);
+\`\`\`
 
-    **Output:**
-    \`\`\`
-    expected output
-    \`\`\`
-    ```
+**Output:**
+\`\`\`
+expected output
+\`\`\`
+```
+````
 
 ### API Documentation Format
 
-    ```markdown
-    ### `functionName(param1, param2)`
+````
+```markdown
+### `functionName(param1, param2)`
 
-    Brief description of what the function does.
+Brief description of what the function does.
 
-    **Parameters:**
-    - `param1` (type): Description of parameter
-    - `param2` (type, optional): Description with default value
+**Parameters:**
+- `param1` (type): Description of parameter
+- `param2` (type, optional): Description with default value
 
-    **Returns:**
-    - `type`: Description of return value
+**Returns:**
+- `type`: Description of return value
 
-    **Example:**
-    \`\`\`language
-    const result = functionName('value', 42);
-    \`\`\`
+**Example:**
+\`\`\`language
+const result = functionName('value', 42);
+\`\`\`
 
-    **Throws:**
-    - `ErrorType`: When and why error is thrown
-    ```
+**Throws:**
+- `ErrorType`: When and why error is thrown
+```
+````
 
 ## Automation and Tooling `apply-automation-tooling`
 
@@ -385,54 +396,58 @@ If `apply-doc-patterns == true`, then apply the following configurable instructi
 
 ### Feature Documentation Template
 
-    ```markdown
-    ## Feature Name
+````
+```markdown
+## Feature Name
 
-    Brief description of the feature.
+Brief description of the feature.
 
-    ### Usage
+### Usage
 
-    Basic usage example with code snippet.
+Basic usage example with code snippet.
 
-    ### Configuration
+### Configuration
 
-    Configuration options with examples.
+Configuration options with examples.
 
-    ### Advanced Usage
+### Advanced Usage
 
-    Complex scenarios and edge cases.
+Complex scenarios and edge cases.
 
-    ### Troubleshooting
+### Troubleshooting
 
-    Common issues and solutions.
-    ```
+Common issues and solutions.
+```
+````
 
 ### API Endpoint Documentation Template
 
-    ```markdown
-    ### `HTTP_METHOD /api/endpoint`
+````
+```markdown
+### `HTTP_METHOD /api/endpoint`
 
-    Description of what the endpoint does.
+Description of what the endpoint does.
 
-    **Request:**
-    \`\`\`json
-    {
-      "param": "value"
-    }
-    \`\`\`
+**Request:**
+\`\`\`json
+{
+  "param": "value"
+}
+\`\`\`
 
-    **Response:**
-    \`\`\`json
-    {
-      "result": "value"
-    }
-    \`\`\`
+**Response:**
+\`\`\`json
+{
+  "result": "value"
+}
+\`\`\`
 
-    **Status Codes:**
-    - 200: Success
-    - 400: Bad request
-    - 401: Unauthorized
-    ```
+**Status Codes:**
+- 200: Success
+- 400: Bad request
+- 401: Unauthorized
+```
+````
 
 ## Best Practices `apply-best-practices`
 
@@ -493,11 +508,11 @@ If `apply-maintenance-schedule == true`, then apply the following configurable i
 When deprecating features:
 
 1. Add deprecation notice to documentation
-2. Update examples to use recommended alternatives
-3. Create migration guide
-4. Update changelog with deprecation notice
-5. Set timeline for removal
-6. In next major version, remove deprecated feature and docs
+1. Update examples to use recommended alternatives
+1. Create migration guide
+1. Update changelog with deprecation notice
+1. Set timeline for removal
+1. In next major version, remove deprecated feature and docs
 
 ## Git Integration `apply-git-integration`
 
@@ -527,7 +542,7 @@ If `apply-git-integration == true`, then apply the following configurable instru
 Before considering documentation complete, and concluding on the **final procedure**:
 
 - [ ] **Compiled instructions** are based on the sum of **constant instruction sections** and
-**configurable instruction sections**
+      **configurable instruction sections**
 - [ ] README.md reflects current project state
 - [ ] All new features are documented
 - [ ] Code examples are tested and work

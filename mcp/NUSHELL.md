@@ -11,11 +11,12 @@ nu ~/.mcp/setup.nu
 ```
 
 This launches an interactive menu where you can:
+
 1. Link config to current directory (for Claude Code CLI)
-2. Setup for Claude Desktop
-3. Show Cline/VSCode setup instructions
-4. Test custom Python server
-5. View configuration
+1. Setup for Claude Desktop
+1. Show Cline/VSCode setup instructions
+1. Test custom Python server
+1. View configuration
 
 ## MCP Utilities
 
@@ -38,6 +39,7 @@ nu ~/.mcp/mcp-utils.nu status
 ```
 
 Displays a quick status overview:
+
 - 🟢 Enabled servers
 - ⚫ Disabled servers
 - 🔑 Servers requiring API keys

@@ -14,11 +14,7 @@
     "home-manager",
     "nixos"
   ],
-  "agents": [
-    "./agents"
-  ],
-  "skills": [
-    "./skills/jj-flake-evolution"
-  ],
+  "agents": ["./agents"],
+  "skills": ["./skills/jj-flake-evolution"],
   "repository": "https://github.com/schlich/dotfiles"
 }
