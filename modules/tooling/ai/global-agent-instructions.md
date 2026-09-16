@@ -51,6 +51,10 @@ separate workspace; do not switch a working copy owned by another active task.
 Use `jj workspace add --revision main@origin --name NAME PATH` from the
 repository, then open that directory as a local Codex project.
 The hook creates the topic revision when its task starts.
+If Codex supplied the project as a linked Git worktree, the session hook
+initializes a non-colocated JJ workspace in that directory first, using the
+shared Git repository as its backend. It never automatically switches another
+task's working copy.
 
 When the working-copy diff contains multiple coherent deliverables, split it
 into separate JJ changes before publishing or treating the work as complete.
