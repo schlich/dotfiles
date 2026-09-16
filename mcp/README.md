@@ -19,6 +19,30 @@ The command runs in a clean child Nushell with startup configuration and
 history disabled. The MCP server keeps the record structured for the agent;
 the same command is also available in an interactive Nushell session.
 
+Atuin output capture is enabled for interactive sessions: its daemon keeps
+recent output in memory and its Nushell `pty-proxy` associates that output with
+the Atuin history ID. The `atuin` MCP server is configured for the AI clients,
+so a triage agent can call `atuin_history` and `atuin_output` to inspect the
+failed command's actual terminal output.
+
+## Interactive terminal events
+
+The Nushell configuration also publishes interactive command lifecycle events
+to cross.stream. Atuin remains the source of truth for command history,
+duration, working directory, session, and exit status; XS stores the event
+workflow and correlates events using Atuin's `ATUIN_HISTORY_ID`.
+
+The user service starts the local store at
+`~/.local/share/cross.stream/store` and registers a `terminal-triage` actor.
+Failed commands produce a `terminal.command.failed` event. If `ai-run` is
+available, the actor sends a read-only triage request to it and records the
+response. If it is unavailable, the actor records a
+`terminal.agent.unconfigured` warning instead.
+
+Intelli-shell remains in the normal Nushell input path. Commands it generates
+or fixes are therefore recorded by Atuin and observed by XS without a second
+execution path.
+
 ## Directory Structure
 
 ```
