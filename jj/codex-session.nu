@@ -10,12 +10,57 @@ def block [reason: string] {
     { decision: "block", reason: $reason } | to json
 }
 
+def git-worktree-warning [cwd: path] {
+    let main_result = (^git -C $cwd rev-parse --verify refs/remotes/origin/main | complete)
+    if $main_result.exit_code != 0 { return null }
+    let stale = (^git -C $cwd merge-base --is-ancestor refs/remotes/origin/main HEAD | complete).exit_code != 0
+    if not $stale { return null }
+    let branch_result = (^git -C $cwd symbolic-ref --short -q HEAD | complete)
+    let branch = if $branch_result.exit_code == 0 {
+        $branch_result.stdout | str trim
+    } else {
+        "detached"
+    }
+    let jj_workspace = (($cwd | path join ".jj") | path exists)
+    if $jj_workspace {
+        $"This worktree ($branch) is behind or diverged from origin/main. Run `jj-ci rebase` before continuing. Use `jj-ci worktree-status` to inspect the other worktrees."
+    } else {
+        $"This checkout ($branch) is a Git worktree, not a JJ workspace, and is behind or diverged from origin/main. Enter the devshell with `nix develop path:.` and inspect it with `jj-ci worktree-status`; do not assume `jj-ci rebase` can safely operate here until this checkout is converted to a JJ workspace."
+    }
+}
+
 def checked [repository: string, ...args: string] {
     let result = (^jj --repository $repository ...$args | complete)
     if $result.exit_code != 0 {
         error make { msg: ($result.stderr | str trim) }
     }
     $result.stdout | str trim
+}
+
+def git-backend-root [cwd: string] {
+    let result = (^git -C $cwd rev-parse --path-format=absolute --git-common-dir | complete)
+    if $result.exit_code != 0 { return null }
+    ($result.stdout | str trim | path dirname)
+}
+
+def initialize-git-worktree [cwd: string] {
+    let backend = (git-backend-root $cwd)
+    if $backend == null { return false }
+
+    # Codex creates linked Git worktrees, where `jj git init --colocate` is not
+    # allowed. Point the new JJ workspace at the shared Git backend instead.
+    let result = (do {
+        cd $cwd
+        ^jj git init --git-repo $backend $cwd
+    } | complete)
+    if $result.exit_code != 0 {
+        # Another session may have initialized this worktree concurrently.
+        let jj_root = (^jj --repository $cwd root | complete)
+        if $jj_root.exit_code != 0 {
+            error make { msg: $"Could not initialize JJ workspace in ($cwd): ($result.stderr | str trim)" }
+        }
+    }
+    true
 }
 
 def prepare [cwd: string, session_id: string, path: path] {
@@ -35,7 +80,7 @@ def prepare [cwd: string, session_id: string, path: path] {
             error make { msg: "This task moved to another workspace. Resolve the recorded session mapping before editing." }
         }
         if not ($owner_path | path exists) {
-            if (checked $root log -r @ --no-graph -T change_id) != $previous.change_id {
+            if (checked $root -- log -r @ --no-graph -T change_id) != $previous.change_id {
                 error make { msg: "The existing task's change is not checked out. Restore its workspace before migrating session ownership." }
             }
             let claim = ($root | path join ".jj" "codex-session-claim")
@@ -57,8 +102,8 @@ def prepare [cwd: string, session_id: string, path: path] {
     }
     try {
         # Independent topics start from trunk, preserving any earlier local work.
-        checked $root new main@origin -m "Codex session" | ignore
-        let change_id = (checked $root log -r @ --no-graph -T change_id)
+        checked $root -- new main@origin -m "Codex session" | ignore
+        let change_id = (checked $root -- log -r @ --no-graph -T change_id)
         let state = { cwd: $root, session_id: $session_id, change_id: $change_id, described: false, finished: false }
         mkdir ($path | path dirname)
         $state | to json | save --force $owner_path
@@ -77,7 +122,25 @@ def main [event: string] {
     if ($cwd | is-empty) or ($session_id | is-empty) { return }
     let path = (state-path $session_id)
 
+    let root_result = (^jj --repository $cwd root | complete)
+    if $root_result.exit_code != 0 {
+        if $event == "session-start" {
+            let warning = (git-worktree-warning $cwd)
+            if $warning != null {
+                { hookSpecificOutput: {
+                    hookEventName: "SessionStart"
+                    additionalContext: $warning
+                } } | to json
+            }
+        }
+        return
+    }
+
     try {
+        let jj_root = (^jj --repository $cwd root | complete)
+        if $jj_root.exit_code != 0 {
+            if $event != "session-start" or not (initialize-git-worktree $cwd) { return }
+        }
         prepare $cwd $session_id $path
         if not ($path | path exists) { return }
         let state = (open $path)
@@ -94,7 +157,7 @@ def main [event: string] {
             }
             return
         }
-        let actual = (checked $state.cwd log -r @ --no-graph -T change_id)
+        let actual = (checked $state.cwd -- log -r @ --no-graph -T change_id)
         if $actual != $state.change_id {
             block $"Task owns change ($state.change_id), but this workspace is on ($actual). Restore the correct dedicated workspace before continuing; do not edit another task's change."
             return

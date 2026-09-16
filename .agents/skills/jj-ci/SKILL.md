@@ -21,6 +21,13 @@ trunk workflow.
 - Inspect conflicts and emptiness before choosing a workflow.
 - Before a synchronization that rebases history, create a checkpoint with
   `.agents/skills/jj/scripts/jj-checkpoint`.
+- Before validation or publication, inspect the diff for mixed deliverables.
+  Split independent deliverables into separate changes. Choose parent/child
+  only when the later change depends on the earlier one to build, test, or
+  make sense; choose siblings when both can be reviewed and landed
+  independently. `jj split` creates parent/child changes by default, while
+  `jj split --parallel` creates siblings. Checkpoint before splitting, assign
+  explicit descriptions, and verify the resulting graph with `jj log`.
 
 ## JJ MCP integration
 
@@ -79,11 +86,13 @@ Use the narrowest workflow that matches the request:
 
 ## Publication expectations
 
-Keep one topic and one stable JJ change ID per task, in a dedicated workspace.
-`jj-ci publish` uses `jj-<full-change-id>` as its bookmark, preserving its identity
-through title changes and repeated edits. It does not start a follow-up change.
-Report the PR URL and existing change ID. Existing PRs published under old
-slug bookmarks need deliberate migration; do not create a duplicate PR for them.
+Keep one coherent topic in a dedicated workspace. Use one stable JJ change ID
+for a single deliverable, or a small stack of stable change IDs when mixed
+deliverables were intentionally split. `jj-ci publish` uses
+`jj-<full-change-id>` as each bookmark, preserving each identity through title
+changes and repeated edits. It does not start an unrelated follow-up change.
+Report the PR URL and existing change IDs. Existing PRs published under old
+slug bookmarks need deliberate migration; do not create duplicate PRs for them.
 
 Enable auto-merge only at requested topic closeout. Once GitHub has merged the
 current head, `jj-ci finish` verifies that merge is on main and prepares a clean
@@ -94,3 +103,28 @@ button click does not run this workflow.
 
 For stacked work, inspect the stack before acting. Use the repository's JJ and
 GitHub stack workflow; do not bypass it with direct branch or merge commands.
+
+
+## Continuous integration and conflict handling
+
+The canonical checkout tracks `main`; active work belongs in a dedicated JJ
+workspace created from `main@origin`. Rebase after `main` advances, before
+each review update, and before queue entry. `jj-ci publish` and
+`jj-ci stack-merge` perform a final rebase and validation before updating
+GitHub, so stale heads cannot enter the queue.
+
+Use `jj-ci conflicts` after a rebase to list conflicted revisions and files.
+A conflicted rebase has already rewritten the topic: resolve revisions from
+oldest to newest, then verify with `jj-ci conflicts` before validating.
+Never run an unattended auto-rebase or automatic conflict resolver.
+
+Herdr and Paseo may supervise one existing JJ workspace per topic, monitor
+trunk, PR freshness, checks, and queue state, and notify the owner when
+integration is needed. They must not take ownership of the workspace or
+silently rebase, resolve conflicts, publish, enter a queue, or advance a
+stack.
+
+Prefer one ordinary PR per coherent topic. Use stacked PRs only for
+independently reviewable changes with real dependency order; keep each child
+based on its immediate parent and rebase the remaining stack after every parent
+lands. Keep unrelated work in separate sibling changes.
