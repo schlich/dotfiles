@@ -1,13 +1,22 @@
 {
   description = "A new project";
 
-  inputs.nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
+  inputs = {
+    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
+    nushellWith = {
+      url = "github:YPares/nushellWith/master";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
 
   outputs =
-    { nixpkgs, ... }:
+    { nixpkgs, nushellWith, ... }:
     let
       system = "x86_64-linux";
-      pkgs = nixpkgs.legacyPackages.${system};
+      pkgs = import nixpkgs {
+        inherit system;
+        overlays = [ nushellWith.overlays.default ];
+      };
     in
     {
       devShells.${system}.default = pkgs.mkShellNoCC {

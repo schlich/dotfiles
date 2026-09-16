@@ -12,45 +12,45 @@ let
       JJ_EDITOR = "${pkgs.coreutils}/bin/true";
       PAGER = "${pkgs.coreutils}/bin/cat";
     };
-    hooks = {
-      SessionStart = [
-        {
-          matcher = "startup|resume";
-          hooks = [
-            {
-              type = "command";
-              command = "${codexJjSession}/bin/codex-jj-session session-start";
-              timeout = 10;
-              statusMessage = "Checking JJ topic ownership";
-            }
-          ];
-        }
-      ];
-      PreToolUse = [
-        {
-          hooks = [
-            {
-              type = "command";
-              command = "${codexJjSession}/bin/codex-jj-session guard";
-              timeout = 10;
-              statusMessage = "Checking JJ topic ownership";
-            }
-          ];
-        }
-      ];
-      UserPromptSubmit = [
-        {
-          hooks = [
-            {
-              type = "command";
-              command = "${codexJjSession}/bin/codex-jj-session first-prompt";
-              timeout = 120;
-              statusMessage = "Checking and naming the JJ topic";
-            }
-          ];
-        }
-      ];
-    };
+    # hooks = {
+    #   SessionStart = [
+    #     {
+    #       matcher = "startup|resume";
+    #       hooks = [
+    #         {
+    #           type = "command";
+    #           command = "${codexJjSession}/bin/codex-jj-session session-start";
+    #           timeout = 10;
+    #           statusMessage = "Checking JJ topic ownership";
+    #         }
+    #       ];
+    #     }
+    #   ];
+    #   PreToolUse = [
+    #     {
+    #       hooks = [
+    #         {
+    #           type = "command";
+    #           command = "${codexJjSession}/bin/codex-jj-session guard";
+    #           timeout = 10;
+    #           statusMessage = "Checking JJ topic ownership";
+    #         }
+    #       ];
+    #     }
+    #   ];
+    #   UserPromptSubmit = [
+    #     {
+    #       hooks = [
+    #         {
+    #           type = "command";
+    #           command = "${codexJjSession}/bin/codex-jj-session first-prompt";
+    #           timeout = 120;
+    #           statusMessage = "Checking and naming the JJ topic";
+    #         }
+    #       ];
+    #     }
+    #   ];
+    # };
     mcp_servers = {
       chrome-devtools = {
         command = "npx";

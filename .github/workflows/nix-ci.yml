@@ -2,6 +2,8 @@ name: nix-ci
 
 on:
   pull_request:
+  merge_group:
+    types: [checks_requested]
   push:
     branches:
       - main
@@ -41,7 +43,6 @@ jobs:
 
   desktop-system:
     name: build NixOS (shell and compositor)
-    needs: headless-system
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -65,7 +66,6 @@ jobs:
 
   home-manager:
     name: build Home Manager modules (shell, editor, and desktop)
-    needs: desktop-system
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -89,7 +89,6 @@ jobs:
 
   config-checks:
     name: ${{ matrix.name }}
-    needs: headless-system
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
