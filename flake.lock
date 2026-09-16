@@ -102,6 +102,22 @@
         "type": "github"
       }
     },
+    "den": {
+      "locked": {
+        "lastModified": 1781621963,
+        "narHash": "sha256-8Mntz200pNVIF2l8twpdc4wvEFqzrlkICz2tvkfwz0s=",
+        "owner": "denful",
+        "repo": "den",
+        "rev": "5df0987658d6e44268abba953406480e9f066928",
+        "type": "github"
+      },
+      "original": {
+        "owner": "denful",
+        "ref": "v0.18.0",
+        "repo": "den",
+        "type": "github"
+      }
+    },
     "determinate": {
       "inputs": {
         "determinate-nixd-aarch64-darwin": "determinate-nixd-aarch64-darwin",
@@ -704,6 +720,7 @@
         "anthropic-skills": "anthropic-skills",
         "archify": "archify",
         "codex-desktop-linux": "codex-desktop-linux",
+        "den": "den",
         "determinate": "determinate",
         "fh": "fh",
         "gh-stack": "gh-stack",
