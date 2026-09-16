@@ -18,6 +18,29 @@ def checked [repository: string, ...args: string] {
     $result.stdout | str trim
 }
 
+def git-worktree-warning [cwd: string] {
+    let root_result = (^git -C $cwd rev-parse --show-toplevel | complete)
+    if $root_result.exit_code != 0 { return null }
+    let root = ($root_result.stdout | str trim)
+    let main_result = (^git -C $root rev-parse refs/remotes/origin/main | complete)
+    let head_result = (^git -C $root rev-parse HEAD | complete)
+    if $main_result.exit_code != 0 or $head_result.exit_code != 0 { return null }
+    let main = ($main_result.stdout | str trim)
+    let head = ($head_result.stdout | str trim)
+    if $main == $head { return null }
+    let main_in_head = (^git -C $root merge-base --is-ancestor $main HEAD | complete).exit_code == 0
+    let head_in_main = (^git -C $root merge-base --is-ancestor HEAD $main | complete).exit_code == 0
+    if $main_in_head { return null }
+    let state = if $head_in_main { "behind" } else { "diverged" }
+    let branch_result = (^git -C $root symbolic-ref --short -q HEAD | complete)
+    let branch = if $branch_result.exit_code == 0 and ($branch_result.stdout | str trim | is-not-empty) {
+        $branch_result.stdout | str trim
+    } else {
+        "detached"
+    }
+    $"This task is in ordinary Git worktree ($root), branch ($branch), ($state) origin/main. The merge webhook updates only the dedicated JJ trunk workspace. Enter the repo devshell with `nix develop path:.`, inspect all worktrees with `jj-ci worktree-status`, and migrate this task to a JJ workspace or rebase it manually before editing."
+}
+
 def prepare [cwd: string, session_id: string, path: path] {
     let root_result = (^jj --repository $cwd root | complete)
     if $root_result.exit_code != 0 { return }
@@ -35,7 +58,7 @@ def prepare [cwd: string, session_id: string, path: path] {
             error make { msg: "This task moved to another workspace. Resolve the recorded session mapping before editing." }
         }
         if not ($owner_path | path exists) {
-            if (checked $root log -r @ --no-graph -T change_id) != $previous.change_id {
+            if (checked $root -- log -r @ --no-graph -T change_id) != $previous.change_id {
                 error make { msg: "The existing task's change is not checked out. Restore its workspace before migrating session ownership." }
             }
             let claim = ($root | path join ".jj" "codex-session-claim")
@@ -57,8 +80,8 @@ def prepare [cwd: string, session_id: string, path: path] {
     }
     try {
         # Independent topics start from trunk, preserving any earlier local work.
-        checked $root new main@origin -m "Codex session" | ignore
-        let change_id = (checked $root log -r @ --no-graph -T change_id)
+        checked $root -- new main@origin -m "Codex session" | ignore
+        let change_id = (checked $root -- log -r @ --no-graph -T change_id)
         let state = { cwd: $root, session_id: $session_id, change_id: $change_id, described: false, finished: false }
         mkdir ($path | path dirname)
         $state | to json | save --force $owner_path
@@ -78,6 +101,19 @@ def main [event: string] {
     let path = (state-path $session_id)
 
     try {
+        let jj_root = (^jj --repository $cwd root | complete)
+        if $jj_root.exit_code != 0 {
+            if $event == "session-start" {
+                let warning = (git-worktree-warning $cwd)
+                if $warning != null {
+                    return ({ hookSpecificOutput: {
+                        hookEventName: "SessionStart"
+                        additionalContext: $warning
+                    } } | to json)
+                }
+            }
+            return
+        }
         prepare $cwd $session_id $path
         if not ($path | path exists) { return }
         let state = (open $path)
@@ -94,7 +130,7 @@ def main [event: string] {
             }
             return
         }
-        let actual = (checked $state.cwd log -r @ --no-graph -T change_id)
+        let actual = (checked $state.cwd -- log -r @ --no-graph -T change_id)
         if $actual != $state.change_id {
             block $"Task owns change ($state.change_id), but this workspace is on ($actual). Restore the correct dedicated workspace before continuing; do not edit another task's change."
             return

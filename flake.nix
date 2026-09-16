@@ -103,6 +103,15 @@
         inherit system overlays;
         config.allowUnfree = true;
       };
+      jjCiScript = pkgs.writeNuScriptBin "jj-ci" (builtins.readFile ./jj/ci.nu);
+      jjCi = pkgs.symlinkJoin {
+        name = "jj-ci";
+        paths = [ jjCiScript ];
+        nativeBuildInputs = [ pkgs.makeWrapper ];
+        postBuild = ''
+          wrapProgram "$out/bin/jj-ci" --prefix PATH : ${pkgs.git}/bin
+        '';
+      };
       lib = nixpkgs.lib;
       nixosConfigurations = {
         asus = lib.nixosSystem {
@@ -218,6 +227,26 @@
         jjui = pkgs.jjui;
       };
 
+      devShells.${system}.default = pkgs.mkShellNoCC {
+        packages = with pkgs; [
+          bat
+          difftastic
+          fd
+          gh
+          git
+          jq
+          jjCi
+          jujutsu
+          jjui
+          nil
+          nixd
+          nixfmt-tree
+          nushell
+          prek
+          ripgrep
+        ];
+      };
+
       apps.${system} = {
         jj = {
           type = "app";
@@ -232,6 +261,12 @@
       formatter.${system} = pkgs.nixfmt-tree;
 
       checks.${system} = {
+        dev-shell = pkgs.runCommand "dev-shell-check" { } ''
+          test -x ${jjCi}/bin/jj-ci
+          test -x ${pkgs.jujutsu}/bin/jj
+          test -x ${pkgs.gh}/bin/gh
+          touch "$out"
+        '';
         home-manager-nixos = homeCheck;
         niri-config =
           pkgs.runCommand "niri-config-check"
