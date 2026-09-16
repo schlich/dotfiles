@@ -6,7 +6,7 @@
 }:
 
 let
-  xs = inputs.xs.packages.${pkgs.system}.default;
+  xs = inputs.xs.packages.${pkgs.stdenv.hostPlatform.system}.default;
 in
 
 {

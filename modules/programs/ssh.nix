@@ -3,13 +3,16 @@
 {
   programs.ssh = {
     enable = true;
-    addKeysToAgent = "yes";
-    matchBlocks = {
+    enableDefaultConfig = false;
+    settings = {
+      "*" = {
+        AddKeysToAgent = "yes";
+      };
       "tangled.org" = {
-        hostname = "tangled.org";
-        user = "git";
-        identityFile = [ "~/.ssh/id_ed25519" ];
-        identitiesOnly = true;
+        HostName = "tangled.org";
+        User = "git";
+        IdentityFile = [ "~/.ssh/id_ed25519" ];
+        IdentitiesOnly = true;
       };
     };
   };
