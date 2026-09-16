@@ -10,6 +10,9 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    den = {
+      url = "github:denful/den/v0.18.0";
+    };
     nushellWith = {
       url = "github:YPares/nushellWith/master";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -50,6 +53,10 @@
       url = "github:noctalia-dev/noctalia-greeter";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    ai-usagebar = {
+      url = "github:akitaonrails/ai-usagebar";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     fh = {
       url = "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -79,6 +86,14 @@
       url = "github:meta-quest/agentic-tools";
       flake = false;
     };
+    tangled = {
+      url = "git+https://tangled.org/@tangled.org/core";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    xs = {
+      url = "github:cablehead/xs";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -103,8 +118,17 @@
         inherit system overlays;
         config.allowUnfree = true;
       };
+      jjCiScript = pkgs.writeNuScriptBin "jj-ci" (builtins.readFile ./jj/ci.nu);
+      jjCi = pkgs.symlinkJoin {
+        name = "jj-ci";
+        paths = [ jjCiScript ];
+        nativeBuildInputs = [ pkgs.makeWrapper ];
+        postBuild = ''
+          wrapProgram "$out/bin/jj-ci" --prefix PATH : ${pkgs.git}/bin
+        '';
+      };
       lib = nixpkgs.lib;
-      nixosConfigurations = {
+      legacyNixosConfigurations = {
         asus = lib.nixosSystem {
           inherit system;
           specialArgs = { inherit inputs; };
@@ -184,21 +208,65 @@
         };
       };
 
+      denEval = lib.evalModules {
+        modules = [
+          inputs.den.flakeModule
+          ./modules/den
+        ];
+        specialArgs = { inherit inputs; };
+      };
+      denFlake = denEval.config.flake;
+      denAsus = denFlake.nixosConfigurations.asus;
+      denInventory = pkgs.writeText "den-inventory.json" (
+        builtins.toJSON (
+          lib.mapAttrs (_: host: {
+            profile = host.profile;
+            policy = host.policy;
+            users = lib.mapAttrs (_: user: {
+              classes = user.classes;
+              primary = user.primary;
+            }) host.users;
+          }) denEval.config.den.hosts.x86_64-linux
+        )
+      );
       homeCheck = pkgs.linkFarm "home-manager-check" (
         [
           {
             name = "activation";
-            path = nixosConfigurations.asus.config.home-manager.users.schlich.home.activationPackage;
+            path = denAsus.config.home-manager.users.schlich.home.activationPackage;
           }
         ]
         ++ lib.mapAttrsToList (checkName: path: {
           name = checkName;
           inherit path;
-        }) nixosConfigurations.asus.config.home-manager.users.schlich.dotfiles.tooling.checks
+        }) denAsus.config.home-manager.users.schlich.dotfiles.tooling.checks
       );
+      denHostEvaluationCheck = pkgs.runCommand "den-host-evaluation-check" { } ''
+        cat > "$out" <<'EOF'
+        ${lib.concatStringsSep "" (
+          lib.mapAttrsToList (
+            name: host: "${name}: ${host.config.networking.hostName}\n"
+          ) denFlake.nixosConfigurations
+        )}
+        EOF
+      '';
+      denHostBuildChecks = lib.mapAttrs' (
+        name: host: lib.nameValuePair "den-host-build-${name}" host.config.system.build.toplevel
+      ) denFlake.nixosConfigurations;
+      denPolicyCheck =
+        pkgs.runCommand "den-policy-check"
+          {
+            nativeBuildInputs = [ pkgs.jq ];
+          }
+          ''
+            jq --exit-status 'length == 4 and all(.[]; .policy.autoDeploy == false and .policy.requireReview == true and .policy.rollback == true)' ${denInventory}
+            touch "$out"
+          '';
     in
     {
-      inherit nixosConfigurations;
+      nixosConfigurations = denFlake.nixosConfigurations;
+      legacyNixosConfigurations = legacyNixosConfigurations;
+      den = denEval.config.den;
 
       templates.default = {
         path = ./templates/default;
@@ -212,10 +280,30 @@
       };
 
       packages.${system} = {
-        default = nixosConfigurations.asus.config.system.build.toplevel;
-        headless = nixosConfigurations.asus-headless.config.system.build.toplevel;
+        default = denFlake.nixosConfigurations.asus.config.system.build.toplevel;
+        headless = denFlake.nixosConfigurations.asus-headless.config.system.build.toplevel;
         jj = pkgs.jujutsu;
         jjui = pkgs.jjui;
+      };
+
+      devShells.${system}.default = pkgs.mkShellNoCC {
+        packages = with pkgs; [
+          bat
+          difftastic
+          fd
+          gh
+          git
+          jq
+          jjCi
+          jujutsu
+          jjui
+          nil
+          nixd
+          nixfmt-tree
+          nushell
+          prek
+          ripgrep
+        ];
       };
 
       apps.${system} = {
@@ -232,6 +320,14 @@
       formatter.${system} = pkgs.nixfmt-tree;
 
       checks.${system} = {
+        den-host-evaluation = denHostEvaluationCheck;
+        den-policy = denPolicyCheck;
+        dev-shell = pkgs.runCommand "dev-shell-check" { } ''
+          test -x ${jjCi}/bin/jj-ci
+          test -x ${pkgs.jujutsu}/bin/jj
+          test -x ${pkgs.gh}/bin/gh
+          touch "$out"
+        '';
         home-manager-nixos = homeCheck;
         niri-config =
           pkgs.runCommand "niri-config-check"
@@ -276,11 +372,13 @@
               fi
               touch "$out"
             '';
-      };
+      }
+      // denHostBuildChecks;
     };
   nixConfig = {
     extra-substituters = [
       "https://noctalia.cachix.org"
+      "https://cache.flakehub.com/"
     ];
     extra-trusted-public-keys = [
       "noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4="
