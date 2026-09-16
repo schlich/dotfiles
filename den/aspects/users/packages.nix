@@ -1,4 +1,4 @@
-{ den, ... }:
+{ ... }:
 
 {
   den.aspects.user-packages-baseline.homeManager.imports = [

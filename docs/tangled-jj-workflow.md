@@ -8,18 +8,18 @@ repository enrolled in Tangled gets a separate `tangled` remote with
 ## The lifecycle
 
 1. Create logical change A and give it a meaningful description.
-2. Run `jj-stack new`, implement B, then repeat for C.
-3. Inspect with `jj-stack`, `jj-stack diff`, and `jj-stack each`.
-4. Enroll once with `tangled-init <remote-url>`, then preview and push with
+1. Run `jj-stack new`, implement B, then repeat for C.
+1. Inspect with `jj-stack`, `jj-stack diff`, and `jj-stack each`.
+1. Enroll once with `tangled-init <remote-url>`, then preview and push with
    `jj-stack push`.
-5. In Tangled, choose “Submit as stacked PRs”.
-6. For review feedback on A, run `jj-stack edit A`, make the correction, and
+1. In Tangled, choose “Submit as stacked PRs”.
+1. For review feedback on A, run `jj-stack edit A`, make the correction, and
    inspect the rebased descendants before pushing again. Do the same for B or
    C; do not append “fix review” commits.
-7. Run the canonical local checks, push the updated stack, and let Tangled
+1. Run the canonical local checks, push the updated stack, and let Tangled
    advance the review round. Use Tangled’s interdiff view to review the
    evolution from the previous round.
-8. Merge only after the stack and its CI are approved.
+1. Merge only after the stack and its CI are approved.
 
 The important identity distinction is:
 

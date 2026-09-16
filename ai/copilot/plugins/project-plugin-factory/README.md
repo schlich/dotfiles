@@ -21,35 +21,35 @@ It does **not** directly load prompt files or instruction files from `plugin.jso
 
 This plugin therefore splits responsibilities deliberately:
 
-| Concern | Best home | Why |
-| --- | --- | --- |
-| Cross-cutting project orchestration | Custom agent | Good for multi-step reasoning and component selection |
-| Repeatable bounded capability | Skill | Good for reusable execution playbooks and script-backed actions |
-| File generation | Skill script | Deterministic scaffold output belongs in code, not prose |
-| Persistent repository behavior | Instruction files | Durable conventions and routing guidance |
-| Human-invoked workflows | Prompt files | Low-friction repeatable entrypoints |
-| External tooling | MCP/LSP config | Explicit tool attachment, kept optional |
-| Automatic guardrails | Hooks | Only when an org really wants automatic interception |
+| Concern                             | Best home         | Why                                                             |
+| ----------------------------------- | ----------------- | --------------------------------------------------------------- |
+| Cross-cutting project orchestration | Custom agent      | Good for multi-step reasoning and component selection           |
+| Repeatable bounded capability       | Skill             | Good for reusable execution playbooks and script-backed actions |
+| File generation                     | Skill script      | Deterministic scaffold output belongs in code, not prose        |
+| Persistent repository behavior      | Instruction files | Durable conventions and routing guidance                        |
+| Human-invoked workflows             | Prompt files      | Low-friction repeatable entrypoints                             |
+| External tooling                    | MCP/LSP config    | Explicit tool attachment, kept optional                         |
+| Automatic guardrails                | Hooks             | Only when an org really wants automatic interception            |
 
 ## Recommendation on placement
 
 Keep this meta-plugin **in this repository** for now:
 
 1. It can be installed directly from a local path or repository subdirectory.
-2. It can dogfood the repo's existing Copilot conventions and Nushell-based scripting.
-3. It avoids creating a second repository before the workflow stabilizes.
+1. It can dogfood the repo's existing Copilot conventions and Nushell-based scripting.
+1. It avoids creating a second repository before the workflow stabilizes.
 
 Move it to a **separate repository** only when at least one of these becomes true:
 
 1. You want marketplace publishing or independent versioning.
-2. Multiple repositories need the same meta-plugin without depending on this dotfiles repo.
-3. The generated templates begin to diverge by organization or language family.
+1. Multiple repositories need the same meta-plugin without depending on this dotfiles repo.
+1. The generated templates begin to diverge by organization or language family.
 
 Do **not** split this into multiple plugins yet. Start with:
 
 1. **One factory plugin**: reusable design + scaffold logic.
-2. **Generated user-specific or project-specific plugin**: the actual plugin for the target repo.
-3. **Generated repo overlay**: `.github/prompts/` and `.github/instructions/` for that same target repo.
+1. **Generated user-specific or project-specific plugin**: the actual plugin for the target repo.
+1. **Generated repo overlay**: `.github/prompts/` and `.github/instructions/` for that same target repo.
 
 Split later only if you need separate language packs or separate marketplace distribution.
 
@@ -88,8 +88,8 @@ copilot plugin install project-plugin-factory@schlich-dotfiles
 ## Use
 
 1. Use the **Project Plugin Architect** agent or the `project-plugin-factory` skill to design the target plugin.
-2. Create a spec file from `examples/project-plugin-spec.example.json`.
-3. Run the scaffold script:
+1. Create a spec file from `examples/project-plugin-spec.example.json`.
+1. Run the scaffold script:
 
 ```bash
 nu ai/copilot/plugins/project-plugin-factory/skills/project-plugin-factory/scripts/scaffold.nu \
@@ -161,9 +161,9 @@ Given a spec, the scaffold produces:
 ## Design rules baked into the scaffold
 
 1. Keep the generated plugin small and portable.
-2. Put project policy and dispatching guidance in instructions, not in the plugin manifest.
-3. Use prompts as entrypoints for repeatable human-invoked workflows.
-4. Use skills for deterministic or semi-deterministic actions that can be script-backed later.
-5. Only add MCP/LSP config if the target project already benefits from those tools.
-6. Use plugin hooks for installable personal guardrails, and `.github/hooks` for repository policy that should also apply to cloud agent.
-7. Keep personal workflow plugins in the dotfiles repo and repository policy plugins in the project repo.
+1. Put project policy and dispatching guidance in instructions, not in the plugin manifest.
+1. Use prompts as entrypoints for repeatable human-invoked workflows.
+1. Use skills for deterministic or semi-deterministic actions that can be script-backed later.
+1. Only add MCP/LSP config if the target project already benefits from those tools.
+1. Use plugin hooks for installable personal guardrails, and `.github/hooks` for repository policy that should also apply to cloud agent.
+1. Keep personal workflow plugins in the dotfiles repo and repository policy plugins in the project repo.

@@ -3,7 +3,11 @@
   "scopes": [
     { "id": "api", "label": "Open-source API", "kind": "frontend" },
     { "id": "core", "label": "Shared core", "kind": "engine" },
-    { "id": "exploration", "label": "Exploration + evidence", "kind": "research" }
+    {
+      "id": "exploration",
+      "label": "Exploration + evidence",
+      "kind": "research"
+    }
   ],
   "nodes": [
     {

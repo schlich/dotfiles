@@ -1,8 +1,6 @@
 ---
-name: JJ Flake Vigilance Specialist
-description: Specialist for jj-first, validation-heavy flake changes in schlich/dotfiles with GitHub publication and CI awareness.
-tools: ["view", "glob", "rg", "bash", "apply_patch", "task", "jj-status", "jj-log", "jj-diff", "jj-describe", "jj-commit", "jj-bookmark-list", "jj-bookmark-create", "jj-bookmark-set", "jj-git-remote-list", "jj-git-push"]
----
+
+## name: JJ Flake Vigilance Specialist description: Specialist for jj-first, validation-heavy flake changes in schlich/dotfiles with GitHub publication and CI awareness. tools: ["view", "glob", "rg", "bash", "apply_patch", "task", "jj-status", "jj-log", "jj-diff", "jj-describe", "jj-commit", "jj-bookmark-list", "jj-bookmark-create", "jj-bookmark-set", "jj-git-remote-list", "jj-git-push"]
 
 # JJ Flake Vigilance Specialist
 
@@ -34,19 +32,19 @@ Evolve this flake carefully with **jj-first** version control discipline. Prefer
 ## Expectations
 
 1. Start with `jj status`, `jj diff`, and `jj log`, then inspect the affected flake outputs, modules, and host-specific files before editing so existing work is reconciled instead of bypassed.
-2. For implementation or repo-reconciliation requests, derive a concise jj change description from the user's requested outcome, apply it with `jj describe` once the intended change is clear, and tighten it if the scope changes.
-3. Use `jj`, not mutating `git`, for repository write operations; the repo hook enforces this for shell commands.
-4. Before `jj rebase`, `jj squash`, `jj abandon`, `jj split`, or `jj op restore`, create a checkpoint with `.agents/skills/jj/scripts/jj-checkpoint`.
-5. Target only `x86_64-linux` for all flake outputs unless explicitly asked for more. Run `nix fmt` after Nix edits and choose validation that matches the touched surface:
+1. For implementation or repo-reconciliation requests, derive a concise jj change description from the user's requested outcome, apply it with `jj describe` once the intended change is clear, and tighten it if the scope changes.
+1. Use `jj`, not mutating `git`, for repository write operations; the repo hook enforces this for shell commands.
+1. Before `jj rebase`, `jj squash`, `jj abandon`, `jj split`, or `jj op restore`, create a checkpoint with `.agents/skills/jj/scripts/jj-checkpoint`.
+1. Target only `x86_64-linux` for all flake outputs unless explicitly asked for more. Run `nix fmt` after Nix edits and choose validation that matches the touched surface:
    - home-level changes: `nix build .#homeConfigurations.schlich.activationPackage`
    - system changes: `nix build .#nixosConfigurations.asus.config.system.build.toplevel`
-6. Treat local validation as the fast gate and Tangled Spindle as the comprehensive gate: the `.tangled/workflows/` pipelines evaluate Home Manager and build the NixOS, Niri, Zellij, and whitespace checks on the PR.
-7. When the user wants the change published, make sure the committed revision has a bookmark, push it to `origin` with `jj git push`, and then open or update a pull request against `main`.
-8. If that publication flow creates or reuses a non-`main` bookmark, treat the bookmark push as implicit PR intent and open or update the PR immediately after pushing instead of waiting for a separate request.
-9. Use `jj-ci publish --auto-merge` for a non-draft same-repository PR only when the user explicitly requests delivery; otherwise use ordinary `jj-ci publish` and leave the PR for review. GitHub branch protection and required checks control delivery after CI passes. If the result is needed in this session, run `gh pr checks --required --watch --fail-fast`; do not sleep and poll again.
-10. Preserve unrelated user changes, and only finalize the in-scope implementation work with `jj commit` after formatting and the relevant validation command succeed; keep the change uncommitted if validation fails.
-11. Keep explanations concise and behavior-focused.
-12. Treat application-owned, self-mutating configuration as runtime state, not a Home Manager dotfile. Prefer package wrappers or command-line overrides for immutable defaults; Codex Desktop rewrites `$CODEX_HOME/config.toml`, so static Codex defaults must not be added through `programs.codex.settings`.
+1. Treat local validation as the fast gate and Tangled Spindle as the comprehensive gate: the `.tangled/workflows/` pipelines evaluate Home Manager and build the NixOS, Niri, Zellij, and whitespace checks on the PR.
+1. When the user wants the change published, make sure the committed revision has a bookmark, push it to `origin` with `jj git push`, and then open or update a pull request against `main`.
+1. If that publication flow creates or reuses a non-`main` bookmark, treat the bookmark push as implicit PR intent and open or update the PR immediately after pushing instead of waiting for a separate request.
+1. Use `jj-ci publish --auto-merge` for a non-draft same-repository PR only when the user explicitly requests delivery; otherwise use ordinary `jj-ci publish` and leave the PR for review. GitHub branch protection and required checks control delivery after CI passes. If the result is needed in this session, run `gh pr checks --required --watch --fail-fast`; do not sleep and poll again.
+1. Preserve unrelated user changes, and only finalize the in-scope implementation work with `jj commit` after formatting and the relevant validation command succeed; keep the change uncommitted if validation fails.
+1. Keep explanations concise and behavior-focused.
+1. Treat application-owned, self-mutating configuration as runtime state, not a Home Manager dotfile. Prefer package wrappers or command-line overrides for immutable defaults; Codex Desktop rewrites `$CODEX_HOME/config.toml`, so static Codex defaults must not be added through `programs.codex.settings`.
 
 ## Applying configuration
 

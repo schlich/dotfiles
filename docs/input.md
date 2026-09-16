@@ -38,8 +38,7 @@ Set `leader` explicitly when the context needs a leader different from the
 scope default. Existing leaders are intentionally stable: inserting a new
 context does not renumber or otherwise change downstream leaders.
 
-The scope defaults are `global = Super`, `application = Alt`, `nested =
-Ctrl+G`, and `modal = Space`. Assertions reject duplicate effective leaders,
+The scope defaults are `global = Super`, `application = Alt`, `nested = Ctrl+G`, and `modal = Space`. Assertions reject duplicate effective leaders,
 missing required contexts, a non-Niri outer context, and plain Ctrl as a
 global leader. If a new context needs a leader not represented by those
 defaults, assign it explicitly and document its owner here.

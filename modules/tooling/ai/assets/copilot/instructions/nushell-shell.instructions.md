@@ -1,7 +1,6 @@
 ---
-description: 'Always use Nushell instead of bash for shell commands and scripts'
-applyTo: '**'
----
+
+## description: 'Always use Nushell instead of bash for shell commands and scripts' applyTo: '\*\*'
 
 # Shell Command Conventions: Use Nushell
 
@@ -20,19 +19,19 @@ Before reaching for `grep`, `sed`, `awk`, `cut`, `sort`, `uniq`, `jq`, or simila
 
 Common substitutions:
 
-| Bash / Unix tool | Nushell equivalent |
-|---|---|
-| `grep pattern file` | `open file \| lines \| where { $in =~ "pattern" }` |
-| `grep -v pattern` | `where { $in !~ "pattern" }` |
-| `sed 's/old/new/'` | `str replace "old" "new"` |
-| `awk '{print $2}'` | `split row " " \| get 1` |
-| `cut -d: -f1` | `split row ":" \| get 0` |
-| `sort \| uniq` | `sort \| uniq` (Nu builtins) |
-| `wc -l` | `lines \| length` |
-| `jq .field` | `get field` (on structured data) |
-| `cat file` | `open file` |
-| `find . -name "*.rs"` | `glob **/*.rs` |
-| `xargs` | pipe into `each` or `par-each` |
+| Bash / Unix tool      | Nushell equivalent                                 |
+| --------------------- | -------------------------------------------------- |
+| `grep pattern file`   | `open file \| lines \| where { $in =~ "pattern" }` |
+| `grep -v pattern`     | `where { $in !~ "pattern" }`                       |
+| `sed 's/old/new/'`    | `str replace "old" "new"`                          |
+| `awk '{print $2}'`    | `split row " " \| get 1`                           |
+| `cut -d: -f1`         | `split row ":" \| get 0`                           |
+| `sort \| uniq`        | `sort \| uniq` (Nu builtins)                       |
+| `wc -l`               | `lines \| length`                                  |
+| `jq .field`           | `get field` (on structured data)                   |
+| `cat file`            | `open file`                                        |
+| `find . -name "*.rs"` | `glob **/*.rs`                                     |
+| `xargs`               | pipe into `each` or `par-each`                     |
 
 ## General Nushell Patterns
 

@@ -37,8 +37,7 @@ approved; it does not grant broader shell access.
 
 Dry-run mode returns the plan with `execution: "skipped"` and never invokes the
 backend. It can be enabled for the current Nushell process with
-`agent session dry-run true` or selected per invocation with `agent run $plan
---dry-run`.
+`agent session dry-run true` or selected per invocation with `agent run $plan --dry-run`.
 
 Session metadata currently records a name and the current directory. It does
 not create, switch, or destroy JJ workspaces. This is deliberate: JJ already
