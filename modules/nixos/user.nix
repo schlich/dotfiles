@@ -2,15 +2,15 @@
 
 {
   users.defaultUserShell = pkgs.nushell;
-  users.users.schlich = {
-    uid = 1001;
-    shell = pkgs.nushell;
-    isNormalUser = true;
-    extraGroups = [
-      "wheel"
-      "networkmanager"
-    ];
-  };
+  # users.users.schlich = {
+  #   uid = 1001;
+  #   shell = pkgs.nushell;
+  #   isNormalUser = true;
+  #   extraGroups = [
+  #     "wheel"
+  #     "networkmanager"
+  #   ];
+  # };
   environment.shells = [ pkgs.nushell ];
 
   services.openssh = {
