@@ -10,15 +10,16 @@ buildNpmPackage rec {
   pname = "openchamber";
   version = "1.23.2";
 
-  src = runCommand "${pname}-source-${version}" { nativeBuildInputs = [ gnutar ]; } ''
-    mkdir -p "$out"
+  src = runCommand "${pname}-source-${version}.tar.gz" { nativeBuildInputs = [ gnutar ]; } ''
+    mkdir -p source
     tar -xzf ${
       fetchurl {
         url = "https://registry.npmjs.org/@openchamber/web/-/web-${version}.tgz";
         hash = "sha512-oKIrhpUVzvazp1eYn3rUSiYcCRWcBl6Xu4aUl6yBG9TBhcb1bOjoj+a8S0RdGI0j7gLRuUq7BslgKViI7C43Qg==";
       }
-    } -C "$out"
-    cp ${./openchamber-package-lock.json} "$out/package/package-lock.json"
+    } -C source
+    cp ${./openchamber-package-lock.json} source/package/package-lock.json
+    tar -czf "$out" -C source package
   '';
 
   sourceRoot = "package";
