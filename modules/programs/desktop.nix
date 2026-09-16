@@ -74,6 +74,7 @@
               "volume"
               "brightness"
               "battery"
+              "codex_usage"
               "elrondforwin/opencode-go-usage:bar"
               "thepunkoff/pomodoro:widget"
             ];
@@ -108,6 +109,7 @@
 
         plugins = {
           enabled = [
+            "felipeartur/ai-usagebar"
             "elrondforwin/opencode-go-usage"
             "thepunkoff/pomodoro"
           ];
@@ -116,6 +118,12 @@
               name = "opencode-go-usage";
               kind = "git";
               location = "https://github.com/kaivalagi/noctalia-opencode-usage-plugin";
+              enabled = true;
+            }
+            {
+              name = "community";
+              kind = "git";
+              location = "https://github.com/noctalia-dev/community-plugins";
               enabled = true;
             }
           ];
@@ -147,6 +155,13 @@
           };
           active_window = {
             max_length = 72;
+          };
+          codex_usage = {
+            type = "felipeartur/ai-usagebar:bar";
+            vendor = "openai";
+            visualization = "gauge";
+            extras = "countdown";
+            show_name = true;
           };
           cpu = {
             type = "sysmon";

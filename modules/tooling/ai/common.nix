@@ -26,6 +26,10 @@
         command = "nu";
         args = [ "--mcp" ];
       };
+      atuin = {
+        command = "atuin";
+        args = [ "mcp" ];
+      };
     }
     // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
       # metavr ships binaries only for macOS and Windows, not Linux.

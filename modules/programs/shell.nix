@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ inputs, pkgs, ... }:
 
 let
   atuinNushellConfig = pkgs.runCommandLocal "atuin-nushell-config.nu" { } ''
@@ -9,12 +9,21 @@ let
       | ${pkgs.gnused}/bin/sed '0,/name: atuin$/{s/name: atuin$/name: atuin_up/}' \
       > "$out"
   '';
+  atuinPtyProxyNushellConfig = pkgs.runCommandLocal "atuin-pty-proxy-nushell-config.nu" { } ''
+    export HOME="$TMPDIR/home"
+    mkdir -p "$HOME"
+    ${pkgs.atuin}/bin/atuin pty-proxy init nu > "$out"
+  '';
 in
 
 {
   programs.atuin = {
     enable = true;
     enableNushellIntegration = false;
+    settings.daemon = {
+      enabled = true;
+      autostart = true;
+    };
   };
 
   programs.carapace = {
@@ -41,10 +50,15 @@ in
     };
     configFile.source = ../../config.nu;
     extraConfig = ''
+      source ${atuinPtyProxyNushellConfig}
       source ${atuinNushellConfig}
       source ${../../mcp/agent-shell.nu}
+      source ${../../mcp/terminal-events.nu}
+      setup-terminal-events
     '';
   };
+
+  xdg.configFile."nushell/vendor/autoload/xs.nu".source = "${inputs.xs}/xs.nu";
 
   programs.starship = {
     enable = true;
