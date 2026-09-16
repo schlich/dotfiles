@@ -1,7 +1,6 @@
 ---
-description: 'Nix flake conventions and guidelines'
-applyTo: '**/*.nix'
----
+
+## description: 'Nix flake conventions and guidelines' applyTo: '\*\*/\*.nix'
 
 # Nix Flake Guidelines
 

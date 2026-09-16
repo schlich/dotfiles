@@ -1,7 +1,6 @@
 ---
-name: project-plugin-factory
-description: Design and scaffold a user-specific or project-specific GitHub Copilot CLI plugin plus companion repo-local prompts and instructions.
----
+
+## name: project-plugin-factory description: Design and scaffold a user-specific or project-specific GitHub Copilot CLI plugin plus companion repo-local prompts and instructions.
 
 # Project Plugin Factory
 
@@ -48,24 +47,24 @@ Collect:
 
 Apply these rules before filling the rest of the spec:
 
-| If the customization is... | Host the generated files in... |
-| --- | --- |
-| your personal workflow, reusable preferences, or cross-repo habits | the dotfiles repo |
-| one repository's commands, policy, architecture, or recurring tasks | that project repo |
+| If the customization is...                                          | Host the generated files in... |
+| ------------------------------------------------------------------- | ------------------------------ |
+| your personal workflow, reusable preferences, or cross-repo habits  | the dotfiles repo              |
+| one repository's commands, policy, architecture, or recurring tasks | that project repo              |
 
 ### 2. Place each concern in the right surface
 
 Use this default mapping:
 
-| If the concern is... | Put it in... |
-| --- | --- |
-| orchestration across multiple task types | agent |
-| reusable bounded execution pattern | skill |
-| deterministic file emission | skill script |
-| persistent repo guidance | instruction file |
-| user-invoked workflow entrypoint | prompt file |
-| external tooling integration | MCP/LSP config |
-| automatic guardrail | hook |
+| If the concern is...                     | Put it in...     |
+| ---------------------------------------- | ---------------- |
+| orchestration across multiple task types | agent            |
+| reusable bounded execution pattern       | skill            |
+| deterministic file emission              | skill script     |
+| persistent repo guidance                 | instruction file |
+| user-invoked workflow entrypoint         | prompt file      |
+| external tooling integration             | MCP/LSP config   |
+| automatic guardrail                      | hook             |
 
 ### 3. Write the scaffold spec
 
@@ -98,11 +97,11 @@ If you are not in this repository, adapt the path to the installed plugin locati
 Confirm that:
 
 1. the target plugin is installable on its own
-2. prompts and instructions are emitted into the repo overlay, not hidden inside the plugin manifest
-3. optional MCP/LSP files only exist when they were explicitly requested
-4. the generated agent and skill reflect real project commands and conventions
-5. the plugin and overlay were emitted into the correct repository for the chosen scope
-6. hook files only exist when they were explicitly requested, and they are placed in the right surface for the chosen policy
+1. prompts and instructions are emitted into the repo overlay, not hidden inside the plugin manifest
+1. optional MCP/LSP files only exist when they were explicitly requested
+1. the generated agent and skill reflect real project commands and conventions
+1. the plugin and overlay were emitted into the correct repository for the chosen scope
+1. hook files only exist when they were explicitly requested, and they are placed in the right surface for the chosen policy
 
 ## Expected spec fields
 
@@ -137,9 +136,9 @@ Strongly recommended:
 ## Example usage
 
 1. Inspect the target repository.
-2. Draft a spec file.
-3. Run the scaffold script.
-4. Install the emitted plugin with `copilot plugin install`.
+1. Draft a spec file.
+1. Run the scaffold script.
+1. Install the emitted plugin with `copilot plugin install`.
 
 ## Quality bar
 

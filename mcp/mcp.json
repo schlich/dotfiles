@@ -23,7 +23,11 @@
     },
     "sqlite": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sqlite", "/home/nixos/databases"],
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sqlite",
+        "/home/nixos/databases"
+      ],
       "description": "SQLite database operations",
       "enabled": false
     },
@@ -44,7 +48,11 @@
     },
     "postgres": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-postgres", "postgresql://localhost/mydb"],
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "postgresql://localhost/mydb"
+      ],
       "description": "PostgreSQL database operations",
       "enabled": false
     },

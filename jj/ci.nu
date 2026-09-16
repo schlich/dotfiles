@@ -653,6 +653,7 @@ def validate-change [] {
 
 def github-reconcile [apply: bool] {
     let required_checks = [
+        "Checkmate formatting and unit-test skeleton"
         "build headless NixOS"
         "build NixOS (shell and compositor)"
         "build Home Manager modules (shell, editor, and desktop)"

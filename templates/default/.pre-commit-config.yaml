@@ -3,13 +3,12 @@ repos:
     hooks:
       - id: nix-fmt
         name: nix fmt
-        entry: nix fmt --
+        entry: bash -c 'formatter=$(nix build path:.#formatter.x86_64-linux --no-link --print-out-paths) && "$formatter/bin/treefmt" "$@"' --
         language: system
         files: '\.nix$'
-        pass_filenames: false
       - id: nix-flake-check
         name: nix flake check
-        entry: nix flake check
+        entry: nix flake check path:.
         language: system
         files: '(^|/)(flake\.nix|flake\.lock)$'
         pass_filenames: false

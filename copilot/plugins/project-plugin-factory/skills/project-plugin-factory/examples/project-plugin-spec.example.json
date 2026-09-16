@@ -6,12 +6,7 @@
   "authorName": "Example Team",
   "repositoryUrl": "https://github.com/example/example-service",
   "license": "MIT",
-  "keywords": [
-    "github-copilot",
-    "typescript",
-    "backend",
-    "service"
-  ],
+  "keywords": ["github-copilot", "typescript", "backend", "service"],
   "language": "TypeScript",
   "workspaceRoot": ".",
   "buildCommand": "pnpm build",
@@ -41,19 +36,13 @@
   "mcpServers": {
     "docs": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "."
-      ]
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
     }
   },
   "lspServers": {
     "tsserver": {
       "command": "typescript-language-server",
-      "args": [
-        "--stdio"
-      ],
+      "args": ["--stdio"],
       "fileExtensions": {
         ".ts": "typescript",
         ".tsx": "typescriptreact"

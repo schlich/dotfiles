@@ -28,6 +28,15 @@ User configuration is supplied by Den user aspects. The workstation aspect
 only enables the Home Manager integration; it does not hardcode a username,
 home directory, or user-specific `extraSpecialArgs`.
 
+## Formatting and future unit tests
+
+Repository-wide formatting and the future nix-unit test surface are provided
+by [Checkmate](https://github.com/denful/checkmate). Format locally with:
+
+```text
+nix run github:denful/checkmate#fmt --override-input target path:. -- --on-unmatched warn --excludes '.agents/**' --excludes '.codex/**'
+```
+
 ## Safety boundaries
 
 Hardware, storage, boot, encryption, and generated machine files remain under
