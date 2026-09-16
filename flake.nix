@@ -12,7 +12,6 @@
     };
     home-manager = {
       url = "github:nix-community/home-manager";
-      inputs.nixpkgs.follows = "nixpkgs";
     };
     den = {
       url = "github:denful/den/v0.18.0";
