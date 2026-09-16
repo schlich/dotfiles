@@ -8,6 +8,51 @@ def run-command [label: string, command: closure] {
     $result.stdout | str trim
 }
 
+def git-command [label: string, command: closure] {
+    let result = (do $command | complete)
+    if $result.exit_code != 0 {
+        error make { msg: $"($label) failed with exit code ($result.exit_code): ($result.stderr | str trim)" }
+    }
+    $result.stdout | str trim
+}
+
+def git-worktree [path: string, main: string] {
+    let head = (git-command "reading worktree HEAD" { ^git -C $path rev-parse HEAD })
+    let short_head = ($head | str substring 0..6)
+    let branch_result = (^git -C $path symbolic-ref --short -q HEAD | complete)
+    let branch = if $branch_result.exit_code == 0 and ($branch_result.stdout | str trim | is-not-empty) {
+        $branch_result.stdout | str trim
+    } else {
+        "detached"
+    }
+    let dirty_result = (^git -C $path status --porcelain | complete)
+    if $dirty_result.exit_code != 0 {
+        error make { msg: $"Could not inspect worktree ($path): ($dirty_result.stderr | str trim)" }
+    }
+    let dirty = if ($dirty_result.stdout | str trim | is-empty) { "clean" } else { "dirty" }
+    let main_in_head = (^git -C $path merge-base --is-ancestor $main HEAD | complete).exit_code == 0
+    let head_in_main = (^git -C $path merge-base --is-ancestor HEAD $main | complete).exit_code == 0
+    let state = if $head == $main {
+        "current"
+    } else if $main_in_head {
+        "ahead"
+    } else if $head_in_main {
+        "behind"
+    } else {
+        "diverged"
+    }
+    let jj_result = (^jj --repository $path root | complete)
+    let vcs = if $jj_result.exit_code == 0 { "jj" } else { "git" }
+    {
+        path: $path
+        branch: $branch
+        head: $short_head
+        dirty: $dirty
+        state: $state
+        vcs: $vcs
+    }
+}
+
 def current-change [template: string] {
     let result = (^jj log -r @ --no-graph -T $template | complete)
     if $result.exit_code != 0 { error make { msg: ($result.stderr | str trim) } }
@@ -218,6 +263,25 @@ def "main status" [] {
 
 def "main sync" [] {
     sync-main
+}
+
+def "main worktree-status" [] {
+    let root = (git-command "locating the Git repository" { ^git rev-parse --show-toplevel })
+    let main = (git-command "locating origin/main" { ^git -C $root rev-parse refs/remotes/origin/main })
+    let main_short = ($main | str substring 0..6)
+    let listing = (git-command "listing Git worktrees" { ^git -C $root worktree list --porcelain })
+    let worktrees = ($listing
+        | split row "\n\n"
+        | where {|entry| ($entry | str trim | is-not-empty) }
+        | each {|entry|
+            let path_line = ($entry | lines | where {|line| $line starts-with "worktree " } | first)
+            git-worktree ($path_line | str substring 9..) $main
+        })
+    print $"origin/main: ($main_short)"
+    for worktree in $worktrees {
+        let details = $"($worktree.dirty), ($worktree.vcs)"
+        print $"($worktree.state) ($worktree.branch) ($worktree.head) ($details) ($worktree.path)"
+    }
 }
 
 def "main validate" [] {
