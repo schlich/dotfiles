@@ -9,17 +9,17 @@ let
   cfg = config.programs.nu-pair;
   pairScript = pkgs.writeNuScriptBin "pair" ''
     ${builtins.replaceStrings [ "source runtime.nu\n" "source inspect.nu\n" ] [ "" "" ] (
-      builtins.readFile ../../pair/mod.nu
+      builtins.readFile ./pair/mod.nu
     )}
-    ${builtins.readFile ../../pair/runtime.nu}
-    ${builtins.readFile ../../pair/inspect.nu}
+    ${builtins.readFile ./pair/runtime.nu}
+    ${builtins.readFile ./pair/inspect.nu}
   '';
   pairConfig = pkgs.writeText "nushell-pair-config.nu" ''
     ${builtins.replaceStrings [ "source runtime.nu\n" "source inspect.nu\n" ] [ "" "" ] (
-      builtins.readFile ../../pair/mod.nu
+      builtins.readFile ./pair/mod.nu
     )}
-    ${builtins.readFile ../../pair/runtime.nu}
-    ${builtins.readFile ../../pair/inspect.nu}
+    ${builtins.readFile ./pair/runtime.nu}
+    ${builtins.readFile ./pair/inspect.nu}
   '';
 in
 {

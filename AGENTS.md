@@ -154,7 +154,8 @@
   explicit user request, a specific path reported by a failure, or necessary
   source from an exact pinned flake input.
 - Keep provider-neutral agent skills under `.agents/skills/`. Keep Copilot
-  plugins, hooks, and plugin-bundled agent definitions under `ai/copilot/`, and
+  plugins, hooks, and plugin-bundled agent definitions under
+  `modules/tooling/ai/assets/copilot/`, and
   wire client exposure through `modules/tooling/ai/`.
 
 ## Configuration factory architecture

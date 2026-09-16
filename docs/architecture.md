@@ -10,9 +10,9 @@ The flake exposes the configurations produced by that graph directly.
   application (`niri/`, `zellij/`, `helix/`, `nushell/`, and `wallpapers/`).
 - `tools/` contains repository automation and operational utilities, grouped by
   concern (`agent/`, `jj/`, `mcp/`, and `scripts/`).
-- `ai/` contains AI-client assets and reusable plugins. The `.agents/` and
-  `.codex/` directories remain at the root because those names are client
-  conventions and may contain local runtime state.
+- `modules/tooling/ai/assets/` contains AI-client assets and reusable plugins.
+  The `.agents/` and `.codex/` directories remain at the root because those
+  names are client conventions and may contain local runtime state.
 - `den/inventory.nix` contains typed host and user facts.
 - `den/aspects/` contains reusable capabilities and user environments.
 - `den/default.nix` supplies behavior shared by every host.

@@ -31,7 +31,7 @@ in
     enable = true;
     inherit package;
     enableMcpIntegration = true;
-    agents.trunk-triage = ../../../ai/copilot/plugins/jj-flake-vigilance/agents/trunk-triage.agent.md;
+    agents.trunk-triage = ./assets/copilot/plugins/jj-flake-vigilance/agents/trunk-triage.agent.md;
     settings.notifications = true;
     skills = import ./shared-skills.nix { inherit inputs; };
   };

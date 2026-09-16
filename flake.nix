@@ -3,6 +3,7 @@
 
   inputs = {
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
+    llm-agents.url = "github:numtide/llm-agents.nix";
     treefmt-nix = {
       url = "github:numtide/treefmt-nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -79,6 +80,10 @@
     };
     modern-web-guidance = {
       url = "github:GoogleChrome/modern-web-guidance";
+      flake = false;
+    };
+    paseo-selfhosted = {
+      url = "github:blockfeed/paseo-selfhosted";
       flake = false;
     };
     archify = {
@@ -176,6 +181,23 @@
       denHostBuildChecks = lib.mapAttrs' (
         name: host: lib.nameValuePair "den-host-build-${name}" host.config.system.build.toplevel
       ) denFlake.nixosConfigurations;
+      paseoSelfhostedSrc = builtins.getAttr "paseo-selfhosted" inputs;
+      paseoSelfhosted = pkgs.writeShellApplication {
+        name = "paseo-selfhosted";
+        runtimeInputs = [ pkgs.docker ];
+        text = ''
+          image="''${PASEO_SELFHOSTED_IMAGE:-paseo-selfhosted:latest}"
+          daemon_host="''${PASEO_DAEMON_HOST:-host.docker.internal:6767}"
+          webui_port="''${WEBUI_PORT:-8080}"
+
+          docker build --tag "$image" ${paseoSelfhostedSrc}
+          exec docker run --rm --name paseo-selfhosted \
+            --publish "$webui_port:80" \
+            --env "PASEO_DAEMON_HOST=$daemon_host" \
+            --add-host host.docker.internal:host-gateway \
+            "$image"
+        '';
+      };
       denPolicyCheck =
         pkgs.runCommand "den-policy-check"
           {
@@ -208,6 +230,11 @@
         headless = denFlake.nixosConfigurations.asus-headless.config.system.build.toplevel;
         jj = pkgs.jujutsu;
         jjui = pkgs.jjui;
+        paseo-selfhosted = paseoSelfhosted;
+      };
+
+      nixosModules.paseo-selfhosted = import ./modules/nixos/paseo-selfhosted.nix {
+        source = paseoSelfhostedSrc;
       };
 
       devShells.${system}.default = pkgs.mkShellNoCC {
@@ -231,6 +258,10 @@
       };
 
       apps.${system} = {
+        paseo-selfhosted = {
+          type = "app";
+          program = "${paseoSelfhosted}/bin/paseo-selfhosted";
+        };
         jj = {
           type = "app";
           program = "${pkgs.jujutsu}/bin/jj";
