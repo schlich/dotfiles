@@ -1,0 +1,24 @@
+{
+  imports = [
+    ./schema.nix
+    ./policy.nix
+    ./inventory.nix
+    ./aspects/base.nix
+    ./aspects/workstation.nix
+    ./aspects/server.nix
+    ./aspects/system-files.nix
+    ./aspects/wsl.nix
+    ./aspects/desktop-niri.nix
+    ./aspects/laptop.nix
+    ./aspects/development.nix
+    ./aspects/remote.nix
+    ./aspects/secrets.nix
+    ./aspects/gpu-amd.nix
+    ./aspects/xr.nix
+    ./aspects/users/core.nix
+    ./aspects/users/terminal.nix
+    ./aspects/users/schlich.nix
+    ./aspects/host-platforms.nix
+    ./master.nix
+  ];
+}
