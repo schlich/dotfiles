@@ -42,24 +42,42 @@ interactive revision work in a terminal.
 
 ## Project task discipline
 
-For JJ projects, use one topic, one dedicated JJ workspace, and one stable
-change ID per Codex task. Treat the session hook's recorded change as the task's
-revision. Rewrite that change throughout the task; do not run `jj new`,
-`jj commit`, or create a follow-up revision after publishing. A new topic needs
-a new task and a separate workspace; do not switch a working copy owned by
-another active task. Use `jj workspace add --revision main@origin --name NAME
-PATH` from the repository, then open that directory as a local Codex project.
+For JJ projects, use one coherent topic, one dedicated JJ workspace, and one
+stable change ID for a single deliverable. When a task contains multiple
+deliverables that should be split, keep them in one small stack in that
+workspace and rewrite each in-scope change as needed; do not create unrelated
+follow-up revisions after publishing. A new topic needs a new task and a
+separate workspace; do not switch a working copy owned by another active task.
+Use `jj workspace add --revision main@origin --name NAME PATH` from the
+repository, then open that directory as a local Codex project.
 The hook creates the topic revision when its task starts.
+
+When the working-copy diff contains multiple coherent deliverables, split it
+into separate JJ changes before publishing or treating the work as complete.
+Choose the topology from the dependency, not from file proximity: make a
+parent/child chain only when the later change needs the earlier one to build,
+test, or make sense; make siblings when both changes are independently
+reviewable and can land independently. JJ provides this directly: `jj split`
+creates a parent/child pair by default, and `jj split --parallel` creates two
+sibling changes. After every split, set explicit descriptions, inspect `jj log`,
+and repeat the classification if more than two changes remain. Create a
+checkpoint before splitting, as for other history surgery. Do not use the
+default parent/child shape just because it is convenient, and do not combine
+changes merely because they touch related files.
 
 Use JJ for version-control mutations. Do not use the desktop app's Git commit,
 stage, branch, worktree, handoff, push, or merge actions for these tasks.
 Keep Git available as an internal transport dependency. Use `jj-dashboard`
 or the desktop Open in → JJ dashboard action for interactive revision work.
 
-Where `jj-ci` is available, publish in place with `jj-ci publish`; rebase the
-same topic with `jj-ci rebase`. Enable auto-merge only when the user is finished
-with the topic and has requested delivery. Before archiving a delivered topic,
-run `jj-ci finish`: it verifies that the current head was merged to main and
+Where `jj-ci` is available, keep the topic in a dedicated workspace rooted at
+`main@origin`; rebase after trunk advances and before review or queue updates.
+`jj-ci publish` and `jj-ci stack-merge` perform a final rebase before updating
+GitHub. Enable auto-merge only when the user is finished with the topic and has
+requested delivery. Herdr or Paseo may supervise and report stale trunk or PR
+state for that one workspace, but must not silently rebase or resolve
+conflicts. Before archiving a delivered topic, run
+`jj-ci finish`: it verifies that the current head was merged to main and
 leaves a clean working copy on main. Only then call the archive tool. Failed
 checks, conflicts, pending delivery, or unpublished edits leave the task open.
 Do not treat app exit, idle timeout, or SessionEnd as authorization to publish

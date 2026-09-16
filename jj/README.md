@@ -14,6 +14,7 @@ commits.
 ```nu
 jj-ci status
 jj-ci rebase                  # Fetch trunk and rebase the whole topic stack.
+jj-ci conflicts               # Show conflicted revisions and files after a rebase.
 jj-ci validate                # Run the repository gates when requested.
 jj-ci review snapshot v1      # Capture the current series for interdiff review.
 jj-ci publish                 # Create/update the same PR and bookmark.
@@ -56,14 +57,70 @@ the local range-diff command supplies the true interdiff between review rounds.
 an owned workspace. Use `jj-ci rebase` during an active topic; it fetches trunk
 and rebases the whole series in place.
 
-`jj-ci publish` validates, pushes the stable `jj-<full-change-id>` bookmark,
-and creates or updates the matching PR. It does not create a follow-up change.
+`jj-ci publish` validates, pushes the stable `jj-<full-change-id>` bookmark to
+both the `origin` (GitHub) and `tangled` remotes, and creates or updates the
+matching PR. It does not create a follow-up change. After GitHub delivery,
+`jj-ci finish` also mirrors `main` to Tangled.
 Further edits to the series therefore update the same review topic.
 
 `jj-ci finish` checks that GitHub merged the exact current head and that the
 merge is on `main@origin`. It then advances local main, leaves an empty
 workspace on main, and releases workspace ownership. Archive the task only
 after it succeeds.
+
+### Rebasing with conflicts
+
+`jj-ci rebase` creates a JJ operation checkpoint, fetches `origin`, and rebases
+the complete topic stack onto `main@origin`. If the rebase conflicts, it does
+not attempt another rebase: it prints every conflicted revision and its files,
+then exits non-zero so publication cannot accidentally proceed.
+
+Resolve the revisions from oldest to newest. For a conflicted revision that is
+not the working copy, select it with `jj edit CHANGE_ID`; resolve its files by
+editing the conflict markers or using `jj resolve`; then return to the original
+topic tip with `jj edit TOPIC_TIP` (record the tip before selecting a revision).
+Run `jj-ci conflicts` between revisions. Once it reports no conflicts, run
+`jj-ci validate` before publishing.
+
+The rebase itself has already completed when the conflict report appears. Do
+not run `jj-ci rebase` again while conflicts remain; doing so would attempt to
+move an already-rebased topic a second time. If a resolution goes wrong, use
+the printed checkpoint with `jj op restore` and retry from the pre-rebase state.
+
+## Continuous integration and conflict avoidance
+
+The canonical checkout tracks `main`; active work happens in dedicated JJ
+workspaces. The local webhook may advance the canonical checkout after a
+successful `main` workflow, but it never rewrites an owned topic workspace.
+Each topic therefore has an isolated working copy and must integrate trunk
+changes into itself.
+
+The integration points are deliberately automatic:
+
+- `jj-ci rebase` fetches `origin` and rebases the complete topic stack onto
+  `main@origin`.
+- `jj-ci publish` rebases before validation, pushing, or requesting auto-merge.
+- `jj-ci stack-merge` performs the same final rebase and validation before
+  submitting a stack.
+
+Rebase after `main` advances, before each review update, and before requesting
+queue entry. Keep topics short-lived and changes small enough to rebase without
+large manual resolutions. If a queued PR becomes stale or is removed from the
+queue, update the topic from `main@origin`, validate the new head, and request
+queue entry again; never try to merge a stale head manually.
+
+### Herdr and Paseo coordination
+
+Herdr or Paseo may supervise the terminals and agents used for this workflow,
+but they do not replace JJ workspace ownership. Create the JJ workspace from
+`main@origin` first, then attach one Herdr or Paseo coordination lane to that
+directory. Keep the mapping one coordinator : one JJ workspace : one topic.
+
+A supervisor may monitor `main@origin`, PR freshness, checks, and queue state,
+and notify the owner when integration is needed. Rebase, conflict resolution,
+publication, queue entry, and stack advancement remain explicit operations in
+the owning workspace. Do not run an unattended auto-rebase: rebasing rewrites
+the topic and can require revision-by-revision conflict decisions.
 
 ## Merge strategy
 
@@ -75,7 +132,9 @@ from older sessions may retain their descriptive names, but new topics should
 use the `jj-` prefix.
 
 Use a stacked PR only when every layer is independently reviewable and the
-layers must land in dependency order. Name those branches
+layers must land in dependency order. Ordinary one-PR topics are preferred
+because they minimize the number of moving bases and queue interactions. Name
+stack branches
 `stack/<series>/<layer>`, link the stack with `gh stack link`, and inspect it
 with `gh stack view --json`. Submit the complete stack with:
 
@@ -84,11 +143,17 @@ jj-ci stack-merge STACK_OR_PR
 ```
 
 That wrapper uses `gh stack merge --yes --squash`, so each layer remains a
-linear, atomic change without merge commits. Ordinary topics are queued for
-auto-merge only when the publisher explicitly passes `--auto-merge`; stack
-submission remains the explicit ordering decision. Use a rebase merge only
-when preserving the individual patch-series commits on `main` is more valuable
-than a single atomic commit.
+linear, atomic change without merge commits. A stack must remain topological:
+each layer is based on the immediately preceding layer, parent layers land
+before children, and the remaining layers are rebased onto the new `main` after
+each parent lands. Never submit a child based on an outdated parent or queue
+independent sibling PRs as if they were a stack.
+
+Ordinary topics are queued for auto-merge only after the final automatic rebase
+and only when the publisher explicitly passes `--auto-merge`; stack submission
+remains the explicit ordering decision. Use a rebase merge only when preserving
+the individual patch-series commits on `main` is more valuable than a single
+atomic commit.
 
 Merge commits are not part of the repository policy: `main` has required
 linear history and GitHub allows only squash or rebase merges.
@@ -118,6 +183,23 @@ Use that directory as a local Codex project. The session hook starts an
 independent topic at `main@origin`, records ownership in
 `.jj/codex-session.json`, and guards prompts and tool calls against change-ID
 drift. It never automatically switches another task's working copy.
+
+## Git worktrees and the devshell
+
+This repository's default devshell provides the Nushell, JJ, GitHub CLI,
+Prek, and `jj-ci` tools used by the workflow. From any checkout, enter it with:
+
+```nu
+nix develop path:.
+jj-ci worktree-status
+```
+
+`worktree-status` reports every Git worktree as `current`, `ahead`, `behind`,
+or `diverged`, along with its branch, cleanliness, and whether it is a JJ or
+ordinary Git worktree. The merge webhook updates only the dedicated JJ trunk
+workspace. Active or dirty worktrees remain owned by their tasks; the session
+hook warns when an ordinary Git worktree is behind or diverged so it is not
+mistaken for an automatically rebased JJ workspace.
 
 ## Nix and GitHub
 

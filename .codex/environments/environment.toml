@@ -3,7 +3,7 @@ version = 1
 name = "dotfiles"
 
 [setup]
-script = "direnv allow"
+script = "nix develop"
 
 [[actions]]
 name = "checks"
