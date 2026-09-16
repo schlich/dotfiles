@@ -18,6 +18,32 @@ def checked [repository: string, ...args: string] {
     $result.stdout | str trim
 }
 
+def git-backend-root [cwd: string] {
+    let result = (^git -C $cwd rev-parse --path-format=absolute --git-common-dir | complete)
+    if $result.exit_code != 0 { return null }
+    ($result.stdout | str trim | path dirname)
+}
+
+def initialize-git-worktree [cwd: string] {
+    let backend = (git-backend-root $cwd)
+    if $backend == null { return false }
+
+    # Codex creates linked Git worktrees, where `jj git init --colocate` is not
+    # allowed. Point the new JJ workspace at the shared Git backend instead.
+    let result = (do {
+        cd $cwd
+        ^jj git init --git-repo $backend $cwd
+    } | complete)
+    if $result.exit_code != 0 {
+        # Another session may have initialized this worktree concurrently.
+        let jj_root = (^jj --repository $cwd root | complete)
+        if $jj_root.exit_code != 0 {
+            error make { msg: $"Could not initialize JJ workspace in ($cwd): ($result.stderr | str trim)" }
+        }
+    }
+    true
+}
+
 def prepare [cwd: string, session_id: string, path: path] {
     let root_result = (^jj --repository $cwd root | complete)
     if $root_result.exit_code != 0 { return }
@@ -35,7 +61,7 @@ def prepare [cwd: string, session_id: string, path: path] {
             error make { msg: "This task moved to another workspace. Resolve the recorded session mapping before editing." }
         }
         if not ($owner_path | path exists) {
-            if (checked $root log -r @ --no-graph -T change_id) != $previous.change_id {
+            if (checked $root -- log -r @ --no-graph -T change_id) != $previous.change_id {
                 error make { msg: "The existing task's change is not checked out. Restore its workspace before migrating session ownership." }
             }
             let claim = ($root | path join ".jj" "codex-session-claim")
@@ -57,8 +83,8 @@ def prepare [cwd: string, session_id: string, path: path] {
     }
     try {
         # Independent topics start from trunk, preserving any earlier local work.
-        checked $root new main@origin -m "Codex session" | ignore
-        let change_id = (checked $root log -r @ --no-graph -T change_id)
+        checked $root -- new main@origin -m "Codex session" | ignore
+        let change_id = (checked $root -- log -r @ --no-graph -T change_id)
         let state = { cwd: $root, session_id: $session_id, change_id: $change_id, described: false, finished: false }
         mkdir ($path | path dirname)
         $state | to json | save --force $owner_path
@@ -78,6 +104,10 @@ def main [event: string] {
     let path = (state-path $session_id)
 
     try {
+        let jj_root = (^jj --repository $cwd root | complete)
+        if $jj_root.exit_code != 0 {
+            if $event != "session-start" or not (initialize-git-worktree $cwd) { return }
+        }
         prepare $cwd $session_id $path
         if not ($path | path exists) { return }
         let state = (open $path)
@@ -94,7 +124,7 @@ def main [event: string] {
             }
             return
         }
-        let actual = (checked $state.cwd log -r @ --no-graph -T change_id)
+        let actual = (checked $state.cwd -- log -r @ --no-graph -T change_id)
         if $actual != $state.change_id {
             block $"Task owns change ($state.change_id), but this workspace is on ($actual). Restore the correct dedicated workspace before continuing; do not edit another task's change."
             return

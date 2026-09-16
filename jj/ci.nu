@@ -8,6 +8,51 @@ def run-command [label: string, command: closure] {
     $result.stdout | str trim
 }
 
+def git-command [label: string, command: closure] {
+    let result = (do $command | complete)
+    if $result.exit_code != 0 {
+        error make { msg: $"($label) failed with exit code ($result.exit_code): ($result.stderr | str trim)" }
+    }
+    $result.stdout | str trim
+}
+
+def git-worktree [path: string, main: string] {
+    let head = (git-command "reading worktree HEAD" { ^git -C $path rev-parse HEAD })
+    let short_head = ($head | str substring 0..6)
+    let branch_result = (^git -C $path symbolic-ref --short -q HEAD | complete)
+    let branch = if $branch_result.exit_code == 0 and ($branch_result.stdout | str trim | is-not-empty) {
+        $branch_result.stdout | str trim
+    } else {
+        "detached"
+    }
+    let dirty_result = (^git -C $path status --porcelain | complete)
+    if $dirty_result.exit_code != 0 {
+        error make { msg: $"Could not inspect worktree ($path): ($dirty_result.stderr | str trim)" }
+    }
+    let dirty = if ($dirty_result.stdout | str trim | is-empty) { "clean" } else { "dirty" }
+    let main_in_head = (^git -C $path merge-base --is-ancestor $main HEAD | complete).exit_code == 0
+    let head_in_main = (^git -C $path merge-base --is-ancestor HEAD $main | complete).exit_code == 0
+    let state = if $head == $main {
+        "current"
+    } else if $main_in_head {
+        "ahead"
+    } else if $head_in_main {
+        "behind"
+    } else {
+        "diverged"
+    }
+    let jj_result = (^jj --repository $path root | complete)
+    let vcs = if $jj_result.exit_code == 0 { "jj" } else { "git" }
+    {
+        path: $path
+        branch: $branch
+        head: $short_head
+        dirty: $dirty
+        state: $state
+        vcs: $vcs
+    }
+}
+
 def current-change [template: string] {
     let result = (^jj log -r @ --no-graph -T $template | complete)
     if $result.exit_code != 0 { error make { msg: ($result.stderr | str trim) } }
@@ -39,6 +84,18 @@ def current-topic-id [] {
 
 def publication-bookmark [] {
     $"jj-(current-topic-id)"
+}
+
+def push-bookmark [remote: string, bookmark: string] {
+    run-command $"pushing ($bookmark) to ($remote)" {
+        ^jj git push --remote $remote --bookmark $bookmark
+    } | ignore
+}
+
+def push-topic-bookmark [bookmark: string] {
+    for remote in [origin tangled] {
+        push-bookmark $remote $bookmark
+    }
 }
 
 def checkpoint [label: string] {
@@ -84,6 +141,61 @@ def require-ready-change [] {
     }
 }
 
+def conflicted-revisions [] {
+    let result = (^jj log -r 'conflicted() & ::@' --no-graph -T 'change_id ++ "\t" ++ description.first_line() ++ "\n"' | complete)
+    if $result.exit_code != 0 { error make { msg: ($result.stderr | str trim) } }
+    $result.stdout | lines | where {|line| $line | str trim | is-not-empty } | each {|line|
+        let fields = ($line | split row "\t")
+        {
+            change_id: ($fields | first)
+            description: ($fields | skip 1 | str join "\t")
+        }
+    }
+}
+
+def print-conflicts [context: string] {
+    let revisions = (conflicted-revisions)
+    if ($revisions | is-empty) {
+        print $"($context): no conflicts in the current topic stack."
+        return false
+    }
+
+    print $"($context): ($revisions | length) conflicted revision(s):"
+    for $revision in $revisions {
+        print $"  ($revision.change_id) ($revision.description)"
+        let files = (^jj resolve --list -r $revision.change_id | complete)
+        if $files.exit_code == 0 {
+            let paths = ($files.stdout | lines | where {|line| $line | str trim | is-not-empty })
+            for $path in $paths { print $"    ($path)" }
+        }
+    }
+    print ""
+    print $"Topic tip before selecting a revision: (current-topic-id)"
+    print "Resolve each revision in order, then run `jj-ci conflicts` again."
+    print "For a revision that is not @: run `jj edit CHANGE_ID`, edit or `jj resolve` its files, then return with `jj edit TOPIC_TIP`."
+    print "Do not re-run `jj-ci rebase` until the current topic is conflict-free; the rebase already completed."
+    true
+}
+
+def fetch-origin [] {
+    run-command "fetching origin" { ^jj git fetch --remote origin } | ignore
+}
+
+def rebase-topic [] {
+    require-owned-change
+    if (print-conflicts "Before rebase") {
+        error make { msg: "Resolve existing conflicts before rebasing onto main@origin." }
+    }
+    checkpoint "rebase"
+    fetch-origin
+    run-command "rebasing the topic stack" {
+        ^jj rebase -s 'roots(main@origin..@)' -o main@origin
+    } | ignore
+    if (print-conflicts "Rebase completed") {
+        error make { msg: "Rebase completed with conflicts. Resolve them before continuing." }
+    }
+}
+
 def sync-main [] {
     let owner = (session-owner)
     if $owner != null and not ($owner.finished? | default false) {
@@ -93,7 +205,7 @@ def sync-main [] {
         error make { msg: "Sync needs an empty change. Use `jj-ci rebase` to update this topic in place." }
     }
     checkpoint "sync"
-    run-command "fetching origin" { ^jj git fetch --remote origin } | ignore
+    fetch-origin
     run-command "advancing the main bookmark" { ^jj bookmark move main --to main@origin } | ignore
     run-command "rebasing the working copy" { ^jj rebase -r @ -o main@origin } | ignore
 }
@@ -196,7 +308,7 @@ def stack-merge [target: string] {
 }
 
 def main [] {
-    print "Use `jj-ci status`, `jj-ci sync`, `jj-ci rebase`, `jj-ci review snapshot`, `jj-ci interdiff`, `jj-ci finish`, `jj-ci validate`, `jj-ci publish`, `jj-ci github reconcile`, or `jj-ci stack-merge`."
+    print "Use `jj-ci status`, `jj-ci sync`, `jj-ci rebase`, `jj-ci conflicts`, `jj-ci review snapshot`, `jj-ci interdiff`, `jj-ci finish`, `jj-ci validate`, `jj-ci publish`, `jj-ci github reconcile`, or `jj-ci stack-merge`."
 }
 
 def "main status" [] {
@@ -206,6 +318,25 @@ def "main status" [] {
 
 def "main sync" [] {
     sync-main
+}
+
+def "main worktree-status" [] {
+    let root = (git-command "locating the Git repository" { ^git rev-parse --show-toplevel })
+    let main = (git-command "locating origin/main" { ^git -C $root rev-parse refs/remotes/origin/main })
+    let main_short = ($main | str substring 0..6)
+    let listing = (git-command "listing Git worktrees" { ^git -C $root worktree list --porcelain })
+    let worktrees = ($listing
+        | split row "\n\n"
+        | where {|entry| ($entry | str trim | is-not-empty) }
+        | each {|entry|
+            let path_line = ($entry | lines | where {|line| $line starts-with "worktree " } | first)
+            git-worktree ($path_line | str substring 9..) $main
+        })
+    print $"origin/main: ($main_short)"
+    for worktree in $worktrees {
+        let details = $"($worktree.dirty), ($worktree.vcs)"
+        print $"($worktree.state) ($worktree.branch) ($worktree.head) ($details) ($worktree.path)"
+    }
 }
 
 def "main validate" [] {
@@ -257,18 +388,19 @@ def "main interdiff" [old: string, new: string] {
 }
 
 def "main rebase" [] {
+    rebase-topic
+}
+
+def "main conflicts" [] {
     require-owned-change
-    checkpoint "rebase"
-    run-command "fetching origin" { ^jj git fetch --remote origin } | ignore
-    run-command "rebasing the topic stack" {
-        ^jj rebase -s 'roots(main@origin..@)' -o main@origin
-    } | ignore
-    if (current-change "conflict") == "true" {
-        error make { msg: "Rebase recorded conflicts in this same change. Resolve them before publishing." }
+    if (print-conflicts "Conflict status") {
+        error make { msg: "The current topic has unresolved conflicts." }
     }
 }
 
 def "main publish" [--auto-merge] {
+    require-ready-change
+    rebase-topic
     require-ready-change
     validate-change
     let title = (current-change "description.first_line()")
@@ -279,9 +411,7 @@ def "main publish" [--auto-merge] {
         error make { msg: "This topic's PR is closed or merged. Finish it before starting new work." }
     }
     run-command "setting the publication bookmark" { ^jj bookmark set $branch -r @ } | ignore
-    run-command "pushing the publication bookmark" {
-        ^jj git push --remote origin --bookmark $branch
-    } | ignore
+    push-topic-bookmark $branch
     let url = if $pr.exit_code == 0 {
         let existing = ($pr.stdout | from json)
         if $existing.state != "OPEN" {
@@ -307,6 +437,10 @@ def "main github reconcile" [--apply] {
 }
 
 def "main stack-merge" [target: string] {
+    require-ready-change
+    rebase-topic
+    require-ready-change
+    validate-change
     stack-merge $target
 }
 
@@ -348,6 +482,7 @@ def "main finish" [] {
         }
     }
     run-command "advancing main" { ^jj bookmark move main --to main@origin } | ignore
+    push-bookmark tangled main
     run-command "leaving a clean workspace on main" { ^jj new main@origin } | ignore
     let root = (run-command "locating the workspace" { ^jj root })
     let owner_path = ($root | path join ".jj" "codex-session.json")
