@@ -1,0 +1,19 @@
+name: Build desktop NixOS
+
+when:
+  - event: ["push", "manual"]
+    branch: ["main"]
+  - event: ["pull_request"]
+    branch: ["main"]
+
+engine: microvm
+image: nixos
+
+dependencies:
+  - nix
+  - git
+  - cacert
+
+steps:
+  - name: "Build desktop system"
+    command: "nix --accept-flake-config build .#nixosConfigurations.asus.config.system.build.toplevel --print-build-logs"

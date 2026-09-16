@@ -142,7 +142,7 @@ def require-ready-change [] {
 }
 
 def conflicted-revisions [] {
-    let result = (^jj log -r 'conflicted() & ::@' --no-graph -T 'change_id ++ "\t" ++ description.first_line() ++ "\n"' | complete)
+    let result = (^jj log -r 'conflicts() & ::@' --no-graph -T 'change_id ++ "\t" ++ description.first_line() ++ "\n"' | complete)
     if $result.exit_code != 0 { error make { msg: ($result.stderr | str trim) } }
     $result.stdout | lines | where {|line| $line | str trim | is-not-empty } | each {|line|
         let fields = ($line | split row "\t")
