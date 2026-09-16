@@ -8,6 +8,44 @@ def run-command [label: string, command: closure] {
     $result.stdout | str trim
 }
 
+def capture-command [label: string, command: closure] {
+    let result = (do $command | complete)
+    if $result.exit_code != 0 {
+        error make { msg: $"($label) failed with exit code ($result.exit_code): ($result.stderr | str trim)" }
+    }
+    $result.stdout | str trim
+}
+
+def worktree-state [path: path, main: string] {
+    let head = (capture-command "reading worktree HEAD" {
+        ^git -C $path rev-parse --short HEAD
+    })
+    let branch_result = (^git -C $path symbolic-ref --short -q HEAD | complete)
+    let branch = if $branch_result.exit_code == 0 {
+        $branch_result.stdout | str trim
+    } else {
+        "detached"
+    }
+    let dirty = ((^git -C $path status --porcelain | complete).stdout | str trim | is-not-empty)
+    let main_is_ancestor = (^git -C $path merge-base --is-ancestor $main HEAD | complete).exit_code == 0
+    let head_is_ancestor = (^git -C $path merge-base --is-ancestor HEAD $main | complete).exit_code == 0
+    let state = if $main_is_ancestor {
+        "current"
+    } else if $head_is_ancestor {
+        "behind"
+    } else {
+        "diverged"
+    }
+    {
+        path: ($path | path expand)
+        branch: $branch
+        head: $head
+        state: $state
+        dirty: $dirty
+        jj_workspace: (($path | path join ".jj") | path exists)
+    }
+}
+
 def current-change [template: string] {
     let result = (^jj log -r @ --no-graph -T $template | complete)
     if $result.exit_code != 0 { error make { msg: ($result.stderr | str trim) } }
@@ -196,7 +234,7 @@ def stack-merge [target: string] {
 }
 
 def main [] {
-    print "Use `jj-ci status`, `jj-ci sync`, `jj-ci rebase`, `jj-ci review snapshot`, `jj-ci interdiff`, `jj-ci finish`, `jj-ci validate`, `jj-ci publish`, `jj-ci github reconcile`, or `jj-ci stack-merge`."
+    print "Use `jj-ci status`, `jj-ci sync`, `jj-ci worktree-status`, `jj-ci rebase`, `jj-ci review snapshot`, `jj-ci interdiff`, `jj-ci finish`, `jj-ci validate`, `jj-ci publish`, `jj-ci github reconcile`, or `jj-ci stack-merge`."
 }
 
 def "main status" [] {
@@ -206,6 +244,34 @@ def "main status" [] {
 
 def "main sync" [] {
     sync-main
+}
+
+def "main worktree-status" [] {
+    let root = (capture-command "locating the Git worktree" { ^git rev-parse --show-toplevel })
+    let main_result = (^git -C $root rev-parse --verify refs/remotes/origin/main | complete)
+    if $main_result.exit_code != 0 {
+        error make { msg: "origin/main is unavailable. Fetch origin before checking worktree freshness." }
+    }
+    let main = ($main_result.stdout | str trim)
+    let main_short = (capture-command "abbreviating origin/main" { ^git -C $root rev-parse --short $main })
+    let listing = (^git -C $root worktree list --porcelain | complete)
+    if $listing.exit_code != 0 {
+        error make { msg: ($listing.stderr | str trim) }
+    }
+    let paths = (
+        $listing.stdout
+        | lines
+        | where {|line| $line | str starts-with "worktree " }
+        | each {|line| $line | str replace "worktree " "" }
+    )
+    let rows = ($paths | each {|path| worktree-state $path $main })
+    print $"origin/main: ($main_short)"
+    for row in ($rows | sort-by state path) {
+        let dirty = if $row.dirty { "dirty" } else { "clean" }
+        let jj = if $row.jj_workspace { "jj" } else { "git" }
+        let kind = $"($dirty), ($jj)"
+        print $"($row.state) ($row.branch) ($row.head) ($kind) ($row.path)"
+    }
 }
 
 def "main validate" [] {

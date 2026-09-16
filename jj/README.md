@@ -119,6 +119,28 @@ independent topic at `main@origin`, records ownership in
 `.jj/codex-session.json`, and guards prompts and tool calls against change-ID
 drift. It never automatically switches another task's working copy.
 
+## Git worktrees and the devshell
+
+The repository's default devshell provides Nushell, JJ, GitHub CLI, Prek, and
+the repository's `jj-ci` command. Enter it from any checkout with:
+
+```nu
+nix develop path:.
+```
+
+Codex may create ordinary Git worktrees rather than JJ workspaces. The devshell
+does not silently convert or rewrite those checkouts. Inspect every checkout
+against the latest fetched trunk with:
+
+```nu
+jj-ci worktree-status
+```
+
+`current` means `origin/main` is an ancestor of the worktree. `behind` means the
+worktree can be fast-forwarded, and `diverged` means it needs an intentional
+rebase. Active or dirty worktrees should be handled in their owning task; the
+merge webhook updates only the dedicated trunk workspace.
+
 ## Nix and GitHub
 
 Git-backed flakes can omit untracked files. The activation wrappers use

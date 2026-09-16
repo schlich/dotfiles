@@ -196,6 +196,7 @@
           inherit path;
         }) nixosConfigurations.asus.config.home-manager.users.schlich.dotfiles.tooling.checks
       );
+      jjCi = pkgs.writeNuScriptBin "jj-ci" (builtins.readFile ./jj/ci.nu);
     in
     {
       inherit nixosConfigurations;
@@ -218,6 +219,26 @@
         jjui = pkgs.jjui;
       };
 
+      devShells.${system}.default = pkgs.mkShellNoCC {
+        packages = with pkgs; [
+          bat
+          difftastic
+          fd
+          gh
+          git
+          jq
+          jjCi
+          jujutsu
+          jjui
+          nil
+          nixd
+          nixfmt-tree
+          nushell
+          prek
+          ripgrep
+        ];
+      };
+
       apps.${system} = {
         jj = {
           type = "app";
@@ -232,6 +253,12 @@
       formatter.${system} = pkgs.nixfmt-tree;
 
       checks.${system} = {
+        dev-shell = pkgs.runCommand "dev-shell-check" { } ''
+          test -x ${jjCi}/bin/jj-ci
+          test -x ${pkgs.jujutsu}/bin/jj
+          test -x ${pkgs.gh}/bin/gh
+          touch "$out"
+        '';
         home-manager-nixos = homeCheck;
         niri-config =
           pkgs.runCommand "niri-config-check"
