@@ -69,6 +69,19 @@ checkpoint before splitting, as for other history surgery. Do not use the
 default parent/child shape just because it is convenient, and do not combine
 changes merely because they touch related files.
 
+When the working-copy diff contains multiple coherent deliverables, split it
+into separate JJ changes before publishing or treating the work as complete.
+Choose the topology from the dependency, not from file proximity: make a
+parent/child chain only when the later change needs the earlier one to build,
+test, or make sense; make siblings when both changes are independently
+reviewable and can land independently. JJ provides this directly: `jj split`
+creates a parent/child pair by default, and `jj split --parallel` creates two
+sibling changes. After every split, set explicit descriptions, inspect `jj log`,
+and repeat the classification if more than two changes remain. Create a
+checkpoint before splitting, as for other history surgery. Do not use the
+default parent/child shape just because it is convenient, and do not combine
+changes merely because they touch related files.
+
 Use JJ for version-control mutations. Do not use the desktop app's Git commit,
 stage, branch, worktree, handoff, push, or merge actions for these tasks.
 Keep Git available as an internal transport dependency. Use `jj-dashboard`
