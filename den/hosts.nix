@@ -2,7 +2,8 @@
 
 {
   den.schema.user.classes = lib.mkDefault [ "user" ];
-  den.hosts.x86_64-linux.asus = {
+  den.hosts.asus = {
+    system = "x86_64-linux";
     users.schlich = {
       uid = 1001;
       shell = pkgs.nushell;

@@ -39,6 +39,10 @@ User configuration is supplied by Den user aspects. The workstation aspect
 only enables the Home Manager integration; it does not hardcode a username,
 home directory, or user-specific `extraSpecialArgs`.
 
+The `schlich` user aspect also owns that account's NixOS policy: UID, shell,
+groups, and SSH login restrictions. Generic user behavior must not import a
+specific account module.
+
 ## Formatting and future unit tests
 
 Repository-wide formatting and the future nix-unit test surface are provided

@@ -18,7 +18,6 @@
     ./aspects/secrets.nix
     ./aspects/gpu-amd.nix
     ./aspects/xr.nix
-    ./aspects/users/core.nix
     ./aspects/users/terminal.nix
     ./aspects/users/schlich.nix
     ./aspects/host-platforms.nix

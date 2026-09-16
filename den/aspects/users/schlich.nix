@@ -3,9 +3,33 @@
   den.aspects.schlich = {
     includes = [
       den.batteries.define-user
-      den.aspects.user-core
       den.aspects.user-terminal
     ];
+    nixos =
+      { pkgs, ... }:
+      {
+        users.users.schlich = {
+          uid = 1001;
+          shell = pkgs.nushell;
+          isNormalUser = true;
+          extraGroups = [
+            "wheel"
+            "networkmanager"
+          ];
+        };
+
+        environment.shells = [ pkgs.nushell ];
+
+        services.openssh = {
+          enable = true;
+          settings = {
+            PasswordAuthentication = false;
+            KbdInteractiveAuthentication = false;
+            PermitRootLogin = "no";
+            AllowUsers = [ "schlich" ];
+          };
+        };
+      };
     homeManager = {
       home.username = "schlich";
       home.homeDirectory = "/home/schlich";
