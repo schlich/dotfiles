@@ -53,6 +53,10 @@
       url = "github:noctalia-dev/noctalia-greeter";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    ai-usagebar = {
+      url = "github:akitaonrails/ai-usagebar";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     fh = {
       url = "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -81,6 +85,14 @@
     meta-quest-agentic-tools = {
       url = "github:meta-quest/agentic-tools";
       flake = false;
+    };
+    tangled = {
+      url = "git+https://tangled.org/@tangled.org/core";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    xs = {
+      url = "github:cablehead/xs";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
@@ -238,6 +250,9 @@
         )}
         EOF
       '';
+      denHostBuildChecks = lib.mapAttrs' (
+        name: host: lib.nameValuePair "den-host-build-${name}" host.config.system.build.toplevel
+      ) denFlake.nixosConfigurations;
       denPolicyCheck =
         pkgs.runCommand "den-policy-check"
           {
@@ -357,11 +372,13 @@
               fi
               touch "$out"
             '';
-      };
+      }
+      // denHostBuildChecks;
     };
   nixConfig = {
     extra-substituters = [
       "https://noctalia.cachix.org"
+      "https://cache.flakehub.com/"
     ];
     extra-trusted-public-keys = [
       "noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4="

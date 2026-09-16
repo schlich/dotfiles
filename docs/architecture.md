@@ -64,10 +64,21 @@ Den API. Storage and boot-related host aspects are critical; remote and XR are
 high risk; development and terminal-oriented behavior is low risk.
 
 The main verification boundary is `nix flake check path:.`. It includes
-inventory/policy checks, evaluation of every declared NixOS host, the generated
-Home Manager activation/check farm, Niri validation, Zellij validation, and
-whitespace validation. Full system builds remain available as explicit outputs
-because they are more expensive than ordinary checks:
+inventory/policy checks, evaluation and one independent build check for every
+declared NixOS host, the generated Home Manager activation/check farm, Niri
+validation, Zellij validation, and whitespace validation. Den supplies the
+host configuration map, while each host contributes one system derivation so
+the Nix scheduler can build them independently:
+
+```text
+denFlake.nixosConfigurations
+  -> den-host-build-asus
+  -> den-host-build-asus-headless
+  -> den-host-build-asus-usb
+  -> den-host-build-homelab
+```
+
+Full system outputs remain available for targeted builds:
 
 ```text
 nix build path:.#nixosConfigurations.asus.config.system.build.toplevel

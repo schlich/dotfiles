@@ -4,8 +4,3 @@ name = "dotfiles"
 
 [setup]
 script = "nix develop"
-
-[[actions]]
-name = "checks"
-icon = "tool"
-command = "nix flake check"
