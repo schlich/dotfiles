@@ -10,6 +10,25 @@ def block [reason: string] {
     { decision: "block", reason: $reason } | to json
 }
 
+def git-worktree-warning [cwd: path] {
+    let main_result = (^git -C $cwd rev-parse --verify refs/remotes/origin/main | complete)
+    if $main_result.exit_code != 0 { return null }
+    let stale = (^git -C $cwd merge-base --is-ancestor refs/remotes/origin/main HEAD | complete).exit_code != 0
+    if not $stale { return null }
+    let branch_result = (^git -C $cwd symbolic-ref --short -q HEAD | complete)
+    let branch = if $branch_result.exit_code == 0 {
+        $branch_result.stdout | str trim
+    } else {
+        "detached"
+    }
+    let jj_workspace = (($cwd | path join ".jj") | path exists)
+    if $jj_workspace {
+        $"This worktree ($branch) is behind or diverged from origin/main. Run `jj-ci rebase` before continuing. Use `jj-ci worktree-status` to inspect the other worktrees."
+    } else {
+        $"This checkout ($branch) is a Git worktree, not a JJ workspace, and is behind or diverged from origin/main. Enter the devshell with `nix develop path:.` and inspect it with `jj-ci worktree-status`; do not assume `jj-ci rebase` can safely operate here until this checkout is converted to a JJ workspace."
+    }
+}
+
 def checked [repository: string, ...args: string] {
     let result = (^jj --repository $repository ...$args | complete)
     if $result.exit_code != 0 {
@@ -102,6 +121,20 @@ def main [event: string] {
     let session_id = $hook.session_id? | default ""
     if ($cwd | is-empty) or ($session_id | is-empty) { return }
     let path = (state-path $session_id)
+
+    let root_result = (^jj --repository $cwd root | complete)
+    if $root_result.exit_code != 0 {
+        if $event == "session-start" {
+            let warning = (git-worktree-warning $cwd)
+            if $warning != null {
+                { hookSpecificOutput: {
+                    hookEventName: "SessionStart"
+                    additionalContext: $warning
+                } } | to json
+            }
+        }
+        return
+    }
 
     try {
         let jj_root = (^jj --repository $cwd root | complete)
