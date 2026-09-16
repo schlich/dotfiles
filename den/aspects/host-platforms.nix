@@ -8,10 +8,7 @@
 
     provides.homelab = {
       meta = config.myConfig.aspectPolicy.host-profile;
-      nixos.imports = [
-        ../../hosts/homelab/default.nix
-        ../../modules/nixos/homelab.nix
-      ];
+      nixos.imports = [ ../../hosts/homelab/default.nix ];
     };
   };
 

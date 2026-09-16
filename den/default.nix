@@ -15,6 +15,7 @@
     ./aspects/input-stack.nix
     ./aspects/laptop.nix
     ./aspects/development.nix
+    ./aspects/homelab.nix
     ./aspects/remote.nix
     ./aspects/secrets.nix
     ./aspects/gpu-amd.nix

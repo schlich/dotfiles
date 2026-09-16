@@ -28,6 +28,7 @@
             storage
           ]
           ++ lib.optionals (host.profile.role == "server") [ den.aspects.headless ]
+          ++ lib.optionals (host.profile.platform == "homelab") [ den.aspects.homelab ]
           ++ lib.optionals (host.profile.desktop == "niri") [ den.aspects.desktop-niri ]
           ++ lib.optionals (host.profile.desktop == "niri") [ den.aspects.input-stack ]
           ++ lib.optionals host.profile.portable [ den.aspects.laptop ]

@@ -7,18 +7,24 @@
 {
   imports = [ inputs.tangled.nixosModules.spindle ];
 
-  services.tangled.spindle = {
-    enable = true;
-    server = {
-      owner = "did:plc:3ta3pjip7mu36b7dnznhoyri";
-      hostname = "homelab.tail338351.ts.net";
-      listenAddr = "127.0.0.1:6555";
-      queueSize = 10;
-      maxJobCount = 1;
+  services.tangled = {
+    knot = {
+      enable = true;
+      gitUser = "git";
     };
-    pipelines = {
-      workflowTimeout = "30m";
-      microvm.defaultImage = "nixos";
+    spindle = {
+      enable = true;
+      server = {
+        owner = "did:plc:3ta3pjip7mu36b7dnznhoyri";
+        hostname = "homelab.tail338351.ts.net";
+        listenAddr = "127.0.0.1:6555";
+        queueSize = 10;
+        maxJobCount = 1;
+      };
+      pipelines = {
+        workflowTimeout = "30m";
+        microvm.defaultImage = "nixos";
+      };
     };
   };
 
