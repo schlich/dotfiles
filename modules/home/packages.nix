@@ -81,7 +81,7 @@ in
     wl-clipboard-rs
     gh-stack
     secretspec
-    inputs.xs.packages.${pkgs.system}.default
-    inputs.ai-usagebar.packages.${pkgs.system}.default
+    inputs.xs.packages.${pkgs.stdenv.hostPlatform.system}.default
+    inputs.ai-usagebar.packages.${pkgs.stdenv.hostPlatform.system}.default
   ];
 }
