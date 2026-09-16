@@ -55,6 +55,14 @@ in
       source ${../../tools/mcp/agent-shell.nu}
       source ${../../tools/mcp/terminal-events.nu}
       setup-terminal-events
+      # JJ stack commands keep the underlying revision model visible while
+      # making the selection-first workflow easy to discover in a terminal.
+      alias stack = jj-stack
+      alias stack-new = jj-stack new
+      alias stack-edit = jj-stack edit
+      alias stack-diff = jj-stack diff
+      alias stack-each = jj-stack each
+      alias stack-push = jj-stack push
     '';
   };
 

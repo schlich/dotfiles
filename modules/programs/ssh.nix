@@ -1,4 +1,4 @@
-{ ... }:
+{ config, ... }:
 
 {
   programs.ssh = {
@@ -11,7 +11,7 @@
       "tangled.org" = {
         HostName = "tangled.org";
         User = "git";
-        IdentityFile = [ "/home/schlich/.ssh/id_ed25519_tangled" ];
+        IdentityFile = [ "${config.home.homeDirectory}/.ssh/id_ed25519_tangled" ];
         IdentitiesOnly = true;
         AddressFamily = "inet";
       };

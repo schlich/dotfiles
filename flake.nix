@@ -254,6 +254,23 @@
           test -x ${pkgs.gh}/bin/gh
           touch "$out"
         '';
+        jj-config = pkgs.runCommand "jj-config-check" { } ''
+          test "$(${pkgs.jujutsu}/bin/jj config get git.write-change-id-header)" = true
+          test "$(${pkgs.jujutsu}/bin/jj config get git.colocate)" = true
+          touch "$out"
+        '';
+        jj-workflow-scripts =
+          pkgs.runCommand "jj-workflow-scripts-check"
+            {
+              nativeBuildInputs = [ pkgs.nushell ];
+            }
+            ''
+              nu --ide-check 0 ${./tools/jj/stack.nu} > "$TMPDIR/stack-check.json"
+              nu --ide-check 0 ${./tools/jj/tangled-init.nu} > "$TMPDIR/tangled-init-check.json"
+              test -s "$TMPDIR/stack-check.json"
+              test -s "$TMPDIR/tangled-init-check.json"
+              touch "$out"
+            '';
         home-manager-nixos = homeCheck;
         niri-config =
           pkgs.runCommand "niri-config-check"

@@ -14,13 +14,24 @@ let
       wrapProgram "$out/bin/jj-ci" --prefix PATH : ${pkgs.git}/bin
     '';
   };
+  tangledInit = pkgs.writeNuScriptBin "tangled-init" (
+    builtins.readFile ../../tools/jj/tangled-init.nu
+  );
+  jjStack = pkgs.writeNuScriptBin "jj-stack" (builtins.readFile ../../tools/jj/stack.nu);
 in
 {
   programs.git = {
     enable = true;
-    settings.user = {
-      name = config.accounts.email.accounts.personal.userName;
-      email = config.accounts.email.accounts.personal.address;
+    settings = {
+      user = {
+        name = config.accounts.email.accounts.personal.userName;
+        email = config.accounts.email.accounts.personal.address;
+        # Git and JJ use the same existing Tangled key for commit signing;
+        # authentication and signing remain separate SSH configuration roles.
+        signingKey = "${config.home.homeDirectory}/.ssh/id_ed25519_tangled.pub";
+      };
+      gpg.format = "ssh";
+      commit.gpgSign = true;
     };
   };
   programs.gpg.enable = true;
@@ -67,12 +78,27 @@ in
       git.push = "origin";
       git.fetch = "origin";
       git.executable-path = "${pkgs.git}/bin/git";
+      # Tangled matches rewritten Git commits to the same reviewed change via
+      # JJ's durable change-ID header. JJ >= 0.30 enables this by default;
+      # keeping the invariant explicit prevents a future override disabling it.
+      git.write-change-id-header = true;
+      git.colocate = true;
+      signing = {
+        behavior = "own";
+        backend = "ssh";
+        # This is public metadata only; the matching private key remains
+        # outside Nix and is loaded by ssh-agent/ssh-keygen at runtime.
+        key = "${config.home.homeDirectory}/.ssh/id_ed25519_tangled.pub";
+      };
+      ui.show-cryptographic-signatures = true;
     };
   };
 
   home.packages = [
     (pkgs.writeNuScriptBin "jj-describe" (builtins.readFile ../../tools/jj/describe.nu))
     jjCi
+    tangledInit
+    jjStack
     (pkgs.writeNuScriptBin "jj-dashboard" (builtins.readFile ../../tools/jj/dashboard.nu))
   ];
 }
