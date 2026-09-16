@@ -9,6 +9,7 @@ export type DiagramScope = {
 export type DiagramNode = {
   id: string
   label: string
+  description?: string
   kind?: string
   type?: string
   scope?: string
@@ -61,6 +62,7 @@ const normalizeNodes = (value: unknown): DiagramNode[] =>
     ...node,
     id: asString(node.id, `node-${index + 1}`),
     label: asString(node.label ?? node.name, asString(node.id, `node-${index + 1}`)),
+    description: typeof node.description === "string" ? node.description : undefined,
     kind: typeof node.kind === "string" ? node.kind : undefined,
     type: typeof node.type === "string" ? node.type : undefined,
     scope: typeof node.scope === "string" ? node.scope : undefined,

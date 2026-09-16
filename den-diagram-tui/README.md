@@ -21,6 +21,20 @@ bun run src/main.ts ./path/to/diagram.json
 bun run src/main.ts ./path/to/diagram.mmd
 ```
 
+Run the short Hegel-themed demo:
+
+```nu
+bun run src/main.ts examples/hegel-demo.json
+```
+
+The demo is a guided tour of [the article's](https://drmaciver.com/2026/09/come-work-with-me-on-hegel/) central ideas: express a property
+once, bind several language frontends to one core, generate a concurrent
+workload, explore scheduler nondeterminism, then shrink and replay the
+smallest failure. Start on `State the property`, press `↓` to walk the loop,
+and use the inspector to narrate each step. It is intentionally a graph
+fixture rather than a Hegel implementation; the point is to show how the
+viewer can make a technical workflow explorable.
+
 For this repository's evaluated Den fleet, export the Graph IR with the
 library's fleet adapter and open it in the TUI:
 

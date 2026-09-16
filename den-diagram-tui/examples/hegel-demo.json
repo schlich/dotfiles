@@ -1,0 +1,91 @@
+{
+  "name": "Hegel themes · property to minimal bug",
+  "scopes": [
+    { "id": "api", "label": "Open-source API", "kind": "frontend" },
+    { "id": "core", "label": "Shared core", "kind": "engine" },
+    { "id": "exploration", "label": "Exploration + evidence", "kind": "research" }
+  ],
+  "nodes": [
+    {
+      "id": "property",
+      "label": "State the property",
+      "kind": "authoring",
+      "scope": "api",
+      "description": "Example: an LRU cache never grows beyond its generated capacity."
+    },
+    {
+      "id": "frontends",
+      "label": "Rust · Go · TypeScript",
+      "kind": "language-frontends",
+      "scope": "api",
+      "description": "Each language gets a small native library while sharing the same testing model."
+    },
+    {
+      "id": "core",
+      "label": "One Hegel core",
+      "kind": "shared-engine",
+      "scope": "core",
+      "description": "A unified representation lets the hard testing machinery live in one place."
+    },
+    {
+      "id": "draw",
+      "label": "Inline draws",
+      "kind": "generator",
+      "scope": "core",
+      "description": "Generate only what the test needs, where it needs it: capacity, entries, and schedules."
+    },
+    {
+      "id": "concurrent",
+      "label": "Concurrent workload",
+      "kind": "stateful-testing",
+      "scope": "core",
+      "description": "Stateful rules can run concurrently, opening a new design space for property-based testing."
+    },
+    {
+      "id": "scheduler",
+      "label": "Nondeterministic scheduler",
+      "kind": "nondeterminism",
+      "scope": "exploration",
+      "description": "The thread scheduler adds randomness the test author does not control."
+    },
+    {
+      "id": "fuzzer",
+      "label": "Long-running exploration",
+      "kind": "fuzzing",
+      "scope": "exploration",
+      "description": "Keep exploring beyond independent random cases so deeper bugs stay discoverable."
+    },
+    {
+      "id": "check",
+      "label": "Check the invariant",
+      "kind": "property",
+      "scope": "exploration",
+      "description": "Every generated execution is judged against the property we wrote first."
+    },
+    {
+      "id": "shrink",
+      "label": "Shrink the failure",
+      "kind": "shrinking",
+      "scope": "exploration",
+      "description": "Reduce the failing case to the smallest useful explanation of the bug."
+    },
+    {
+      "id": "replay",
+      "label": "Replay + report",
+      "kind": "evidence",
+      "scope": "exploration",
+      "description": "A minimal, reproducible failure turns research into an actionable engineering result."
+    }
+  ],
+  "edges": [
+    { "from": "property", "to": "frontends", "label": "express once" },
+    { "from": "frontends", "to": "core", "label": "bind" },
+    { "from": "core", "to": "draw", "label": "provide generators" },
+    { "from": "draw", "to": "concurrent", "label": "compose workload" },
+    { "from": "concurrent", "to": "scheduler", "label": "exercise" },
+    { "from": "scheduler", "to": "fuzzer", "label": "explore" },
+    { "from": "fuzzer", "to": "check", "label": "run cases" },
+    { "from": "check", "to": "shrink", "label": "on failure" },
+    { "from": "shrink", "to": "replay", "label": "make legible" }
+  ]
+}

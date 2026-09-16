@@ -55,6 +55,7 @@ function inspectorContent(): string {
     node.scope ? `scope   ${scope?.label ?? node.scope}` : "",
     node.host ? `host    ${node.host}` : "",
     node.class ? `class   ${node.class}` : "",
+    node.description ? `\n${node.description}` : "",
     "",
     `edges   ${connected.length}`,
     ...connected.map((edge) => {
