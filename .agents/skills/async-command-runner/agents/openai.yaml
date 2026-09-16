@@ -1,0 +1,7 @@
+interface:
+  display_name: "Async command runner"
+  short_description: "Run long commands in the background safely"
+  default_prompt: "Use $async-command-runner to launch this long-running command asynchronously and return to it later."
+
+policy:
+  allow_implicit_invocation: true
