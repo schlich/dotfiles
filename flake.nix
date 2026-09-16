@@ -184,6 +184,8 @@
           '';
     in
     {
+      tests = import ./tests.nix { inherit lib; };
+
       nixosConfigurations = denFlake.nixosConfigurations;
       den = denEval.config.den;
 
@@ -268,6 +270,17 @@
               cp ${./zellij/config.kdl} "$config_dir/config.kdl"
               cp ${./zellij/layouts/default.kdl} "$config_dir/layouts/default.kdl"
               ZELLIJ_CONFIG_DIR="$config_dir" zellij setup --check
+              touch "$out"
+            '';
+        nushell-agent =
+          pkgs.runCommand "nushell-agent-check"
+            {
+              nativeBuildInputs = [ pkgs.nushell ];
+            }
+            ''
+              export HOME="$TMPDIR/home"
+              mkdir -p "$HOME"
+              ${pkgs.nushell}/bin/nu --no-config-file ${./tests/agent.nu}
               touch "$out"
             '';
         whitespace =
