@@ -6,6 +6,10 @@
     bubblewrap
     git
     wget
+    nh
+    nix-inspect
+    nix-tree
+    comma
     nix-search-tv
     difftastic
     fzf

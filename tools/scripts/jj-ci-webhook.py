@@ -82,7 +82,9 @@ class SyncWorker:
         try:
             self.pending.put_nowait(head_sha)
         except queue.Full:
-            logger.warning("sync already queued; dropping duplicate head SHA %s", head_sha)
+            logger.warning(
+                "sync already queued; dropping duplicate head SHA %s", head_sha
+            )
             return False
         return True
 
@@ -90,7 +92,9 @@ class SyncWorker:
         while True:
             head_sha = self.pending.get()
             try:
-                logger.info("syncing %s after successful validation of %s", REPOSITORY, head_sha)
+                logger.info(
+                    "syncing %s after successful validation of %s", REPOSITORY, head_sha
+                )
                 completed = subprocess.run(
                     SYNC_COMMAND,
                     cwd=PROJECT_DIR,
@@ -155,7 +159,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_text(400, "invalid JSON\n")
             return
 
-        requested, detail = event_requests_sync(self.headers.get("X-GitHub-Event"), payload)
+        requested, detail = event_requests_sync(
+            self.headers.get("X-GitHub-Event"), payload
+        )
         if not requested:
             logger.info(detail)
             self.send_text(202, "ignored\n")

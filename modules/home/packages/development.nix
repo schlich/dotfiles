@@ -1,6 +1,9 @@
 { inputs, pkgs, ... }:
 
 {
+  imports = [ ../pair.nix ];
+  programs.nu-pair.enable = true;
+
   home.packages = with pkgs; [
     marimo
     nodejs

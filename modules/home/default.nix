@@ -6,5 +6,6 @@
     ./nix.nix
     ./session.nix
     ./services.nix
+    ./pair.nix
   ];
 }
