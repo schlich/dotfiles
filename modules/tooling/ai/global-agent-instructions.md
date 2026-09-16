@@ -70,10 +70,14 @@ stage, branch, worktree, handoff, push, or merge actions for these tasks.
 Keep Git available as an internal transport dependency. Use `jj-dashboard`
 or the desktop Open in → JJ dashboard action for interactive revision work.
 
-Where `jj-ci` is available, publish in place with `jj-ci publish`; rebase the
-same topic with `jj-ci rebase`. Enable auto-merge only when the user is finished
-with the topic and has requested delivery. Before archiving a delivered topic,
-run `jj-ci finish`: it verifies that the current head was merged to main and
+Where `jj-ci` is available, keep the topic in a dedicated workspace rooted at
+`main@origin`; rebase after trunk advances and before review or queue updates.
+`jj-ci publish` and `jj-ci stack-merge` perform a final rebase before updating
+GitHub. Enable auto-merge only when the user is finished with the topic and has
+requested delivery. Herdr or Paseo may supervise and report stale trunk or PR
+state for that one workspace, but must not silently rebase or resolve
+conflicts. Before archiving a delivered topic, run
+`jj-ci finish`: it verifies that the current head was merged to main and
 leaves a clean working copy on main. Only then call the archive tool. Failed
 checks, conflicts, pending delivery, or unpublished edits leave the task open.
 Do not treat app exit, idle timeout, or SessionEnd as authorization to publish

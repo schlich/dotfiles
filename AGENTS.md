@@ -156,3 +156,26 @@
 - Keep provider-neutral agent skills under `.agents/skills/`. Keep Copilot
   plugins, hooks, and plugin-bundled agent definitions under `copilot/`, and
   wire client exposure through `modules/tooling/ai/`.
+
+
+## Continuous integration and merge-conflict policy
+
+Keep active work continuously integrated: start each dedicated JJ workspace at
+`main@origin`, rebase after trunk advances and before review or queue updates,
+and never share a mutable topic worktree. `jj-ci publish` performs the final
+rebase and validation before updating GitHub; `jj-ci stack-merge` does the same
+before submitting a stack.
+
+Use `jj-ci conflicts` after a rebase to list conflicted revisions and files.
+A conflicted rebase has already rewritten the topic, so resolve revisions from
+oldest to newest and validate only after the conflict report is clear. Do not
+run unattended auto-rebase or automatic conflict resolution.
+
+Herdr or Paseo may monitor one existing JJ workspace per topic and notify its
+owner about stale trunk, PR, check, or queue state. They must not take
+ownership of the workspace or silently rebase, resolve conflicts, publish, enter
+a queue, or advance a stack.
+
+Prefer one ordinary PR for a coherent topic. Use a stack only for independently
+reviewable changes with real dependency order; keep children based on their
+immediate parent and rebase the remaining stack after each parent lands.
