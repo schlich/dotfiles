@@ -11,8 +11,9 @@
       "tangled.org" = {
         HostName = "tangled.org";
         User = "git";
-        IdentityFile = [ "~/.ssh/id_ed25519" ];
+        IdentityFile = [ "/home/schlich/.ssh/id_ed25519_tangled" ];
         IdentitiesOnly = true;
+        AddressFamily = "inet";
       };
     };
   };
