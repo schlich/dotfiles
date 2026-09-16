@@ -128,90 +128,10 @@
         '';
       };
       lib = nixpkgs.lib;
-      legacyNixosConfigurations = {
-        asus = lib.nixosSystem {
-          inherit system;
-          specialArgs = { inherit inputs; };
-          modules = [
-            determinate.nixosModules.default
-            home-manager.nixosModules.home-manager
-            inputs.noctalia-greeter.nixosModules.default
-            inputs.niri.nixosModules.niri
-            ./configuration.nix
-            ./hosts/asus/storage-internal.nix
-            {
-              home-manager = {
-                useGlobalPkgs = true;
-                useUserPackages = true;
-                extraSpecialArgs = {
-                  inherit inputs;
-                  username = "schlich";
-                  homeDirectory = "/home/schlich";
-                  stateVersion = "26.05";
-                };
-                users.schlich = import ./home.nix;
-              };
-              nixpkgs.overlays = overlays;
-              environment.systemPackages = [
-                fh.packages.x86_64-linux.default
-                pkgs.jj-starship
-              ];
-            }
-          ];
-        };
-        asus-headless = lib.nixosSystem {
-          inherit system;
-          specialArgs = { inherit inputs; };
-          modules = [
-            determinate.nixosModules.default
-            ./configuration-headless.nix
-            ./hosts/asus/storage-internal.nix
-          ];
-        };
-        homelab = lib.nixosSystem {
-          inherit system;
-          specialArgs = { inherit inputs; };
-          modules = [
-            determinate.nixosModules.default
-            ./configuration-homelab.nix
-          ];
-        };
-        asus-usb = lib.nixosSystem {
-          inherit system;
-          specialArgs = { inherit inputs; };
-          modules = [
-            determinate.nixosModules.default
-            home-manager.nixosModules.home-manager
-            inputs.noctalia-greeter.nixosModules.default
-            inputs.niri.nixosModules.niri
-            ./configuration.nix
-            ./hosts/asus/hardware-configuration.nix
-            {
-              home-manager = {
-                useGlobalPkgs = true;
-                useUserPackages = true;
-                extraSpecialArgs = {
-                  inherit inputs;
-                  username = "schlich";
-                  homeDirectory = "/home/schlich";
-                  stateVersion = "26.05";
-                };
-                users.schlich = import ./home.nix;
-              };
-              nixpkgs.overlays = overlays;
-              environment.systemPackages = [
-                fh.packages.x86_64-linux.default
-                pkgs.jj-starship
-              ];
-            }
-          ];
-        };
-      };
-
       denEval = lib.evalModules {
         modules = [
           inputs.den.flakeModule
-          ./modules/den
+          ./den
         ];
         specialArgs = { inherit inputs; };
       };
@@ -265,7 +185,6 @@
     in
     {
       nixosConfigurations = denFlake.nixosConfigurations;
-      legacyNixosConfigurations = legacyNixosConfigurations;
       den = denEval.config.den;
 
       templates.default = {

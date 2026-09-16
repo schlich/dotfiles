@@ -1,9 +1,12 @@
-# Configuration Modules
+# Implementation modules
 
-- `nixos/` contains shared system policy and services.
-- `home/` contains shared Home Manager state, packages, files, and services.
-- `programs/` groups Home Manager program settings by concern.
-- `tooling/` contains the generic launch interfaces and one self-contained module per tool.
+The repository's composition layer is `../den/`. This directory contains
+ordinary NixOS and Home Manager modules that are imported by Den aspects.
 
-Each profile also provides `terminal`, `editor`, and `ai` commands that launch its primary choices.
-Importing a tool module installs and configures it; removing that import removes all of its integration and checks.
+- `nixos/` contains system implementation modules.
+- `home/` contains shared Home Manager state.
+- `programs/` contains program integrations.
+- `tooling/` contains reusable terminal, editor, and AI integrations.
+
+New reusable behavior should normally start as a Den aspect under `../den/`
+and use these modules only for class-specific implementation details.

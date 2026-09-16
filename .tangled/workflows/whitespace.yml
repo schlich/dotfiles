@@ -1,0 +1,27 @@
+name: Check whitespace
+
+when:
+  - event: ["push", "manual"]
+    branch: ["main"]
+  - event: ["pull_request"]
+    branch: ["main"]
+
+engine: microvm
+image: nixos
+
+dependencies:
+  - nix
+  - git
+  - cacert
+
+cache:
+  - key: nix-store
+    hash:
+      - flake.lock
+    paths:
+      - /nix/store
+      - /nix/var/nix/db
+
+steps:
+  - name: "Check whitespace"
+    command: "nix --accept-flake-config build .#checks.x86_64-linux.whitespace --print-build-logs"
