@@ -63,6 +63,19 @@ matching PR. It does not create a follow-up change. After GitHub delivery,
 `jj-ci finish` also mirrors `main` to Tangled.
 Further edits to the series therefore update the same review topic.
 
+To publish a multi-change topic to Tangled as stacked PRs, run:
+
+```nu
+jj-ci tangled stack-publish
+```
+
+This rebases the complete topic onto `main@origin`, runs the repository
+validation gate, and pushes each revision as a stable
+`stack/<series>/<change-id>` branch to Tangled, oldest layer first. In Tangled,
+choose `Submit as stacked PRs` for the pushed branches. Later edits retain
+their JJ change IDs, so Tangled can associate rewritten commits with the
+corresponding stack layer and review round.
+
 `jj-ci finish` checks that GitHub merged the exact current head and that the
 merge is on `main@origin`. It then advances local main, leaves an empty
 workspace on main, and releases workspace ownership. Archive the task only
@@ -133,10 +146,10 @@ use the `jj-` prefix.
 
 Use a stacked PR only when every layer is independently reviewable and the
 layers must land in dependency order. Ordinary one-PR topics are preferred
-because they minimize the number of moving bases and queue interactions. Name
-stack branches
-`stack/<series>/<layer>`, link the stack with `gh stack link`, and inspect it
-with `gh stack view --json`. Submit the complete stack with:
+because they minimize the number of moving bases and queue interactions. For
+GitHub, name stack branches `stack/<series>/<layer>`, link the stack with
+`gh stack link`, and inspect it with `gh stack view --json`. Submit the
+complete GitHub stack with:
 
 ```nu
 jj-ci stack-merge STACK_OR_PR
@@ -148,6 +161,10 @@ each layer is based on the immediately preceding layer, parent layers land
 before children, and the remaining layers are rebased onto the new `main` after
 each parent lands. Never submit a child based on an outdated parent or queue
 independent sibling PRs as if they were a stack.
+
+For Tangled, use `jj-ci tangled stack-publish`; it publishes the same
+topological series as `stack/<series>/<change-id>` branches, after which
+Tangled's `Submit as stacked PRs` action creates the linked PR stack.
 
 Ordinary topics are queued for auto-merge only after the final automatic rebase
 and only when the publisher explicitly passes `--auto-merge`; stack submission
