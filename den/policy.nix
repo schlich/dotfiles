@@ -32,6 +32,13 @@
       risk = "medium";
       reviewers = [ "desktop" ];
     };
+    input-stack = {
+      risk = "medium";
+      reviewers = [
+        "desktop"
+        "terminal"
+      ];
+    };
     laptop = {
       risk = "medium";
       reviewers = [ "desktop" ];

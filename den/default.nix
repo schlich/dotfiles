@@ -12,6 +12,7 @@
     ./aspects/system-files.nix
     ./aspects/wsl.nix
     ./aspects/desktop-niri.nix
+    ./aspects/input-stack.nix
     ./aspects/laptop.nix
     ./aspects/development.nix
     ./aspects/remote.nix

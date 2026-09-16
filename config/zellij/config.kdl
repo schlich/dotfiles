@@ -1,6 +1,13 @@
 keybinds {
-    shared_except "locked" {
-        bind "Alt f" { ToggleFloatingPanes; }
+    // Multiplexer namespace: Ctrl+G enters Zellij's nested command mode.
+    // The prefix is explicit so ordinary terminal/editor Ctrl and Alt input
+    // remains available until the user intentionally enters this mode.
+    normal {
+        bind "Ctrl g" { SwitchToMode "tmux"; }
+    }
+    tmux {
+        bind "Ctrl g" { SwitchToMode "normal"; }
+        bind "f" { ToggleFloatingPanes; SwitchToMode "normal"; }
     }
 }
 

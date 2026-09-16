@@ -12,6 +12,9 @@
     settings = {
       copy-on-select = true;
       font-family = "Monaspace Krypton";
+      # Ghostty is the terminal container in the input stack. It deliberately
+      # claims no global prefix: terminal and shell Alt/Ctrl input is forwarded
+      # unless a future terminal-local action is explicitly added here.
     };
   };
 
