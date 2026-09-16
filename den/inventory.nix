@@ -116,7 +116,7 @@ let
     let
       inherit (host) profile policy;
       graphical = profile.desktop != "none";
-      hasSecretsMechanism = builtins.pathExists ../../secrets/secrets.nix;
+      hasSecretsMechanism = builtins.pathExists ../secrets/secrets.nix;
     in
     if profile.role == "server" && profile.desktop == "niri" then
       throw "host ${name}: server hosts cannot select desktop=niri"
