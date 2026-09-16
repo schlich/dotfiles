@@ -12,6 +12,7 @@
     git
     wget
     nixfmt
+    nix-output-monitor
     ruff
     systemctl-tui
     systemd-manager-tui
