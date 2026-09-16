@@ -12,6 +12,7 @@
       { pkgs, ... }:
       {
         imports = [
+          ../../modules/nixos/workstation.nix
           ../../modules/nixos/codex.nix
           ../../modules/nixos/docker.nix
           ../../modules/nixos/jj-ci-webhook.nix

@@ -234,6 +234,7 @@
       };
 
       formatter.${system} = pkgs.nixfmt-tree;
+      services.hercules-ci-agent.enable = true;
 
       checks.${system} = {
         den-host-evaluation = denHostEvaluationCheck;

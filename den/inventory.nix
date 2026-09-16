@@ -15,6 +15,8 @@ let
       };
       profile = {
         role = "workstation";
+        platform = "asus";
+        storage = "internal";
         desktop = "niri";
         gpu = "amd";
         portable = true;
@@ -39,6 +41,8 @@ let
       users.schlich = { };
       profile = {
         role = "server";
+        platform = "asus";
+        storage = "internal";
         desktop = "none";
         gpu = "amd";
         portable = true;
@@ -66,6 +70,8 @@ let
       };
       profile = {
         role = "workstation";
+        platform = "asus";
+        storage = "usb";
         desktop = "niri";
         gpu = "amd";
         portable = true;
@@ -90,6 +96,8 @@ let
       users.schlich = { };
       profile = {
         role = "server";
+        platform = "homelab";
+        storage = "internal";
         desktop = "none";
         gpu = "intel";
         portable = false;

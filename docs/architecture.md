@@ -8,14 +8,22 @@ The flake exposes the configurations produced by that graph directly.
 
 - `den/inventory.nix` contains typed host and user facts.
 - `den/aspects/` contains reusable capabilities and user environments.
-- `den/hosts.nix` composes each host from explicit aspects.
+- `den/default.nix` supplies behavior shared by every host.
+- `den/aspects/master.nix` resolves typed host facts into reusable aspects.
+- `den/hosts.nix` contains only Den-wide host schema defaults.
 - `hosts/` contains host-local hardware and storage facts only.
 - `modules/` contains ordinary NixOS and Home Manager implementation modules
   consumed by aspects. It is not the composition layer.
 
-The host declarations are intentionally small. For example, `asus` selects
-the workstation, Niri, laptop, development, remote, XR, AMD, and platform
-aspects. `asus-headless` selects the server and headless aspects instead.
+The NixOS implementation is split by scope: `core.nix` is safe for every
+host, while `workstation.nix` owns audio, Bluetooth, portals, Chrome, and
+other interactive workstation services. The latter is reached through the
+workstation aspect and never through `den.default`.
+
+The inventory is the host composition interface. For example, `asus` selects
+the workstation, Niri, laptop, development, remote, XR, AMD, ASUS platform,
+and internal-storage behavior through its profile. `asus-headless` selects the
+server, headless, ASUS platform, and internal-storage behavior instead.
 
 ## Resolution flow
 
@@ -23,6 +31,9 @@ aspects. `asus-headless` selects the server and headless aspects instead.
 typed inventory -> host aspect composition -> Den host/user pipeline
                  -> NixOS + Home Manager module graph -> outputs/checks
 ```
+
+`den.default` contributes the common base and system-file behavior. The
+parametric `master` aspect then adds only profile-dependent behavior.
 
 User configuration is supplied by Den user aspects. The workstation aspect
 only enables the Home Manager integration; it does not hardcode a username,

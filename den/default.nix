@@ -1,9 +1,12 @@
+{ den, ... }:
+
 {
   imports = [
     ./schema.nix
     ./policy.nix
     ./inventory.nix
     ./aspects/base.nix
+    ./aspects/master.nix
     ./aspects/workstation.nix
     ./aspects/server.nix
     ./aspects/system-files.nix
@@ -21,4 +24,11 @@
     ./aspects/host-platforms.nix
     ./hosts.nix
   ];
+
+  den.default = {
+    includes = [
+      den.aspects.base
+      den.aspects.system-files
+    ];
+  };
 }

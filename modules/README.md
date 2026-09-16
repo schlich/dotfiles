@@ -10,3 +10,7 @@ ordinary NixOS and Home Manager modules that are imported by Den aspects.
 
 New reusable behavior should normally start as a Den aspect under `../den/`
 and use these modules only for class-specific implementation details.
+
+Within `nixos/`, `core.nix` is host-wide baseline behavior and
+`workstation.nix` is limited to interactive workstation services. Keep
+host-local hardware, boot, and storage facts under `../hosts/`.

@@ -1,7 +1,7 @@
 { config, ... }:
 {
   den.aspects.asus-platform = {
-    meta = config.myConfig.aspectPolicy.storage;
+    meta = config.myConfig.aspectPolicy.master;
     nixos.imports = [ ../../hosts/asus/default.nix ];
   };
 
@@ -16,7 +16,7 @@
   };
 
   den.aspects.homelab-platform = {
-    meta = config.myConfig.aspectPolicy.server;
+    meta = config.myConfig.aspectPolicy.master;
     nixos.imports = [
       ../../hosts/homelab/default.nix
       ../../modules/nixos/homelab.nix

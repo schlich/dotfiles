@@ -5,6 +5,10 @@
       risk = "medium";
       reviewers = [ "nix" ];
     };
+    master = {
+      risk = "medium";
+      reviewers = [ "nix" ];
+    };
     workstation = {
       risk = "medium";
       reviewers = [

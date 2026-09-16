@@ -16,6 +16,22 @@ let
         default = "workstation";
         description = "The operational role of the host.";
       };
+      platform = mkOption {
+        type = types.enum [
+          "asus"
+          "homelab"
+        ];
+        default = "asus";
+        description = "The physical or virtual platform contract for the host.";
+      };
+      storage = mkOption {
+        type = types.enum [
+          "internal"
+          "usb"
+        ];
+        default = "internal";
+        description = "The host-local storage layout selected for the host.";
+      };
       desktop = mkOption {
         type = types.enum [
           "none"
