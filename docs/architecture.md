@@ -85,8 +85,8 @@ nix build path:.#nixosConfigurations.asus.config.system.build.toplevel
 nix build path:.#nixosConfigurations.asus-headless.config.system.build.toplevel
 ```
 
-The GitHub workflow continues to build the headless system before the desktop
-system and Home Manager checks.
+The Tangled Spindle workflows build the headless and desktop systems, Home
+Manager, and the individual configuration checks as independent gates.
 
 ## Safe operations and recovery
 

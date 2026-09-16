@@ -1,0 +1,19 @@
+name: Build Home Manager
+
+when:
+  - event: ["push", "manual"]
+    branch: ["main"]
+  - event: ["pull_request"]
+    branch: ["main"]
+
+engine: microvm
+image: nixos
+
+dependencies:
+  - nix
+  - git
+  - cacert
+
+steps:
+  - name: "Build Home Manager modules"
+    command: "nix --accept-flake-config build .#checks.x86_64-linux.home-manager-nixos --print-build-logs"

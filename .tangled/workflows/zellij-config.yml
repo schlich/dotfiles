@@ -1,0 +1,19 @@
+name: Check Zellij configuration
+
+when:
+  - event: ["push", "manual"]
+    branch: ["main"]
+  - event: ["pull_request"]
+    branch: ["main"]
+
+engine: microvm
+image: nixos
+
+dependencies:
+  - nix
+  - git
+  - cacert
+
+steps:
+  - name: "Check Zellij shell config"
+    command: "nix --accept-flake-config build .#checks.x86_64-linux.zellij-config --print-build-logs"
