@@ -238,6 +238,9 @@
         )}
         EOF
       '';
+      denHostBuildChecks = lib.mapAttrs' (
+        name: host: lib.nameValuePair "den-host-build-${name}" host.config.system.build.toplevel
+      ) denFlake.nixosConfigurations;
       denPolicyCheck =
         pkgs.runCommand "den-policy-check"
           {
@@ -357,7 +360,8 @@
               fi
               touch "$out"
             '';
-      };
+      }
+      // denHostBuildChecks;
     };
   nixConfig = {
     extra-substituters = [
