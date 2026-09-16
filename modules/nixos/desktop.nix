@@ -11,6 +11,7 @@
       enable = true;
     };
     noctalia.enable = true;
-    noctalia-greeter.enable = true;
   };
+
+  services.displayManager.noctalia-greeter.enable = true;
 }
