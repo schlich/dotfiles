@@ -82,6 +82,10 @@
       url = "github:meta-quest/agentic-tools";
       flake = false;
     };
+    tangled = {
+      url = "git+https://tangled.org/@tangled.org/core";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
