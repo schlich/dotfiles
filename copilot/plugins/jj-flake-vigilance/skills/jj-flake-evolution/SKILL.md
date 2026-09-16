@@ -42,7 +42,7 @@ Use this skill for routine repository tasks that should follow a repeatable patt
 8. Choose validation based on the touched surface:
    - home-level changes: `nix build .#homeConfigurations.schlich.activationPackage`
    - system changes: `nix build .#nixosConfigurations.asus.config.system.build.toplevel`
-9. Treat local validation as the fast gate and GitHub Actions as the comprehensive gate. `.github/workflows/nix-ci.yml` evaluates Home Manager and builds the NixOS, Niri, Zellij, and whitespace checks on the PR.
+9. Treat local validation as the fast gate and Tangled Spindle as the comprehensive gate. The `.tangled/workflows/` pipelines evaluate Home Manager and build the NixOS, Niri, Zellij, and whitespace checks on the PR.
 10. Preserve unrelated user changes, and only after formatting and the relevant validation command succeed, finalize the in-scope work with `jj commit` using the up-to-date description. If validation fails or the request is analysis-only, stop without committing.
 11. If the user wants the change published, ensure the committed revision has a bookmark, push it to `origin`, and open or update a PR against `main`. When subsequent work depends on CI, run `gh pr checks --required --watch --fail-fast` rather than sleeping and checking again. Queue auto-merge only when the user explicitly requests delivery, using `jj-ci publish --auto-merge`; otherwise leave the PR for review after the required checks pass.
 12. If that publication flow creates or reuses a non-`main` bookmark, treat that bookmark push as implicit PR intent and open or update the PR immediately after pushing instead of waiting for a follow-up request.

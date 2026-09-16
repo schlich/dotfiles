@@ -1,110 +1,44 @@
-# Configuration factory architecture
+# Configuration architecture
 
-This repository uses Den v0.18.0 to make host and user composition explicit.
-The pinned Den revision is recorded in `flake.lock`; the implementation uses
-Den's `flakeModule`, typed `den.schema` extensions, named aspects, and the
-native aspect `meta` field.
+This repository is organized around Den's feature-first model. The top-level
+`den/` tree owns the entity schema, host inventory, policies, and aspect graph.
+The flake exposes the configurations produced by that graph directly.
 
-## Declaration
+## Repository shape
 
-`modules/den/inventory.nix` is the host inventory. It contains facts, not
-configuration modules:
+- `den/inventory.nix` contains typed host and user facts.
+- `den/aspects/` contains reusable capabilities and user environments.
+- `den/hosts.nix` composes each host from explicit aspects.
+- `hosts/` contains host-local hardware and storage facts only.
+- `modules/` contains ordinary NixOS and Home Manager implementation modules
+  consumed by aspects. It is not the composition layer.
 
-| Host | Role | Desktop | GPU | User environment |
-| --- | --- | --- | --- | --- |
-| `asus` | workstation | Niri | AMD | `schlich` + Home Manager |
-| `asus-headless` | server | none | AMD | `schlich` |
-| `asus-usb` | workstation | Niri | AMD | `schlich` + Home Manager |
-| `homelab` | server | none | Intel | `schlich` |
+The host declarations are intentionally small. For example, `asus` selects
+the workstation, Niri, laptop, development, remote, XR, AMD, and platform
+aspects. `asus-headless` selects the server and headless aspects instead.
 
-The schema in `modules/den/schema.nix` types the `profile`, `policy`, and user
-fields. Generated hardware and storage files remain host-local facts. The
-host-platform aspects include those files without moving disk UUIDs, bootloader
-settings, encryption, mounts, or swap into generic code.
-
-Reusable behavior is split into focused aspects under `modules/den/aspects/`:
-
-- `base`, `workstation`, and `server` select system behavior.
-- `desktop-niri`, `laptop`, `development`, `remote`, `secrets`, `gpu-amd`, and
-  `xr` represent capabilities.
-- `users/core`, `users/terminal`, and `users/schlich` keep the personal
-  environment independent from any one host.
-
-The named `master` aspect is the resolver. It reads `host.profile` and
-composes the capability aspects. Hosts only include `master` plus their
-legitimate host-local platform/storage aspect.
-
-```mermaid
-flowchart TD
-  inventory[Typed host inventory] --> master[master resolver]
-  master --> base[base/workstation/server]
-  master --> desktop[desktop/niri]
-  master --> optional[portable, development, remote, XR, GPU, secrets]
-  users[User inventory] --> userAspects[User aspects]
-  base --> nixos[NixOS module graph]
-  desktop --> nixos
-  optional --> nixos
-  userAspects --> hm[Home Manager module graph]
-  nixos --> eval[Nix evaluation]
-  hm --> eval
-```
-
-## Verification and policy
-
-`modules/den/inventory.nix` rejects combinations that are unsafe or
-meaningless for this repository, including server + Niri, XR without a
-graphical workstation, missing secrets infrastructure when secrets are opted
-in, and critical automatic deployment without review, rollback, and health
-checks.
-
-`myConfig.aspectPolicy` is a typed registry of aspect risk and reviewer
-domains. Each aspect copies its registry entry into Den's supported `meta`
-field, so the resolved aspect graph carries review context without inventing a
-Den API. Storage and boot-related host aspects are critical; remote and XR are
-high risk; development and terminal-oriented behavior is low risk.
-
-The main verification boundary is `nix flake check path:.`. It includes
-inventory/policy checks, evaluation and one independent build check for every
-declared NixOS host, the generated Home Manager activation/check farm, Niri
-validation, Zellij validation, and whitespace validation. Den supplies the
-host configuration map, while each host contributes one system derivation so
-the Nix scheduler can build them independently:
+## Resolution flow
 
 ```text
-denFlake.nixosConfigurations
-  -> den-host-build-asus
-  -> den-host-build-asus-headless
-  -> den-host-build-asus-usb
-  -> den-host-build-homelab
+typed inventory -> host aspect composition -> Den host/user pipeline
+                 -> NixOS + Home Manager module graph -> outputs/checks
 ```
 
-Full system outputs remain available for targeted builds:
+User configuration is supplied by Den user aspects. The workstation aspect
+only enables the Home Manager integration; it does not hardcode a username,
+home directory, or user-specific `extraSpecialArgs`.
 
-```text
-nix build path:.#nixosConfigurations.asus.config.system.build.toplevel
-nix build path:.#nixosConfigurations.asus-headless.config.system.build.toplevel
-```
+## Safety boundaries
 
-The GitHub workflow continues to build the headless system before the desktop
-system and Home Manager checks.
+Hardware, storage, boot, encryption, and generated machine files remain under
+`hosts/`. Reusable aspects do not infer or rewrite those facts. Inventory
+validation rejects invalid combinations such as server plus Niri or XR without
+a graphical workstation.
 
-## Safe operations and recovery
+The typed aspect policy registry records risk and reviewer domains in Den
+aspect metadata. CI evaluates every declared host, checks the Home Manager
+activation graph, and runs the independent desktop configuration checks.
 
-The normal future flow is:
-
-```text
-desired declaration -> Den schema -> aspect graph -> evaluation -> build/checks
-                                      -> risk policy -> test or review
-                                      -> deploy -> health checks -> accept/rollback
-```
-
-This migration does not switch the live machine. The generated Den outputs keep
-the existing names under `nixosConfigurations`; the old manually assembled
-systems remain available under `legacyNixosConfigurations` while the migration
-settles. Host-local hardware files and the old `configuration*.nix`/`home.nix`
-entrypoints are intentionally retained as recovery references. A future
-deployment script should build first, optionally run `nixos-rebuild test`, run
-host health checks, and only then request explicit approval for a switch.
-
-Secrets remain encrypted repository inputs; plaintext secrets must never be
-placed in the Nix store or inventory.
+No activation is implied by evaluation or builds. A system or home activation
+requires an explicit operator decision after the generated output has been
+reviewed.

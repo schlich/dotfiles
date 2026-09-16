@@ -19,6 +19,6 @@
     ./aspects/users/terminal.nix
     ./aspects/users/schlich.nix
     ./aspects/host-platforms.nix
-    ./master.nix
+    ./hosts.nix
   ];
 }

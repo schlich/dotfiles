@@ -2,6 +2,6 @@
 {
   den.aspects.system-files = {
     meta = config.myConfig.aspectPolicy.base;
-    nixos.imports = [ ../../../modules/nixos/files.nix ];
+    nixos.imports = [ ../../modules/nixos/files.nix ];
   };
 }

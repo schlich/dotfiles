@@ -12,7 +12,7 @@
         imports = [
           inputs.noctalia-greeter.nixosModules.default
           inputs.niri.nixosModules.niri
-          ../../../modules/nixos/desktop.nix
+          ../../modules/nixos/desktop.nix
         ];
         assertions = [
           {

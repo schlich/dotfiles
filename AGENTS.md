@@ -159,7 +159,7 @@
 
 ## Configuration factory architecture
 
-- Host files and `modules/den/inventory.nix` describe facts; reusable behavior belongs in focused Den aspects.
+- Host files and `den/inventory.nix` describe facts; reusable behavior belongs in focused Den aspects.
 - Avoid hostname conditionals. Add a typed profile field and a reusable aspect when a capability is genuinely shared.
 - The `master` aspect resolves host facts into behavior. Prefer extending a focused aspect over expanding a catch-all module.
 - Inspect the pinned Den API in `flake.lock` and the fetched source before using schema, aspect, policy, or output features.
