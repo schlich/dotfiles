@@ -2,6 +2,7 @@
 
 {
   home.packages = with pkgs; [
+    (callPackage ./openchamber.nix { })
     xdg-user-dirs
     bubblewrap
     super-productivity
