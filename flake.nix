@@ -113,12 +113,7 @@
 
   outputs =
     inputs@{
-      home-manager,
-      determinate,
-      agent-skills,
-      anthropic-skills,
       nixpkgs,
-      fh,
       jj-starship,
       nushellWith,
       ...

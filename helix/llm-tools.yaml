@@ -9,11 +9,9 @@
 #   arg   - prompt passed as a command-line argument (default).
 #   stdin - prompt piped on stdin.
 #   file  - prompt written to a temp file (path appended unless {prompt-file} is used).
-
 default: aider
 ensure_trailing_newline: true
 prompt_preview_lines: 3
-
 tools:
   aider:
     command: aider
@@ -21,7 +19,6 @@ tools:
     args:
       - --message
     description: Aider CLI (default)
-
   gemini:
     command: gemini
     send: arg
@@ -30,14 +27,12 @@ tools:
       - text
       - --prompt
     description: Google Gemini CLI
-
   claude:
     command: claude
     send: arg
     args:
       - --message
     description: Anthropic Claude Code CLI (adjust flags as needed)
-
   codex:
     command: codex
     send: stdin
@@ -45,7 +40,6 @@ tools:
       - chat
       - --stdin
     description: OpenAI Codex CLI wrapper
-
   copilot:
     command: github-copilot-cli
     send: arg
@@ -53,7 +47,6 @@ tools:
       - chat
       - --prompt
     description: GitHub Copilot CLI
-
   aichat:
     command: aichat
     send: stdin
@@ -61,7 +54,6 @@ tools:
       - --input
       - "-"
     description: aichat CLI
-
   opencode:
     command: opencode
     send: stdin

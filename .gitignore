@@ -3,6 +3,7 @@
 /result-*
 /.direnv/
 /.jj/
+/.jj-workspaces/
 /packages/
 
 # Local tooling state and dependency trees

@@ -14,10 +14,6 @@
     "project-customization",
     "personal-workflow"
   ],
-  "agents": [
-    "./agents"
-  ],
-  "skills": [
-    "./skills/project-plugin-factory"
-  ]
+  "agents": ["./agents"],
+  "skills": ["./skills/project-plugin-factory"]
 }

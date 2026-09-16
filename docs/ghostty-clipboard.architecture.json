@@ -15,38 +15,197 @@
       {
         "id": "system-copy",
         "label": "Normal copy/paste",
-        "focus": ["ghostty", "system", "copy-hotkey", "paste-hotkey", "other-app"],
+        "focus": [
+          "ghostty",
+          "system",
+          "copy-hotkey",
+          "paste-hotkey",
+          "other-app"
+        ],
         "note": "Follow the ordinary clipboard path used by Ctrl+Shift+C and Ctrl+Shift+V."
       }
     ]
   },
   "components": [
-    { "id": "mouse", "type": "external", "label": "Mouse selection", "sublabel": "drag / double-click", "pos": [36, 286], "size": [150, 72] },
-    { "id": "ghostty", "type": "backend", "label": "Ghostty", "sublabel": "terminal surface", "pos": [246, 286], "size": [160, 72], "tag": "copy-on-select = true" },
-    { "id": "primary", "type": "database", "label": "Primary selection", "sublabel": "Wayland PRIMARY", "pos": [520, 154], "size": [174, 72], "tag": "mouse selection" },
-    { "id": "system", "type": "database", "label": "System clipboard", "sublabel": "Wayland CLIPBOARD", "pos": [520, 418], "size": [174, 72], "tag": "Ctrl+Shift+C" },
-    { "id": "middle-paste", "type": "external", "label": "Middle-click / Shift+Insert", "sublabel": "paste selection", "pos": [790, 154], "size": [192, 72] },
-    { "id": "paste-hotkey", "type": "external", "label": "Ctrl+Shift+V", "sublabel": "paste clipboard", "pos": [790, 418], "size": [192, 72] },
-    { "id": "copy-hotkey", "type": "external", "label": "Ctrl+Shift+C", "sublabel": "explicit copy", "pos": [246, 542], "size": [160, 72] },
-    { "id": "other-app", "type": "external", "label": "Other app / shell", "sublabel": "receives pasted text", "pos": [1012, 286], "size": [150, 72] }
+    {
+      "id": "mouse",
+      "type": "external",
+      "label": "Mouse selection",
+      "sublabel": "drag / double-click",
+      "pos": [36, 286],
+      "size": [150, 72]
+    },
+    {
+      "id": "ghostty",
+      "type": "backend",
+      "label": "Ghostty",
+      "sublabel": "terminal surface",
+      "pos": [246, 286],
+      "size": [160, 72],
+      "tag": "copy-on-select = true"
+    },
+    {
+      "id": "primary",
+      "type": "database",
+      "label": "Primary selection",
+      "sublabel": "Wayland PRIMARY",
+      "pos": [520, 154],
+      "size": [174, 72],
+      "tag": "mouse selection"
+    },
+    {
+      "id": "system",
+      "type": "database",
+      "label": "System clipboard",
+      "sublabel": "Wayland CLIPBOARD",
+      "pos": [520, 418],
+      "size": [174, 72],
+      "tag": "Ctrl+Shift+C"
+    },
+    {
+      "id": "middle-paste",
+      "type": "external",
+      "label": "Middle-click / Shift+Insert",
+      "sublabel": "paste selection",
+      "pos": [790, 154],
+      "size": [192, 72]
+    },
+    {
+      "id": "paste-hotkey",
+      "type": "external",
+      "label": "Ctrl+Shift+V",
+      "sublabel": "paste clipboard",
+      "pos": [790, 418],
+      "size": [192, 72]
+    },
+    {
+      "id": "copy-hotkey",
+      "type": "external",
+      "label": "Ctrl+Shift+C",
+      "sublabel": "explicit copy",
+      "pos": [246, 542],
+      "size": [160, 72]
+    },
+    {
+      "id": "other-app",
+      "type": "external",
+      "label": "Other app / shell",
+      "sublabel": "receives pasted text",
+      "pos": [1012, 286],
+      "size": [150, 72]
+    }
   ],
   "boundaries": [
-    { "kind": "region", "label": "Wayland clipboard state", "wraps": ["primary", "system"], "pad": 18 }
+    {
+      "kind": "region",
+      "label": "Wayland clipboard state",
+      "wraps": ["primary", "system"],
+      "pad": 18
+    }
   ],
   "connections": [
-    { "id": "select", "from": "mouse", "to": "ghostty", "label": "select text", "variant": "emphasis" },
-    { "id": "auto-primary", "from": "ghostty", "to": "primary", "label": "auto-copy: true", "labelAt": [466, 246] },
-    { "id": "auto-system", "from": "ghostty", "to": "system", "label": "only if set to clipboard", "labelAt": [466, 374] },
-    { "id": "primary-paste", "from": "primary", "to": "middle-paste", "label": "middle-click / Shift+Insert", "variant": "emphasis", "labelAt": [742, 242] },
-    { "id": "system-paste", "from": "system", "to": "paste-hotkey", "label": "Ctrl+Shift+V", "variant": "emphasis" },
-    { "id": "explicit-copy", "from": "copy-hotkey", "to": "ghostty", "label": "copy selected text", "variant": "dashed", "fromSide": "top", "toSide": "bottom", "labelAt": [326, 520] },
-    { "id": "copy-both", "from": "ghostty", "to": "system", "label": "copy_to_clipboard:mixed", "variant": "dashed", "fromSide": "right", "toSide": "left", "via": [[470, 322], [470, 454]], "labelAt": [470, 390] },
-    { "id": "primary-to-app", "from": "middle-paste", "to": "other-app", "label": "text input", "variant": "dashed" },
-    { "id": "system-to-app", "from": "paste-hotkey", "to": "other-app", "label": "text input", "variant": "dashed", "route": "orthogonal-v", "labelAt": [998, 504] }
+    {
+      "id": "select",
+      "from": "mouse",
+      "to": "ghostty",
+      "label": "select text",
+      "variant": "emphasis"
+    },
+    {
+      "id": "auto-primary",
+      "from": "ghostty",
+      "to": "primary",
+      "label": "auto-copy: true",
+      "labelAt": [466, 246]
+    },
+    {
+      "id": "auto-system",
+      "from": "ghostty",
+      "to": "system",
+      "label": "only if set to clipboard",
+      "labelAt": [466, 374]
+    },
+    {
+      "id": "primary-paste",
+      "from": "primary",
+      "to": "middle-paste",
+      "label": "middle-click / Shift+Insert",
+      "variant": "emphasis",
+      "labelAt": [742, 242]
+    },
+    {
+      "id": "system-paste",
+      "from": "system",
+      "to": "paste-hotkey",
+      "label": "Ctrl+Shift+V",
+      "variant": "emphasis"
+    },
+    {
+      "id": "explicit-copy",
+      "from": "copy-hotkey",
+      "to": "ghostty",
+      "label": "copy selected text",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "labelAt": [326, 520]
+    },
+    {
+      "id": "copy-both",
+      "from": "ghostty",
+      "to": "system",
+      "label": "copy_to_clipboard:mixed",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "left",
+      "via": [
+        [470, 322],
+        [470, 454]
+      ],
+      "labelAt": [470, 390]
+    },
+    {
+      "id": "primary-to-app",
+      "from": "middle-paste",
+      "to": "other-app",
+      "label": "text input",
+      "variant": "dashed"
+    },
+    {
+      "id": "system-to-app",
+      "from": "paste-hotkey",
+      "to": "other-app",
+      "label": "text input",
+      "variant": "dashed",
+      "route": "orthogonal-v",
+      "labelAt": [998, 504]
+    }
   ],
   "cards": [
-    { "dot": "amber", "title": "The gotcha", "items": ["copy-on-select = true writes to PRIMARY", "Ctrl+Shift+V reads CLIPBOARD", "Those are two different Wayland stores"] },
-    { "dot": "cyan", "title": "The practical fix", "items": ["Use copy-on-select = clipboard to write both stores", "Use Shift+Insert or middle-click when you specifically want PRIMARY"] },
-    { "dot": "violet", "title": "Rich copy note", "items": ["Ghostty 1.3 defaults explicit copy to mixed text + HTML", "Bind copy_to_clipboard:plain if another app pastes formatting"] }
+    {
+      "dot": "amber",
+      "title": "The gotcha",
+      "items": [
+        "copy-on-select = true writes to PRIMARY",
+        "Ctrl+Shift+V reads CLIPBOARD",
+        "Those are two different Wayland stores"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "The practical fix",
+      "items": [
+        "Use copy-on-select = clipboard to write both stores",
+        "Use Shift+Insert or middle-click when you specifically want PRIMARY"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Rich copy note",
+      "items": [
+        "Ghostty 1.3 defaults explicit copy to mixed text + HTML",
+        "Bind copy_to_clipboard:plain if another app pastes formatting"
+      ]
+    }
   ]
 }
