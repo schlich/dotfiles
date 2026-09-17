@@ -40,6 +40,8 @@
 
   den.aspects.homelab.includes = [
     den.aspects.base
+    den.aspects.paseo
+    den.aspects.opencode-server
     den.aspects.server
     den.aspects.headless
     den.aspects.system-files

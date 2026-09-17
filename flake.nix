@@ -13,6 +13,9 @@
     den = {
       url = "github:denful/den/v0.18.0";
     };
+    gen-inspect = {
+      url = "github:sini/gen-inspect";
+    };
     nushellWith = {
       url = "github:YPares/nushellWith/master";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -70,6 +73,10 @@
       url = "github:ilysenko/codex-desktop-linux";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    paseo = {
+      url = "github:getpaseo/paseo/main";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     anthropic-skills = {
       url = "github:anthropics/skills";
       flake = false;
@@ -93,6 +100,10 @@
     xs = {
       url = "github:cablehead/xs";
       inputs.nixpkgs.follows = "nixpkgs";
+    };
+    ptyZZZ = {
+      url = "github:cablehead/ptyZZZ";
+      flake = false;
     };
   };
 
@@ -188,6 +199,7 @@
 
       nixosConfigurations = denFlake.nixosConfigurations;
       den = denEval.config.den;
+      gen-inspect = inputs.gen-inspect.lib;
 
       templates.default = {
         path = ./templates/default;

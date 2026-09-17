@@ -57,4 +57,21 @@ in
       WantedBy = [ "default.target" ];
     };
   };
+
+  systemd.user.services.opencode-server = {
+    Unit = {
+      Description = "OpenCode HTTP server";
+      After = [ "network-online.target" ];
+      Wants = [ "network-online.target" ];
+    };
+    Service = {
+      ExecStart = "${config.programs.opencode.package}/bin/opencode serve --hostname 127.0.0.1 --port 4096";
+      Environment = [ "SECRETSPEC_REASON=OpenCode server service" ];
+      Restart = "on-failure";
+      RestartSec = "5s";
+    };
+    Install = {
+      WantedBy = [ "default.target" ];
+    };
+  };
 }

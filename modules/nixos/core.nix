@@ -2,6 +2,11 @@
 
 {
   nix = {
+    registry.templates.to = {
+      type = "github";
+      owner = "denful";
+      repo = "den";
+    };
     gc = {
       automatic = true;
       dates = "weekly";
