@@ -61,6 +61,16 @@
   apply system-owned changes, including `home.packages` because
   `home-manager.useUserPackages = true`.
 
+## Privileged command approval
+
+- When a command needs elevated privileges, request tool-level escalation with
+  a user-facing justification so the host presents an inline approval control
+  in the current chat session. Do not require the user to leave the session
+  to approve it.
+- Never pass a sudo password through chat, command arguments, stdin, or
+  environment variables. If inline escalation is unavailable, tell the user
+  to run the command themselves or enable approval handling in the client.
+
 ## Version control
 
 - Use Jujutsu for all repository mutations: changes, descriptions, bookmarks,

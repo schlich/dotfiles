@@ -30,6 +30,36 @@ let
         platforms = [ "x86_64-linux" ];
       };
     };
+  handyApp =
+    let
+      pname = "handy";
+      version = "0.9.6";
+      src = pkgs.fetchurl {
+        url = "https://github.com/cjpais/Handy/releases/download/v${version}/Handy_${version}_amd64.AppImage";
+        hash = "sha256-xlL2lXLMhGMC12B2GYoHtNYrX3tUgoWTNSdYSjxi9P0=";
+      };
+      appimageContents = pkgs.appimageTools.extract { inherit pname version src; };
+    in
+    pkgs.appimageTools.wrapType2 {
+      inherit pname version src;
+
+      extraInstallCommands = ''
+        install -Dm444 ${appimageContents}/Handy.desktop -t $out/share/applications/
+        icon=$(find ${appimageContents} -type f \( -iname 'Handy.png' -o -iname 'handy.png' \) -print -quit)
+        if test -n "$icon"; then
+          install -Dm444 "$icon" $out/share/icons/hicolor/512x512/apps/handy.png
+        fi
+      '';
+
+      meta = {
+        description = "Privacy-focused speech-to-text application";
+        homepage = "https://github.com/cjpais/Handy";
+        changelog = "https://github.com/cjpais/Handy/releases/tag/v${version}";
+        license = pkgs.lib.licenses.mit;
+        mainProgram = pname;
+        platforms = [ "x86_64-linux" ];
+      };
+    };
 in
 {
   home.packages = with pkgs; [
@@ -37,7 +67,10 @@ in
     xdg-user-dirs
     bubblewrap
     acreomApp
+    handyApp
     super-productivity
+    element-desktop
+    discord
     zotero
     marimo
     nodejs
@@ -45,9 +78,15 @@ in
     git
     wget
     nixfmt
+    nh
+    nix-tree
+    nix-du
+    nix-output-monitor
+    graphviz
     ruff
     systemctl-tui
     systemd-manager-tui
+    mission-center
     nix-search-tv
     difftastic
     fzf

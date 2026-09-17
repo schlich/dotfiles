@@ -7,7 +7,10 @@
 {
   den.aspects.workstation = {
     meta = config.myConfig.aspectPolicy.workstation;
-    includes = [ den.aspects.base ];
+    includes = [
+      den.aspects.base
+      den.aspects.paseo
+    ];
     nixos =
       { pkgs, ... }:
       {

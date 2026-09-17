@@ -37,39 +37,42 @@
     settings.updates.auto_update = true;
   };
 
-  programs.nom = {
+  programs.newsboat = {
     enable = true;
-    settings.feeds = [
+    autoReload = true;
+    reloadTime = 30;
+    browser = "google-chrome";
+    urls = [
       {
-        name = "adam-nyberg";
+        title = "adam-nyberg";
         url = "https://adamnyberg.se/rss.xml";
       }
       {
-        name = "automerge";
+        title = "automerge";
         url = "https://automerge.org/index.xml";
       }
       {
-        name = "ink-and-switch";
+        title = "ink-and-switch";
         url = "https://www.inkandswitch.com/index.xml";
       }
       {
-        name = "lea-verou-phd";
+        title = "lea-verou-phd";
         url = "https://lea.verou.me/feed.xml";
       }
       {
-        name = "hacker-news";
+        title = "hacker-news";
         url = "https://news.ycombinator.com/rss";
       }
       {
-        name = "nix-ci";
+        title = "nix-ci";
         url = "https://blog.nix-ci.com/rss";
       }
       {
-        name = "Vicky Boykis";
+        title = "Vicky Boykis";
         url = "https://vickiboykis.com/rss";
       }
       {
-        name = "graham-dumpleton";
+        title = "graham-dumpleton";
         url = "https://grahamdumpleton.me/feed.xml";
       }
     ];
