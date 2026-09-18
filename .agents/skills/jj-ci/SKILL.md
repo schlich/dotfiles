@@ -88,9 +88,11 @@ Use the narrowest workflow that matches the request:
 
 Keep one coherent topic in a dedicated workspace. Use one stable JJ change ID
 for a single deliverable, or a small stack of stable change IDs when mixed
-deliverables were intentionally split. `jj-ci publish` uses
-`jj-<full-change-id>` as each bookmark, preserving each identity through title
-changes and repeated edits. It does not start an unrelated follow-up change.
+deliverables were intentionally split. `jj-ci publish` uses a persisted
+`jj-<title-slug>-<short-change-id>` bookmark for new topics, preserving the
+selected branch through title changes and repeated edits. Existing
+full-change-ID bookmarks are adopted unchanged for backward compatibility. It
+does not start an unrelated follow-up change.
 Report the PR URL and existing change IDs. Existing PRs published under old
 slug bookmarks need deliberate migration; do not create duplicate PRs for them.
 

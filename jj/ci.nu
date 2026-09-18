@@ -82,8 +82,47 @@ def current-topic-id [] {
     current-change 'change_id'
 }
 
+def publication-state-path [] {
+    let root = (run-command "locating the workspace" { ^jj root })
+    $root | path join ".jj" "jj-ci-publication.json"
+}
+
+def publication-state [] {
+    let path = (publication-state-path)
+    if ($path | path exists) { open $path } else { {} }
+}
+
+def publication-slug [] {
+    let title = (current-change "description.first_line()")
+    $title
+    | str lowercase
+    | str replace --all --regex "[^a-z0-9]+" "-"
+    | str trim --char "-"
+    | str substring 0..47
+}
+
+def legacy-publication-bookmark [bookmark: string] {
+    let result = (^jj log -r $"($bookmark) & @" --no-graph -T 'commit_id' | complete)
+    $result.exit_code == 0 and ($result.stdout | str trim | is-not-empty)
+}
+
+def remember-publication-bookmark [bookmark: string] {
+    { bookmark: $bookmark } | to json | save --force (publication-state-path)
+}
+
 def publication-bookmark [] {
-    $"jj-(current-topic-id)"
+    let state = (publication-state)
+    let remembered = ($state | get bookmark? | default "")
+    if ($remembered | is-not-empty) { return $remembered }
+
+    let topic_id = (current-topic-id)
+    let legacy = $"jj-($topic_id)"
+    if (legacy-publication-bookmark $legacy) { return $legacy }
+
+    let short_id = ($topic_id | str substring 0..7)
+    let slug = (publication-slug)
+    let label = if ($slug | is-empty) { "topic" } else { $slug }
+    $"jj-($label)-($short_id)"
 }
 
 def push-bookmark [remote: string, bookmark: string] {
@@ -446,6 +485,7 @@ def "main publish" [--auto-merge] {
         error make { msg: "This topic's PR is closed or merged. Finish it before starting new work." }
     }
     run-command "setting the publication bookmark" { ^jj bookmark set $branch -r @ } | ignore
+    remember-publication-bookmark $branch
     push-topic-bookmark $branch
     let url = if $pr.exit_code == 0 {
         let existing = ($pr.stdout | from json)
