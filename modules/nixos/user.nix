@@ -1,8 +1,8 @@
-{ pkgs, ... }:
+{ pkgs, username, ... }:
 
 {
   users.defaultUserShell = pkgs.nushell;
-  users.users.schlich = {
+  users.users.${username} = {
     uid = 1001;
     shell = pkgs.nushell;
     isNormalUser = true;
@@ -19,7 +19,7 @@
       PasswordAuthentication = false;
       KbdInteractiveAuthentication = false;
       PermitRootLogin = "no";
-      AllowUsers = [ "schlich" ];
+      AllowUsers = [ username ];
     };
   };
 }

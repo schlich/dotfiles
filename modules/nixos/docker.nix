@@ -1,7 +1,7 @@
-{ ... }:
+{ username, ... }:
 
 {
-  users.users.schlich = {
+  users.users.${username} = {
     extraGroups = [
       "wheel"
       "networkmanager"
