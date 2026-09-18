@@ -74,4 +74,26 @@ in
       WantedBy = [ "default.target" ];
     };
   };
+
+  # Give the default speaker output a modest boost after PipeWire is ready.
+  systemd.user.services.audio-output-boost = {
+    Unit = {
+      Description = "Set a slightly louder default audio output";
+      After = [
+        "pipewire.service"
+        "pipewire-pulse.service"
+        "wireplumber.service"
+      ];
+      Wants = [
+        "pipewire.service"
+        "pipewire-pulse.service"
+        "wireplumber.service"
+      ];
+    };
+    Service = {
+      Type = "oneshot";
+      ExecStart = "${pkgs.wireplumber}/bin/wpctl set-volume @DEFAULT_AUDIO_SINK@ 1.05";
+    };
+    Install.WantedBy = [ "default.target" ];
+  };
 }
