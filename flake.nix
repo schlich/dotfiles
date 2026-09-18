@@ -281,6 +281,7 @@
               mkdir -p "$config_dir/layouts"
               cp ${./zellij/config.kdl} "$config_dir/config.kdl"
               cp ${./zellij/layouts/default.kdl} "$config_dir/layouts/default.kdl"
+              cp ${./zellij/layouts/dotfiles.kdl} "$config_dir/layouts/dotfiles.kdl"
               ZELLIJ_CONFIG_DIR="$config_dir" zellij setup --check
               touch "$out"
             '';

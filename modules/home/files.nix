@@ -14,6 +14,7 @@
   xdg.dataFile."wallpapers/niri-navigation.svg".source = ../../wallpapers/niri-navigation.svg;
   xdg.configFile."zellij/config.kdl".source = ../../zellij/config.kdl;
   xdg.configFile."zellij/layouts/default.kdl".source = ../../zellij/layouts/default.kdl;
+  xdg.configFile."zellij/layouts/dotfiles.kdl".source = ../../zellij/layouts/dotfiles.kdl;
   xdg.userDirs = {
     enable = true;
     createDirectories = true;
