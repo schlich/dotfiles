@@ -126,6 +126,10 @@ def publication-bookmark [] {
 }
 
 def push-bookmark [remote: string, bookmark: string] {
+    # jj refuses to create a new bookmark on a remote it does not track.
+    run-command $"tracking ($bookmark)@($remote)" {
+        ^jj bookmark track $"($bookmark)@($remote)"
+    } | ignore
     run-command $"pushing ($bookmark) to ($remote)" {
         ^jj git push --remote $remote --bookmark $bookmark
     } | ignore
