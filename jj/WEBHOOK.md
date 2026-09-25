@@ -1,9 +1,13 @@
-# Sync after validated main changes
+# Agent follow-up after successful checks
 
 The NixOS configuration enables a local webhook listener for this repository.
 It accepts only signed `workflow_run` deliveries for the successful `nix-ci`
-workflow on `main`, then runs `jj-ci sync` in the checkout. The listener binds
-to loopback; Tailscale Funnel provides the public HTTPS endpoint GitHub needs.
+workflow in this repository. A successful pull request run starts a read-only,
+ephemeral Codex triage with the PR number, head SHA, and run URL. A successful
+push to `main` first runs `jj-ci sync`, then starts the same triage against the
+updated checkout. Failed runs, unrelated events, and PR runs without an
+associated PR number are ignored. The listener binds to loopback; Tailscale
+Funnel provides the public HTTPS endpoint GitHub needs.
 
 The webhook HMAC secret is declared in `modules/secretspec.toml` and stored in
 the local Secret Service keyring. Create or rotate it with SecretSpec:
@@ -37,10 +41,19 @@ nu /home/schlich/dotfiles/jj/webhook-setup.nu https://asus.<tailnet>.ts.net
 
 The helper resolves the secret through SecretSpec and configures only the
 `workflow_run` event. The receiver checks GitHub's HMAC-SHA256 signature before
-parsing any payload, ignores failed, non-`main`, and unrelated workflow runs,
-and acknowledges deliveries before the local sync starts. The service receives
-only the `jj-ci-webhook` SecretSpec scope and retries if the keyring session is
-not available yet.
+parsing any payload, deduplicates completed workflow runs, and acknowledges
+deliveries before local work starts. It rejects new work with HTTP 503 when its
+bounded queue is full so GitHub can retry. The Codex process runs in read-only
+ephemeral mode, receives a minimal event context on stdin, and does not inherit
+the webhook HMAC secret. Its report and service status are available in the
+systemd journal:
+
+```nu
+journalctl --unit jj-ci-webhook --follow
+```
+
+The service receives only the `jj-ci-webhook` SecretSpec scope and retries if
+the keyring session is not available yet.
 
 Do not use Tailscale Serve for this GitHub hook: Serve is tailnet-only, while
 Funnel is the public HTTPS tunnel required for GitHub delivery.
