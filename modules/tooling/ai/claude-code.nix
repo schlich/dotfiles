@@ -1,5 +1,50 @@
-{ pkgs, ... }:
+{
+  inputs,
+  lib,
+  pkgs,
+  ...
+}:
 
+let
+  agentSource = ../../../copilot/plugins/jj-flake-vigilance/agents;
+  # Copilot agents use display names, Copilot tool IDs, and GPT models.
+  # Rewrite only the frontmatter keys Claude Code interprets differently.
+  adaptAgent =
+    overrides: file:
+    lib.concatMapStringsSep "\n" (
+      line:
+      let
+        key = lib.head (lib.splitString ":" line);
+      in
+      overrides.${key} or line
+    ) (lib.splitString "\n" (builtins.readFile file));
+
+  # Claude Code rewrites ~/.claude/settings.json at runtime, so hooks ship in
+  # a personal plugin instead of programs.claude-code.settings.
+  jjGuard = pkgs.runCommand "claude-code-jj-guard" { } ''
+    install -Dm644 ${
+      pkgs.writers.writeJSON "plugin.json" {
+        name = "jj-guard";
+        description = "Deny mutating git commands so repository writes go through jj.";
+      }
+    } $out/.claude-plugin/plugin.json
+    install -Dm644 ${
+      pkgs.writers.writeJSON "hooks.json" {
+        hooks.PreToolUse = [
+          {
+            matcher = "Bash";
+            hooks = [
+              {
+                type = "command";
+                command = "${pkgs.nushell}/bin/nu ${../../../copilot/plugins/jj-flake-vigilance/scripts/guard-git-writes.nu} --claude";
+              }
+            ];
+          }
+        ];
+      }
+    } $out/hooks/hooks.json
+  '';
+in
 {
   imports = [ ./common.nix ];
 
@@ -7,6 +52,16 @@
     enable = true;
     enableMcpIntegration = true;
     settings = { };
+    context = ./global-agent-instructions.md;
+    skills = import ./shared-skills.nix { inherit inputs; };
+    agents.trunk-triage = lib.replaceStrings [ "Use GPT-5.6 Luna for" ] [ "Use this agent for" ] (
+      adaptAgent {
+        name = "name: trunk-triage";
+        model = "model: haiku";
+        tools = "tools: Read, Glob, Grep, Bash";
+      } "${agentSource}/trunk-triage.agent.md"
+    );
+    plugins.jj-guard = jjGuard;
   };
 
   dotfiles.tooling.ai.claude-code = {
