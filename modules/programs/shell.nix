@@ -20,9 +20,18 @@ in
   programs.atuin = {
     enable = true;
     enableNushellIntegration = false;
-    settings.daemon = {
-      enabled = true;
-      autostart = true;
+    settings = {
+      daemon = {
+        enabled = true;
+        autostart = true;
+      };
+      # Atuin's built-in secrets_filter covers AWS, GCP, GitHub, Slack and
+      # npm, but not OpenAI or Gemini, so inline credential assignments are
+      # otherwise stored verbatim in the history database. Run
+      # `atuin history prune` after changing this to drop existing matches.
+      history_filter = [
+        ''\$env\.[A-Z0-9_]*(KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)[A-Z0-9_]*\s*=''
+      ];
     };
   };
 
