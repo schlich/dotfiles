@@ -18,7 +18,7 @@ let
 in
 {
   options.services.jj-ci-webhook = {
-    enable = lib.mkEnableOption "a GitHub workflow webhook that syncs a local JJ checkout";
+    enable = lib.mkEnableOption "a GitHub workflow webhook that syncs a local JJ checkout and runs read-only CI triage";
     projectDir = lib.mkOption {
       type = lib.types.path;
       default = "/home/schlich/dotfiles";
@@ -89,6 +89,7 @@ in
         JJ_CI_WEBHOOK_LISTEN_PORT = toString cfg.listenPort;
         JJ_CI_WEBHOOK_PATH = cfg.path;
         JJ_CI_WEBHOOK_SYNC_COMMAND = "${homePath}/bin/jj-ci sync";
+        JJ_CI_WEBHOOK_AGENT_COMMAND = "${pkgs.codex}/bin/codex exec --sandbox read-only --ephemeral --ignore-user-config --color never -";
       };
     };
 
