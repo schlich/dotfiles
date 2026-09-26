@@ -52,8 +52,9 @@ deliverables that should be split, keep them in one small stack in that
 workspace and rewrite each in-scope change as needed; do not create unrelated
 follow-up revisions after publishing. A new topic needs a new task and a
 separate workspace; do not switch a working copy owned by another active task.
-Use `jj workspace add --revision main@origin --name NAME PATH` from the
-repository, then open that directory as a local Codex project.
+Where `jj-ci` is available, create it with `jj-ci start NAME`; otherwise use
+`jj workspace add --revision main@origin --name NAME PATH` from the
+repository. Then open that directory as a local Codex project.
 The hook creates the topic revision when its task starts.
 If Codex supplied the project as a linked Git worktree, the session hook
 initializes a non-colocated JJ workspace in that directory first, using the
@@ -99,7 +100,8 @@ requested delivery. Herdr or Paseo may supervise and report stale trunk or PR
 state for that one workspace, but must not silently rebase or resolve
 conflicts. Before archiving a delivered topic, run
 `jj-ci finish`: it verifies that the current head was merged to main and
-leaves a clean working copy on main. Only then call the archive tool. Failed
+removes a workspace that `jj-ci start` created, or leaves any other one on a
+clean change on main. Use `jj-ci abandon` for a topic that will not land. Only then call the archive tool. Failed
 checks, conflicts, pending delivery, or unpublished edits leave the task open.
 Do not treat app exit, idle timeout, or SessionEnd as authorization to publish
 or merge. Direct archive-button clicks do not execute this closeout workflow.

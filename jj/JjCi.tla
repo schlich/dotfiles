@@ -171,20 +171,36 @@ DeliverToMain ==
                    workspaceBase>>
     /\ UNCHANGED stackVars
 
+(* Releasing a topic leaves its workspace on main (--keep, or one that    *)
+(* jj-ci start did not create) or drops it, so no workspace outlives its  *)
+(* owner.                                                                 *)
 Finish ==
     /\ owner /\ active /\ ~conflict
     /\ (delivered \/ ~published)
     /\ owner' = FALSE
     /\ active' = FALSE
-    /\ workspaceBase' = "main"
+    /\ workspaceBase' \in {"main", "dropped"}
     /\ UNCHANGED <<head, base, conflict, validated, published,
+                   publishedHead, publishedValidated,
+                   publishedConflictFree, autoMergeHead, mergedHead, delivered>>
+    /\ UNCHANGED stackVars
+
+(* Abandoning discards unpublished work, conflicts included. The model    *)
+(* omits PR closure, so a published topic cannot be abandoned.            *)
+Abandon ==
+    /\ owner /\ active /\ ~published
+    /\ owner' = FALSE
+    /\ active' = FALSE
+    /\ conflict' = FALSE
+    /\ workspaceBase' \in {"main", "dropped"}
+    /\ UNCHANGED <<head, base, validated, published,
                    publishedHead, publishedValidated,
                    publishedConflictFree, autoMergeHead, mergedHead, delivered>>
     /\ UNCHANGED stackVars
 
 Next == Edit \/ RebaseClean \/ RebaseConflicted \/ Resolve \/ Validate
         \/ Publish \/ RequestAutoMerge \/ ParentLands \/ ArmDeferred
-        \/ Merge \/ DeliverToMain \/ Finish
+        \/ Merge \/ DeliverToMain \/ Finish \/ Abandon
 
 Spec == Init /\ [][Next]_vars
 
@@ -202,14 +218,17 @@ TypeOK ==
     /\ autoMergeHead \in Heads \cup {"none"}
     /\ mergedHead \in Heads \cup {"none"}
     /\ delivered \in BOOLEAN
-    /\ workspaceBase \in {"topic", "main"}
+    /\ workspaceBase \in {"topic", "main", "dropped"}
     /\ prBase \in {"main", "parent"}
     /\ deferred \in BOOLEAN
 
 NoPublishWhileUnsafe ==
     published => publishedHead \in Heads /\ publishedValidated /\ publishedConflictFree
 NoFinishWithConflict == ~(~owner /\ conflict)
-FinishLeavesMain == ~active => workspaceBase = "main"
+FinishLeavesMain == ~active => workspaceBase \in {"main", "dropped"}
+(* A workspace is freed only by its released owner, with nothing in flight. *)
+NoDropWhilePending ==
+    workspaceBase = "dropped" => ~owner /\ (delivered \/ ~published)
 AutoMergePinsPublishedHead == autoMergeHead # "none" => autoMergeHead = publishedHead
 DeliveryIsPublishedHead == delivered => mergedHead = publishedHead
 

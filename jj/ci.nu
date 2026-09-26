@@ -1013,7 +1013,7 @@ def stack-merge [target: string] {
 }
 
 def main [] {
-    print "Use `jj-ci status`, `jj-ci sync`, `jj-ci plan`, `jj-ci rebase`, `jj-ci refresh`, `jj-ci conflicts`, `jj-ci review snapshot`, `jj-ci interdiff`, `jj-ci finish`, `jj-ci prune`, `jj-ci validate`, `jj-ci publish`, `jj-ci github reconcile`, `jj-ci stack-merge`, `jj-ci tangled stack-publish`, `jj-ci impact check`, `jj-ci release`, or `jj-ci version`."
+    print "Use `jj-ci start`, `jj-ci status`, `jj-ci sync`, `jj-ci plan`, `jj-ci rebase`, `jj-ci refresh`, `jj-ci conflicts`, `jj-ci review snapshot`, `jj-ci interdiff`, `jj-ci finish`, `jj-ci abandon`, `jj-ci prune`, `jj-ci validate`, `jj-ci publish`, `jj-ci github reconcile`, `jj-ci stack-merge`, `jj-ci tangled stack-publish`, `jj-ci impact check`, `jj-ci release`, or `jj-ci version`."
 }
 
 def "main status" [] {
@@ -1406,9 +1406,85 @@ def wait-for-merge [branch: string, head: string, timeout: duration] {
     }
 }
 
-def "main finish" [
+def list-workspaces [] {
+    git-command "listing workspaces" {
+        ^jj workspace list -T 'name ++ "\t" ++ root ++ "\n"'
+    } | lines | where {|line| $line | is-not-empty } | each {|line|
+        let fields = ($line | split row "\t")
+        { name: ($fields | first) root: ($fields | last) }
+    }
+}
+
+def current-workspace [] {
+    let root = (run-command "locating the workspace" { ^jj root })
+    list-workspaces | where root == $root | first
+}
+
+# `jj-ci start` writes this marker. A workspace that carries it belongs to its
+# topic, and `finish` or `abandon` removes it when the topic ends.
+def owned-workspace-marker [root: string] {
+    $root | path join ".jj" "jj-ci-workspace.json"
+}
+
+# Forget a workspace and delete its directory. JJ abandons its empty working
+# copy; the operation log keeps every other commit recoverable. The caller
+# moves to the default checkout, since the dropped one may be its own.
+def --env drop-workspace [workspace: record] {
+    let default_root = (workspace-root "default")
+    run-command $"forgetting ($workspace.name)" {
+        ^jj --repository $default_root workspace forget $workspace.name
+    } | ignore
+    cd $default_root
+    if ($workspace.root | path exists) { rm --recursive $workspace.root }
+}
+
+# Release the topic onto an empty change on main. A workspace that `jj-ci start`
+# created is then dropped; any other one stays and its Codex owner is finished.
+def --env release-workspace [summary: string, change: string, keep: bool] {
+    let workspace = (current-workspace)
+    run-command "leaving a clean workspace on main" { ^jj new main@origin } | ignore
+    if not $keep and $workspace.name != "default" and (owned-workspace-marker $workspace.root | path exists) {
+        drop-workspace $workspace
+        print $"($summary) Removed workspace ($workspace.name); continue from ($env.PWD)."
+        return
+    }
+    let owner_path = ($workspace.root | path join ".jj" "codex-session.json")
+    if ($owner_path | path exists) {
+        let owner = (open $owner_path)
+        if $owner.change_id == $change {
+            $owner | upsert finished true | to json | save --force $owner_path
+            let claim = ($workspace.root | path join ".jj" "codex-session-claim")
+            if ($claim | path exists) { rm --recursive $claim }
+        }
+    }
+    print $"($summary) Workspace is on main; the Codex task can now be archived."
+}
+
+def "main start" [
+    name: string # Workspace and topic name
+] {
+    if $name !~ '^[a-z0-9][a-z0-9-]*$' {
+        error make { msg: "Use a lowercase name of letters, digits, and hyphens." }
+    }
+    if $name in (list-workspaces | get name) {
+        error make { msg: $"Workspace ($name) already exists. One topic owns one workspace; finish or abandon it first." }
+    }
+    let root = (workspace-root "default" | path join ".jj-workspaces" $name)
+    if ($root | path exists) {
+        error make { msg: $"($root) already exists. Inspect it with `jj-ci prune` before reusing the name." }
+    }
+    fetch-origin
+    run-command $"creating workspace ($name)" {
+        ^jj --repository (workspace-root "default") workspace add --revision main@origin --name $name $root
+    } | ignore
+    { name: $name created: (date now | format date "%+") } | to json | save (owned-workspace-marker $root)
+    print $"Created ($root) on main@origin. `jj-ci finish` or `jj-ci abandon` removes it when the topic ends."
+}
+
+def --env "main finish" [
     --wait # Wait for GitHub to merge the current head before finishing
     --timeout: duration = 2hr # How long --wait waits
+    --keep # Keep a workspace that `jj-ci start` created
 ] {
     require-owned-change
     let change = (current-change "change_id")
@@ -1454,38 +1530,103 @@ def "main finish" [
     forget-publication-bookmark
     run-command "advancing main" { ^jj bookmark move main --to main@origin } | ignore
     push-bookmark tangled main
-    run-command "leaving a clean workspace on main" { ^jj new main@origin } | ignore
-    let root = (run-command "locating the workspace" { ^jj root })
-    let owner_path = ($root | path join ".jj" "codex-session.json")
-    if ($owner_path | path exists) {
-        let owner = (open $owner_path)
-        if $owner.change_id == $change {
-            $owner | upsert finished true | to json | save --force $owner_path
-            let claim = ($root | path join ".jj" "codex-session-claim")
-            if ($claim | path exists) { rm --recursive $claim }
-        }
-    }
-    print $"Finished ($url). Workspace is on main; the Codex task can now be archived."
+    release-workspace $"Finished ($url)." $change $keep
 }
 
-# Why a workspace must be kept, or null when it holds nothing: its working
-# copy is an empty, undescribed change on trunk and no active task owns it.
-def workspace-keep-reason [workspace: record] {
-    if $workspace.name == "default" { return "default workspace" }
-    if not ($workspace.root | path exists) { return null }
-    if ($workspace.root | path join ".git" | path exists) { return "Git worktree; remove it with its owner" }
-    let owner_path = ($workspace.root | path join ".jj" "codex-session.json")
-    if ($owner_path | path exists) and not ((open $owner_path).finished? | default false) {
-        return "owned by an active task"
+def --env "main abandon" [
+    --keep # Keep a workspace that `jj-ci start` created
+] {
+    require-owned-change
+    let change = (current-change "change_id")
+    let branch = (publication-bookmark)
+    let open = (run-command "checking for an open PR" {
+        github pr list --state open --head $branch --json url
+    } | from json)
+    if ($open | is-not-empty) {
+        error make { msg: $"($open | first | get url) is still open. Close it deliberately before abandoning the topic." }
     }
-    # Running JJ inside the workspace snapshots any unrecorded edits first.
-    let state = (do { ^jj --repository $workspace.root log -r '@' --no-graph -T 'empty ++ "\t" ++ description.escape_json() ++ "\t" ++ parents.map(|p| p.commit_id()).join(",")' } | complete)
-    if $state.exit_code != 0 { return "stale or unreadable; run `jj workspace update-stale` there first" }
-    let fields = ($state.stdout | str trim | split row "\t")
-    if ($fields | get 0) != "true" { return "has changes" }
-    if ($fields | get 1 | from json | str trim | is-not-empty) { return "has a description" }
-    let parents = ($fields | get 2 | split row "," | each {|id| $"\(($id) ~ ::main@origin)" } | str join " | ")
-    if (revset-change-ids $parents | is-not-empty) { return "built on unmerged work" }
+    let revisions = (topic-revisions)
+    checkpoint "abandon"
+    forget-publication-bookmark
+    delete-topic-bookmark $branch
+    if ($revisions | is-not-empty) {
+        run-command "abandoning the topic" { ^jj abandon ...($revisions | get change_id) } | ignore
+    }
+    release-workspace $"Abandoned ($revisions | length) revision\(s)." $change $keep
+}
+
+def owner-state [root: string] {
+    let path = ($root | path join ".jj" "codex-session.json")
+    if not ($path | path exists) { return "none" }
+    if ((open $path).finished? | default false) { "finished" } else { "active" }
+}
+
+# A squash merge leaves the topic's commits off main, but GitHub still records
+# the head it merged.
+def squash-delivered [root: string, head: record] {
+    let state_path = ($root | path join ".jj" "jj-ci-publication.json")
+    let topics = if ($state_path | path exists) { open $state_path | get topics? | default {} } else { {} }
+    let bookmark = ($topics | get --optional $head.change_id | default $"jj-($head.change_id)")
+    let result = (github pr view $bookmark --json state,headRefOid | complete)
+    if $result.exit_code != 0 { return false }
+    let pr = ($result.stdout | from json)
+    $pr.state == "MERGED" and $pr.headRefOid == $head.commit_id
+}
+
+# The facts prune decides from. Running JJ inside a workspace snapshots any
+# unrecorded edits first. A stale workspace is updated only when `refresh` is
+# set, because updating rewrites its files.
+def workspace-facts [workspace: record, current: string, refresh: bool] {
+    let facts = {
+        name: $workspace.name
+        current: ($workspace.root == $current)
+        exists: ($workspace.root | path exists)
+        git_worktree: ($workspace.root | path join ".git" | path exists)
+        codex_worktree: ($workspace.root | str starts-with ($env.CODEX_HOME? | default ($env.HOME | path join ".codex") | path join "worktrees"))
+        owner: (owner-state $workspace.root)
+        stale: false
+        error: null
+        pending: false
+        squash_delivered: false
+    }
+    if $workspace.name == "default" or $facts.current or not $facts.exists or $facts.git_worktree or $facts.codex_worktree or $facts.owner == "active" {
+        return $facts
+    }
+    let probe = {|| do { ^jj --repository $workspace.root log -r @ --no-graph -T commit_id } | complete }
+    mut state = (do $probe)
+    if $state.exit_code != 0 and ($state.stderr | str contains "stale") {
+        if not $refresh { return ($facts | upsert stale true) }
+        let updated = (do { ^jj --repository $workspace.root workspace update-stale } | complete)
+        if $updated.exit_code != 0 { return ($facts | upsert error ($updated.stderr | str trim)) }
+        $state = (do $probe)
+    }
+    if $state.exit_code != 0 { return ($facts | upsert error ($state.stderr | str trim | lines | first)) }
+    # Everything above trunk except an empty, undescribed working copy.
+    let pending = (do {
+        ^jj --repository $workspace.root log -r 'heads((main@origin..@) ~ (@ & empty() & description(exact:"")))' --no-graph -T 'change_id ++ "\t" ++ commit_id ++ "\n"'
+    } | complete)
+    if $pending.exit_code != 0 { return ($facts | upsert error ($pending.stderr | str trim | lines | first)) }
+    let heads = ($pending.stdout | lines | where {|line| $line | is-not-empty } | each {|line|
+        let fields = ($line | split row "\t")
+        { change_id: ($fields | first) commit_id: ($fields | last) }
+    })
+    let squash = ($heads | length) == 1 and (squash-delivered $workspace.root ($heads | first))
+    $facts | upsert pending ($heads | is-not-empty) | upsert squash_delivered $squash
+}
+
+# Why prune must keep a workspace, or null when nothing in it is live: it is
+# missing, or nothing above trunk remains except an empty undescribed working
+# copy, or GitHub merged its exact topic head.
+def prune-verdict [facts: record] {
+    if $facts.name == "default" { return "default workspace" }
+    if $facts.current { return "current workspace" }
+    if not $facts.exists { return null }
+    if $facts.git_worktree { return "Git worktree; remove it with its owner" }
+    if $facts.codex_worktree { return "Codex worktree; archive its task instead" }
+    if $facts.owner == "active" { return "owned by an active task" }
+    if $facts.stale { return "stale; `jj-ci prune --apply` updates it and decides again" }
+    if $facts.error != null { return $"unreadable: ($facts.error)" }
+    if $facts.pending and not $facts.squash_delivered { return "has undelivered changes" }
     null
 }
 
@@ -1497,37 +1638,30 @@ def prune-checkpoints [root: string, cutoff: datetime, apply: bool] {
     $old | length
 }
 
-def "main prune" [
-    --apply # Forget and delete the listed workspaces and checkpoints
+# Prune is the backstop for owners that never released their workspace: a
+# crashed task, or a workspace created before `jj-ci start`.
+def --env "main prune" [
+    --apply # Update stale workspaces, then forget and delete the listed ones and checkpoints
     --keep-days: int = 14 # Keep checkpoints newer than this
 ] {
     fetch-origin
     let current = (git-command "locating the workspace" { ^jj root })
-    let workspaces = (git-command "listing workspaces" {
-        ^jj workspace list -T 'name ++ "\t" ++ root ++ "\n"'
-    } | lines | where {|line| $line | is-not-empty } | each {|line|
-        let fields = ($line | split row "\t")
-        { name: ($fields | first) root: ($fields | last) }
-    })
-    let reviewed = ($workspaces | each {|workspace|
-        let reason = if $workspace.root == $current { "current workspace" } else { workspace-keep-reason $workspace }
-        $workspace | insert keep $reason
+    if $apply { checkpoint "prune" }
+    let reviewed = (list-workspaces | each {|workspace|
+        let facts = (workspace-facts $workspace $current $apply)
+        $workspace | insert keep (prune-verdict $facts)
     })
     let removable = ($reviewed | where keep == null)
     let kept = ($reviewed | where keep != null)
     let cutoff = (date now) - ($keep_days * 1day)
-    if $apply and ($removable | is-not-empty) { checkpoint "prune" }
     for workspace in $removable {
-        if $apply {
-            run-command $"forgetting ($workspace.name)" { ^jj workspace forget $workspace.name } | ignore
-            if ($workspace.root | path exists) { rm --recursive $workspace.root }
-        }
+        if $apply { drop-workspace $workspace }
         print $"(if $apply { 'removed' } else { 'would remove' }) ($workspace.name): ($workspace.root)"
     }
     for workspace in $kept {
         print $"kept ($workspace.name): ($workspace.keep)"
     }
-    let checkpoints = ($kept | each {|workspace| prune-checkpoints $workspace.root $cutoff $apply } | math sum)
+    let checkpoints = ($kept | where {|workspace| $workspace.root | path exists } | each {|workspace| prune-checkpoints $workspace.root $cutoff $apply } | math sum)
     print $"(if $apply { 'Removed' } else { 'Would remove' }) ($checkpoints) checkpoint\(s) older than ($keep_days) days."
     if not $apply { print "Dry run only. Re-run with `jj-ci prune --apply` to remove them." }
 }

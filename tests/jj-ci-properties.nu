@@ -341,3 +341,45 @@ for-all "plan-order keeps published topics first and refactors early" {|key|
         }
     } | ignore
 }
+
+def gen-workspace-facts [key: string] {
+    let flag = {|name| (pick $"($key)/($name)" 2) == 0 }
+    {
+        name: (pick-from $"($key)/name" ["default" "topic" "other"])
+        current: (do $flag current)
+        exists: (do $flag exists)
+        git_worktree: (do $flag git)
+        codex_worktree: (do $flag codex)
+        owner: (pick-from $"($key)/owner" ["none" "active" "finished"])
+        stale: (do $flag stale)
+        error: (if (do $flag error) { "unreadable" } else { null })
+        pending: (do $flag pending)
+        squash_delivered: (do $flag squash)
+    }
+}
+
+for-all "prune never removes a workspace that is live or unknown" {|key|
+    let facts = (gen-workspace-facts $key)
+    if (prune-verdict $facts) == null {
+        assert ($facts.name != "default") "prune removed the default workspace"
+        assert (not $facts.current) "prune removed the current workspace"
+        if $facts.exists {
+            assert (not $facts.git_worktree) "prune removed a Git worktree"
+            assert (not $facts.codex_worktree) "prune removed a Codex worktree"
+            assert ($facts.owner != "active") "prune removed an owned workspace"
+            assert (not $facts.stale) "prune removed an unrefreshed workspace"
+            assert ($facts.error == null) "prune removed an unreadable workspace"
+            assert ((not $facts.pending) or $facts.squash_delivered) "prune removed undelivered work"
+        }
+    }
+}
+
+for-all "prune reclaims every released, delivered workspace" {|key|
+    let facts = (gen-workspace-facts $key | merge {
+        name: "topic" current: false exists: true git_worktree: false codex_worktree: false
+        stale: false error: null
+    })
+    let owner = (pick-from $"($key)/released" ["none" "finished"])
+    let delivered = (not $facts.pending) or $facts.squash_delivered
+    assert equal ((prune-verdict ($facts | upsert owner $owner)) == null) $delivered
+}
