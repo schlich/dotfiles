@@ -219,14 +219,25 @@ def require-ready-change [] {
     }
 }
 
-def conflicted-revisions [] {
-    let result = (^jj log -r 'conflicts() & ::@' --no-graph -T 'change_id ++ "\t" ++ description.first_line() ++ "\n"' | complete)
+def conflicted-revisions [stack: string = "::@"] {
+    let result = (^jj log -r $"conflicts\() & \(($stack)\)" --no-graph -T 'change_id ++ "\t" ++ description.first_line() ++ "\n"' | complete)
     if $result.exit_code != 0 { error make { msg: ($result.stderr | str trim) } }
     $result.stdout | lines | where {|line| $line | str trim | is-not-empty } | each {|line|
         let fields = ($line | split row "\t")
         {
             change_id: ($fields | first)
             description: ($fields | skip 1 | str join "\t")
+        }
+    }
+}
+
+def print-conflicted-files [revisions: list, indent: string] {
+    for $revision in $revisions {
+        print $"($indent)($revision.change_id) ($revision.description)"
+        let files = (^jj resolve --list -r $revision.change_id | complete)
+        if $files.exit_code == 0 {
+            let paths = ($files.stdout | lines | where {|line| $line | str trim | is-not-empty })
+            for $path in $paths { print $"($indent)  ($path)" }
         }
     }
 }
@@ -239,14 +250,7 @@ def print-conflicts [context: string] {
     }
 
     print $"($context): ($revisions | length) conflicted revision(s):"
-    for $revision in $revisions {
-        print $"  ($revision.change_id) ($revision.description)"
-        let files = (^jj resolve --list -r $revision.change_id | complete)
-        if $files.exit_code == 0 {
-            let paths = ($files.stdout | lines | where {|line| $line | str trim | is-not-empty })
-            for $path in $paths { print $"    ($path)" }
-        }
-    }
+    print-conflicted-files $revisions "  "
     print ""
     print $"Topic tip before selecting a revision: (current-topic-id)"
     print "Resolve each revision in order, then run `jj-ci conflicts` again."
@@ -271,6 +275,70 @@ def rebase-topic [] {
     } | ignore
     if (print-conflicts "Rebase completed") {
         error make { msg: "Rebase completed with conflicts. Resolve them before continuing." }
+    }
+}
+
+def revset-change-ids [revset: string] {
+    let result = (^jj log -r $revset --no-graph -T 'change_id.short() ++ "\n"' | complete)
+    if $result.exit_code != 0 { error make { msg: ($result.stderr | str trim) } }
+    $result.stdout | lines | where {|line| $line | str trim | is-not-empty }
+}
+
+# Bring one published topic up to date with main@origin. Conflicts stay
+# recorded in the local rewrite and block the push until someone resolves them.
+def refresh-topic [pr: record, push: bool] {
+    let bookmark = $pr.headRefName
+    let label = $"#($pr.number) ($bookmark)"
+    if (revset-change-ids $"bookmarks\(exact:'($bookmark)')" | is-empty) {
+        return { pr: $pr.number state: "no local bookmark" }
+    }
+    let stack = $"main@origin..($bookmark)"
+    let checked_out = (revset-change-ids $"\(($stack)):: & working_copies\()")
+    if ($checked_out | is-not-empty) {
+        print $"($label): checked out in a workspace at ($checked_out | str join ', '); run `jj-ci rebase` there."
+        return { pr: $pr.number state: "checked out" }
+    }
+    if (revset-change-ids $"main@origin & ~::($bookmark)" | is-not-empty) {
+        run-command $"rebasing ($bookmark) onto main@origin" {
+            ^jj rebase -b $bookmark -o main@origin
+        } | ignore
+    }
+    let conflicts = (conflicted-revisions $stack)
+    if ($conflicts | is-not-empty) {
+        print $"($label): ($conflicts | length) conflicted revision\(s), not pushed:"
+        print-conflicted-files $conflicts "  "
+        print "  Resolve oldest first: `jj new CHANGE_ID`, fix the files or run `jj resolve`, then `jj squash`."
+        return { pr: $pr.number state: "conflicted" }
+    }
+    let head = (revision-id $bookmark)
+    if $head == $pr.headRefOid {
+        return { pr: $pr.number state: "current" }
+    }
+    if not $push {
+        print $"($label): rebased cleanly to ($head | str substring 0..11); not pushed."
+        return { pr: $pr.number state: "ready to push" }
+    }
+    push-topic-bookmark $bookmark
+    if $pr.autoMergeRequest != null {
+        # Re-pin auto-merge to the rewritten head so it cannot merge anything else.
+        run-command $"re-enabling auto-merge for #($pr.number)" {
+            github pr merge $pr.number --auto --squash --delete-branch --match-head-commit $head
+        } | ignore
+    }
+    print $"($label): pushed ($head | str substring 0..11)."
+    { pr: $pr.number state: "pushed" }
+}
+
+def refresh-topics [push: bool] {
+    checkpoint "refresh"
+    fetch-origin
+    let prs = (git-command "listing open pull requests" {
+        github pr list --state open --base main --json number,headRefName,headRefOid,autoMergeRequest
+    } | from json)
+    let results = ($prs | each {|pr| refresh-topic $pr $push })
+    print ($results | table)
+    if ($results | where state == "conflicted" | is-not-empty) {
+        error make { msg: "Some topics have conflicts. Resolve them locally, then run `jj-ci refresh` again." }
     }
 }
 
@@ -386,7 +454,7 @@ def stack-merge [target: string] {
 }
 
 def main [] {
-    print "Use `jj-ci status`, `jj-ci sync`, `jj-ci rebase`, `jj-ci conflicts`, `jj-ci review snapshot`, `jj-ci interdiff`, `jj-ci finish`, `jj-ci validate`, `jj-ci publish`, `jj-ci github reconcile`, `jj-ci stack-merge`, or `jj-ci tangled stack-publish`."
+    print "Use `jj-ci status`, `jj-ci sync`, `jj-ci rebase`, `jj-ci refresh`, `jj-ci conflicts`, `jj-ci review snapshot`, `jj-ci interdiff`, `jj-ci finish`, `jj-ci validate`, `jj-ci publish`, `jj-ci github reconcile`, `jj-ci stack-merge`, or `jj-ci tangled stack-publish`."
 }
 
 def "main status" [] {
@@ -467,6 +535,12 @@ def "main interdiff" [old: string, new: string] {
 
 def "main rebase" [] {
     rebase-topic
+}
+
+def "main refresh" [
+    --no-push # Rebase and report conflicts without pushing or touching PRs
+] {
+    refresh-topics (not $no_push)
 }
 
 def "main conflicts" [] {
