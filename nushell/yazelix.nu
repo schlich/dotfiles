@@ -26,7 +26,7 @@ export def --env y [...args] {
 # Stable, readable session name: project basename plus a short path hash so
 # two checkouts with the same basename never share a session.
 export def yazelix-project-session-name [dir: path] {
-    let base = ($dir | path basename | str downcase | str replace --all --regex '[^a-z0-9_-]+' '-')
+    let base = ($dir | path basename | str lowercase | str replace --all --regex '[^a-z0-9_-]+' '-')
     let digest = ($dir | hash sha256 | str substring 0..5)
     $"($base)-($digest)"
 }

@@ -14,7 +14,7 @@ def maybe [value: any, default_value: any] {
 }
 
 def normalize-scope [value: string] {
-  let scope = ($value | str downcase)
+  let scope = ($value | str lowercase)
 
   if $scope in ["project" "user"] {
     $scope
