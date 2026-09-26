@@ -89,6 +89,10 @@
       url = "github:tt-a1i/archify";
       flake = false;
     };
+    typesafe-skills = {
+      url = "github:typesafe-ai/skills";
+      flake = false;
+    };
     meta-quest-agentic-tools = {
       url = "github:meta-quest/agentic-tools";
       flake = false;
