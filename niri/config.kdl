@@ -104,6 +104,7 @@ input {
 // Keep the primary contexts available even when they have no windows.
 workspace "snorkel"
 workspace "vcs"
+workspace "overview"
 workspace "config"
 workspace "scratch"
 
@@ -319,6 +320,12 @@ window-rule {
   open-on-workspace "vcs"
 }
 
+// Keep the project and workspace overview on its own named workspace.
+window-rule {
+  match app-id=r#"^niri-overview$"#
+  open-on-workspace "overview"
+}
+
 // Floating Noctalia settings window.
 window-rule {
   match app-id="dev.noctalia.Noctalia"
@@ -510,6 +517,8 @@ binds {
     // The primary named workspaces have stable direct shortcuts.
     Mod+1 { focus-workspace "snorkel"; }
     Mod+2 hotkey-overlay-title="JJ dashboard" { spawn "jj-dashboard"; }
+    Mod+3 hotkey-overlay-title="Project overview" { spawn-sh "exec terminal --class niri-overview --directory \"$HOME\" zellij --layout overview"; }
+    Mod+Shift+3 hotkey-overlay-title="Focus project overview" { focus-workspace "overview"; }
     Mod+0 { focus-workspace "config"; }
     Mod+Shift+1 { move-column-to-workspace "snorkel"; }
     Mod+Shift+2 { move-column-to-workspace "vcs"; }
@@ -524,14 +533,12 @@ binds {
     //
     // For example, with 2 workspaces + 1 empty, indices 3, 4, 5 and so on
     // will all refer to the 3rd workspace.
-    Mod+3 { focus-workspace 3; }
     Mod+4 { focus-workspace 4; }
     Mod+5 { focus-workspace 5; }
     Mod+6 { focus-workspace 6; }
     Mod+7 { focus-workspace 7; }
     Mod+8 { focus-workspace 8; }
     Mod+9 { focus-workspace 9; }
-    Mod+Shift+3 { move-column-to-workspace 3; }
     Mod+Shift+4 { move-column-to-workspace 4; }
     Mod+Shift+5 { move-column-to-workspace 5; }
     Mod+Shift+6 { move-column-to-workspace 6; }
