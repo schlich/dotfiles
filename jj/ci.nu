@@ -100,13 +100,17 @@ def publication-topics [] {
     (publication-state) | get topics? | default {}
 }
 
-def publication-slug [] {
-    let title = (current-change "description.first_line()")
+def slugify [title: string] {
     $title
     | str lowercase
     | str replace --all --regex "[^a-z0-9]+" "-"
-    | str trim --char "-"
     | str substring 0..47
+    # Trim after truncation so a cut at a word boundary leaves no dash.
+    | str trim --char "-"
+}
+
+def publication-slug [] {
+    slugify (current-change "description.first_line()")
 }
 
 def legacy-publication-bookmark [bookmark: string] {
@@ -153,8 +157,11 @@ def publication-bookmark [] {
     let legacy = $"jj-($topic_id)"
     if (legacy-publication-bookmark $legacy) { return $legacy }
 
+    new-publication-bookmark $topic_id (publication-slug)
+}
+
+def new-publication-bookmark [topic_id: string, slug: string] {
     let short_id = ($topic_id | str substring 0..7)
-    let slug = (publication-slug)
     let label = if ($slug | is-empty) { "topic" } else { $slug }
     $"jj-($label)-($short_id)"
 }
@@ -427,25 +434,30 @@ def stack-order [prs: list] {
     { ordered: $ordered unrooted: $remaining }
 }
 
+# Refresh PRs parent-first. A PR whose parent is conflicted or otherwise
+# blocked waits, and so does everything stacked above it.
+def refresh-outcomes [order: record, refresh: closure] {
+    mut results = ($order.unrooted | each {|pr| { pr: $pr.number branch: $pr.headRefName state: "base is not main or an open PR" } })
+    for pr in $order.ordered {
+        let parent = ($results | where branch == $pr.baseRefName | get 0?)
+        let blocked = $parent != null and $parent.state in ["conflicted" "parent not local" "waiting on parent"]
+        let outcome = if $blocked {
+            { pr: $pr.number branch: $pr.headRefName state: "waiting on parent" }
+        } else {
+            do $refresh $pr
+        }
+        $results = ($results | append $outcome)
+    }
+    $results
+}
+
 def refresh-topics [push: bool] {
     checkpoint "refresh"
     fetch-origin
     let prs = (git-command "listing open pull requests" {
         github pr list --state open --json number,headRefName,headRefOid,baseRefName,autoMergeRequest,labels
     } | from json)
-    let order = (stack-order $prs)
-    mut results = ($order.unrooted | each {|pr| { pr: $pr.number branch: $pr.headRefName state: "base is not main or an open PR" } })
-    for pr in $order.ordered {
-        let parent = ($results | where branch == $pr.baseRefName | get 0?)
-        let blocked = $parent != null and $parent.state in ["conflicted" "parent not local" "waiting on parent"]
-        let outcome = if $blocked {
-            print $"#($pr.number) ($pr.headRefName): waiting on its parent ($pr.baseRefName)."
-            { pr: $pr.number branch: $pr.headRefName state: "waiting on parent" }
-        } else {
-            refresh-topic $pr $push
-        }
-        $results = ($results | append $outcome)
-    }
+    let results = (refresh-outcomes (stack-order $prs) {|pr| refresh-topic $pr $push })
     print ($results | table)
     if ($results | where state == "conflicted" | is-not-empty) {
         error make { msg: "Some topics have conflicts. Resolve them locally, then run `jj-ci refresh` again." }
@@ -540,6 +552,33 @@ def plan-components [nodes: list<string>, edges: list] {
     $components
 }
 
+# Assign each conflict-free candidate a placement. Candidates arrive ordered
+# published-first, so a chain never stacks a published topic on unpublished work.
+def plan-proposals [candidates: list, edges: list] {
+    plan-components ($candidates | get tip) $edges | each {|component|
+        let chain = ($candidates | where tip in $component)
+        $chain | enumerate | each {|entry|
+            let action = if ($chain | length) == 1 {
+                "independent"
+            } else if $entry.index == 0 {
+                "base"
+            } else if $entry.index < $PLAN_MAX_STACK {
+                "stack"
+            } else {
+                "hold"
+            }
+            let parent = if $action == "stack" { $chain | get ($entry.index - 1) } else { null }
+            let proposal = match $action {
+                "independent" => "independent PR"
+                "base" => "base of stack"
+                "stack" => $"stack on ($parent.label)"
+                _ => $"hold until ($chain | get ($PLAN_MAX_STACK - 1) | get label) lands"
+            }
+            { tip: $entry.item.tip action: $action proposal: $proposal parent: $parent }
+        }
+    } | flatten
+}
+
 def build-plan [prs: list] {
     # Published topics go first so an open PR is never rebased onto unpublished work.
     let topics = (plan-topics $prs
@@ -562,29 +601,7 @@ def build-plan [prs: list] {
             (trial-merge $revisions).conflict
         }
         | each {|pair| { a: $pair.a.tip b: $pair.right.tip } })
-    let components = (plan-components ($candidates | get tip) $edges)
-    let proposals = ($components | each {|component|
-        let chain = ($candidates | where tip in $component)
-        $chain | enumerate | each {|entry|
-            let action = if ($chain | length) == 1 {
-                "independent"
-            } else if $entry.index == 0 {
-                "base"
-            } else if $entry.index < $PLAN_MAX_STACK {
-                "stack"
-            } else {
-                "hold"
-            }
-            let parent = if $action == "stack" { $chain | get ($entry.index - 1) } else { null }
-            let proposal = match $action {
-                "independent" => "independent PR"
-                "base" => "base of stack"
-                "stack" => $"stack on ($parent.label)"
-                _ => $"hold until ($chain | get ($PLAN_MAX_STACK - 1) | get label) lands"
-            }
-            { tip: $entry.item.tip action: $action proposal: $proposal parent: $parent }
-        }
-    } | flatten)
+    let proposals = (plan-proposals $candidates $edges)
     $topics | each {|topic|
         let placement = match $topic.main {
             "landed" => { action: "landed" proposal: "already in main; finish or abandon" parent: null }

@@ -6,7 +6,8 @@ EXTENDS Naturals, FiniteSets, TLC
 (*                                                                       *)
 (* The model abstracts command execution and remote failures. It tracks   *)
 (* only the safety-relevant facts: workspace ownership, topic readiness,  *)
-(* exact published head, conflict state, and verified delivery.           *)
+(* exact published head, conflict state, stacked-PR base, and verified    *)
+(* delivery.                                                              *)
 (***************************************************************************)
 
 CONSTANTS Heads, MainHeads
@@ -15,12 +16,17 @@ ASSUME Heads # {} /\ MainHeads # {}
 VARIABLES owner, active, head, base, conflict, validated,
           published, publishedHead, publishedValidated,
           publishedConflictFree, autoMergeHead, mergedHead,
-          delivered, workspaceBase
+          delivered, workspaceBase, prBase, deferred
 
 vars == <<owner, active, head, base, conflict, validated,
           published, publishedHead, publishedValidated,
           publishedConflictFree, autoMergeHead, mergedHead,
-          delivered, workspaceBase>>
+          delivered, workspaceBase, prBase, deferred>>
+
+(* prBase is "parent" while the topic is stacked on an open PR and "main"  *)
+(* once that parent has landed and GitHub retargets it. deferred records  *)
+(* the jj-ci:auto-merge label on a stacked PR.                            *)
+stackVars == <<prBase, deferred>>
 
 Init ==
     /\ owner = TRUE
@@ -37,6 +43,8 @@ Init ==
     /\ mergedHead = "none"
     /\ delivered = FALSE
     /\ workspaceBase = "topic"
+    /\ prBase \in {"main", "parent"}
+    /\ deferred = FALSE
 
 Edit ==
     /\ owner /\ active /\ ~delivered
@@ -47,24 +55,31 @@ Edit ==
                    publishedHead, publishedValidated,
                    publishedConflictFree, autoMergeHead, mergedHead,
                    delivered, workspaceBase>>
+    /\ UNCHANGED stackVars
 
+(* A rebase rewrites every commit in the topic, so the head changes too. *)
 RebaseClean ==
     /\ owner /\ active /\ ~conflict /\ ~delivered
-    /\ \E b \in MainHeads :
+    /\ \E b \in MainHeads, h \in Heads :
          /\ base' = b
+         /\ head' = h
     /\ validated' = FALSE
-    /\ UNCHANGED <<owner, active, head, conflict, published,
+    /\ UNCHANGED <<owner, active, conflict, published,
                    publishedHead, publishedValidated,
                    publishedConflictFree, autoMergeHead, mergedHead,
                    delivered, workspaceBase>>
+    /\ UNCHANGED stackVars
 
 RebaseConflicted ==
     /\ owner /\ active /\ ~conflict /\ ~delivered
+    /\ \E h \in Heads :
+         /\ head' = h
     /\ conflict' = TRUE
     /\ validated' = FALSE
-    /\ UNCHANGED <<owner, active, head, base, published, publishedHead,
+    /\ UNCHANGED <<owner, active, base, published, publishedHead,
                    publishedValidated, publishedConflictFree,
                    autoMergeHead, mergedHead, delivered, workspaceBase>>
+    /\ UNCHANGED stackVars
 
 Resolve ==
     /\ owner /\ active /\ conflict /\ ~delivered
@@ -73,6 +88,7 @@ Resolve ==
     /\ UNCHANGED <<owner, active, head, base, published, publishedHead,
                    publishedValidated, publishedConflictFree,
                    autoMergeHead, mergedHead, delivered, workspaceBase>>
+    /\ UNCHANGED stackVars
 
 Validate ==
     /\ owner /\ active /\ ~conflict /\ ~delivered
@@ -81,7 +97,9 @@ Validate ==
                    publishedHead, publishedValidated,
                    publishedConflictFree, autoMergeHead, mergedHead,
                    delivered, workspaceBase>>
+    /\ UNCHANGED stackVars
 
+(* Pushing a new head disarms auto-merge, which was pinned to the old one. *)
 Publish ==
     /\ owner /\ active /\ validated /\ ~conflict /\ ~delivered
     /\ published' = TRUE
@@ -91,18 +109,49 @@ Publish ==
     /\ autoMergeHead' = "none"
     /\ UNCHANGED <<owner, active, head, base, conflict, validated,
                    mergedHead, delivered, workspaceBase>>
+    /\ UNCHANGED stackVars
 
+(* A stacked PR would merge into its parent's branch, so the request is    *)
+(* recorded as a label instead of arming GitHub auto-merge. Arming a PR   *)
+(* that targets main removes any leftover label.                          *)
 RequestAutoMerge ==
     /\ owner /\ active /\ published /\ ~conflict /\ ~delivered
     /\ publishedHead = head
-    /\ autoMergeHead' = head
+    /\ IF prBase = "main"
+         THEN /\ autoMergeHead' = head
+              /\ deferred' = FALSE
+         ELSE /\ deferred' = TRUE
+              /\ UNCHANGED autoMergeHead
     /\ UNCHANGED <<owner, active, head, base, conflict, validated,
                    published, publishedHead, publishedValidated,
                    publishedConflictFree, mergedHead, delivered,
-                   workspaceBase>>
+                   workspaceBase, prBase>>
 
+(* The parent PR lands and GitHub retargets this PR to main. *)
+ParentLands ==
+    /\ prBase = "parent"
+    /\ prBase' = "main"
+    /\ UNCHANGED <<owner, active, head, base, conflict, validated,
+                   published, publishedHead, publishedValidated,
+                   publishedConflictFree, autoMergeHead, mergedHead,
+                   delivered, workspaceBase, deferred>>
+
+(* jj-ci refresh arms a deferred request once the PR targets main. *)
+ArmDeferred ==
+    /\ prBase = "main" /\ deferred
+    /\ published /\ ~conflict
+    /\ publishedHead = head
+    /\ autoMergeHead' = head
+    /\ deferred' = FALSE
+    /\ UNCHANGED <<owner, active, head, base, conflict, validated,
+                   published, publishedHead, publishedValidated,
+                   publishedConflictFree, mergedHead, delivered,
+                   workspaceBase, prBase>>
+
+(* GitHub merges the published head, by auto-merge or manually. *)
 Merge ==
     /\ published /\ ~conflict
+    /\ prBase = "main"
     /\ publishedHead = head
     /\ (autoMergeHead = head \/ autoMergeHead = "none")
     /\ mergedHead' = head
@@ -110,6 +159,7 @@ Merge ==
                    published, publishedHead, publishedValidated,
                    publishedConflictFree, autoMergeHead, delivered,
                    workspaceBase>>
+    /\ UNCHANGED stackVars
 
 DeliverToMain ==
     /\ mergedHead = head
@@ -119,6 +169,7 @@ DeliverToMain ==
                    published, publishedHead, publishedValidated,
                    publishedConflictFree, autoMergeHead, mergedHead,
                    workspaceBase>>
+    /\ UNCHANGED stackVars
 
 Finish ==
     /\ owner /\ active /\ ~conflict
@@ -129,9 +180,11 @@ Finish ==
     /\ UNCHANGED <<head, base, conflict, validated, published,
                    publishedHead, publishedValidated,
                    publishedConflictFree, autoMergeHead, mergedHead, delivered>>
+    /\ UNCHANGED stackVars
 
 Next == Edit \/ RebaseClean \/ RebaseConflicted \/ Resolve \/ Validate
-        \/ Publish \/ RequestAutoMerge \/ Merge \/ DeliverToMain \/ Finish
+        \/ Publish \/ RequestAutoMerge \/ ParentLands \/ ArmDeferred
+        \/ Merge \/ DeliverToMain \/ Finish
 
 Spec == Init /\ [][Next]_vars
 
@@ -150,6 +203,8 @@ TypeOK ==
     /\ mergedHead \in Heads \cup {"none"}
     /\ delivered \in BOOLEAN
     /\ workspaceBase \in {"topic", "main"}
+    /\ prBase \in {"main", "parent"}
+    /\ deferred \in BOOLEAN
 
 NoPublishWhileUnsafe ==
     published => publishedHead \in Heads /\ publishedValidated /\ publishedConflictFree
@@ -157,5 +212,12 @@ NoFinishWithConflict == ~(~owner /\ conflict)
 FinishLeavesMain == ~active => workspaceBase = "main"
 AutoMergePinsPublishedHead == autoMergeHead # "none" => autoMergeHead = publishedHead
 DeliveryIsPublishedHead == delivered => mergedHead = publishedHead
+
+(* GitHub auto-merge on a stacked PR would merge into the parent branch. *)
+AutoMergeOnlyTargetsMain == autoMergeHead # "none" => prBase = "main"
+DeferredOnlyWhileUnarmed == deferred => autoMergeHead = "none"
+MergeOnlyIntoMain == mergedHead # "none" => prBase = "main"
+(* An edit or rebase after merging keeps the topic undelivered. *)
+DeliveredHeadIsLocal == delivered => mergedHead = head
 
 ===============================================================

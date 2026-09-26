@@ -301,6 +301,37 @@
               ${pkgs.nushell}/bin/nu --no-config-file ${./tests/agent.nu}
               touch "$out"
             '';
+        jj-ci-model =
+          pkgs.runCommand "jj-ci-model-check"
+            {
+              nativeBuildInputs = [ pkgs.tlaplus ];
+            }
+            ''
+              cp ${./jj/JjCi.tla} JjCi.tla
+              cp ${./jj/JjCi.cfg} JjCi.cfg
+              tlc -metadir "$TMPDIR/tlc" -config JjCi.cfg JjCi.tla
+              touch "$out"
+            '';
+        jj-ci-properties =
+          let
+            src = lib.fileset.toSource {
+              root = ./.;
+              fileset = lib.fileset.unions [
+                ./jj/ci.nu
+                ./tests/jj-ci-properties.nu
+              ];
+            };
+          in
+          pkgs.runCommand "jj-ci-properties-check"
+            {
+              nativeBuildInputs = [ pkgs.nushell ];
+            }
+            ''
+              export HOME="$TMPDIR/home"
+              mkdir -p "$HOME"
+              nu --no-config-file -c "source ${src}/tests/jj-ci-properties.nu"
+              touch "$out"
+            '';
         whitespace =
           pkgs.runCommand "whitespace-check"
             {
