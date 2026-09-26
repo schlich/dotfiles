@@ -93,6 +93,10 @@
       url = "github:typesafe-ai/skills";
       flake = false;
     };
+    autoresearch = {
+      url = "github:uditgoenka/autoresearch";
+      flake = false;
+    };
     meta-quest-agentic-tools = {
       url = "github:meta-quest/agentic-tools";
       flake = false;

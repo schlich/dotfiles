@@ -105,6 +105,22 @@
         "type": "github"
       }
     },
+    "autoresearch": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786573603,
+        "narHash": "sha256-Hwxlit87HPoHLLDiX/Tz4L5ONvmDf5B71KhTePNLyhU=",
+        "owner": "uditgoenka",
+        "repo": "autoresearch",
+        "rev": "050e30dc4ba0974b03f2873111b9901ec3211390",
+        "type": "github"
+      },
+      "original": {
+        "owner": "uditgoenka",
+        "repo": "autoresearch",
+        "type": "github"
+      }
+    },
     "codex-desktop-linux": {
       "inputs": {
         "flake-utils": "flake-utils",
@@ -1644,6 +1660,7 @@
         "ai-usagebar": "ai-usagebar",
         "anthropic-skills": "anthropic-skills",
         "archify": "archify",
+        "autoresearch": "autoresearch",
         "codex-desktop-linux": "codex-desktop-linux",
         "den": "den",
         "determinate": "determinate",
