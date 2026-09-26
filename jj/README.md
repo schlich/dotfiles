@@ -1,5 +1,11 @@
 # JJ project workflow
 
+`JjCi.tla` is a bounded TLA+ state-machine model of topic rebase, conflict
+resolution, validation, publication, auto-merge, delivery, and workspace
+finish. `JjCi.cfg` supplies a small TLC state space for checking its safety
+invariants. The model intentionally abstracts command failures and detailed
+multi-revision stack topology; the operational rules below remain authoritative.
+
 Codex shell commands and OpenCode server shell execution receive a no-op
 `JJ_EDITOR` and an unpaginated `PAGER`. This keeps agent-run JJ commands from
 blocking on an editor or pager while leaving the normal interactive shell

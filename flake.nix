@@ -240,6 +240,7 @@
           nushell
           prek
           ripgrep
+          tlaplus
         ];
       };
 
