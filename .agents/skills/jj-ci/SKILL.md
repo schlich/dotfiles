@@ -59,14 +59,14 @@ Use the narrowest workflow that matches the request:
 | Inspect local and open-PR state | `jj-ci status` | Read-only, but includes GitHub PR state. |
 | Align an empty working copy with trunk | `jj-ci sync` | Fetches `origin`, advances `main`, and rebases onto `main@origin`. |
 | Check readiness and run repository gates | `jj-ci validate` | Describes an undescribed change, runs `jj fix -s @`, then Prek on the JJ file list. |
-| Publish the current change | `jj-ci publish` | Validates, creates or updates a stable bookmark and PR, and keeps editing the same change. |
+| Publish the current change | `jj-ci publish` | Validates, creates or updates a stable bookmark and PR, and keeps editing the same change. A new topic built on an open PR, or reported by `jj-ci plan` as conflicting with one, is restacked onto that PR's branch and opened with it as the base; conflicts must be resolved locally first. |
 | Decide whether a topic ships alone or stacked | `jj-ci plan` | Read-only apart from a fetch. Trial-merges in-flight topics (open-PR bookmarks and workspace changes) against `main@origin` and each other, then proposes independent PRs or stacks. `--json` for structured output. |
 | Update a topic from trunk | `jj-ci rebase` | Checkpoints, fetches, and rebases the same change. |
-| Update every published topic that fell behind trunk | `jj-ci refresh` | Requires an explicit user request. Rebases each local bookmark with an open PR onto `main@origin`, pushes only conflict-free stacks, and re-pins armed auto-merge. `--no-push` stops before any remote change. |
-| Finish a merged topic | `jj-ci finish` | Verifies the current head was merged and leaves an empty workspace on main before archiving. |
+| Update every published topic that fell behind trunk | `jj-ci refresh` | Requires an explicit user request. Restacks each local bookmark with an open PR onto its base (`main@origin`, or its parent PR's bookmark), parents first, dropping commits a squash-merge already delivered. Pushes only conflict-free stacks, re-pins armed auto-merge, and enables deferred auto-merge once a stacked PR targets `main`. `--no-push` stops before any remote change. |
+| Finish a merged topic | `jj-ci finish` | Verifies the current head was merged and leaves an empty workspace on main before archiving. Also accepts an empty workspace whose PR merged and whose commit a stacked child dropped. |
 | Capture a review version | `jj-ci review snapshot <label>` | Records the exact base and series tip for a later interdiff. |
 | Compare review versions | `jj-ci interdiff <old> <new>` | Runs a commit-by-commit `git range-diff` between named snapshots. |
-| Publish and request auto-merge | `jj-ci publish --auto-merge` | Requires an explicit user request because it changes GitHub PR state. |
+| Publish and request auto-merge | `jj-ci publish --auto-merge` | Requires an explicit user request because it changes GitHub PR state. On a stacked PR it adds the `jj-ci:auto-merge` label instead; `jj-ci refresh` enables auto-merge after GitHub retargets the PR to `main`. |
 | Inspect declared GitHub policy | `jj-ci github reconcile` | Dry run by default. |
 | Apply GitHub policy changes | `jj-ci github reconcile --apply` | Requires an explicit user request. |
 | Submit a validated PR stack | `jj-ci stack-merge <stack-or-pr>` | Requires an explicit user request and an already-ready stack. |
@@ -142,7 +142,7 @@ earlier topic's branch. Chains longer than three hold the remainder locally
 until a layer lands. Topics that conflict with `main` must be resolved with
 `jj-ci rebase` first. Never rebase an open PR onto unpublished work, and never
 rewrite another session's topic to build a stack; stack new work on top of it.
-Enable auto-merge on a stacked PR only after its base is `main`.
+Enable auto-merge on a stacked PR only after its base is `main`: `jj-ci publish --auto-merge` records the request as the `jj-ci:auto-merge` label, and `jj-ci refresh` enables it once GitHub retargets the PR after its parent merges. The same refresh restacks the child with `--skip-emptied`, which drops the parent's squash-merged commit.
 The plan detects textual conflicts only; strict required checks remain the
 gate for semantic breakage.
 

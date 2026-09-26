@@ -143,6 +143,10 @@
 - Once every layer is green at its current head, submit the stack with
   `jj-ci stack-merge <stack-or-pr>`. GitHub handles queue-compatible delivery
   to `main`.
+- `jj-ci publish` stacks a new topic on the open PR it is built on or
+  conflicts with, and `jj-ci refresh` restacks children after a parent
+  changes or merges. Never enable GitHub auto-merge on a PR whose base is
+  not `main`; `--auto-merge` defers it with the `jj-ci:auto-merge` label.
 - Do not run `gh stack init`, `add`, `submit`, `sync`, or `rebase`; they mutate
   Git-managed branches and violate the JJ boundary.
 
