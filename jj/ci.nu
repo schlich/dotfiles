@@ -346,6 +346,11 @@ def revset-change-ids [revset: string] {
 # until `jj-ci refresh` sees the PR retargeted to main.
 const AUTO_MERGE_LABEL = "jj-ci:auto-merge"
 
+# Marks a PR published on top of another PR. GitHub retargets it to main when
+# the parent merges, but its branch still carries the parent's original
+# commits until `jj-ci refresh` restacks it, so the label outlives the base.
+const STACKED_LABEL = "jj-ci:stacked"
+
 # Every change declares its effect on the built machines with an `Impact:`
 # trailer in its JJ description, ordered from least to most disruptive:
 #   refactor  every NixOS closure is unchanged (refactors, docs, CI, tooling)
@@ -509,14 +514,70 @@ def bookmark-revset [bookmark: string] {
 
 # Move the commits of `tip` that are in neither `onto` nor main onto `onto`.
 # Commits that become empty were already delivered (for example a squash-merged
-# parent) and are dropped. Returns the revset of the restacked topic.
-def restack [tip: string, onto: string] {
+# parent) and are dropped. Returns the revset of the restacked topic. With a
+# workspace root, the rebase runs there so that working copy moves with it
+# instead of going stale.
+def restack [tip: string, onto: string, workspace?: string] {
+    let repository = if $workspace == null { [] } else { [--repository $workspace] }
     if (revset-change-ids $"($onto) & ~::($tip)" | is-not-empty) {
         run-command $"rebasing ($tip) onto ($onto)" {
-            ^jj rebase -s $"roots\(::($tip) ~ ::($onto) ~ ::main@origin)" -o $onto --skip-emptied
+            ^jj ...$repository rebase -s $"roots\(::($tip) ~ ::($onto) ~ ::main@origin)" -o $onto --skip-emptied
         } | ignore
     }
     $"($onto)..($tip)"
+}
+
+# Names of the workspaces whose working copy is in `revset`.
+def workspaces-in [revset: string] {
+    let result = (^jj log -r $"\(($revset)) & working_copies\()" --no-graph -T 'working_copies.map(|w| w.name()).join("\n") ++ "\n"' | complete)
+    if $result.exit_code != 0 { error make { msg: ($result.stderr | str trim) } }
+    $result.stdout | lines | where {|name| $name | str trim | is-not-empty } | uniq
+}
+
+def workspace-root [name: string] {
+    run-command $"locating workspace ($name)" { ^jj workspace root --name $name }
+}
+
+# Restack a topic that other workspaces have checked out. Each one is
+# snapshotted first so no unrecorded edit is lost, the rebase runs only when a
+# trial merge predicts no conflict, and the remaining workspaces are updated
+# so none is left stale. Returns { stack } or, when the topic was left
+# untouched, { reason }.
+def restack-checked-out [bookmark: string, onto: string, workspaces: list<string>] {
+    let roots = ($workspaces | each {|name| workspace-root $name })
+    let unreachable = ($roots | where {|root| not ($root | path exists) })
+    if ($unreachable | is-not-empty) {
+        return { reason: $"cannot reach ($unreachable | str join ', ')" }
+    }
+    for root in $roots {
+        run-command $"snapshotting ($root)" { ^jj --repository $root status } | ignore
+    }
+    if (conflicted-revisions $"($onto)..($bookmark)" | is-not-empty) {
+        return { reason: "already conflicted" }
+    }
+    if (trial-merge [$onto (revision-id $bookmark)]).conflict {
+        return { reason: "would conflict" }
+    }
+    let stack = (restack $bookmark $onto ($roots | first))
+    for root in ($roots | skip 1) {
+        run-command $"updating ($root)" { ^jj --repository $root workspace update-stale } | ignore
+    }
+    { stack: $stack }
+}
+
+# Whether a published topic needs rewriting. Once a conflict-free PR is green
+# it merges regardless of how far main has moved, so rebasing it only restarts
+# CI. A stacked PR must follow its parent, a retargeted one must drop the
+# parent's squash-merged commits, and a conflicting one cannot merge at all.
+def refresh-needed [pr: record, all: bool] {
+    let labels = ($pr.labels | get name)
+    (
+        $all
+        or $pr.baseRefName != "main"
+        or $STACKED_LABEL in $labels
+        or $AUTO_MERGE_LABEL in $labels
+        or $pr.mergeable == "CONFLICTING"
+    )
 }
 
 def enable-auto-merge [pr: any, head: string] {
@@ -535,10 +596,13 @@ def request-deferred-auto-merge [pr: string] {
 # Bring one published topic up to date with its base: main@origin, or its
 # parent's bookmark for a stacked PR. Conflicts stay recorded in the local
 # rewrite and block the push until someone resolves them.
-def refresh-topic [pr: record, push: bool] {
+def refresh-topic [pr: record, push: bool, all: bool] {
     let bookmark = $pr.headRefName
     let label = $"#($pr.number) ($bookmark)"
     let result = {|state| { pr: $pr.number branch: $bookmark state: $state } }
+    if not (refresh-needed $pr $all) {
+        return (do $result "no rebase needed")
+    }
     if (revset-change-ids (bookmark-revset $bookmark) | is-empty) {
         return (do $result "no local bookmark")
     }
@@ -548,12 +612,17 @@ def refresh-topic [pr: record, push: bool] {
         print $"($label): parent branch ($pr.baseRefName) has no local bookmark."
         return (do $result "parent not local")
     }
-    let checked_out = (revset-change-ids $"\(($onto)..($bookmark)):: & working_copies\()")
-    if ($checked_out | is-not-empty) {
-        print $"($label): checked out in a workspace at ($checked_out | str join ', '); run `jj-ci rebase` there."
+    let workspaces = (workspaces-in $"\(($onto)..($bookmark))::")
+    let restacked = if ($workspaces | is-empty) {
+        { stack: (restack $bookmark $onto) }
+    } else {
+        restack-checked-out $bookmark $onto $workspaces
+    }
+    if $restacked.stack? == null {
+        print $"($label): checked out in ($workspaces | str join ', ') and ($restacked.reason); left untouched for that workspace to resolve."
         return (do $result "checked out")
     }
-    let stack = (restack $bookmark $onto)
+    let stack = $restacked.stack
     let conflicts = (conflicted-revisions $stack)
     if ($conflicts | is-not-empty) {
         print $"($label): ($conflicts | length) conflicted revision\(s), not pushed:"
@@ -586,6 +655,12 @@ def refresh-topic [pr: record, push: bool] {
             github pr edit $pr.number --remove-label $AUTO_MERGE_LABEL
         } | ignore
         print $"($label): now targets main; auto-merge enabled."
+    }
+    if not $stacked and ($pr.labels | any {|l| $l.name == $STACKED_LABEL }) {
+        # Restacked onto main: the parent's commits are gone from the branch.
+        git-command "removing the stacked label" {
+            github pr edit $pr.number --remove-label $STACKED_LABEL
+        } | ignore
     }
     do $result (if $changed { "pushed" } else { "current" })
 }
@@ -624,13 +699,13 @@ def refresh-outcomes [order: record, refresh: closure] {
     $results
 }
 
-def refresh-topics [push: bool] {
+def refresh-topics [push: bool, all: bool] {
     checkpoint "refresh"
     fetch-origin
     let prs = (git-command "listing open pull requests" {
-        github pr list --state open --json number,headRefName,headRefOid,baseRefName,autoMergeRequest,labels
+        github pr list --state open --json number,headRefName,headRefOid,baseRefName,autoMergeRequest,labels,mergeable
     } | from json)
-    let results = (refresh-outcomes (stack-order $prs) {|pr| refresh-topic $pr $push })
+    let results = (refresh-outcomes (stack-order $prs) {|pr| refresh-topic $pr $push $all })
     print ($results | table)
     if ($results | where state == "conflicted" | is-not-empty) {
         error make { msg: "Some topics have conflicts. Resolve them locally, then run `jj-ci refresh` again." }
@@ -902,7 +977,11 @@ def github-reconcile [apply: bool] {
     } | ignore
     ensure-impact-labels
     let protection = {
-        required_status_checks: { strict: true contexts: $required_checks }
+        # Not strict: a green PR merges without first catching up with main.
+        # PR builds already test the merge with main as of the run, and every
+        # push to main runs the full suite, so requiring an up-to-date branch
+        # would only force a rebase and a rebuild after every other merge.
+        required_status_checks: { strict: false contexts: $required_checks }
         enforce_admins: true
         # Changes reach main only through pull requests; no approval is needed.
         required_pull_request_reviews: {
@@ -1051,8 +1130,9 @@ def "main plan" [
 
 def "main refresh" [
     --no-push # Rebase and report conflicts without pushing or touching PRs
+    --all # Also rebase conflict-free PRs that are merely behind main
 ] {
-    refresh-topics (not $no_push)
+    refresh-topics (not $no_push) $all
 }
 
 def "main conflicts" [] {
@@ -1154,6 +1234,12 @@ def "main publish" [--auto-merge] {
         }
     }
     label-pull-request $url $impact
+    if $parent != null {
+        git-command "creating the stacked label" {
+            github label create $STACKED_LABEL --force --color 5319E7 --description "jj-ci restacks this PR onto main after its parent lands"
+        } | ignore
+        git-command "labelling the stacked pull request" { github pr edit $url --add-label $STACKED_LABEL } | ignore
+    }
     print $url
     print $"Impact: ($impact)"
     if $auto_merge {

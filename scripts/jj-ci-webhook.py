@@ -29,6 +29,7 @@ WORKFLOW = required_setting("JJ_CI_WEBHOOK_WORKFLOW")
 WEBHOOK_PATH = required_setting("JJ_CI_WEBHOOK_PATH")
 WEBHOOK_SECRET = required_setting("JJ_CI_WEBHOOK_SECRET").encode("utf-8")
 SYNC_COMMAND = shlex.split(required_setting("JJ_CI_WEBHOOK_SYNC_COMMAND"))
+REFRESH_COMMAND = shlex.split(required_setting("JJ_CI_WEBHOOK_REFRESH_COMMAND"))
 AGENT_COMMAND = shlex.split(required_setting("JJ_CI_WEBHOOK_AGENT_COMMAND"))
 LISTEN_ADDRESS = os.environ.get("JJ_CI_WEBHOOK_LISTEN_ADDRESS", "127.0.0.1")
 LISTEN_PORT = int(os.environ.get("JJ_CI_WEBHOOK_LISTEN_PORT", "8765"))
@@ -142,25 +143,28 @@ class WebhookWorker:
             self.seen.add(action["id"])
             return "queued"
 
-    def run_sync(self, head_sha: str) -> bool:
+    def run_local(self, label: str, command: list[str], head_sha: str) -> bool:
         logger.info(
-            "syncing %s after successful validation of %s", REPOSITORY, head_sha
+            "running %s for %s after successful validation of %s",
+            label,
+            REPOSITORY,
+            head_sha,
         )
         try:
             completed = subprocess.run(
-                SYNC_COMMAND,
+                command,
                 cwd=PROJECT_DIR,
                 check=False,
                 timeout=1800,
                 env=os.environ.copy(),
             )
         except (OSError, subprocess.TimeoutExpired) as error:
-            logger.exception("sync failed: %s", error)
+            logger.exception("%s failed: %s", label, error)
             return False
         if completed.returncode:
-            logger.error("sync failed with exit code %s", completed.returncode)
+            logger.error("%s failed with exit code %s", label, completed.returncode)
             return False
-        logger.info("sync completed for %s", head_sha)
+        logger.info("%s completed for %s", label, head_sha)
         return True
 
     def run_agent(self, context: dict) -> None:
@@ -216,10 +220,15 @@ Event context (JSON data):
         while True:
             action = self.pending.get()
             try:
-                if action["kind"] == "sync_and_triage" and not self.run_sync(
-                    action["head_sha"]
-                ):
-                    continue
+                if action["kind"] == "sync_and_triage":
+                    synced = self.run_local("sync", SYNC_COMMAND, action["head_sha"])
+                    # Refresh does not depend on the canonical checkout being
+                    # empty: it rewrites published topics by bookmark. It
+                    # pushes only conflict-free rebases, and a conflict exits
+                    # non-zero after reporting to the journal.
+                    self.run_local("refresh", REFRESH_COMMAND, action["head_sha"])
+                    if not synced:
+                        continue
                 logger.info("starting Codex triage for %s", action["id"])
                 self.run_agent(action["context"])
             finally:

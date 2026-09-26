@@ -68,7 +68,7 @@ Use the narrowest workflow that matches the request:
 | Publish the current change | `jj-ci publish` | Refuses unclassified or mixed-impact topics, then validates, creates or updates a stable bookmark and PR with a generated body and `impact:<class>` label, and keeps editing the same change. A new topic built on an open PR, or reported by `jj-ci plan` as conflicting with one, is restacked onto that PR's branch and opened with it as the base; conflicts must be resolved locally first. |
 | Decide whether a topic ships alone or stacked | `jj-ci plan` | Read-only apart from a fetch. Trial-merges in-flight topics (open-PR bookmarks and workspace changes) against `main@origin` and each other, then proposes independent PRs or stacks. `--json` for structured output. |
 | Update a topic from trunk | `jj-ci rebase` | Checkpoints, fetches, and rebases the same change. |
-| Update every published topic that fell behind trunk | `jj-ci refresh` | Requires an explicit user request. Restacks each local bookmark with an open PR onto its base (`main@origin`, or its parent PR's bookmark), parents first, dropping commits a squash-merge already delivered. Pushes only conflict-free stacks, re-pins armed auto-merge, and enables deferred auto-merge once a stacked PR targets `main`. `--no-push` stops before any remote change. |
+| Restack published topics after trunk moves | `jj-ci refresh` | The webhook runs it after every successful `main` build; run it by hand only on request. Restacks stacked, retargeted (`jj-ci:stacked`), and conflicting PRs onto their base (`main@origin`, or the parent PR's bookmark), parents first, dropping commits a squash-merge already delivered. Checked-out topics are rebased from their own workspace only when a trial merge is clean. Pushes only conflict-free stacks, re-pins armed auto-merge, and enables deferred auto-merge once a stacked PR targets `main`. `--all` also rebases PRs that are merely behind; `--no-push` stops before any remote change. |
 | Finish a merged topic | `jj-ci finish` | Verifies the current head was merged, deletes the topic bookmark locally and on both remotes, and leaves an empty workspace on main before archiving. Also accepts an empty workspace whose PR merged and whose commit a stacked child dropped. `--wait` polls until GitHub merges the current head, and stops without rewriting anything if the PR cannot merge unattended. |
 | Clean up finished workspaces | `jj-ci prune` | Dry run by default. Lists empty, undescribed, unowned workspaces on trunk and checkpoints older than `--keep-days`. `--apply` forgets and deletes them, which requires an explicit user request. |
 | Capture a review version | `jj-ci review snapshot <label>` | Records the exact base and series tip for a later interdiff. |
@@ -121,25 +121,31 @@ GitHub stack workflow; do not bypass it with direct branch or merge commands.
 ## Continuous integration and conflict handling
 
 The canonical checkout tracks `main`; active work belongs in a dedicated JJ
-workspace created from `main@origin`. Rebase after `main` advances, before
-each review update, and before queue entry. `jj-ci publish` and
+workspace created from `main@origin`. Rebase before each review update and
+when the topic conflicts with `main`; a conflict-free PR merges without
+catching up. `jj-ci publish` and
 `jj-ci stack-merge` perform a final rebase and validation before updating
 GitHub, so stale heads cannot enter the queue.
 
 Use `jj-ci conflicts` after a rebase to list conflicted revisions and files.
 A conflicted rebase has already rewritten the topic: resolve revisions from
 oldest to newest, then verify with `jj-ci conflicts` before validating.
-Never run an unattended auto-rebase or automatic conflict resolver.
+Never run an automatic conflict resolver. `jj-ci refresh` is the only
+unattended rebase.
 
-`jj-ci refresh` is the attended catch-up path for published topics that are
-not checked out anywhere, typically after strict required checks leave an
-auto-merge PR behind `main`. It skips any topic whose stack or descendants hold
-a workspace's working copy; run `jj-ci rebase` in that workspace instead. It
-uses JJ's recorded conflicts as the push gate: a conflicted topic stays
-rebased locally, its PR is untouched, and the command lists each conflicted
-revision and file. Resolve oldest first with `jj new CHANGE_ID`, edit the files
-or run `jj resolve`, `jj squash`, and then run `jj-ci refresh` again to push.
-Never resolve those conflicts automatically.
+`main` does not require an up-to-date branch, so a conflict-free PR merges
+without catching up with trunk. The local webhook runs `jj-ci refresh` after
+every successful `main` build. It rewrites only PRs that need it: a stacked PR
+whose parent moved, a PR retargeted to `main` after its parent merged (the
+`jj-ci:stacked` label), and a PR GitHub reports as conflicting. `--all` also
+rebases PRs that are merely behind. A topic checked out in a workspace is
+snapshotted and then rebased from that workspace, so its files move with it.
+If a trial merge predicts a conflict, the topic is left untouched for its
+owner. A topic that is not checked out uses JJ's recorded conflicts as the
+push gate: it stays rebased locally, its PR is untouched, and the command lists
+each conflicted revision and file. Resolve oldest first with
+`jj new CHANGE_ID`, edit the files or run `jj resolve`, `jj squash`, and then
+run `jj-ci refresh` again to push. Never resolve those conflicts automatically.
 
 Run `jj-ci plan` before publishing when other topics are in flight. It builds
 headless trial merges (`jj new --no-edit`) and abandons them, so no working
@@ -152,8 +158,9 @@ until a layer lands. Topics that conflict with `main` must be resolved with
 `jj-ci rebase` first. Never rebase an open PR onto unpublished work, and never
 rewrite another session's topic to build a stack; stack new work on top of it.
 Enable auto-merge on a stacked PR only after its base is `main`: `jj-ci publish --auto-merge` records the request as the `jj-ci:auto-merge` label, and `jj-ci refresh` enables it once GitHub retargets the PR after its parent merges. The same refresh restacks the child with `--skip-emptied`, which drops the parent's squash-merged commit.
-The plan detects textual conflicts only; strict required checks remain the
-gate for semantic breakage.
+The plan detects textual conflicts only. PR builds test the merge with `main`
+as of the run, and the full suite on every `main` push is the backstop for
+semantic breakage between PRs that merged concurrently.
 
 Herdr and Paseo may supervise one existing JJ workspace per topic, monitor
 trunk, PR freshness, checks, and queue state, and notify the owner when
