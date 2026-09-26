@@ -5,6 +5,18 @@ description: Essential patterns, idioms, and gotchas for writing Nushell code. I
 
 # Nushell Usage Patterns
 
+## Running Commands as an Agent
+
+Run shell work through the Nushell MCP `evaluate` tool, not a Bash tool call
+such as `cd <path>; <cmd>`. The tool takes only an `input` argument; it has no
+working-directory parameter. The session starts in the project directory and
+keeps its cwd between calls. Check the `cwd` field in each result, and `cd`
+only when switching directories. Results stay structured for follow-up
+filtering in `$history`.
+
+Prefer current command names; for example, use `str lowercase` (`str downcase`
+is deprecated since 0.114).
+
 ## Critical Distinctions
 
 ### Pipeline Input vs Parameters
@@ -315,7 +327,7 @@ ls | where type == file             # Simple and readable
 - Only field access on left side auto-expands
 - Subexpressions need explicit `$it`:
   ```nu
-  ls | where ($it.name | str downcase) =~ readme  # Need $it here
+  ls | where ($it.name | str lowercase) =~ readme  # Need $it here
   ```
 
 ### Closures (Full Flexibility)
