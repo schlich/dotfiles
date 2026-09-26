@@ -1,7 +1,6 @@
 {
   config,
   lib,
-  pkgs,
   ...
 }:
 
@@ -18,6 +17,6 @@
   dotfiles.tooling.terminals.ghostty.launcher = ''
     let class_args = if ($class | is-empty) { [] } else { [$"--class=($class)"] }
     let command_args = if ($args | is-empty) { [] } else { ["-e"] ++ $args }
-    ^${pkgs.ghostty}/bin/ghostty ...$class_args $"--working-directory=($directory)" ...$command_args
+    ^${lib.getExe config.programs.ghostty.package} ...$class_args $"--working-directory=($directory)" ...$command_args
   '';
 }
