@@ -85,7 +85,7 @@ Atuin history ID: ($event.atuin_history_id? | default "unknown")
 
     let script = $"
 let actor = r###'($actor)'###
-($actor) | .append xs.actor.terminal-triage.create
+$actor | .append xs.actor.terminal-triage.create
 "
     let result = (do -i { ^xs eval $store -c $script } | complete)
     if $result.exit_code != 0 {
