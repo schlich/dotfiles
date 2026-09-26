@@ -1,8 +1,8 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 
 {
   programs.helix = {
-    enable = true;
+    enable = config.dotfiles.alternates || config.dotfiles.primary.editor == "helix";
     extraPackages = with pkgs; [
       nixd
       nil

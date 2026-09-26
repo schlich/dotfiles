@@ -68,6 +68,23 @@ in
         type = types.str;
         description = "Primary imported AI harness.";
       };
+      desktopAgent = mkOption {
+        type = types.enum [
+          "codex"
+          "opencode"
+        ];
+        description = "Primary agent desktop client.";
+      };
+    };
+
+    alternates = mkOption {
+      type = types.bool;
+      default = true;
+      description = ''
+        Whether to install editors and agent desktop clients other than the
+        primary selections. Disabling it yields a closure with one tool per
+        category, which CI builds instead of the full workstation.
+      '';
     };
 
     tooling = {
