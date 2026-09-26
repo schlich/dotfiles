@@ -75,6 +75,7 @@
               "brightness"
               "battery"
               "codex_usage"
+              "claude_usage"
               "elrondforwin/opencode-go-usage:bar"
               "thepunkoff/pomodoro:widget"
             ];
@@ -159,6 +160,13 @@
           codex_usage = {
             type = "felipeartur/ai-usagebar:bar";
             vendor = "openai";
+            visualization = "gauge";
+            extras = "countdown";
+            show_name = true;
+          };
+          claude_usage = {
+            type = "felipeartur/ai-usagebar:bar";
+            vendor = "anthropic";
             visualization = "gauge";
             extras = "countdown";
             show_name = true;

@@ -81,6 +81,29 @@ let
         { Authorization: $"Bearer ($token)" } | to json --raw | print
     }
   '';
+  preferNushellGuard = pkgs.runCommand "claude-code-prefer-nushell" { } ''
+    install -Dm644 ${
+      pkgs.writers.writeJSON "plugin.json" {
+        name = "prefer-nushell";
+        description = "Ask before Bash calls so shell work defaults to the nushell MCP tool.";
+      }
+    } $out/.claude-plugin/plugin.json
+    install -Dm644 ${
+      pkgs.writers.writeJSON "hooks.json" {
+        hooks.PreToolUse = [
+          {
+            matcher = "Bash";
+            hooks = [
+              {
+                type = "command";
+                command = "${pkgs.nushell}/bin/nu ${./scripts/prefer-nushell-bash.nu}";
+              }
+            ];
+          }
+        ];
+      }
+    } $out/hooks/hooks.json
+  '';
 in
 {
   imports = [ ./common.nix ];
@@ -110,6 +133,7 @@ in
     );
     plugins.jj-guard = jjGuard;
     plugins.jev-bash-guard = jevBashGuard;
+    plugins.prefer-nushell = preferNushellGuard;
   };
 
   dotfiles.tooling.ai.claude-code = {
