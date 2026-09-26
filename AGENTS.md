@@ -135,13 +135,15 @@
   archive-button clicks are not a closeout hook.
 - GitHub owns PR state, required checks, and delivery to `main`. Do not bypass
   protection with direct pushes or manual merge commands.
-- The required `nix-ci` checks build the headless NixOS bootstrap first, then
-  the desktop NixOS system and Home Manager, alongside Niri, Zellij, and
-  whitespace checks. `main` requires those checks and linear history but not
-  an up-to-date branch: PR builds test the merge with `main` as of the run.
-  Pull requests that touch only Home Manager inputs (the paths listed in the
-  `changes` job of `nix-ci.yml`) run just the Home Manager check; pushes to
-  `main` always run the full suite as the post-merge backstop.
+- `nix-ci` runs every attribute of the flake's `checks.x86_64-linux` output
+  as its own job, including the headless and primary desktop system builds,
+  and `nix flake checks` aggregates them. Add a CI check by adding a flake
+  check; the workflow and branch protection need no change. Jobs skip checks
+  whose outputs are already in the binary cache, so unchanged checks pass
+  without rebuilding. `main` requires `impact classification`, the
+  aggregate (still reported under the legacy system and Home Manager check
+  names until branch protection is reconciled), and linear history but not an
+  up-to-date branch: PR builds test the merge with `main` as of the run.
 - `jj-ci github reconcile` reports the declared GitHub policy. Use
   `jj-ci github reconcile --apply` only when intentionally reconciling
   auto-merge, branch deletion, and `main` protection.
@@ -205,9 +207,10 @@
 - Do not automatically switch the current system. Build and evaluate first; any `nixos-rebuild test` or activation remains a deliberate manual operation.
 - The architecture and safe recovery flow are documented in `docs/architecture.md`.
 
-Repository checks are `nix fmt`, `nix flake check path:.`, and (when explicitly
-requested because they are expensive) the workstation and headless system
-builds. `nixos-rebuild switch` is never an agent validation step.
+Repository checks are `nix fmt` and `nix flake check --no-build path:.`. The
+flake checks include the workstation and headless system builds, so build them
+only when explicitly requested because they are expensive; `nix-fast-build --skip-cached --flake path:.#checks.x86_64-linux` runs the same set as CI.
+`nixos-rebuild switch` is never an agent validation step.
 
 ## Continuous integration and merge-conflict policy
 
