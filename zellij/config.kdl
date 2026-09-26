@@ -4,5 +4,6 @@ keybinds {
     }
 }
 
-// Load the repository-managed two-pane work layout for new sessions.
+// Load the repository-managed work layout for new sessions, including the
+// persistent "main" session Niri attaches to at startup.
 default_layout "default"

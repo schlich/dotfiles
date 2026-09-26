@@ -260,6 +260,11 @@ layout {
 // See the binds section below for more spawn examples.
 // spawn-at-startup "noctalia-shell"
 
+// Start (or reattach to) the persistent "main" Zellij session on the snorkel
+// workspace, and land there instead of whichever workspace happens to be first.
+spawn-sh-at-startup "exec terminal --class niri-terminal --directory \"$HOME/starfish-projects\" zellij attach --create main"
+spawn-sh-at-startup "niri msg action focus-workspace snorkel"
+
 hotkey-overlay {
     skip-at-startup
 }
