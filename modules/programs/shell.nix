@@ -64,6 +64,8 @@ in
       source ${../../mcp/agent-shell.nu}
       source ${../../mcp/terminal-events.nu}
       setup-terminal-events
+      source ${../../nushell/yazelix.nu}
+      setup-yazelix-projects
     '';
   };
 
@@ -82,23 +84,6 @@ in
       git_branch.disabled = true;
       git_commit.disabled = true;
       git_status.disabled = true;
-    };
-  };
-
-  programs.yazi = {
-    enable = true;
-    enableNushellIntegration = true;
-    shellWrapperName = "y";
-    settings = {
-      manager = {
-        show_hidden = false;
-        sort_by = "modified";
-        sort_dir_first = true;
-      };
-      preview = {
-        max_width = 1000;
-        max_height = 1000;
-      };
     };
   };
 
