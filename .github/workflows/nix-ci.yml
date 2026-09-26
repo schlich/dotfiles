@@ -35,7 +35,20 @@ jobs:
           if ((${#changed_files[@]} == 0)); then
             exit 0
           fi
-          nix run --no-update-lock-file github:denful/checkmate#fmt --override-input target github:$GITHUB_REPOSITORY/$GITHUB_SHA -- --ci --on-unmatched warn "${changed_files[@]}"
+          markdown_files=()
+          other_files=()
+          for file in "${changed_files[@]}"; do
+            case "$file" in
+              *.md|*.mdx) markdown_files+=("$file") ;;
+              *) other_files+=("$file") ;;
+            esac
+          done
+          if ((${#markdown_files[@]} > 0)); then
+            nix run --no-update-lock-file github:denful/checkmate#fmt --override-input target github:$GITHUB_REPOSITORY/$GITHUB_SHA -- --ci --formatters mdformat --on-unmatched warn "${markdown_files[@]}"
+          fi
+          if ((${#other_files[@]} > 0)); then
+            nix run --no-update-lock-file github:denful/checkmate#fmt --override-input target github:$GITHUB_REPOSITORY/$GITHUB_SHA -- --ci --on-unmatched warn "${other_files[@]}"
+          fi
       - name: Run Checkmate nix-unit tests
         run: nix build --no-update-lock-file -L github:denful/checkmate#checks.x86_64-linux.nix-unit --override-input target github:$GITHUB_REPOSITORY/$GITHUB_SHA
   headless-system:
