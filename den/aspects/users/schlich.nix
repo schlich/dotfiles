@@ -14,6 +14,7 @@
         terminal = "ghostty";
         editor = "helix";
         ai = "opencode";
+        desktopAgent = "opencode";
       };
     };
   };

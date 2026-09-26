@@ -1,4 +1,5 @@
 {
+  config,
   inputs,
   lib,
   pkgs,
@@ -24,7 +25,7 @@ in
   ) skills;
 
   programs.zed-editor = {
-    enable = true;
+    enable = config.dotfiles.alternates || config.dotfiles.primary.editor == "zed";
     userSettings = {
       # This covers Zed's built-in terminal and task runner. ACP agent tool
       # shells are selected independently by Zed and currently cannot be

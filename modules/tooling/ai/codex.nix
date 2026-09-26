@@ -1,4 +1,9 @@
-{ inputs, pkgs, ... }:
+{
+  config,
+  inputs,
+  pkgs,
+  ...
+}:
 
 let
   skills = import ./shared-skills.nix { inherit inputs; };
@@ -22,7 +27,7 @@ in
   };
 
   programs.codexDesktopLinux = {
-    enable = true;
+    enable = config.dotfiles.alternates || config.dotfiles.primary.desktopAgent == "codex";
     # The desktop launcher must use the same configured wrapper as the CLI.
     cliPackage = codex;
   };

@@ -159,11 +159,16 @@
           }) denEval.config.den.hosts.x86_64-linux
         )
       );
+      homeEvaluation = pkgs.writeText "home-manager-evaluation" (
+        # Instantiate the activation derivation without pulling its desktop closure into CI.
+        builtins.unsafeDiscardStringContext
+          "${denAsus.config.home-manager.users.schlich.home.activationPackage.drvPath}\n"
+      );
       homeCheck = pkgs.linkFarm "home-manager-check" (
         [
           {
-            name = "activation";
-            path = denAsus.config.home-manager.users.schlich.home.activationPackage;
+            name = "evaluation";
+            path = homeEvaluation;
           }
         ]
         ++ lib.mapAttrsToList (checkName: path: {
@@ -171,18 +176,22 @@
           inherit path;
         }) denAsus.config.home-manager.users.schlich.dotfiles.tooling.checks
       );
-      denHostEvaluationCheck = pkgs.runCommand "den-host-evaluation-check" { } ''
-        cat > "$out" <<'EOF'
-        ${lib.concatStringsSep "" (
-          lib.mapAttrsToList (
-            name: host: "${name}: ${host.config.networking.hostName}\n"
-          ) denFlake.nixosConfigurations
-        )}
-        EOF
-      '';
-      denHostBuildChecks = lib.mapAttrs' (
-        name: host: lib.nameValuePair "den-host-build-${name}" host.config.system.build.toplevel
-      ) denFlake.nixosConfigurations;
+      denHostEvaluationCheck = pkgs.writeText "den-host-evaluation" (
+        # Keep all host derivations evaluated without adding their closures as inputs.
+        builtins.unsafeDiscardStringContext (
+          lib.concatStringsSep "" (
+            lib.mapAttrsToList (
+              name: host:
+              "${name}: ${host.config.networking.hostName}: ${host.config.system.build.toplevel.drvPath}\n"
+            ) denFlake.nixosConfigurations
+          )
+        )
+      );
+      # The workstation with only its primary terminal, editor, and agent
+      # desktop client; CI builds this closure and only evaluates the full one.
+      denAsusPrimary = denAsus.extendModules {
+        modules = [ { home-manager.users.schlich.dotfiles.alternates = false; } ];
+      };
       denPolicyCheck =
         pkgs.runCommand "den-policy-check"
           {
@@ -214,6 +223,7 @@
       packages.${system} = {
         default = denFlake.nixosConfigurations.asus.config.system.build.toplevel;
         headless = denFlake.nixosConfigurations.asus-headless.config.system.build.toplevel;
+        desktop-primary = denAsusPrimary.config.system.build.toplevel;
         jj = pkgs.jujutsu;
         jjui = pkgs.jjui;
       };
@@ -317,8 +327,7 @@
               fi
               touch "$out"
             '';
-      }
-      // denHostBuildChecks;
+      };
     };
   nixConfig = {
     extra-substituters = [
