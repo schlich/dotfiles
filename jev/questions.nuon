@@ -36,23 +36,18 @@
     }
   }
   bash_guard: {
+    # Jev answers only Choice, Score, and Noul questions; it cannot write a
+    # translation. At or above this probability the call is denied so the
+    # agent retries in Nushell; below it the user confirms the Bash call.
+    min_nushell_rewrite: 0.8
     questions: {
-      action: {
-        type: choice
-        instructions: "Choose how to handle this Claude Code Bash tool call using the command in bash_command and cwd. Select retry_nushell when the agent can confidently rewrite it in Nushell, translate_to_nushell only when you can provide an equivalent Nushell source in nushell_command, and ask_bash when Bash is appropriate, the translation is uncertain, or the command has destructive, privileged, external, or otherwise meaningful side effects."
+      nushell_rewrite: {
+        type: noul
+        instructions: "The shell command in `bash_command` is read-only file inspection, searching, listing, or text and data processing (for example pipelines built from cat, grep, rg, sed, awk, find, ls, wc, jq, head, tail, sort, or cut) that an agent could straightforwardly rewrite as an equivalent Nushell pipeline."
         criteria: {
-          retry_nushell: "Block this call and ask the agent to reformulate it using Nushell syntax."
-          translate_to_nushell: "Translate confidently to Nushell; provide only the complete source in nushell_command."
-          ask_bash: "Require the user to confirm running the original Bash command."
+          "true": "The command only reads and transforms files or text, and Nushell's built-in commands can express it directly"
+          "false": "The command runs a program for its own behavior or side effects, such as a build, version-control operation, package manager, service, network client, or privileged action, or the rewrite would be uncertain"
         }
-      }
-      nushell_command: {
-        type: text
-        instructions: "When action is translate_to_nushell, provide only the complete equivalent Nushell source. Otherwise leave this empty. Do not add operations or guess about ambiguous behavior."
-      }
-      reason: {
-        type: text
-        instructions: "Briefly explain the selected handling and any translation assumptions."
       }
     }
   }

@@ -60,7 +60,7 @@ let
             hooks = [
               {
                 type = "command";
-                command = "${pkgs.coreutils}/bin/env JEV_NUSHELL=${pkgs.nushell}/bin/nu ${jev}/bin/jev bash-guard";
+                command = "${jev}/bin/jev bash-guard";
               }
             ];
           }
