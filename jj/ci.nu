@@ -206,7 +206,7 @@ def push-tangled-stack [] {
         error make { msg: "The current topic has no revisions above main@origin." }
     }
 
-    print $"Publishing ($revisions | length) Tangled stack layer(s) for series ($series):"
+    print $"Publishing ($revisions | length) Tangled stack layer\(s) for series ($series):"
     for revision in $revisions {
         let branch = $"stack/($series)/($revision.change_id)"
         run-command $"pushing ($branch) to tangled" {
@@ -290,7 +290,7 @@ def print-conflicts [context: string] {
         return false
     }
 
-    print $"($context): ($revisions | length) conflicted revision(s):"
+    print $"($context): ($revisions | length) conflicted revision\(s):"
     print-conflicted-files $revisions "  "
     print ""
     print $"Topic tip before selecting a revision: (current-topic-id)"
