@@ -85,6 +85,25 @@ jobs:
             echo "zellij=$zellij"
             echo "checkmate=$checkmate"
           } >> "$GITHUB_OUTPUT"
+  impact:
+    # Every commit carries an Impact trailer; a refactor must leave every
+    # NixOS closure identical to the merge base. Queue and main runs were
+    # already classified on their pull request.
+    name: impact classification
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: DeterminateSystems/determinate-nix-action@v3.21.9
+      - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
+      - name: Classify and verify the pull request
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: nix run --inputs-from . nixpkgs#nushell -- jj/ci.nu impact check "$BASE" "$HEAD"
   checkmate:
     name: Checkmate formatting and unit-test skeleton
     needs: changes

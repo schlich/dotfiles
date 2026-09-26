@@ -248,3 +248,96 @@ for-all "plan proposals respect the stack limit and publication order" {|key|
         }
     }
 }
+
+# Impact classes: trailers, PR classification, release numbering, and plan order.
+
+# "" stands for a missing trailer; `each` would drop a null.
+const IMPACT_VALUES = ["refactor" "behavior" "breaking" "Refactor" "BEHAVIOR" "chore" ""]
+
+def gen-impacts [key: string] {
+    0..<(1 + (pick $"($key)/count" 5)) | each {|i| pick-from $"($key)/($i)" $IMPACT_VALUES }
+}
+
+def with-trailer [key: string, impact: any] {
+    let title = (gen-title $"($key)/title")
+    let body = if (pick $"($key)/body" 2) == 0 { "" } else { $"\n\n(gen-title $'($key)/body-text')" }
+    if ($impact | is-empty) { $"($title)($body)\n" } else { $"($title)($body)\n\nImpact: ($impact)\n" }
+}
+
+for-all "parse-impact reads the trailer case-insensitively" {|key|
+    let impact = (pick-from $"($key)/impact" $IMPACT_VALUES)
+    assert equal (parse-impact (with-trailer $key $impact)) ($impact | str lowercase)
+}
+
+for-all "description-body drops the subject and the trailer" {|key|
+    let impact = (pick-from $"($key)/impact" ["refactor" "behavior" "breaking"])
+    let description = (with-trailer $key $impact)
+    let body = (description-body $description)
+    assert equal (parse-impact $body) ""
+    assert equal $body ($description | lines | skip 1 | drop 1 | str join "\n" | str trim)
+}
+
+for-all "combine-impacts never mixes refactors with user-facing changes" {|key|
+    let impacts = (gen-impacts $key | each {|impact| $impact | str lowercase })
+    let result = (combine-impacts $impacts)
+    assert (($result.impact == null) != ($result.problem == null)) "exactly one of impact and problem"
+    if ($impacts | any {|impact| $impact not-in $IMPACTS }) {
+        assert equal $result.impact null
+    } else if ($impacts | all {|impact| $impact == "refactor" }) {
+        assert equal $result.impact "refactor"
+    } else if "refactor" in $impacts {
+        assert equal $result.impact null
+    } else {
+        assert equal $result.impact (if "breaking" in $impacts { "breaking" } else { "behavior" })
+    }
+}
+
+for-all "next-version is unique and increments per day" {|key|
+    let dates = ["2026.09.26" "2026.09.27" "2026.10.01"]
+    mut tags = []
+    for i in 0..<(pick $"($key)/count" 12) {
+        let date = (pick-from $"($key)/($i)" $dates)
+        let version = (next-version $date $tags)
+        assert ($version not-in $tags) $"($version) was already released"
+        assert ($version | str starts-with $"($date).")
+        $tags = ($tags | append $version)
+    }
+    for date in $dates {
+        let serials = ($tags | where {|tag| $tag | str starts-with $"($date)." } | each {|tag| $tag | split row "." | last | into int })
+        if ($serials | is-not-empty) {
+            assert equal $serials (1..($serials | length) | each {|n| $n })
+        }
+    }
+}
+
+for-all "pull-request-body ends with the impact trailer" {|key|
+    let impact = (pick-from $"($key)/impact" ["refactor" "behavior" "breaking"])
+    let revisions = (0..<(1 + (pick $"($key)/count" 3)) | each {|i|
+        { change_id: $"c($i)" description: (with-trailer $"($key)/($i)" $impact) }
+    })
+    let body = (pull-request-body $revisions $impact)
+    assert equal (parse-impact $body) $impact
+    assert equal ($body | lines | last) $"Impact: ($impact)"
+    assert equal ($body | str contains "## Manual steps") ($impact == "breaking")
+}
+
+for-all "plan-order keeps published topics first and refactors early" {|key|
+    let topics = (0..<(pick $"($key)/count" 8) | each {|i|
+        {
+            tip: $"t($i)"
+            pr: (if (pick $"($key)/pr/($i)" 2) == 0 { 100 + $i } else { null })
+            impact: (pick-from $"($key)/impact/($i)" ["refactor" "behavior" "breaking" null])
+            timestamp: (pick $"($key)/time/($i)" 1000)
+        }
+    })
+    let ordered = (plan-order $topics)
+    assert equal ($ordered | length) ($topics | length)
+    $ordered | window 2 | each {|pair|
+        let a = ($pair | first)
+        let b = ($pair | last)
+        assert (($a.pr != null) or ($b.pr == null)) "an unpublished topic precedes a published one"
+        if (($a.pr == null) == ($b.pr == null)) {
+            assert ((impact-order $a.impact) <= (impact-order $b.impact)) "a user-facing topic precedes a refactor"
+        }
+    } | ignore
+}

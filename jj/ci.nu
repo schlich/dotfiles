@@ -330,6 +330,163 @@ def revset-change-ids [revset: string] {
 # until `jj-ci refresh` sees the PR retargeted to main.
 const AUTO_MERGE_LABEL = "jj-ci:auto-merge"
 
+# Every change declares its effect on the built machines with an `Impact:`
+# trailer in its JJ description, ordered from least to most disruptive:
+#   refactor  every NixOS closure is unchanged (refactors, docs, CI, tooling)
+#   behavior  user-facing change; landing it cuts a CalVer release
+#   breaking  user-facing change whose description body lists manual steps
+const IMPACTS = ["refactor" "behavior" "breaking"]
+const IMPACT_LABELS = {
+    refactor: "Closure-neutral: no NixOS generation changes"
+    behavior: "User-facing change: cuts a CalVer release"
+    breaking: "User-facing change that needs manual steps"
+}
+const IMPACT_TRAILER = '^(?i)impact:\s*(?P<value>\S+)\s*$'
+
+# The last `Impact:` trailer value in a description, lowercased, or "" when
+# there is none. Not null: `each` drops null results, which would hide an
+# unclassified revision from `combine-impacts`.
+def parse-impact [description: string] {
+    let values = ($description | lines | parse --regex $IMPACT_TRAILER | get value | str lowercase)
+    if ($values | is-empty) { "" } else { $values | last }
+}
+
+# A description without its subject line and `Impact:` trailer.
+def description-body [description: string] {
+    $description
+    | lines
+    | skip 1
+    | where {|line| $line | parse --regex $IMPACT_TRAILER | is-empty }
+    | str join "\n"
+    | str trim
+}
+
+# The impact of one PR from the impacts of its revisions. Squash merging turns
+# a PR into one commit on main, so a refactor must not share a PR with a
+# user-facing change: it would lose its closure-neutral guarantee and ship
+# inside a release. Returns { impact, problem } with exactly one non-null.
+def combine-impacts [impacts: list] {
+    if ($impacts | is-empty) {
+        return { impact: null problem: "The topic has no revisions to classify." }
+    }
+    let invalid = ($impacts | where {|impact| $impact not-in $IMPACTS })
+    if ($invalid | is-not-empty) {
+        return { impact: null problem: $"Every revision needs an `Impact: ($IMPACTS | str join '|')` trailer." }
+    }
+    let user_facing = ($impacts | where {|impact| $impact != "refactor" })
+    if ($user_facing | is-empty) {
+        { impact: "refactor" problem: null }
+    } else if ($user_facing | length) != ($impacts | length) {
+        { impact: null problem: "This topic mixes refactor and user-facing revisions. Publish the refactor as its own topic, or as the parent layer of a stack if the change depends on it." }
+    } else if "breaking" in $user_facing {
+        { impact: "breaking" problem: null }
+    } else {
+        { impact: "behavior" problem: null }
+    }
+}
+
+# Sort key that lands refactors before user-facing changes.
+def impact-order [impact: any] {
+    if $impact == "refactor" { 0 } else { 1 }
+}
+
+# The next CalVer release for `date` (YYYY.MM.DD) given the existing tags.
+def next-version [date: string, tags: list<string>] {
+    let pattern = ('^' + ($date | str replace --all '.' '\.') + '\.(?P<serial>[0-9]+)$')
+    let serials = ($tags | parse --regex $pattern | get serial | into int)
+    let serial = if ($serials | is-empty) { 1 } else { ($serials | math max) + 1 }
+    $"($date).($serial)"
+}
+
+# The PR body generated from the topic's revisions. The trailing trailer
+# becomes part of the squash commit on main, where `jj-ci release` reads it.
+def pull-request-body [revisions: list, impact: string] {
+    let summary = ($revisions | each {|revision|
+        let title = ($revision.description | lines | first)
+        let body = (description-body $revision.description)
+        if ($body | is-empty) or $impact == "breaking" {
+            $"- ($title)"
+        } else {
+            $"- ($title)\n\n($body | lines | each {|line| if ($line | is-empty) { '' } else { $'  ($line)' } } | str join "\n")"
+        }
+    } | str join "\n")
+    let meaning = match $impact {
+        "refactor" => "No NixOS generation changes; CI verifies that every host closure is identical to the base. Landing it cuts no release."
+        "behavior" => "Changes user-facing behavior. Landing it cuts a CalVer release (`YYYY.MM.DD.N`); activate it deliberately."
+        _ => "Changes user-facing behavior and needs the manual steps below when activating. Landing it cuts a CalVer release."
+    }
+    let steps = if $impact == "breaking" {
+        let text = ($revisions | each {|revision| description-body $revision.description } | where {|body| $body | is-not-empty } | str join "\n\n")
+        $"\n## Manual steps\n\n($text)\n"
+    } else { "" }
+    $"## Summary\n\n($summary)\n\n## Impact\n\n**($impact)**: ($meaning)\n($steps)\n## Validation\n\n- `jj-ci validate`\n\nImpact: ($impact)"
+}
+
+# Revisions in `base..@`, oldest first, with full descriptions.
+def layer-revisions [base: string] {
+    revisions-in $"($base)..@"
+}
+
+def revisions-in [revset: string] {
+    let result = (^jj log -r $revset --no-graph -T 'change_id.short() ++ "\t" ++ description.escape_json() ++ "\n"' | complete)
+    if $result.exit_code != 0 { error make { msg: ($result.stderr | str trim) } }
+    $result.stdout
+    | lines
+    | where {|line| $line | str trim | is-not-empty }
+    | reverse
+    | each {|line|
+        let fields = ($line | split row "\t")
+        { change_id: ($fields | first) description: ($fields | skip 1 | str join "\t" | from json) }
+    }
+}
+
+def require-impact [revisions: list] {
+    let missing = ($revisions | where {|revision| (parse-impact $revision.description) not-in $IMPACTS })
+    for revision in $missing {
+        print --stderr $"($revision.change_id): missing or invalid Impact trailer; add one with `jj describe -r ($revision.change_id)`."
+    }
+    let result = (combine-impacts ($revisions | each {|revision| parse-impact $revision.description }))
+    if $result.problem != null { error make { msg: $result.problem } }
+    let unexplained = ($revisions | where {|revision|
+        (parse-impact $revision.description) == "breaking" and (description-body $revision.description | is-empty)
+    })
+    if ($unexplained | is-not-empty) {
+        error make { msg: $"Describe the manual steps in the body of every breaking revision: ($unexplained | get change_id | str join ', ')." }
+    }
+    $result.impact
+}
+
+def ensure-impact-labels [] {
+    for impact in $IMPACTS {
+        git-command $"creating the impact:($impact) label" {
+            github label create $"impact:($impact)" --force --color (if $impact == "refactor" { "C5DEF5" } else if $impact == "behavior" { "FBCA04" } else { "B60205" }) --description ($IMPACT_LABELS | get $impact)
+        } | ignore
+    }
+}
+
+def label-pull-request [pr: string, impact: string] {
+    ensure-impact-labels
+    let stale = ($IMPACTS | where {|other| $other != $impact } | each {|other| [--remove-label $"impact:($other)"] } | flatten)
+    git-command "labelling the pull request impact" {
+        github pr edit $pr --add-label $"impact:($impact)" ...$stale
+    } | ignore
+}
+
+# Host name to toplevel derivation for every NixOS configuration in a flake.
+def closure-fingerprint [flake: string] {
+    git-command $"evaluating the NixOS closures of ($flake)" {
+        ^nix eval --json --no-update-lock-file $"($flake)#nixosConfigurations" --apply 'configs: builtins.mapAttrs (_: c: builtins.unsafeDiscardStringContext c.config.system.build.toplevel.drvPath) configs'
+    } | from json
+}
+
+# Hosts whose closure differs between two fingerprints, including added and
+# removed hosts.
+def closure-differences [base: record, head: record] {
+    $base | columns | append ($head | columns) | uniq | sort | where {|host|
+        ($base | get --optional $host) != ($head | get --optional $host)
+    }
+}
+
 def bookmark-revset [bookmark: string] {
     $"bookmarks\(exact:'($bookmark)')"
 }
@@ -513,6 +670,7 @@ def plan-topics [prs: list] {
             timestamp: (revision-field $tip 'committer.timestamp().format("%s")' | into int)
             files: (git-command "listing topic files" { ^jj diff --name-only --from $fork --to $tip } | lines)
             current: (contains-main $tip)
+            impact: (combine-impacts (revisions-in $"($fork)..($tip)" | each {|revision| parse-impact $revision.description }) | get impact)
         }
     }
 }
@@ -579,13 +737,21 @@ def plan-proposals [candidates: list, edges: list] {
     } | flatten
 }
 
+# Published topics go first so an open PR is never rebased onto unpublished
+# work. Within each group refactors come first, so a conflicting user-facing
+# change stacks on the refactor and each release stays a small behavior diff.
+def plan-order [topics: list] {
+    $topics
+    | insert unpublished {|topic| $topic.pr == null }
+    | insert impact_order {|topic| impact-order $topic.impact }
+    | insert pr_order {|topic| $topic.pr | default 0 }
+    | sort-by unpublished impact_order pr_order timestamp
+}
+
 def build-plan [prs: list] {
-    # Published topics go first so an open PR is never rebased onto unpublished work.
     let topics = (plan-topics $prs
         | each {|topic| $topic | insert main (plan-main-status $topic) }
-        | insert unpublished {|topic| $topic.pr == null }
-        | insert pr_order {|topic| $topic.pr | default 0 }
-        | sort-by unpublished pr_order timestamp)
+        | plan-order $in)
     let candidates = ($topics | where main == "clean")
     let pairs = ($candidates | enumerate | each {|left|
         $candidates | skip ($left.index + 1) | each {|right| { a: $left.item right: $right } }
@@ -616,6 +782,7 @@ def build-plan [prs: list] {
             tip: $topic.tip
             change: ($topic.tip | str substring 0..7)
             description: $topic.description
+            impact: $topic.impact
             main: $topic.main
             conflicts_with: $conflicts
             action: $placement.action
@@ -677,6 +844,7 @@ def github-reconcile [apply: bool] {
         "build niri compositor config"
         "build zellij shell config"
         "whitespace"
+        "impact classification"
     ]
     let repository = (run-command "reading repository metadata" {
         github repo view --json nameWithOwner --jq .nameWithOwner
@@ -684,7 +852,7 @@ def github-reconcile [apply: bool] {
     let owner = ($repository | split row "/" | first)
     let name = ($repository | split row "/" | last)
     let state = (run-command "reading GitHub repository settings" {
-        github api $"repos/($repository)" --jq '{allow_auto_merge, delete_branch_on_merge}'
+        github api $"repos/($repository)" --jq '{allow_auto_merge, delete_branch_on_merge, squash_merge_commit_title, squash_merge_commit_message}'
     })
     let rule = (run-command "reading main branch protection" {
         github api graphql -f query='
@@ -706,12 +874,19 @@ def github-reconcile [apply: bool] {
     print $"Branch protection: ($rule)"
     if not $apply {
         print $"Required checks: ($required_checks | str join ', ')"
-        print "Dry run only. Re-run with `jj-ci github reconcile --apply` to enable auto-merge, branch deletion, and main protection."
+        print "Squash commits: PR_TITLE / PR_BODY, so the Impact trailer reaches main."
+        print $"Labels: ($IMPACTS | each {|impact| $'impact:($impact)' } | str join ', ')"
+        print "Dry run only. Re-run with `jj-ci github reconcile --apply` to enable auto-merge, branch deletion, squash messages, impact labels, and main protection."
         return
     }
     run-command "enabling GitHub auto-merge" {
         github repo edit $repository --enable-auto-merge --delete-branch-on-merge
     } | ignore
+    # `jj-ci release` reads the Impact trailer from the squash commit body.
+    run-command "using PR titles and bodies for squash commits" {
+        github api --method PATCH $"repos/($repository)" -f squash_merge_commit_title=PR_TITLE -f squash_merge_commit_message=PR_BODY
+    } | ignore
+    ensure-impact-labels
     let protection = {
         required_status_checks: { strict: true contexts: $required_checks }
         enforce_admins: true
@@ -739,7 +914,7 @@ def stack-merge [target: string] {
 }
 
 def main [] {
-    print "Use `jj-ci status`, `jj-ci sync`, `jj-ci plan`, `jj-ci rebase`, `jj-ci refresh`, `jj-ci conflicts`, `jj-ci review snapshot`, `jj-ci interdiff`, `jj-ci finish`, `jj-ci validate`, `jj-ci publish`, `jj-ci github reconcile`, `jj-ci stack-merge`, or `jj-ci tangled stack-publish`."
+    print "Use `jj-ci status`, `jj-ci sync`, `jj-ci plan`, `jj-ci rebase`, `jj-ci refresh`, `jj-ci conflicts`, `jj-ci review snapshot`, `jj-ci interdiff`, `jj-ci finish`, `jj-ci validate`, `jj-ci publish`, `jj-ci github reconcile`, `jj-ci stack-merge`, `jj-ci tangled stack-publish`, `jj-ci impact check`, `jj-ci release`, or `jj-ci version`."
 }
 
 def "main status" [] {
@@ -841,11 +1016,16 @@ def "main plan" [
     for entry in $plan {
         let description = if ($entry.description | is-empty) { "(no description)" } else { $entry.description }
         print $"($entry.topic) [($entry.change)] ($description)"
+        print $"  impact: ($entry.impact | default 'unclassified')"
         print $"  main: ($entry.main)"
         if ($entry.conflicts_with | is-not-empty) {
             print $"  conflicts with: ($entry.conflicts_with | str join ', ')"
         }
         print $"  plan: ($entry.proposal)"
+        let parent = ($plan | where topic == ($entry.stack_on | default "") | get 0?)
+        if $entry.impact == "refactor" and $parent != null and $parent.impact != "refactor" {
+            print $"  note: this refactor stacks on user-facing ($parent.topic) only because that PR is already published."
+        }
     }
 }
 
@@ -932,22 +1112,30 @@ def "main publish" [--auto-merge] {
     } else {
         plan-parent-for-current-topic $branch
     }
+    let base = if $parent == null { "main@origin" } else { bookmark-revset $parent }
+    # Classify before rewriting anything so an unclassified topic fails fast.
+    let impact = (require-impact (layer-revisions $base))
     if $parent == null { rebase-topic } else { restack-topic $parent }
     require-ready-change
     validate-change
     let title = (current-change "description.first_line()")
     let head = (current-change "commit_id")
+    let body = (pull-request-body (layer-revisions $base) $impact)
     run-command "setting the publication bookmark" { ^jj bookmark set $branch -r @ } | ignore
     remember-publication-bookmark $branch
     push-topic-bookmark $branch
     let url = if $existing != null {
+        # The body is generated from the JJ descriptions on every publish.
+        git-command "updating the pull request body" { github pr edit $existing.url --body $body } | ignore
         $existing.url
     } else {
         run-command "creating the pull request" {
-            github pr create --base ($parent | default "main") --head $branch --title $title --body $"## Summary\\n\\n- ($title)\\n\\n## Validation\\n\\n- `jj-ci validate`"
+            github pr create --base ($parent | default "main") --head $branch --title $title --body $body
         }
     }
+    label-pull-request $url $impact
     print $url
+    print $"Impact: ($impact)"
     if $auto_merge {
         if $parent == null {
             enable-auto-merge $url $head
@@ -959,6 +1147,85 @@ def "main publish" [--auto-merge] {
         }
     }
     print "Published this topic in place. Further edits update the same JJ series and PR."
+}
+
+# CI gate: classify `base..head` from its commit trailers and, for a refactor,
+# prove that every NixOS closure matches the merge base. Uses Git and Nix only,
+# so it runs in CI without a JJ workspace.
+def "main impact check" [base: string, head: string] {
+    let log = (git-command "reading the pull request commits" {
+        ^git log --format=%h%x1f%B%x1e $"($base)..($head)"
+    })
+    let revisions = ($log | split row "\u{1e}" | str trim | where {|entry| $entry | is-not-empty } | each {|entry|
+        let fields = ($entry | split row "\u{1f}")
+        { change_id: ($fields | first) description: ($fields | skip 1 | str join "\u{1f}") }
+    })
+    let impact = (require-impact $revisions)
+    print $"Impact: ($impact)"
+    if $impact != "refactor" { return }
+
+    let fork = (git-command "finding the merge base" { ^git merge-base $base $head })
+    let root = (mktemp --directory --tmpdir "jj-ci-impact.XXXXXX")
+    let trees = { base: ($root | path join "base") head: ($root | path join "head") }
+    let outcome = try {
+        git-command "checking out the merge base" { ^git worktree add --detach $trees.base $fork } | ignore
+        git-command "checking out the head" { ^git worktree add --detach $trees.head $head } | ignore
+        let differences = (closure-differences (closure-fingerprint $"path:($trees.base)") (closure-fingerprint $"path:($trees.head)"))
+        { differences: $differences error: null }
+    } catch {|err|
+        { differences: [] error: $err.msg }
+    }
+    for tree in [$trees.base $trees.head] {
+        ^git worktree remove --force $tree | complete | ignore
+    }
+    rm --recursive --force $root
+    if $outcome.error != null { error make { msg: $outcome.error } }
+    if ($outcome.differences | is-not-empty) {
+        error make { msg: $"Declared refactor, but these host closures changed: ($outcome.differences | str join ', '). Make the change closure-neutral or reclassify it as behavior or breaking." }
+    }
+    print "Every NixOS closure matches the merge base."
+}
+
+const RELEASE_TAG_GLOB = "[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9].*"
+
+# Publish a CalVer GitHub release for every user-facing commit on main's
+# first-parent history since the newest release, oldest first. Released
+# commits are never revisited, so reruns and skipped workflow runs are safe.
+def "main release" [--dry-run] {
+    let tags = (git-command "listing release tags" { ^git tag --list $RELEASE_TAG_GLOB } | lines)
+    let newest = (^git describe --tags --abbrev=0 --match $RELEASE_TAG_GLOB HEAD | complete)
+    # Without an earlier release, only the current commit is considered.
+    let range = if $newest.exit_code == 0 { $"($newest.stdout | str trim)..HEAD" } else { "HEAD^..HEAD" }
+    let commits = (git-command "listing unreleased commits" { ^git rev-list --first-parent --reverse $range } | lines)
+    mut known = $tags
+    for commit in $commits {
+        let message = (git-command "reading the commit message" { ^git log -1 --format=%B $commit })
+        let impact = (parse-impact $message)
+        if $impact not-in ["behavior" "breaking"] { continue }
+        let date = (with-env { TZ: "UTC" } {
+            git-command "reading the commit date" { ^git log -1 --date=format-local:%Y.%m.%d --format=%cd $commit }
+        })
+        let version = (next-version $date $known)
+        let title = $"($version): ($message | lines | first)"
+        let notes = $"**Impact:** ($impact)\n\n(description-body $message)"
+        if $dry_run {
+            print $"would release ($title) at ($commit | str substring 0..11)"
+        } else {
+            run-command $"publishing release ($version)" {
+                ^gh release create $version --target $commit --title $title --notes $notes
+            } | ignore
+            print $"released ($title)"
+        }
+        $known = ($known | append $version)
+    }
+}
+
+# The newest CalVer release contained in the current revision.
+def "main version" [] {
+    let commit = (current-change "commit_id")
+    run-command "describing the current revision" {
+        with-env (git-context) { ^git describe --tags --match $RELEASE_TAG_GLOB $commit }
+    }
 }
 
 def "main github reconcile" [--apply] {

@@ -28,6 +28,12 @@ trunk workflow.
   independently. `jj split` creates parent/child changes by default, while
   `jj split --parallel` creates siblings. Checkpoint before splitting, assign
   explicit descriptions, and verify the resulting graph with `jj log`.
+- End every description with an `Impact:` trailer: `refactor` when no NixOS
+  closure changes (refactors, docs, CI, tooling), `behavior` for a user-facing
+  change, or `breaking` for a user-facing change whose description body lists
+  the manual activation steps. Never combine a refactor with a user-facing
+  change in one topic; split the refactor into its own topic, or its own parent
+  layer when the change depends on it.
 
 ## JJ MCP integration
 
@@ -59,7 +65,7 @@ Use the narrowest workflow that matches the request:
 | Inspect local and open-PR state | `jj-ci status` | Read-only, but includes GitHub PR state. |
 | Align an empty working copy with trunk | `jj-ci sync` | Fetches `origin`, advances `main`, and rebases onto `main@origin`. |
 | Check readiness and run repository gates | `jj-ci validate` | Describes an undescribed change, runs `jj fix -s @`, then Prek on the JJ file list. |
-| Publish the current change | `jj-ci publish` | Validates, creates or updates a stable bookmark and PR, and keeps editing the same change. A new topic built on an open PR, or reported by `jj-ci plan` as conflicting with one, is restacked onto that PR's branch and opened with it as the base; conflicts must be resolved locally first. |
+| Publish the current change | `jj-ci publish` | Refuses unclassified or mixed-impact topics, then validates, creates or updates a stable bookmark and PR with a generated body and `impact:<class>` label, and keeps editing the same change. A new topic built on an open PR, or reported by `jj-ci plan` as conflicting with one, is restacked onto that PR's branch and opened with it as the base; conflicts must be resolved locally first. |
 | Decide whether a topic ships alone or stacked | `jj-ci plan` | Read-only apart from a fetch. Trial-merges in-flight topics (open-PR bookmarks and workspace changes) against `main@origin` and each other, then proposes independent PRs or stacks. `--json` for structured output. |
 | Update a topic from trunk | `jj-ci rebase` | Checkpoints, fetches, and rebases the same change. |
 | Update every published topic that fell behind trunk | `jj-ci refresh` | Requires an explicit user request. Restacks each local bookmark with an open PR onto its base (`main@origin`, or its parent PR's bookmark), parents first, dropping commits a squash-merge already delivered. Pushes only conflict-free stacks, re-pins armed auto-merge, and enables deferred auto-merge once a stacked PR targets `main`. `--no-push` stops before any remote change. |
@@ -70,6 +76,8 @@ Use the narrowest workflow that matches the request:
 | Inspect declared GitHub policy | `jj-ci github reconcile` | Dry run by default. |
 | Apply GitHub policy changes | `jj-ci github reconcile --apply` | Requires an explicit user request. |
 | Submit a validated PR stack | `jj-ci stack-merge <stack-or-pr>` | Requires an explicit user request and an already-ready stack. |
+| Check a commit range's impact | `jj-ci impact check <base> <head>` | The CI gate. Git and Nix only; for a refactor it proves every host closure matches the merge base. |
+| Show the release in the current revision | `jj-ci version` | Read-only. Releases are CalVer tags (`YYYY.MM.DD.N`) cut by the `release` workflow for behavior and breaking commits; do not run `jj-ci release` locally. |
 
 ## Safety rules
 
@@ -135,8 +143,8 @@ Never resolve those conflicts automatically.
 Run `jj-ci plan` before publishing when other topics are in flight. It builds
 headless trial merges (`jj new --no-edit`) and abandons them, so no working
 copy moves. Topics that conflict with nothing publish as independent PRs.
-Topics that conflict with each other are ordered with open PRs first, then by
-age: the later topic is rebased onto the earlier one, its conflicts are
+Topics that conflict with each other are ordered with open PRs first, then
+refactors before user-facing changes, then by age: the later topic is rebased onto the earlier one, its conflicts are
 resolved locally, and it is published as a stacked PR whose base is the
 earlier topic's branch. Chains longer than three hold the remainder locally
 until a layer lands. Topics that conflict with `main` must be resolved with
