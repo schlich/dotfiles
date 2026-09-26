@@ -11,7 +11,10 @@ Always run shell commands and write scripts using **Nushell (`nu`)**, never bash
 
 - **Never** use `bash`, `sh`, or `zsh` syntax — no shebangs like `#!/bin/bash`, no `[ ]` tests, no `$(...)` subshells written in bash style.
 - **Never** use bash idioms: `&&`/`||` for control flow, `$()`, backticks, `if [ -f ... ]`, `for x in $(...)`, heredocs (`<<EOF`), `export VAR=value`, etc.
-- **Always** use `nu` to run shell commands in terminals.
+- Prefer the available Nushell evaluate tool to run Nushell commands and
+  pipelines. Use `nu -c` only when the evaluate tool is unavailable or the task
+  specifically needs a fresh Nushell process.
+- When a terminal invocation is needed, use `nu` to run shell commands.
 - Scripts must use `.nu` extension and start with `#!/usr/bin/env nu` if they need a shebang.
 
 ## Text and Data Processing
