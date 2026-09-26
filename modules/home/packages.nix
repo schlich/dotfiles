@@ -60,6 +60,18 @@ let
         platforms = [ "x86_64-linux" ];
       };
     };
+  jevScript = pkgs.writeNuScriptBin "jev" (builtins.readFile ../../jev/jev.nu);
+  jev = pkgs.symlinkJoin {
+    name = "jev";
+    paths = [ jevScript ];
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    postBuild = ''
+      wrapProgram "$out/bin/jev" \
+        --set-default JEV_QUESTIONS ${../../jev/questions.nuon} \
+        --set-default JEV_SECRETSPEC_FILE ${../secretspec.toml} \
+        --prefix PATH : ${pkgs.secretspec}/bin
+    '';
+  };
 in
 {
   home.packages = with pkgs; [
@@ -120,6 +132,7 @@ in
     wl-clipboard-rs
     gh-stack
     secretspec
+    jev
     inputs.xs.packages.${pkgs.stdenv.hostPlatform.system}.default
     inputs.ai-usagebar.packages.${pkgs.stdenv.hostPlatform.system}.default
   ];

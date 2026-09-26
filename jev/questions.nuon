@@ -1,0 +1,38 @@
+# Every Jev question and threshold used by this repository lives here so they
+# can be reviewed and tuned in one place. Thresholds were chosen for the pinned
+# model; retune them before moving `model` to a newer release.
+{
+  model: "jev-1.13.0"
+  triage_gate: {
+    # Failures of these classes are recorded but do not start an agent.
+    skip_classes: [expected_nonzero typo_or_not_found interrupted]
+    # A skip also requires a confident class and a low need for diagnosis.
+    min_skip_confidence: 0.8
+    max_skip_needs_diagnosis: 0.3
+    questions: {
+      failure_class: {
+        type: choice
+        instructions: "Which kind of failure is the interactive shell command `command` that exited with `exit_code`?"
+        criteria: {
+          expected_nonzero: "A probe that reports a negative result by design, such as a search with no matches, a diff that found differences, or a test that checks whether something exists"
+          typo_or_not_found: "A misspelled or nonexistent command, subcommand, flag, variable, or path"
+          interrupted: "The user cancelled or interrupted the command"
+          nix_error: "A Nix evaluation, flake, build, or activation failure"
+          vcs_error: "A Jujutsu or Git operation failed, such as a conflict, divergent change, or rejected push"
+          build_or_test_failure: "A compiler, linter, formatter, or test runner reported errors"
+          network: "A download, API request, remote connection, or authentication to a remote service failed"
+          permission: "Access was denied by file permissions, sudo, or a sandbox"
+          other: "Any other failure"
+        }
+      }
+      needs_diagnosis: {
+        type: noul
+        instructions: "The user would need help diagnosing why `command` failed."
+        criteria: {
+          "true": "The cause is not obvious from the command itself and could take investigation"
+          "false": "The cause is obvious or the failure is routine"
+        }
+      }
+    }
+  }
+}
