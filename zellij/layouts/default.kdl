@@ -1,13 +1,31 @@
 layout {
-    tab name="work" focus=true {
+    // Every tab, including ones opened later with Ctrl+t n, keeps the bars.
+    default_tab_template {
         pane size=1 borderless=true {
             plugin location="tab-bar"
         }
-        pane split_direction="vertical" {
-            pane name="shell"
-        }
+        children
         pane size=1 borderless=true {
             plugin location="status-bar"
         }
     }
+
+    // Main work area: a wide primary shell with a stacked side column for
+    // repository state and a secondary shell.
+    tab name="work" focus=true {
+        pane split_direction="vertical" {
+            pane name="main" size="62%" focus=true
+            pane stacked=true {
+                pane name="jj" command="nu" {
+                    args "-c" "loop { clear; let r = (^jj log --color always --limit 12 | complete); if $r.exit_code == 0 { print $r.stdout } else { print 'Not in a JJ repository.' }; sleep 5sec }"
+                }
+                pane name="gh dash" command="gh" {
+                    args "dash"
+                }
+                pane name="side" expanded=true
+            }
+        }
+    }
+
+    tab name="scratch"
 }
