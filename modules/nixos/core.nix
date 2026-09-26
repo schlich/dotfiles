@@ -17,10 +17,10 @@
       dates = [ "weekly" ];
     };
     settings = {
-      # Keep local builds serial and single-core so memory pressure does not
-      # take down the interactive system.
-      max-jobs = 1;
-      cores = 1;
+      # Allow two medium-sized builds to make use of the workstation without
+      # letting a rebuild consume every available resource at once.
+      max-jobs = 2;
+      cores = 4;
       experimental-features = [
         "nix-command"
         "flakes"
