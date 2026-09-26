@@ -342,6 +342,156 @@ def refresh-topics [push: bool] {
     }
 }
 
+# Topics stacked beyond this depth wait for an earlier layer to land instead.
+const PLAN_MAX_STACK = 3
+
+def bookmark-revset [bookmark: string] {
+    $"bookmarks\(exact:'($bookmark)')"
+}
+
+def revision-field [revision: string, template: string] {
+    let result = (^jj log -r $revision --no-graph -T $template | complete)
+    if $result.exit_code != 0 { error make { msg: ($result.stderr | str trim) } }
+    $result.stdout | str trim
+}
+
+def contains-main [revision: string] {
+    revset-change-ids $"main@origin & ::($revision)" | is-not-empty
+}
+
+# Create a headless merge of the given revisions, report whether it conflicts
+# and whether it changes main, then abandon it. Working copies are untouched.
+def trial-merge [revisions: list<string>] {
+    let marker = $"jj-ci-plan-probe-(random uuid)"
+    git-command "creating a trial merge" { ^jj new --no-edit -m $marker ...$revisions } | ignore
+    let probe = (revision-field $"description\(substring:'($marker)')" 'commit_id')
+    let conflict = (revision-field $probe 'conflict') == "true"
+    let changes = (git-command "diffing the trial merge" {
+        ^jj diff --name-only --from main@origin --to $probe
+    } | is-not-empty)
+    git-command "abandoning the trial merge" { ^jj abandon $probe } | ignore
+    { conflict: $conflict changes: $changes }
+}
+
+def plan-topics [prs: list] {
+    let published = ($prs | where {|pr| revset-change-ids (bookmark-revset $pr.headRefName) | is-not-empty })
+    let roots = ($published | each {|pr| bookmark-revset $pr.headRefName } | append 'working_copies()' | str join ' | ')
+    # A workspace parked on an empty, undescribed change contributes its parent.
+    let placeholder = '(empty() & description(exact:""))'
+    let tips = (revset-change-ids $"heads\(\(main@origin..\(($roots))) & mutable\() ~ ($placeholder))")
+    $tips | each {|tip|
+        let pr = ($published | where {|pr| revset-change-ids $"(bookmark-revset $pr.headRefName) & ::($tip)" | is-not-empty } | sort-by number | get 0?)
+        let workspaces = (revision-field $"\(main@origin..($tip) | children\(($tip))) & working_copies\()" 'working_copies ++ " "'
+            | split row " " | where {|name| $name | is-not-empty } | uniq)
+        let names = (if $pr != null { [$"#($pr.number)"] } else { [] } | append $workspaces)
+        let label = if ($names | is-empty) { $tip | str substring 0..7 } else { $names | str join " " }
+        let fork = $"fork_point\(($tip) | main@origin)"
+        {
+            label: $label
+            tip: $tip
+            commit: (revision-id $tip)
+            pr: ($pr | get number? )
+            description: (revision-field $tip 'description.first_line()')
+            timestamp: (revision-field $tip 'committer.timestamp().format("%s")' | into int)
+            files: (git-command "listing topic files" { ^jj diff --name-only --from $fork --to $tip } | lines)
+            current: (contains-main $tip)
+        }
+    }
+}
+
+def plan-main-status [topic: record] {
+    let result = if $topic.current {
+        {
+            conflict: ((revision-field $topic.tip 'conflict') == "true")
+            changes: (git-command "diffing the topic" { ^jj diff --name-only --from main@origin --to $topic.commit } | is-not-empty)
+        }
+    } else {
+        trial-merge [main@origin $topic.commit]
+    }
+    if not $result.changes { "landed" } else if $result.conflict { "conflicts with main" } else { "clean" }
+}
+
+def plan-components [nodes: list<string>, edges: list] {
+    mut seen = []
+    mut components = []
+    for node in $nodes {
+        if $node in $seen { continue }
+        mut component = [$node]
+        mut frontier = [$node]
+        while ($frontier | is-not-empty) {
+            let current = ($frontier | first)
+            $frontier = ($frontier | skip 1)
+            let neighbours = ($edges
+                | where {|edge| $edge.a == $current or $edge.b == $current }
+                | each {|edge| if $edge.a == $current { $edge.b } else { $edge.a } }
+                | where {|other| $other not-in $component })
+            $component = ($component | append $neighbours)
+            $frontier = ($frontier | append $neighbours)
+        }
+        $seen = ($seen | append $component)
+        $components = ($components | append [$component])
+    }
+    $components
+}
+
+def build-plan [prs: list] {
+    # Published topics go first so an open PR is never rebased onto unpublished work.
+    let topics = (plan-topics $prs
+        | each {|topic| $topic | insert main (plan-main-status $topic) }
+        | insert unpublished {|topic| $topic.pr == null }
+        | insert pr_order {|topic| $topic.pr | default 0 }
+        | sort-by unpublished pr_order timestamp)
+    let candidates = ($topics | where main == "clean")
+    let pairs = ($candidates | enumerate | each {|left|
+        $candidates | skip ($left.index + 1) | each {|right| { a: $left.item right: $right } }
+    } | flatten)
+    let edges = ($pairs
+        | where {|pair| $pair.a.files | any {|file| $file in $pair.right.files } }
+        | where {|pair|
+            let revisions = if $pair.a.current or $pair.right.current {
+                [$pair.a.commit $pair.right.commit]
+            } else {
+                [main@origin $pair.a.commit $pair.right.commit]
+            }
+            (trial-merge $revisions).conflict
+        }
+        | each {|pair| { a: $pair.a.tip b: $pair.right.tip } })
+    let components = (plan-components ($candidates | get tip) $edges)
+    let proposals = ($components | each {|component|
+        let chain = ($candidates | where tip in $component)
+        $chain | enumerate | each {|entry|
+            let proposal = if ($chain | length) == 1 {
+                "independent PR"
+            } else if $entry.index == 0 {
+                "base of stack"
+            } else if $entry.index < $PLAN_MAX_STACK {
+                $"stack on ($chain | get ($entry.index - 1) | get label)"
+            } else {
+                $"hold until ($chain | get ($PLAN_MAX_STACK - 1) | get label) lands"
+            }
+            { tip: $entry.item.tip proposal: $proposal }
+        }
+    } | flatten)
+    $topics | each {|topic|
+        let proposal = match $topic.main {
+            "landed" => "already in main; finish or abandon"
+            "conflicts with main" => "resolve against main first (jj-ci rebase)"
+            _ => ($proposals | where tip == $topic.tip | get 0.proposal)
+        }
+        let conflicts = ($edges
+            | where {|edge| $edge.a == $topic.tip or $edge.b == $topic.tip }
+            | each {|edge| let other = if $edge.a == $topic.tip { $edge.b } else { $edge.a }; $topics | where tip == $other | get 0.label })
+        {
+            topic: $topic.label
+            change: ($topic.tip | str substring 0..7)
+            description: $topic.description
+            main: $topic.main
+            conflicts_with: $conflicts
+            proposal: $proposal
+        }
+    }
+}
+
 def sync-main [] {
     let owner = (session-owner)
     if $owner != null and not ($owner.finished? | default false) {
@@ -454,7 +604,7 @@ def stack-merge [target: string] {
 }
 
 def main [] {
-    print "Use `jj-ci status`, `jj-ci sync`, `jj-ci rebase`, `jj-ci refresh`, `jj-ci conflicts`, `jj-ci review snapshot`, `jj-ci interdiff`, `jj-ci finish`, `jj-ci validate`, `jj-ci publish`, `jj-ci github reconcile`, `jj-ci stack-merge`, or `jj-ci tangled stack-publish`."
+    print "Use `jj-ci status`, `jj-ci sync`, `jj-ci plan`, `jj-ci rebase`, `jj-ci refresh`, `jj-ci conflicts`, `jj-ci review snapshot`, `jj-ci interdiff`, `jj-ci finish`, `jj-ci validate`, `jj-ci publish`, `jj-ci github reconcile`, `jj-ci stack-merge`, or `jj-ci tangled stack-publish`."
 }
 
 def "main status" [] {
@@ -535,6 +685,33 @@ def "main interdiff" [old: string, new: string] {
 
 def "main rebase" [] {
     rebase-topic
+}
+
+def "main plan" [
+    --json # Print the plan as JSON
+] {
+    fetch-origin
+    let prs = (git-command "listing open pull requests" {
+        github pr list --state open --base main --json number,headRefName
+    } | from json)
+    let plan = (build-plan $prs)
+    if $json {
+        print ($plan | to json)
+        return
+    }
+    if ($plan | is-empty) {
+        print "No in-flight topics."
+        return
+    }
+    for entry in $plan {
+        let description = if ($entry.description | is-empty) { "(no description)" } else { $entry.description }
+        print $"($entry.topic) [($entry.change)] ($description)"
+        print $"  main: ($entry.main)"
+        if ($entry.conflicts_with | is-not-empty) {
+            print $"  conflicts with: ($entry.conflicts_with | str join ', ')"
+        }
+        print $"  plan: ($entry.proposal)"
+    }
 }
 
 def "main refresh" [

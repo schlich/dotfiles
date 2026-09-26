@@ -133,7 +133,10 @@
 ## Stacked pull requests
 
 - Use a stack only for a preplanned chain of dependent, independently reviewable
-  JJ changes. Keep unrelated work in separate branches.
+  JJ changes, or when `jj-ci plan` reports that a topic conflicts with an open
+  PR. In that case, stack the later topic on the earlier one and resolve its
+  conflicts locally before pushing. Keep unrelated, conflict-free work in
+  separate branches.
 - JJ creates, describes, rebases, and pushes every layer. Link existing GitHub
   PRs with `gh stack link` and inspect them non-interactively with
   `gh stack view --json`.
@@ -205,5 +208,6 @@ ownership of the workspace or silently rebase, resolve conflicts, publish, enter
 a queue, or advance a stack.
 
 Prefer one ordinary PR for a coherent topic. Use a stack only for independently
-reviewable changes with real dependency order; keep children based on their
+reviewable changes with real dependency order, including conflict order
+reported by `jj-ci plan`; keep children based on their
 immediate parent and rebase the remaining stack after each parent lands.
