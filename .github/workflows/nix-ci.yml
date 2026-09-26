@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       nix: ${{ steps.changed.outputs.nix }}
+      home: ${{ steps.changed.outputs.home }}
       niri: ${{ steps.changed.outputs.niri }}
       zellij: ${{ steps.changed.outputs.zellij }}
       checkmate: ${{ steps.changed.outputs.checkmate }}
@@ -39,48 +40,44 @@ jobs:
           mapfile -d '' changed_files < "$RUNNER_TEMP/changed-paths"
 
           nix=false
+          home=false
           niri=false
           zellij=false
           checkmate=false
-          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+          run_all() {
             nix=true
+            home=true
             niri=true
             zellij=true
             checkmate=true
+          }
+          # Pushes to main are the post-merge backstop for scoped PR runs.
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch || "$GITHUB_EVENT_NAME" == push ]]; then
+            run_all
           fi
           if ((${#changed_files[@]} == 0)); then
-            nix=true
-            niri=true
-            zellij=true
-            checkmate=true
+            run_all
           fi
           for file in "${changed_files[@]}"; do
             case "$file" in
-              *.nix|flake.lock|.github/workflows/*)
-                nix=true
-                niri=true
-                zellij=true
-                checkmate=true
-                ;;
+              .github/workflows/*|flake.nix|flake.lock) run_all ;;
               niri/*) niri=true ;;
               zellij/*) zellij=true ;;
-              *.md|*.mdx|*.yaml|*.yml|README.md|AGENTS.md)
+              *.md|*.mdx|*.yaml|*.yml|docs/*) checkmate=true ;;
+              # Imported only through the user-terminal Home Manager aspect;
+              # no NixOS module, headless host, or other check reads them.
+              modules/home/*|modules/programs/*|modules/tooling/*|den/aspects/users/terminal.nix|\
+              .agents/*|agent/*|config.nu|copilot/*|helix/*|jev/*|nushell/*|plugins/*|wallpapers/*)
+                home=true
                 checkmate=true
                 ;;
-              docs/*)
-                checkmate=true
-                ;;
-              *)
-                nix=true
-                niri=true
-                zellij=true
-                checkmate=true
-                ;;
+              *) run_all ;;
             esac
           done
 
           {
             echo "nix=$nix"
+            echo "home=$home"
             echo "niri=$niri"
             echo "zellij=$zellij"
             echo "checkmate=$checkmate"
@@ -242,7 +239,7 @@ jobs:
   home-manager:
     name: build Home Manager modules (shell, editor, and desktop)
     needs: changes
-    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.nix == 'true') }}
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.nix == 'true' || needs.changes.outputs.home == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - name: Require successful path detection

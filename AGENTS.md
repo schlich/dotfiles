@@ -134,6 +134,9 @@
 - The required `nix-ci` checks build the headless NixOS bootstrap first, then
   the desktop NixOS system and Home Manager, alongside Niri, Zellij, and
   whitespace checks. `main` uses strict required checks and linear history.
+  Pull requests that touch only Home Manager inputs (the paths listed in the
+  `changes` job of `nix-ci.yml`) run just the Home Manager check; pushes to
+  `main` always run the full suite as the post-merge backstop.
 - `jj-ci github reconcile` reports the declared GitHub policy. Use
   `jj-ci github reconcile --apply` only when intentionally reconciling
   auto-merge, branch deletion, and `main` protection.
