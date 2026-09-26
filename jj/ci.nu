@@ -92,6 +92,14 @@ def publication-state [] {
     if ($path | path exists) { open $path } else { {} }
 }
 
+def save-publication-state [state: record] {
+    $state | to json | save --force (publication-state-path)
+}
+
+def publication-topics [] {
+    (publication-state) | get topics? | default {}
+}
+
 def publication-slug [] {
     let title = (current-change "description.first_line()")
     $title
@@ -106,16 +114,42 @@ def legacy-publication-bookmark [bookmark: string] {
     $result.exit_code == 0 and ($result.stdout | str trim | is-not-empty)
 }
 
+# Remembers the bookmark under the current topic's change id, so it survives
+# title edits without leaking into whatever other topic next runs in this
+# workspace (a single unscoped bookmark previously caused `publish` to reuse
+# an already-merged topic's bookmark and PR).
 def remember-publication-bookmark [bookmark: string] {
-    { bookmark: $bookmark } | to json | save --force (publication-state-path)
+    let topics = (publication-topics) | upsert (current-topic-id) $bookmark
+    save-publication-state { topics: $topics }
+}
+
+def forget-publication-bookmark [] {
+    let topic_id = (current-topic-id)
+    let topics = (publication-topics)
+    if $topic_id in $topics {
+        save-publication-state { topics: ($topics | reject $topic_id) }
+    }
 }
 
 def publication-bookmark [] {
-    let state = (publication-state)
-    let remembered = ($state | get bookmark? | default "")
+    let topic_id = (current-topic-id)
+    let topics = (publication-topics)
+    let remembered = if $topic_id in $topics {
+        $topics | get $topic_id
+    } else {
+        # Migrate the pre-per-topic single-bookmark state, but only if it
+        # still names the bookmark actually checked out right now — otherwise
+        # a stale entry left by a different, already-finished topic would
+        # leak onto whatever topic asks next.
+        let legacy_single = (publication-state) | get bookmark? | default ""
+        if ($legacy_single | is-not-empty) and (legacy-publication-bookmark $legacy_single) {
+            $legacy_single
+        } else {
+            ""
+        }
+    }
     if ($remembered | is-not-empty) { return $remembered }
 
-    let topic_id = (current-topic-id)
     let legacy = $"jj-($topic_id)"
     if (legacy-publication-bookmark $legacy) { return $legacy }
 
@@ -969,6 +1003,7 @@ def "main finish" [] {
             error make { msg: "The merge is not on main@origin yet. Leave the task open and retry later." }
         }
     }
+    forget-publication-bookmark
     run-command "advancing main" { ^jj bookmark move main --to main@origin } | ignore
     push-bookmark tangled main
     run-command "leaving a clean workspace on main" { ^jj new main@origin } | ignore
