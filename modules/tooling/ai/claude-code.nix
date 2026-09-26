@@ -44,6 +44,43 @@ let
       }
     } $out/hooks/hooks.json
   '';
+  jev = import ../../../jev/package.nix { inherit pkgs; };
+  jevBashGuard = pkgs.runCommand "claude-code-jev-bash-guard" { } ''
+    install -Dm644 ${
+      pkgs.writers.writeJSON "plugin.json" {
+        name = "jev-bash-guard";
+        description = "Ask Jev to route Claude Code Bash commands through Nushell or user confirmation.";
+      }
+    } $out/.claude-plugin/plugin.json
+    install -Dm644 ${
+      pkgs.writers.writeJSON "hooks.json" {
+        hooks.PreToolUse = [
+          {
+            matcher = "Bash";
+            hooks = [
+              {
+                type = "command";
+                command = "${pkgs.coreutils}/bin/env JEV_NUSHELL=${pkgs.nushell}/bin/nu ${jev}/bin/jev bash-guard";
+              }
+            ];
+          }
+        ];
+      }
+    } $out/hooks/hooks.json
+  '';
+  # Fetch the token per connection so it never enters Claude Code's
+  # environment, where every shell command could read it.
+  githubMcpHeaders = pkgs.writeNuScriptBin "claude-github-mcp-headers" ''
+    def main [] {
+        let result = (^${pkgs.secretspec}/bin/secretspec get --file ${../../secretspec.toml} --provider keyring --reason "Claude Code GitHub MCP connection" GITHUB_TOKEN | complete)
+        let token = ($result.stdout | str trim)
+        if $result.exit_code != 0 or ($token | is-empty) {
+            print --stderr "GITHUB_TOKEN is not available from secretspec."
+            exit 1
+        }
+        { Authorization: $"Bearer ($token)" } | to json --raw | print
+    }
+  '';
 in
 {
   imports = [ ./common.nix ];
@@ -51,6 +88,16 @@ in
   programs.claude-code = {
     enable = true;
     enableMcpIntegration = true;
+    # Read-only: GitHub writes go through jj-ci.
+    mcpServers.github = {
+      type = "http";
+      url = "https://api.githubcopilot.com/mcp/readonly";
+      headers = {
+        X-MCP-Readonly = "true";
+        X-MCP-Toolsets = "repos,issues,pull_requests,actions";
+      };
+      headersHelper = "${githubMcpHeaders}/bin/claude-github-mcp-headers";
+    };
     settings = { };
     context = ./global-agent-instructions.md;
     skills = import ./shared-skills.nix { inherit inputs; };
@@ -62,6 +109,7 @@ in
       } "${agentSource}/trunk-triage.agent.md"
     );
     plugins.jj-guard = jjGuard;
+    plugins.jev-bash-guard = jevBashGuard;
   };
 
   dotfiles.tooling.ai.claude-code = {

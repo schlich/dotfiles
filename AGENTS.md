@@ -7,8 +7,9 @@
   Nushell syntax.
 - Prefer Nushell operations and pipelines for text processing and structured
   data transformations instead of `sed`, `awk`, or similar stream-editing
-  commands. Use `nu -c` to validate multi-command Nushell snippets when
-  practical.
+  commands. Prefer the Nushell evaluate tool to run Nushell commands and
+  validate snippets when it is available. Use `nu -c` only when the tool is
+  unavailable or validation specifically needs a fresh Nushell process.
 - Nushell does not use POSIX backslash (`\`) line continuations. For
   multi-line external commands, put the command and each argument on its own
   line without trailing backslashes.
