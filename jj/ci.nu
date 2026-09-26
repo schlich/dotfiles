@@ -182,6 +182,22 @@ def push-topic-bookmark [bookmark: string] {
     }
 }
 
+# Delete a delivered topic's bookmark locally and on both remotes. GitHub
+# usually deleted its copy on merge, and the fetch then dropped the local one;
+# the Tangled mirror still needs an explicit deletion.
+def delete-topic-bookmark [bookmark: string] {
+    if (revset-change-ids (bookmark-revset $bookmark) | is-not-empty) {
+        run-command $"deleting ($bookmark)" { ^jj bookmark delete $bookmark } | ignore
+    }
+    for remote in [origin tangled] {
+        if (revset-change-ids $"remote_bookmarks\(exact:'($bookmark)', exact:'($remote)')" | is-not-empty) {
+            run-command $"deleting ($bookmark) from ($remote)" {
+                ^jj git push --remote $remote --bookmark $bookmark
+            } | ignore
+        }
+    }
+}
+
 def topic-revisions [] {
     let result = (^jj log -r 'main@origin..@' --no-graph -T 'change_id ++ "\t" ++ commit_id ++ "\t" ++ description.first_line() ++ "\n"' | complete)
     if $result.exit_code != 0 { error make { msg: ($result.stderr | str trim) } }
@@ -918,7 +934,7 @@ def stack-merge [target: string] {
 }
 
 def main [] {
-    print "Use `jj-ci status`, `jj-ci sync`, `jj-ci plan`, `jj-ci rebase`, `jj-ci refresh`, `jj-ci conflicts`, `jj-ci review snapshot`, `jj-ci interdiff`, `jj-ci finish`, `jj-ci validate`, `jj-ci publish`, `jj-ci github reconcile`, `jj-ci stack-merge`, `jj-ci tangled stack-publish`, `jj-ci impact check`, `jj-ci release`, or `jj-ci version`."
+    print "Use `jj-ci status`, `jj-ci sync`, `jj-ci plan`, `jj-ci rebase`, `jj-ci refresh`, `jj-ci conflicts`, `jj-ci review snapshot`, `jj-ci interdiff`, `jj-ci finish`, `jj-ci prune`, `jj-ci validate`, `jj-ci publish`, `jj-ci github reconcile`, `jj-ci stack-merge`, `jj-ci tangled stack-publish`, `jj-ci impact check`, `jj-ci release`, or `jj-ci version`."
 }
 
 def "main status" [] {
@@ -1253,12 +1269,67 @@ def "main tangled stack-publish" [] {
     push-tangled-stack
 }
 
-def "main finish" [] {
+const FAILED_CHECKS = ["FAILURE" "CANCELLED" "TIMED_OUT" "ACTION_REQUIRED" "STARTUP_FAILURE" "ERROR"]
+
+# Poll the topic's PR until GitHub merges the exact current head. Stop early
+# whenever it can no longer merge unattended: closed, head moved, behind main,
+# a failed check, or no auto-merge request. It never rebases or pushes.
+def wait-for-merge [branch: string, head: string, timeout: duration] {
+    let deadline = (date now) + $timeout
+    mut last = ""
+    loop {
+        let pr = (git-command "checking topic delivery" {
+            github pr view $branch --json state,headRefOid,baseRefName,mergeStateStatus,autoMergeRequest,statusCheckRollup
+        } | from json)
+        if $pr.state == "MERGED" { return }
+        if $pr.state != "OPEN" {
+            error make { msg: "This topic's PR was closed without merging." }
+        }
+        if $pr.headRefOid != $head {
+            error make { msg: "The PR head differs from the current revision. Publish the current revision before waiting." }
+        }
+        if $pr.baseRefName != "main" {
+            error make { msg: $"This PR is stacked on ($pr.baseRefName). Once that lands, run `jj-ci refresh`, then wait again." }
+        }
+        if $pr.autoMergeRequest == null {
+            error make { msg: "Auto-merge is not enabled, so the PR will not merge on its own. Run `jj-ci publish --auto-merge` first." }
+        }
+        if $pr.mergeStateStatus == "BEHIND" {
+            error make { msg: "main advanced and strict checks require an up-to-date head. Run `jj-ci publish --auto-merge` again." }
+        }
+        let checks = ($pr.statusCheckRollup | default [])
+        # Check runs report `status`/`conclusion`; commit statuses report `state`.
+        let failed = ($checks
+            | where {|check| ($check.conclusion? | default ($check.state? | default "")) in $FAILED_CHECKS }
+            | each {|check| $check.name? | default ($check.context? | default "unnamed") })
+        if ($failed | is-not-empty) {
+            error make { msg: $"Checks failed: ($failed | str join ', '). Leave the task open." }
+        }
+        let running = ($checks
+            | where {|check| ($check.status? | default ($check.state? | default "")) not-in ["COMPLETED" "SUCCESS"] }
+            | length)
+        let status = if $running > 0 { $"($running) check\(s) running" } else { "waiting for GitHub to merge" }
+        if $status != $last {
+            print $"(date now | format date '%H:%M:%S') ($status)"
+            $last = $status
+        }
+        if (date now) > $deadline {
+            error make { msg: $"Not merged after ($timeout). Leave the task open and retry later." }
+        }
+        sleep 30sec
+    }
+}
+
+def "main finish" [
+    --wait # Wait for GitHub to merge the current head before finishing
+    --timeout: duration = 2hr # How long --wait waits
+] {
     require-owned-change
     let change = (current-change "change_id")
     let head = (current-change "commit_id")
     let branch = (publication-bookmark)
     let empty = (current-change "empty") == "true"
+    if $wait and not $empty { wait-for-merge $branch $head $timeout }
     # An empty workspace is either unpublished, or its merged topic was dropped
     # when a stacked child restacked with --skip-emptied.
     let delivery = if $empty {
@@ -1293,6 +1364,7 @@ def "main finish" [] {
             error make { msg: "The merge is not on main@origin yet. Leave the task open and retry later." }
         }
     }
+    if $delivery.merged != null { delete-topic-bookmark $branch }
     forget-publication-bookmark
     run-command "advancing main" { ^jj bookmark move main --to main@origin } | ignore
     push-bookmark tangled main
@@ -1308,4 +1380,68 @@ def "main finish" [] {
         }
     }
     print $"Finished ($url). Workspace is on main; the Codex task can now be archived."
+}
+
+# Why a workspace must be kept, or null when it holds nothing: its working
+# copy is an empty, undescribed change on trunk and no active task owns it.
+def workspace-keep-reason [workspace: record] {
+    if $workspace.name == "default" { return "default workspace" }
+    if not ($workspace.root | path exists) { return null }
+    if ($workspace.root | path join ".git" | path exists) { return "Git worktree; remove it with its owner" }
+    let owner_path = ($workspace.root | path join ".jj" "codex-session.json")
+    if ($owner_path | path exists) and not ((open $owner_path).finished? | default false) {
+        return "owned by an active task"
+    }
+    # Running JJ inside the workspace snapshots any unrecorded edits first.
+    let state = (do { ^jj --repository $workspace.root log -r '@' --no-graph -T 'empty ++ "\t" ++ description.escape_json() ++ "\t" ++ parents.map(|p| p.commit_id()).join(",")' } | complete)
+    if $state.exit_code != 0 { return "stale or unreadable; run `jj workspace update-stale` there first" }
+    let fields = ($state.stdout | str trim | split row "\t")
+    if ($fields | get 0) != "true" { return "has changes" }
+    if ($fields | get 1 | from json | str trim | is-not-empty) { return "has a description" }
+    let parents = ($fields | get 2 | split row "," | each {|id| $"\(($id) ~ ::main@origin)" } | str join " | ")
+    if (revset-change-ids $parents | is-not-empty) { return "built on unmerged work" }
+    null
+}
+
+def prune-checkpoints [root: string, cutoff: datetime, apply: bool] {
+    let directory = ($root | path join ".jj" "jj-ci-checkpoints")
+    if not ($directory | path exists) { return 0 }
+    let old = (ls $directory | where modified < $cutoff)
+    if $apply { $old | each {|file| rm $file.name } | ignore }
+    $old | length
+}
+
+def "main prune" [
+    --apply # Forget and delete the listed workspaces and checkpoints
+    --keep-days: int = 14 # Keep checkpoints newer than this
+] {
+    fetch-origin
+    let current = (git-command "locating the workspace" { ^jj root })
+    let workspaces = (git-command "listing workspaces" {
+        ^jj workspace list -T 'name ++ "\t" ++ root ++ "\n"'
+    } | lines | where {|line| $line | is-not-empty } | each {|line|
+        let fields = ($line | split row "\t")
+        { name: ($fields | first) root: ($fields | last) }
+    })
+    let reviewed = ($workspaces | each {|workspace|
+        let reason = if $workspace.root == $current { "current workspace" } else { workspace-keep-reason $workspace }
+        $workspace | insert keep $reason
+    })
+    let removable = ($reviewed | where keep == null)
+    let kept = ($reviewed | where keep != null)
+    let cutoff = (date now) - ($keep_days * 1day)
+    if $apply and ($removable | is-not-empty) { checkpoint "prune" }
+    for workspace in $removable {
+        if $apply {
+            run-command $"forgetting ($workspace.name)" { ^jj workspace forget $workspace.name } | ignore
+            if ($workspace.root | path exists) { rm --recursive $workspace.root }
+        }
+        print $"(if $apply { 'removed' } else { 'would remove' }) ($workspace.name): ($workspace.root)"
+    }
+    for workspace in $kept {
+        print $"kept ($workspace.name): ($workspace.keep)"
+    }
+    let checkpoints = ($kept | each {|workspace| prune-checkpoints $workspace.root $cutoff $apply } | math sum)
+    print $"(if $apply { 'Removed' } else { 'Would remove' }) ($checkpoints) checkpoint\(s) older than ($keep_days) days."
+    if not $apply { print "Dry run only. Re-run with `jj-ci prune --apply` to remove them." }
 }
