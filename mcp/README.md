@@ -25,6 +25,27 @@ the Atuin history ID. The `atuin` MCP server is configured for the AI clients,
 so a triage agent can call `atuin_history` and `atuin_output` to inspect the
 failed command's actual terminal output.
 
+## Recursive language model commands
+
+`rlm.nu` adds the Recursive Language Model pattern to the same persistent
+REPL. Long context stays in Nushell variables instead of the agent's prompt,
+and slices go to headless `claude -p` sub-calls:
+
+```nu
+let ctx = rlm load src/**/*.rs
+$ctx | rlm info
+let hits = ($ctx | rlm find 'unsafe')
+let answers = ($ctx | rlm chunk | rlm map "List unsafe blocks and why they are needed.")
+$answers | to json | rlm query "Summarize the unsafe usage across the crate."
+rlm usage
+```
+
+`rlm query --recursive` gives the sub-model its own Nushell MCP REPL with these
+commands, bounded by `RLM_MAX_DEPTH` (default 1). Sub-calls default to
+`RLM_MODEL` (`haiku`), run `RLM_THREADS` (4) at a time in `rlm map`, and append
+cost and token usage to `RLM_LEDGER`; set `RLM_MAX_COST_USD` to stop new calls
+once the ledger reaches that spend. The `rlm` skill describes the workflow.
+
 ## Interactive terminal events
 
 The Nushell configuration also publishes interactive command lifecycle events

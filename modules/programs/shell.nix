@@ -62,6 +62,7 @@ in
       source ${atuinPtyProxyNushellConfig}
       source ${atuinNushellConfig}
       source ${../../mcp/agent-shell.nu}
+      use ${../../mcp/rlm.nu} *
       source ${../../mcp/terminal-events.nu}
       setup-terminal-events
       source ${../../nushell/yazelix.nu}
