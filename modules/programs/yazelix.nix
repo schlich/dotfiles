@@ -1,4 +1,10 @@
-{ inputs, pkgs, ... }:
+{
+  config,
+  inputs,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   tomlFormat = pkgs.formats.toml { };
@@ -12,6 +18,19 @@ in
   # the same Yazi and config are used outside Yazelix sessions.
   programs.yazelix = {
     enable = true;
+    # Sparse root config.toml; absent keys keep packaged defaults. Home Manager
+    # owns this file, so `yzx config` shows these settings as declarative and
+    # cannot save edits to it.
+    config.settings = {
+      # gh dash filters to the current repository when opened inside one.
+      popups.gh_dash = {
+        command = lib.getExe config.programs.gh.package;
+        args = [ "dash" ];
+        title = "gh_dash";
+        keybinding = "Alt Shift D";
+        keep_alive = true;
+      };
+    };
     # Merged over Yazelix's packaged yazi.toml, which keeps its opener rules.
     config.yazi.config.source = tomlFormat.generate "yazelix-yazi.toml" {
       mgr = {
