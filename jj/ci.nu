@@ -836,14 +836,10 @@ def validate-change [] {
 }
 
 def github-reconcile [apply: bool] {
+    # Path-aware jobs that can be skipped stay optional; these always report.
     let required_checks = [
-        "Checkmate formatting and unit-test skeleton"
-        "build headless NixOS"
         "build NixOS (shell and compositor)"
         "build Home Manager modules (shell, editor, and desktop)"
-        "build niri compositor config"
-        "build zellij shell config"
-        "whitespace"
         "impact classification"
     ]
     let repository = (run-command "reading repository metadata" {
@@ -854,21 +850,23 @@ def github-reconcile [apply: bool] {
     let state = (run-command "reading GitHub repository settings" {
         github api $"repos/($repository)" --jq '{allow_auto_merge, delete_branch_on_merge, squash_merge_commit_title, squash_merge_commit_message}'
     })
-    let rule = (run-command "reading main branch protection" {
-        github api graphql -f query='
-          query(\$owner: String!, \$name: String!) {
-            repository(owner: \$owner, name: \$name) {
-              branchProtectionRules(first: 100) {
-                nodes {
-                  id
-                  pattern
-                  requiresStatusChecks
-                  requiresStrictStatusChecks
-                  requiredStatusCheckContexts
-                }
-              }
+    # A bare `-f query='...'` spanning lines does not parse as one argument.
+    let query = '
+      query($owner: String!, $name: String!) {
+        repository(owner: $owner, name: $name) {
+          branchProtectionRules(first: 100) {
+            nodes {
+              id
+              pattern
+              requiresStatusChecks
+              requiresStrictStatusChecks
+              requiredStatusCheckContexts
             }
-          }' -F $"owner=($owner)" -F $"name=($name)"
+          }
+        }
+      }'
+    let rule = (run-command "reading main branch protection" {
+        github api graphql -f $"query=($query)" -F $"owner=($owner)" -F $"name=($name)"
     })
     print $"Repository settings: ($state)"
     print $"Branch protection: ($rule)"
@@ -890,7 +888,13 @@ def github-reconcile [apply: bool] {
     let protection = {
         required_status_checks: { strict: true contexts: $required_checks }
         enforce_admins: true
-        required_pull_request_reviews: null
+        # Changes reach main only through pull requests; no approval is needed.
+        required_pull_request_reviews: {
+            dismiss_stale_reviews: true
+            require_code_owner_reviews: false
+            require_last_push_approval: false
+            required_approving_review_count: 0
+        }
         restrictions: null
         required_linear_history: true
         allow_force_pushes: false
@@ -1151,10 +1155,11 @@ def "main publish" [--auto-merge] {
 
 # CI gate: classify `base..head` from its commit trailers and, for a refactor,
 # prove that every NixOS closure matches the merge base. Uses Git and Nix only,
-# so it runs in CI without a JJ workspace.
+# so it runs in CI without a JJ workspace. Merge commits, such as those from
+# GitHub's "Update branch", carry no trailer and vanish in the squash.
 def "main impact check" [base: string, head: string] {
     let log = (git-command "reading the pull request commits" {
-        ^git log --format=%h%x1f%B%x1e $"($base)..($head)"
+        ^git log --no-merges --format=%h%x1f%B%x1e $"($base)..($head)"
     })
     let revisions = ($log | split row "\u{1e}" | str trim | where {|entry| $entry | is-not-empty } | each {|entry|
         let fields = ($entry | split row "\u{1f}")

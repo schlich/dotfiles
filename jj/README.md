@@ -146,11 +146,12 @@ the topic and can require revision-by-revision conflict decisions.
 Every JJ change ends its description with an `Impact:` trailer that states
 what it does to the built machines:
 
-| Impact     | Meaning                                                                       | Gate                                                                  | Release                                |
-| ---------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------- |
-| `refactor` | Every NixOS closure is unchanged: refactors, docs, CI, and repository tooling | CI proves that each host's toplevel derivation matches the merge base | None                                   |
-| `behavior` | A user-facing change to a host                                                | Normal checks                                                         | CalVer tag when it lands               |
-| `breaking` | A user-facing change that needs manual steps when activating                  | Normal checks; the description body must list the steps               | CalVer tag with the steps in its notes |
+- `refactor`: every NixOS closure is unchanged, as for refactors, docs, CI,
+  and repository tooling. CI proves that each host's toplevel derivation
+  matches the merge base. No release.
+- `behavior`: a user-facing change to a host. Landing it cuts a CalVer release.
+- `breaking`: a user-facing change that needs manual steps when activating.
+  The description body must list the steps, and the release notes carry them.
 
 ```text
 Launch terminals through their configured Home Manager packages
