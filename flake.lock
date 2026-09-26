@@ -2175,17 +2175,17 @@
         "zjstatus": "zjstatus"
       },
       "locked": {
-        "lastModified": 1790460702,
-        "narHash": "sha256-Lrd7H3wL2cP1xiwl9sM1aI+iAE1Kwe/NqYuuqOC4Nik=",
-        "owner": "Yazelix",
-        "repo": "nova",
-        "rev": "7a36e4ba1b281d43813267fa515a9ad10ffa5b5f",
+        "lastModified": 1790462390,
+        "narHash": "sha256-jfnmbed1UdddW6KRH0oCatmtoThFhtlkYBE/SXrRH+8=",
+        "owner": "schlich",
+        "repo": "yazelix",
+        "rev": "9b7b5ee3ab20a93aa3da79e2ff6d735424a75278",
         "type": "github"
       },
       "original": {
-        "owner": "Yazelix",
-        "ref": "edge",
-        "repo": "nova",
+        "owner": "schlich",
+        "ref": "edge-vcs-tab",
+        "repo": "yazelix",
         "type": "github"
       }
     },

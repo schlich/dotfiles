@@ -114,9 +114,11 @@
       flake = false;
     };
     # Keep Yazelix's own locked inputs so builds match yazelix.cachix.org.
-    # Edge carries the Noto Sans Symbols 2 family-name fix (Yazelix/nova#704);
-    # return to github:Yazelix/nova/stable once it reaches stable.
-    yazelix.url = "github:Yazelix/nova/edge";
+    # Upstream edge, which carries the Noto Sans Symbols 2 family-name fix
+    # (Yazelix/nova#704), plus a VCS startup tab running `gh dash` on the
+    # schlich/yazelix fork, since Yazelix has no layout option for it.
+    # Rebase edge-vcs-tab onto upstream edge to pick up new releases.
+    yazelix.url = "github:schlich/yazelix/edge-vcs-tab";
   };
 
   outputs =
