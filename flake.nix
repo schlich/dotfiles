@@ -228,6 +228,17 @@
         '';
       };
 
+      templates.devenv = {
+        path = ./templates/devenv;
+        description = "Nushell and Jujutsu project starter using devenv";
+        welcomeText = ''
+          # Project initialized
+
+          Run `direnv allow` or `devenv shell`, then enable the languages,
+          services, and processes you need in `devenv.nix`.
+        '';
+      };
+
       packages.${system} = {
         default = denFlake.nixosConfigurations.asus.config.system.build.toplevel;
         headless = denFlake.nixosConfigurations.asus-headless.config.system.build.toplevel;
