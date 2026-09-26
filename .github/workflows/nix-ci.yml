@@ -134,6 +134,8 @@ jobs:
           formatter_files=()
           for file in "${changed_files[@]}"; do
             case "$file" in
+              # mdformat rewrites skill frontmatter; Prek excludes these too.
+              .agents/*|.codex/*) ;;
               *.md|*.mdx) markdown_files+=("$file") ;;
               *.nix|*.yaml|*.yml) formatter_files+=("$file") ;;
               *) ;;
