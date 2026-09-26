@@ -29,7 +29,9 @@ jj-ci review snapshot v2
 jj-ci interdiff v1 v2
 # At topic closeout:
 jj-ci publish --auto-merge
-jj-ci finish
+jj-ci finish --wait           # Wait for the merge, then finish.
+# Occasionally, from any workspace:
+jj-ci prune                   # List finished workspaces; --apply removes them.
 ```
 
 ## Patch-series review
@@ -83,9 +85,23 @@ their JJ change IDs, so Tangled can associate rewritten commits with the
 corresponding stack layer and review round.
 
 `jj-ci finish` checks that GitHub merged the exact current head and that the
-merge is on `main@origin`. It then advances local main, leaves an empty
-workspace on main, and releases workspace ownership. Archive the task only
-after it succeeds.
+merge is on `main@origin`. It then deletes the topic bookmark locally and on
+both remotes, advances local main, leaves an empty workspace on main, and
+releases workspace ownership. Archive the task only after it succeeds.
+
+`jj-ci finish --wait` first polls the PR every 30 seconds until GitHub merges
+the current head (default timeout `--timeout 2hr`). It never rebases or
+pushes, so it gives up with an explanation whenever the PR cannot merge
+unattended: it was closed, its head differs from the local revision, it is
+still stacked on another PR, auto-merge is off, strict checks need a newer
+base, or a check failed.
+
+`jj-ci prune` lists workspaces whose working copy is an empty, undescribed
+change on trunk and that no active task owns, plus JJ checkpoints older than
+`--keep-days` (14). `--apply` forgets those workspaces, deletes their
+directories, and deletes the old checkpoints. It keeps the default and current
+workspaces, Git worktrees, stale working copies (which may hide unrecorded
+edits), and anything with changes or built on unmerged work.
 
 ### Rebasing with conflicts
 
