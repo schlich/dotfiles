@@ -113,7 +113,10 @@
   deliverable, but allow a small stack of changes when the task contains
   multiple deliverables that should be split. Do not create unrelated
   follow-up changes after publication. Use separate JJ workspaces for
-  concurrent tasks, and `jj-ci rebase` to update a topic in place.
+  concurrent tasks, and `jj-ci rebase` to update a topic in place. When the
+  user asks to catch up published PRs that fell behind `main`, use
+  `jj-ci refresh`; it pushes only conflict-free rebases and leaves conflicted
+  topics local for resolution before anything is pushed.
 - Before archiving a delivered topic, run `jj-ci finish` and confirm success.
   It verifies delivery of the current head and leaves an empty change on main.
   Pending checks, conflicts, or unpublished edits keep the task open. Native

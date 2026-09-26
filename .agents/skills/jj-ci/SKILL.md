@@ -61,6 +61,7 @@ Use the narrowest workflow that matches the request:
 | Check readiness and run repository gates | `jj-ci validate` | Describes an undescribed change, runs `jj fix -s @`, then Prek on the JJ file list. |
 | Publish the current change | `jj-ci publish` | Validates, creates or updates a stable bookmark and PR, and keeps editing the same change. |
 | Update a topic from trunk | `jj-ci rebase` | Checkpoints, fetches, and rebases the same change. |
+| Update every published topic that fell behind trunk | `jj-ci refresh` | Requires an explicit user request. Rebases each local bookmark with an open PR onto `main@origin`, pushes only conflict-free stacks, and re-pins armed auto-merge. `--no-push` stops before any remote change. |
 | Finish a merged topic | `jj-ci finish` | Verifies the current head was merged and leaves an empty workspace on main before archiving. |
 | Capture a review version | `jj-ci review snapshot <label>` | Records the exact base and series tip for a later interdiff. |
 | Compare review versions | `jj-ci interdiff <old> <new>` | Runs a commit-by-commit `git range-diff` between named snapshots. |
@@ -119,6 +120,16 @@ Use `jj-ci conflicts` after a rebase to list conflicted revisions and files.
 A conflicted rebase has already rewritten the topic: resolve revisions from
 oldest to newest, then verify with `jj-ci conflicts` before validating.
 Never run an unattended auto-rebase or automatic conflict resolver.
+
+`jj-ci refresh` is the attended catch-up path for published topics that are
+not checked out anywhere, typically after strict required checks leave an
+auto-merge PR behind `main`. It skips any topic whose stack or descendants hold
+a workspace's working copy; run `jj-ci rebase` in that workspace instead. It
+uses JJ's recorded conflicts as the push gate: a conflicted topic stays
+rebased locally, its PR is untouched, and the command lists each conflicted
+revision and file. Resolve oldest first with `jj new CHANGE_ID`, edit the files
+or run `jj resolve`, `jj squash`, and then run `jj-ci refresh` again to push.
+Never resolve those conflicts automatically.
 
 Herdr and Paseo may supervise one existing JJ workspace per topic, monitor
 trunk, PR freshness, checks, and queue state, and notify the owner when
