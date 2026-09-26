@@ -85,7 +85,7 @@ let
     install -Dm644 ${
       pkgs.writers.writeJSON "plugin.json" {
         name = "prefer-nushell";
-        description = "Ask before Bash calls so shell work defaults to the nushell MCP tool.";
+        description = "Deny Bash text-processing pipelines so shell work defaults to the nushell MCP tool.";
       }
     } $out/.claude-plugin/plugin.json
     install -Dm644 ${

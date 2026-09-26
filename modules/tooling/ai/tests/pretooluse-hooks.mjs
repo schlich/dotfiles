@@ -139,9 +139,41 @@ const cases = [
   },
   {
     hook: "prefer-nushell",
-    name: "asks for ls",
+    name: "denies ls",
     stdin: claudePayload("ls"),
-    decision: "ask",
+    decision: "deny",
+    reason: /Nushell MCP tool/,
+  },
+  {
+    hook: "prefer-nushell",
+    name: "denies a text pipeline",
+    stdin: claudePayload("cat f | grep x | head -5"),
+    decision: "deny",
+    reason: /cat, grep, head/,
+  },
+  {
+    hook: "prefer-nushell",
+    name: "denies prefixed rg",
+    stdin: claudePayload("FOO=1 sudo rg x src"),
+    decision: "deny",
+  },
+  {
+    hook: "prefer-nushell",
+    name: "denies command substitution",
+    stdin: claudePayload("echo $(find . -name x)"),
+    decision: "deny",
+  },
+  {
+    hook: "prefer-nushell",
+    name: "defers nix build",
+    stdin: claudePayload("nix build .#foo"),
+    decision: null,
+  },
+  {
+    hook: "prefer-nushell",
+    name: "defers jj log",
+    stdin: claudePayload("jj log -r @"),
+    decision: null,
   },
   {
     hook: "prefer-nushell",

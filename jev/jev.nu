@@ -174,7 +174,7 @@ def bash-guard [input: any] {
             hookSpecificOutput: {
                 hookEventName: PreToolUse
                 permissionDecision: deny
-                permissionDecisionReason: $"Jev recommends Nushell \(p=($rewrite)\). Do not run this Bash call. Rewrite it using Nushell syntax and try again."
+                permissionDecisionReason: $"Jev recommends Nushell \(p=($rewrite)\). Do not run this Bash call. Rewrite it as a Nushell pipeline and run it with the Nushell MCP tool \(mcp__plugin_hm_nushell__evaluate\). For large files, logs, or output, keep the data in a Nushell variable and follow the rlm skill instead of printing it."
             }
         }
     }
