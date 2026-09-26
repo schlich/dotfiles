@@ -14,10 +14,86 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  changes:
+    name: Detect affected CI checks
+    runs-on: ubuntu-latest
+    outputs:
+      nix: ${{ steps.changed.outputs.nix }}
+      niri: ${{ steps.changed.outputs.niri }}
+      zellij: ${{ steps.changed.outputs.zellij }}
+      checkmate: ${{ steps.changed.outputs.checkmate }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Detect changed paths
+        id: changed
+        shell: bash
+        env:
+          DIFF_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || '' }}
+        run: |
+          if [[ -z "$DIFF_BASE" || "$DIFF_BASE" =~ ^0+$ ]]; then
+            DIFF_BASE=HEAD^
+          fi
+          git diff --name-only --no-renames -z "$DIFF_BASE" HEAD > "$RUNNER_TEMP/changed-paths"
+          mapfile -d '' changed_files < "$RUNNER_TEMP/changed-paths"
+
+          nix=false
+          niri=false
+          zellij=false
+          checkmate=false
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+            nix=true
+            niri=true
+            zellij=true
+            checkmate=true
+          fi
+          if ((${#changed_files[@]} == 0)); then
+            nix=true
+            niri=true
+            zellij=true
+            checkmate=true
+          fi
+          for file in "${changed_files[@]}"; do
+            case "$file" in
+              *.nix|flake.lock|.github/workflows/*)
+                nix=true
+                niri=true
+                zellij=true
+                checkmate=true
+                ;;
+              niri/*) niri=true ;;
+              zellij/*) zellij=true ;;
+              *.md|*.mdx|*.yaml|*.yml|README.md|AGENTS.md)
+                checkmate=true
+                ;;
+              docs/*)
+                checkmate=true
+                ;;
+              *)
+                nix=true
+                niri=true
+                zellij=true
+                checkmate=true
+                ;;
+            esac
+          done
+
+          {
+            echo "nix=$nix"
+            echo "niri=$niri"
+            echo "zellij=$zellij"
+            echo "checkmate=$checkmate"
+          } >> "$GITHUB_OUTPUT"
   checkmate:
     name: Checkmate formatting and unit-test skeleton
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.checkmate == 'true') }}
     runs-on: ubuntu-latest
     steps:
+      - name: Require successful path detection
+        if: ${{ always() && needs.changes.result != 'success' }}
+        run: exit 1
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
@@ -36,25 +112,31 @@ jobs:
             exit 0
           fi
           markdown_files=()
-          other_files=()
+          formatter_files=()
           for file in "${changed_files[@]}"; do
             case "$file" in
               *.md|*.mdx) markdown_files+=("$file") ;;
-              *) other_files+=("$file") ;;
+              *.nix|*.yaml|*.yml) formatter_files+=("$file") ;;
+              *) ;;
             esac
           done
           if ((${#markdown_files[@]} > 0)); then
             nix run --no-update-lock-file github:denful/checkmate#fmt --override-input target github:$GITHUB_REPOSITORY/$GITHUB_SHA -- --ci --formatters mdformat --on-unmatched warn "${markdown_files[@]}"
           fi
-          if ((${#other_files[@]} > 0)); then
-            nix run --no-update-lock-file github:denful/checkmate#fmt --override-input target github:$GITHUB_REPOSITORY/$GITHUB_SHA -- --ci --on-unmatched warn "${other_files[@]}"
+          if ((${#formatter_files[@]} > 0)); then
+            nix run --no-update-lock-file github:denful/checkmate#fmt --override-input target github:$GITHUB_REPOSITORY/$GITHUB_SHA -- --ci --on-unmatched warn "${formatter_files[@]}"
           fi
       - name: Run Checkmate nix-unit tests
         run: nix build --no-update-lock-file -L github:denful/checkmate#checks.x86_64-linux.nix-unit --override-input target github:$GITHUB_REPOSITORY/$GITHUB_SHA
   headless-system:
     name: build headless NixOS
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.nix == 'true') }}
     runs-on: ubuntu-latest
     steps:
+      - name: Require successful path detection
+        if: ${{ always() && needs.changes.result != 'success' }}
+        run: exit 1
       - uses: actions/checkout@v6
       - uses: DeterminateSystems/determinate-nix-action@v3.21.9
       - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
@@ -62,55 +144,138 @@ jobs:
         run: nix --accept-flake-config build .#nixosConfigurations.asus-headless.config.system.build.toplevel --print-build-logs
   desktop-system:
     name: build NixOS (shell and compositor)
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.nix == 'true') }}
     runs-on: ubuntu-latest
     steps:
+      - name: Require successful path detection
+        if: ${{ always() && needs.changes.result != 'success' }}
+        run: exit 1
       - uses: actions/checkout@v6
-      - name: Free runner disk space
+      - name: Start freeing runner disk space
         run: |
-          sudo rm -rf \
-            /opt/ghc \
-            /opt/hostedtoolcache/CodeQL \
-            /usr/local/lib/android \
-            /usr/local/lib/node_modules \
-            /usr/local/share/chromium \
-            /usr/local/share/powershell \
-            /usr/share/dotnet
-          sudo apt-get clean
-          sudo docker system prune --all --force
-          df -h
+          status_file="$RUNNER_TEMP/runner-disk-cleanup.status"
+          log_file="$RUNNER_TEMP/runner-disk-cleanup.log"
+          pid_file="$RUNNER_TEMP/runner-disk-cleanup.pid"
+          rm -f "$status_file" "$log_file" "$pid_file"
+
+          (
+            trap 'printf "%s\n" "$?" > "$status_file"' EXIT
+            set -e
+            cleanup_paths=(
+              /opt/ghc
+              /opt/hostedtoolcache/CodeQL
+              /usr/local/lib/android
+              /usr/local/lib/node_modules
+              /usr/local/share/chromium
+              /usr/local/share/powershell
+              /usr/share/dotnet
+            )
+            cleanup_pids=()
+            for path in "${cleanup_paths[@]}"; do
+              sudo rm -rf -- "$path" &
+              cleanup_pids+=("$!")
+            done
+            cleanup_status=0
+            for cleanup_pid in "${cleanup_pids[@]}"; do
+              if ! wait "$cleanup_pid"; then
+                cleanup_status=1
+              fi
+            done
+            if ((cleanup_status != 0)); then
+              exit "$cleanup_status"
+            fi
+            sudo apt-get clean
+            sudo docker system prune --all --force
+            df -h
+          ) >"$log_file" 2>&1 </dev/null &
+          echo "$!" > "$pid_file"
       - uses: DeterminateSystems/determinate-nix-action@v3.21.9
       - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
       - name: Evaluate full desktop system
         run: nix --accept-flake-config eval --raw .#nixosConfigurations.asus.config.system.build.toplevel.drvPath
+      - name: Wait for runner disk cleanup
+        run: |
+          status_file="$RUNNER_TEMP/runner-disk-cleanup.status"
+          log_file="$RUNNER_TEMP/runner-disk-cleanup.log"
+          pid_file="$RUNNER_TEMP/runner-disk-cleanup.pid"
+          cleanup_pid="$(<"$pid_file")"
+
+          while [[ ! -f "$status_file" ]]; do
+            if ! kill -0 "$cleanup_pid" 2>/dev/null; then
+              echo "Runner disk cleanup exited without reporting a status."
+              cat "$log_file"
+              exit 1
+            fi
+            sleep 1
+          done
+
+          cleanup_status="$(<"$status_file")"
+          if [[ "$cleanup_status" != 0 ]]; then
+            cat "$log_file"
+            exit "$cleanup_status"
+          fi
+          df -h
       - name: Build desktop system with primary tools only
         run: nix --accept-flake-config build .#desktop-primary --print-build-logs
   home-manager:
     name: build Home Manager modules (shell, editor, and desktop)
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.nix == 'true') }}
     runs-on: ubuntu-latest
     steps:
+      - name: Require successful path detection
+        if: ${{ always() && needs.changes.result != 'success' }}
+        run: exit 1
       - uses: actions/checkout@v6
       - uses: DeterminateSystems/determinate-nix-action@v3.21.9
       - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
       - name: Evaluate Home Manager and build tooling checks
         run: nix --accept-flake-config build .#checks.x86_64-linux.home-manager-nixos --print-build-logs
-  config-checks:
-    name: ${{ matrix.name }}
+  whitespace:
+    name: whitespace
+    needs: changes
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: niri compositor config
-            command: build .#checks.x86_64-linux.niri-config --print-build-logs
-          - name: zellij shell config
-            command: build .#checks.x86_64-linux.zellij-config --print-build-logs
-          - name: whitespace
-            command: build .#checks.x86_64-linux.whitespace --print-build-logs
-          - name: host evaluations
-            command: build .#checks.x86_64-linux.den-host-evaluation --print-build-logs
+    steps:
+      - name: Require successful path detection
+        if: ${{ always() && needs.changes.result != 'success' }}
+        run: exit 1
+      - uses: actions/checkout@v6
+      - uses: DeterminateSystems/determinate-nix-action@v3.21.9
+      - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
+      - name: Build whitespace check
+        run: nix --accept-flake-config build .#checks.x86_64-linux.whitespace --print-build-logs
+  niri-config:
+    name: niri compositor config
+    needs: changes
+    if: needs.changes.outputs.niri == 'true'
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: DeterminateSystems/determinate-nix-action@v3.21.9
       - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
-      - name: Build ${{ matrix.name }}
-        run: nix --accept-flake-config ${{ matrix.command }}
+      - name: Build Niri configuration check
+        run: nix --accept-flake-config build .#checks.x86_64-linux.niri-config --print-build-logs
+  zellij-config:
+    name: zellij shell config
+    needs: changes
+    if: needs.changes.outputs.zellij == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: DeterminateSystems/determinate-nix-action@v3.21.9
+      - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
+      - name: Build Zellij configuration check
+        run: nix --accept-flake-config build .#checks.x86_64-linux.zellij-config --print-build-logs
+  host-evaluations:
+    name: host evaluations
+    needs: changes
+    if: needs.changes.outputs.nix == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: DeterminateSystems/determinate-nix-action@v3.21.9
+      - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
+      - name: Build host evaluation check
+        run: nix --accept-flake-config build .#checks.x86_64-linux.den-host-evaluation --print-build-logs
