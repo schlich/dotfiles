@@ -50,7 +50,7 @@ export def parse-markdown-table [path: string] {
     | each {|cell|
         $cell
         | str trim
-        | str downcase
+        | str lowercase
         | str replace -a ' ' '_'
       }
   )
