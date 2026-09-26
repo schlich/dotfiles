@@ -271,7 +271,7 @@ def rebase-topic [] {
     checkpoint "rebase"
     fetch-origin
     run-command "rebasing the topic stack" {
-        ^jj rebase -s 'roots(main@origin..@)' -o main@origin
+        ^jj rebase -s 'roots(main@origin..@)' -o main@origin --skip-emptied
     } | ignore
     if (print-conflicts "Rebase completed") {
         error make { msg: "Rebase completed with conflicts. Resolve them before continuing." }
@@ -284,58 +284,134 @@ def revset-change-ids [revset: string] {
     $result.stdout | lines | where {|line| $line | str trim | is-not-empty }
 }
 
-# Bring one published topic up to date with main@origin. Conflicts stay
-# recorded in the local rewrite and block the push until someone resolves them.
+# A stacked PR cannot use GitHub auto-merge while it targets its parent's
+# branch: it would merge into that branch. This label records the request
+# until `jj-ci refresh` sees the PR retargeted to main.
+const AUTO_MERGE_LABEL = "jj-ci:auto-merge"
+
+def bookmark-revset [bookmark: string] {
+    $"bookmarks\(exact:'($bookmark)')"
+}
+
+# Move the commits of `tip` that are in neither `onto` nor main onto `onto`.
+# Commits that become empty were already delivered (for example a squash-merged
+# parent) and are dropped. Returns the revset of the restacked topic.
+def restack [tip: string, onto: string] {
+    if (revset-change-ids $"($onto) & ~::($tip)" | is-not-empty) {
+        run-command $"rebasing ($tip) onto ($onto)" {
+            ^jj rebase -s $"roots\(::($tip) ~ ::($onto) ~ ::main@origin)" -o $onto --skip-emptied
+        } | ignore
+    }
+    $"($onto)..($tip)"
+}
+
+def enable-auto-merge [pr: any, head: string] {
+    run-command $"enabling auto-merge for ($pr)" {
+        github pr merge $pr --auto --squash --delete-branch --match-head-commit $head
+    } | ignore
+}
+
+def request-deferred-auto-merge [pr: string] {
+    git-command "creating the deferred auto-merge label" {
+        github label create $AUTO_MERGE_LABEL --force --color 0E8A16 --description "jj-ci enables auto-merge once this stacked PR targets main"
+    } | ignore
+    git-command "labelling the pull request" { github pr edit $pr --add-label $AUTO_MERGE_LABEL } | ignore
+}
+
+# Bring one published topic up to date with its base: main@origin, or its
+# parent's bookmark for a stacked PR. Conflicts stay recorded in the local
+# rewrite and block the push until someone resolves them.
 def refresh-topic [pr: record, push: bool] {
     let bookmark = $pr.headRefName
     let label = $"#($pr.number) ($bookmark)"
-    if (revset-change-ids $"bookmarks\(exact:'($bookmark)')" | is-empty) {
-        return { pr: $pr.number state: "no local bookmark" }
+    let result = {|state| { pr: $pr.number branch: $bookmark state: $state } }
+    if (revset-change-ids (bookmark-revset $bookmark) | is-empty) {
+        return (do $result "no local bookmark")
     }
-    let stack = $"main@origin..($bookmark)"
-    let checked_out = (revset-change-ids $"\(($stack)):: & working_copies\()")
+    let stacked = $pr.baseRefName != "main"
+    let onto = if $stacked { bookmark-revset $pr.baseRefName } else { "main@origin" }
+    if $stacked and (revset-change-ids $onto | is-empty) {
+        print $"($label): parent branch ($pr.baseRefName) has no local bookmark."
+        return (do $result "parent not local")
+    }
+    let checked_out = (revset-change-ids $"\(($onto)..($bookmark)):: & working_copies\()")
     if ($checked_out | is-not-empty) {
         print $"($label): checked out in a workspace at ($checked_out | str join ', '); run `jj-ci rebase` there."
-        return { pr: $pr.number state: "checked out" }
+        return (do $result "checked out")
     }
-    if (revset-change-ids $"main@origin & ~::($bookmark)" | is-not-empty) {
-        run-command $"rebasing ($bookmark) onto main@origin" {
-            ^jj rebase -b $bookmark -o main@origin
-        } | ignore
-    }
+    let stack = (restack $bookmark $onto)
     let conflicts = (conflicted-revisions $stack)
     if ($conflicts | is-not-empty) {
         print $"($label): ($conflicts | length) conflicted revision\(s), not pushed:"
         print-conflicted-files $conflicts "  "
         print "  Resolve oldest first: `jj new CHANGE_ID`, fix the files or run `jj resolve`, then `jj squash`."
-        return { pr: $pr.number state: "conflicted" }
+        return (do $result "conflicted")
     }
     let head = (revision-id $bookmark)
-    if $head == $pr.headRefOid {
-        return { pr: $pr.number state: "current" }
-    }
+    let changed = $head != $pr.headRefOid
     if not $push {
-        print $"($label): rebased cleanly to ($head | str substring 0..11); not pushed."
-        return { pr: $pr.number state: "ready to push" }
+        if $changed { print $"($label): restacked cleanly to ($head | str substring 0..11); not pushed." }
+        return (do $result (if $changed { "ready to push" } else { "current" }))
     }
-    push-topic-bookmark $bookmark
-    if $pr.autoMergeRequest != null {
+    if $changed {
+        push-topic-bookmark $bookmark
+        print $"($label): pushed ($head | str substring 0..11)."
+    }
+    let armed = $pr.autoMergeRequest != null
+    let deferred = ($pr.labels | any {|l| $l.name == $AUTO_MERGE_LABEL })
+    if $stacked {
+        if $armed {
+            print $"($label): warning: auto-merge is enabled while the PR targets ($pr.baseRefName); it would merge into that branch."
+        }
+    } else if $armed and $changed {
         # Re-pin auto-merge to the rewritten head so it cannot merge anything else.
-        run-command $"re-enabling auto-merge for #($pr.number)" {
-            github pr merge $pr.number --auto --squash --delete-branch --match-head-commit $head
+        enable-auto-merge $pr.number $head
+    } else if $deferred and not $armed {
+        enable-auto-merge $pr.number $head
+        git-command "removing the deferred auto-merge label" {
+            github pr edit $pr.number --remove-label $AUTO_MERGE_LABEL
         } | ignore
+        print $"($label): now targets main; auto-merge enabled."
     }
-    print $"($label): pushed ($head | str substring 0..11)."
-    { pr: $pr.number state: "pushed" }
+    do $result (if $changed { "pushed" } else { "current" })
+}
+
+# Order PRs so every parent is refreshed before the PRs stacked on it.
+def stack-order [prs: list] {
+    mut ordered = []
+    mut remaining = $prs
+    mut bases = ["main"]
+    loop {
+        let known = $bases
+        let ready = ($remaining | where {|pr| $pr.baseRefName in $known })
+        if ($ready | is-empty) { break }
+        $ordered = ($ordered | append $ready)
+        $bases = ($bases | append ($ready | get headRefName))
+        let taken = ($ready | get number)
+        $remaining = ($remaining | where {|pr| $pr.number not-in $taken })
+    }
+    { ordered: $ordered unrooted: $remaining }
 }
 
 def refresh-topics [push: bool] {
     checkpoint "refresh"
     fetch-origin
     let prs = (git-command "listing open pull requests" {
-        github pr list --state open --base main --json number,headRefName,headRefOid,autoMergeRequest
+        github pr list --state open --json number,headRefName,headRefOid,baseRefName,autoMergeRequest,labels
     } | from json)
-    let results = ($prs | each {|pr| refresh-topic $pr $push })
+    let order = (stack-order $prs)
+    mut results = ($order.unrooted | each {|pr| { pr: $pr.number branch: $pr.headRefName state: "base is not main or an open PR" } })
+    for pr in $order.ordered {
+        let parent = ($results | where branch == $pr.baseRefName | get 0?)
+        let blocked = $parent != null and $parent.state in ["conflicted" "parent not local" "waiting on parent"]
+        let outcome = if $blocked {
+            print $"#($pr.number) ($pr.headRefName): waiting on its parent ($pr.baseRefName)."
+            { pr: $pr.number branch: $pr.headRefName state: "waiting on parent" }
+        } else {
+            refresh-topic $pr $push
+        }
+        $results = ($results | append $outcome)
+    }
     print ($results | table)
     if ($results | where state == "conflicted" | is-not-empty) {
         error make { msg: "Some topics have conflicts. Resolve them locally, then run `jj-ci refresh` again." }
@@ -344,10 +420,6 @@ def refresh-topics [push: bool] {
 
 # Topics stacked beyond this depth wait for an earlier layer to land instead.
 const PLAN_MAX_STACK = 3
-
-def bookmark-revset [bookmark: string] {
-    $"bookmarks\(exact:'($bookmark)')"
-}
 
 def revision-field [revision: string, template: string] {
     let result = (^jj log -r $revision --no-graph -T $template | complete)
@@ -460,34 +532,45 @@ def build-plan [prs: list] {
     let proposals = ($components | each {|component|
         let chain = ($candidates | where tip in $component)
         $chain | enumerate | each {|entry|
-            let proposal = if ($chain | length) == 1 {
-                "independent PR"
+            let action = if ($chain | length) == 1 {
+                "independent"
             } else if $entry.index == 0 {
-                "base of stack"
+                "base"
             } else if $entry.index < $PLAN_MAX_STACK {
-                $"stack on ($chain | get ($entry.index - 1) | get label)"
+                "stack"
             } else {
-                $"hold until ($chain | get ($PLAN_MAX_STACK - 1) | get label) lands"
+                "hold"
             }
-            { tip: $entry.item.tip proposal: $proposal }
+            let parent = if $action == "stack" { $chain | get ($entry.index - 1) } else { null }
+            let proposal = match $action {
+                "independent" => "independent PR"
+                "base" => "base of stack"
+                "stack" => $"stack on ($parent.label)"
+                _ => $"hold until ($chain | get ($PLAN_MAX_STACK - 1) | get label) lands"
+            }
+            { tip: $entry.item.tip action: $action proposal: $proposal parent: $parent }
         }
     } | flatten)
     $topics | each {|topic|
-        let proposal = match $topic.main {
-            "landed" => "already in main; finish or abandon"
-            "conflicts with main" => "resolve against main first (jj-ci rebase)"
-            _ => ($proposals | where tip == $topic.tip | get 0.proposal)
+        let placement = match $topic.main {
+            "landed" => { action: "landed" proposal: "already in main; finish or abandon" parent: null }
+            "conflicts with main" => { action: "resolve-main" proposal: "resolve against main first (jj-ci rebase)" parent: null }
+            _ => ($proposals | where tip == $topic.tip | get 0)
         }
         let conflicts = ($edges
             | where {|edge| $edge.a == $topic.tip or $edge.b == $topic.tip }
             | each {|edge| let other = if $edge.a == $topic.tip { $edge.b } else { $edge.a }; $topics | where tip == $other | get 0.label })
         {
             topic: $topic.label
+            tip: $topic.tip
             change: ($topic.tip | str substring 0..7)
             description: $topic.description
             main: $topic.main
             conflicts_with: $conflicts
-            proposal: $proposal
+            action: $placement.action
+            proposal: $placement.proposal
+            stack_on_pr: ($placement.parent | get pr? )
+            stack_on: ($placement.parent | get label? )
         }
     }
 }
@@ -727,37 +810,101 @@ def "main conflicts" [] {
     }
 }
 
+# Choose the branch a new topic should stack on. A topic built on top of an
+# open PR depends on it and stacks on the nearest such PR; otherwise
+# `jj-ci plan` decides. Returns null when the topic can go straight to main.
+def plan-parent-for-current-topic [branch: string] {
+    let open = (git-command "listing open pull requests" {
+        github pr list --state open --json number,headRefName,baseRefName
+    } | from json)
+    let below = ($open | where {|pr|
+        $pr.headRefName != $branch and (revset-change-ids $"(bookmark-revset $pr.headRefName) & ::@- ~ ::main@origin" | is-not-empty)
+    })
+    if ($below | is-not-empty) {
+        let heads = (revset-change-ids $"heads\(($below | each {|pr| bookmark-revset $pr.headRefName } | str join ' | '))")
+        let nearest = ($below | where {|pr| (revset-change-ids (bookmark-revset $pr.headRefName) | first) in $heads } | first)
+        print $"Built on #($nearest.number); stacking on ($nearest.headRefName)."
+        return $nearest.headRefName
+    }
+    let prs = ($open | where baseRefName == "main")
+    let tip = (current-change 'change_id.short()')
+    let entry = (build-plan $prs | where tip == $tip | get 0?)
+    if $entry == null { return null }
+    match $entry.action {
+        "hold" => {
+            error make { msg: $"This topic conflicts with a stack that is already ($PLAN_MAX_STACK) layers deep \(($entry.proposal)). Hold it locally until a layer lands." }
+        }
+        "stack" => {
+            if $entry.stack_on_pr == null {
+                error make { msg: $"This topic conflicts with unpublished work in ($entry.stack_on). Publish that topic first or wait for it to land." }
+            }
+            let parent = ($prs | where number == $entry.stack_on_pr | get 0.headRefName)
+            print $"Conflicts with ($entry.conflicts_with | str join ', '); stacking on #($entry.stack_on_pr) \(($parent))."
+            $parent
+        }
+        _ => null
+    }
+}
+
+def restack-topic [parent: string] {
+    require-owned-change
+    if (print-conflicts "Before restack") {
+        error make { msg: "Resolve existing conflicts before restacking." }
+    }
+    let onto = (bookmark-revset $parent)
+    if (revset-change-ids $onto | is-empty) {
+        error make { msg: $"The parent branch ($parent) has no local bookmark. Fetch and track it first." }
+    }
+    checkpoint "restack"
+    let stack = (restack "@" $onto)
+    let conflicts = (conflicted-revisions $stack)
+    if ($conflicts | is-not-empty) {
+        print $"Restacked onto ($parent) with ($conflicts | length) conflicted revision\(s):"
+        print-conflicted-files $conflicts "  "
+        error make { msg: "Resolve these conflicts locally, oldest first, then run `jj-ci publish` again." }
+    }
+}
+
 def "main publish" [--auto-merge] {
     require-ready-change
-    rebase-topic
+    let branch = (publication-bookmark)
+    fetch-origin
+    let pr = (do { github pr view $branch --json url,state,baseRefName } | complete)
+    let existing = if $pr.exit_code == 0 { $pr.stdout | from json } else { null }
+    if $existing != null and $existing.state != "OPEN" {
+        error make { msg: "This topic's PR is closed or merged. Finish it before starting new work." }
+    }
+    # An existing PR keeps its base; a new topic follows `jj-ci plan`.
+    let parent = if $existing != null {
+        if $existing.baseRefName == "main" { null } else { $existing.baseRefName }
+    } else {
+        plan-parent-for-current-topic $branch
+    }
+    if $parent == null { rebase-topic } else { restack-topic $parent }
     require-ready-change
     validate-change
     let title = (current-change "description.first_line()")
-    let branch = (publication-bookmark)
     let head = (current-change "commit_id")
-    let pr = (do { github pr view $branch --json url,state } | complete)
-    if $pr.exit_code == 0 and (($pr.stdout | from json).state != "OPEN") {
-        error make { msg: "This topic's PR is closed or merged. Finish it before starting new work." }
-    }
     run-command "setting the publication bookmark" { ^jj bookmark set $branch -r @ } | ignore
     remember-publication-bookmark $branch
     push-topic-bookmark $branch
-    let url = if $pr.exit_code == 0 {
-        let existing = ($pr.stdout | from json)
-        if $existing.state != "OPEN" {
-            error make { msg: "This topic's PR is already closed or merged. Finish the session and start a new topic." }
-        }
+    let url = if $existing != null {
         $existing.url
     } else {
         run-command "creating the pull request" {
-            github pr create --base main --head $branch --title $title --body $"## Summary\\n\\n- ($title)\\n\\n## Validation\\n\\n- `jj-ci validate`"
+            github pr create --base ($parent | default "main") --head $branch --title $title --body $"## Summary\\n\\n- ($title)\\n\\n## Validation\\n\\n- `jj-ci validate`"
         }
     }
     print $url
     if $auto_merge {
-        run-command "enabling pull request auto-merge" {
-            github pr merge $url --auto --squash --delete-branch --match-head-commit $head
-        } | ignore
+        if $parent == null {
+            enable-auto-merge $url $head
+            # A formerly stacked PR may still carry the deferral label.
+            do { github pr edit $url --remove-label $AUTO_MERGE_LABEL } | complete | ignore
+        } else {
+            request-deferred-auto-merge $url
+            print $"Stacked on ($parent): auto-merge is deferred until this PR targets main; `jj-ci refresh` enables it then."
+        }
     }
     print "Published this topic in place. Further edits update the same JJ series and PR."
 }
@@ -788,14 +935,20 @@ def "main finish" [] {
     let head = (current-change "commit_id")
     let branch = (publication-bookmark)
     let empty = (current-change "empty") == "true"
-    let url = if $empty {
+    # An empty workspace is either unpublished, or its merged topic was dropped
+    # when a stacked child restacked with --skip-emptied.
+    let delivery = if $empty {
         let prs = (run-command "checking for a published empty topic" {
-            github pr list --state all --head $branch --json number
+            github pr list --state all --head $branch --json state,mergeCommit,url
         } | from json)
-        if ($prs | is-not-empty) {
-            error make { msg: "This empty topic has a published PR. Resolve its delivery or closure explicitly before releasing the workspace." }
+        if ($prs | where state != "MERGED" | is-not-empty) {
+            error make { msg: "This empty topic has an unmerged PR. Resolve its delivery or closure explicitly before releasing the workspace." }
         }
-        "Unpublished empty topic"
+        if ($prs | is-empty) {
+            { url: "Unpublished empty topic" merged: null }
+        } else {
+            { url: ($prs | first | get url) merged: ($prs | first | get mergeCommit.oid) }
+        }
     } else {
         let pr = (run-command "checking topic delivery" {
             github pr view $branch --json state,headRefOid,mergeCommit,url
@@ -803,17 +956,14 @@ def "main finish" [] {
         if $pr.state != "MERGED" or $pr.headRefOid != $head {
             error make { msg: "The current revision must be merged without subsequent local edits before finishing. Leave the task open." }
         }
-        $pr.url
+        { url: $pr.url merged: $pr.mergeCommit.oid }
     }
+    let url = $delivery.url
     checkpoint "finish"
     run-command "fetching main" { ^jj git fetch --remote origin } | ignore
-    if not $empty {
-        let pr = (run-command "reading the merge commit" {
-            github pr view $branch --json mergeCommit
-        } | from json)
-        let merged = $pr.mergeCommit.oid
+    if $delivery.merged != null {
         let delivered = (run-command "verifying delivery to main" {
-            ^jj log -r $"($merged) & ::main@origin" --no-graph -T commit_id
+            ^jj log -r $"($delivery.merged) & ::main@origin" --no-graph -T commit_id
         })
         if ($delivered | is-empty) {
             error make { msg: "The merge is not on main@origin yet. Leave the task open and retry later." }
