@@ -14,8 +14,12 @@ script, use valid Nushell syntax.
 - Use Nushell (`nu`) for shell pipelines and text processing instead of tools
   such as `jq`, `awk`, `sed`, `grep`, or `rg`; prefer structured Nushell
   commands and pipelines for searching, filtering, and transforming data.
-- Before saving a multi-command IntelliShell template, validate it with
-  `nu -c` when practical.
+- Prefer the Nushell evaluate tool for Nushell commands, pipelines, and
+  interactive exploration. It preserves the Nushell session and structured
+  results; do not invoke `nu -c` through a shell just to evaluate Nushell.
+- Before saving a multi-command IntelliShell template, validate it with the
+  Nushell evaluate tool when available. Use `nu -c` only when that tool is
+  unavailable or when validation specifically requires a fresh Nushell process.
 
 # Nix configuration
 
