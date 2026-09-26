@@ -120,15 +120,17 @@
 - Keep one coherent topic per Codex task. Use one stable JJ change for a single
   deliverable, but allow a small stack of changes when the task contains
   multiple deliverables that should be split. Do not create unrelated
-  follow-up changes after publication. Use separate JJ workspaces for
-  concurrent tasks, and `jj-ci rebase` to update a topic in place. A
+  follow-up changes after publication. Create each concurrent task's
+  workspace with `jj-ci start NAME`, and `jj-ci rebase` to update a topic in place. A
   conflict-free PR does not need to catch up with `main` to merge. The local
   webhook runs `jj-ci refresh` after each successful `main` build; it restacks
   only stacked, retargeted, or conflicting PRs, pushes only conflict-free
   rebases, and leaves conflicted topics local for resolution. Run
   `jj-ci refresh --all` only when the user asks to rebase every open PR.
 - Before archiving a delivered topic, run `jj-ci finish` and confirm success.
-  It verifies delivery of the current head and leaves an empty change on main.
+  It verifies delivery of the current head and removes a workspace that
+  `jj-ci start` created (`--keep` leaves it on an empty change on main).
+  Use `jj-ci abandon` for a topic that will not land.
   Pending checks, conflicts, or unpublished edits keep the task open. Native
   archive-button clicks are not a closeout hook.
 - GitHub owns PR state, required checks, and delivery to `main`. Do not bypass

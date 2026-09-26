@@ -18,6 +18,7 @@ absorbed into the appropriate change instead of appended as "address review"
 commits.
 
 ```nu
+jj-ci start topic-name        # Create the topic's workspace from main@origin.
 jj-ci status
 jj-ci rebase                  # Fetch trunk and rebase the whole topic stack.
 jj-ci conflicts               # Show conflicted revisions and files after a rebase.
@@ -29,9 +30,11 @@ jj-ci review snapshot v2
 jj-ci interdiff v1 v2
 # At topic closeout:
 jj-ci publish --auto-merge
-jj-ci finish --wait           # Wait for the merge, then finish.
+jj-ci finish --wait           # Wait for the merge, then finish and remove the workspace.
+# To drop an unpublished or closed topic instead:
+jj-ci abandon
 # Occasionally, from any workspace:
-jj-ci prune                   # List finished workspaces; --apply removes them.
+jj-ci prune                   # List leaked workspaces; --apply removes them.
 ```
 
 ## Patch-series review
@@ -86,8 +89,11 @@ corresponding stack layer and review round.
 
 `jj-ci finish` checks that GitHub merged the exact current head and that the
 merge is on `main@origin`. It then deletes the topic bookmark locally and on
-both remotes, advances local main, leaves an empty workspace on main, and
-releases workspace ownership. Archive the task only after it succeeds.
+both remotes, advances local main, and releases the workspace. A workspace
+that `jj-ci start` created is forgotten and its directory deleted; continue
+from the default checkout. `--keep`, or any other workspace, is left on an
+empty change on main with its Codex ownership finished. Archive the task only
+after it succeeds.
 
 `jj-ci finish --wait` first polls the PR every 30 seconds until GitHub merges
 the current head (default timeout `--timeout 2hr`). It never rebases or
@@ -96,12 +102,24 @@ unattended: it was closed, its head differs from the local revision, it is
 still stacked on another PR, auto-merge is off, strict checks need a newer
 base, or a check failed.
 
-`jj-ci prune` lists workspaces whose working copy is an empty, undescribed
-change on trunk and that no active task owns, plus JJ checkpoints older than
-`--keep-days` (14). `--apply` forgets those workspaces, deletes their
-directories, and deletes the old checkpoints. It keeps the default and current
-workspaces, Git worktrees, stale working copies (which may hide unrecorded
-edits), and anything with changes or built on unmerged work.
+`jj-ci abandon` drops a topic that will not land. It refuses while the
+topic's PR is open, records a checkpoint, deletes the topic bookmark, abandons
+the revisions above `main@origin`, and releases the workspace like `finish`.
+`jj op restore` with the printed operation recovers it.
+
+Workspace lifetime follows ownership rather than garbage collection:
+`jj-ci start` creates a workspace for exactly one topic, and `finish` or
+`abandon` frees it. `jj-ci prune` is the backstop for owners that never
+released theirs, such as a crashed task or a workspace created by hand. It
+lists workspaces that are missing, or that no active task owns and whose
+revisions above `main@origin` are all delivered: nothing but an empty,
+undescribed working copy remains, or GitHub merged the topic's exact head,
+which catches squash merges. It also lists JJ checkpoints older than
+`--keep-days` (14). A stale working copy is reported without being touched;
+`--apply` first runs `jj workspace update-stale` there and decides again. `--apply` then forgets the listed
+workspaces, deletes their directories, and deletes the old checkpoints. Prune
+always keeps the default and current workspaces, Git and Codex worktrees, and
+anything with undelivered changes.
 
 ### Rebasing with conflicts
 
@@ -279,8 +297,11 @@ GitHub discovery.
 Create a separate JJ workspace before opening a new local project task:
 
 ```nu
-jj workspace add --revision main@origin --name topic-name ../project-topic-name
+jj-ci start topic-name
 ```
+
+It creates `.jj-workspaces/topic-name` at `main@origin` and refuses a name
+that is already in use. `jj-ci finish` or `jj-ci abandon` removes it.
 
 Use that directory as a local Codex project. The session hook starts an
 independent topic at `main@origin`, records ownership in

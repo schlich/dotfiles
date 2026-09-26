@@ -48,7 +48,8 @@ equivalent low-level commands:
 - `jj-ci publish` for stable bookmark, push, and pull-request handling while
   retaining the same working-copy change;
 - `jj-ci rebase` for updating that topic in place;
-- `jj-ci finish` for verified delivery and workspace cleanup before archiving;
+- `jj-ci start` to create a topic's workspace, and `jj-ci finish` or
+  `jj-ci abandon` to release it;
 - `jj-ci github reconcile` for declared GitHub policy;
 - `jj-ci stack-merge` for validated stack submission.
 
@@ -69,8 +70,10 @@ Use the narrowest workflow that matches the request:
 | Decide whether a topic ships alone or stacked | `jj-ci plan` | Read-only apart from a fetch. Trial-merges in-flight topics (open-PR bookmarks and workspace changes) against `main@origin` and each other, then proposes independent PRs or stacks. `--json` for structured output. |
 | Update a topic from trunk | `jj-ci rebase` | Checkpoints, fetches, and rebases the same change. |
 | Restack published topics after trunk moves | `jj-ci refresh` | The webhook runs it after every successful `main` build; run it by hand only on request. Restacks stacked, retargeted (`jj-ci:stacked`), and conflicting PRs onto their base (`main@origin`, or the parent PR's bookmark), parents first, dropping commits a squash-merge already delivered. Checked-out topics are rebased from their own workspace only when a trial merge is clean. Pushes only conflict-free stacks, re-pins armed auto-merge, and enables deferred auto-merge once a stacked PR targets `main`. `--all` also rebases PRs that are merely behind; `--no-push` stops before any remote change. |
-| Finish a merged topic | `jj-ci finish` | Verifies the current head was merged, deletes the topic bookmark locally and on both remotes, and leaves an empty workspace on main before archiving. Also accepts an empty workspace whose PR merged and whose commit a stacked child dropped. `--wait` polls until GitHub merges the current head, and stops without rewriting anything if the PR cannot merge unattended. |
-| Clean up finished workspaces | `jj-ci prune` | Dry run by default. Lists empty, undescribed, unowned workspaces on trunk and checkpoints older than `--keep-days`. `--apply` forgets and deletes them, which requires an explicit user request. |
+| Start a topic | `jj-ci start <name>` | Creates `.jj-workspaces/<name>` at `main@origin` for exactly one topic; refuses a name already in use. |
+| Finish a merged topic | `jj-ci finish` | Verifies the current head was merged, deletes the topic bookmark locally and on both remotes, and removes a workspace that `jj-ci start` created (`--keep`, or any other workspace, stays on an empty change on main) before archiving. Also accepts an empty workspace whose PR merged and whose commit a stacked child dropped. `--wait` polls until GitHub merges the current head, and stops without rewriting anything if the PR cannot merge unattended. |
+| Drop a topic that will not land | `jj-ci abandon` | Refuses while its PR is open. Checkpoints, deletes the topic bookmark, abandons the revisions above `main@origin`, and releases the workspace like `finish`. Requires an explicit user request. |
+| Reclaim leaked workspaces | `jj-ci prune` | Dry run by default. Lists missing workspaces and unowned ones whose work is delivered (only an empty undescribed working copy remains, or GitHub merged the exact topic head), plus checkpoints older than `--keep-days`. Reports stale workspaces untouched. `--apply` updates stale ones, decides again, then forgets and deletes the listed ones, which requires an explicit user request. |
 | Capture a review version | `jj-ci review snapshot <label>` | Records the exact base and series tip for a later interdiff. |
 | Compare review versions | `jj-ci interdiff <old> <new>` | Runs a commit-by-commit `git range-diff` between named snapshots. |
 | Publish and request auto-merge | `jj-ci publish --auto-merge` | Requires an explicit user request because it changes GitHub PR state. On a stacked PR it adds the `jj-ci:auto-merge` label instead; `jj-ci refresh` enables auto-merge after GitHub retargets the PR to `main`. |
