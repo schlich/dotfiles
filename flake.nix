@@ -114,7 +114,9 @@
       flake = false;
     };
     # Keep Yazelix's own locked inputs so builds match yazelix.cachix.org.
-    yazelix.url = "github:Yazelix/nova/stable";
+    # Edge carries the Noto Sans Symbols 2 family-name fix (Yazelix/nova#704);
+    # return to github:Yazelix/nova/stable once it reaches stable.
+    yazelix.url = "github:Yazelix/nova/edge";
   };
 
   outputs =
