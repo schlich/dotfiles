@@ -121,6 +121,7 @@ in
     wl-clipboard-rs
     gh-stack
     secretspec
+    devenv
     jev
     inputs.xs.packages.${pkgs.stdenv.hostPlatform.system}.default
     inputs.ai-usagebar.packages.${pkgs.stdenv.hostPlatform.system}.default
