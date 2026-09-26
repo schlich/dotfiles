@@ -112,6 +112,102 @@ def "main triage-gate" [] {
     } | to json -r
 }
 
+# Classify Claude Code Bash tool calls before execution. Reads a PreToolUse
+# event from stdin and emits a Claude Code hook decision as JSON. Any Jev
+# failure is converted into an explicit user confirmation request.
+def bash-ask [reason: string] {
+    {
+        hookSpecificOutput: {
+            hookEventName: PreToolUse
+            permissionDecision: ask
+            permissionDecisionReason: $reason
+        }
+    }
+}
+
+def shell-quote [value: string] {
+    # Bash single-quote escaping. The translated source remains one `nu -c`
+    # argument even when it contains spaces, quotes, or shell metacharacters.
+    let escaped = ($value | str replace --all "'" "'\\''")
+    "'" + $escaped + "'"
+}
+
+def bash-guard [] {
+    let event = (open --raw /dev/stdin | from json)
+    if ($event.tool_name? | default "") != "Bash" {
+        return {}
+    }
+    let tool_input = ($event.tool_input? | default {})
+    let command = ($tool_input.command? | default "")
+    if ($command | str trim | is-empty) {
+        return (bash-ask "The Bash command could not be inspected. Confirm before running it.")
+    }
+    if $command =~ $credential_pattern {
+        return (bash-ask "This Bash command appears to assign a credential. Jev was not sent the command; confirm before running it.")
+    }
+
+    let config = (questions-config)
+    let guard = $config.bash_guard
+    let state = {
+        bash_command: $command
+        cwd: ($event.cwd? | default "" | str replace $env.HOME "~")
+    }
+    let result = (try {
+        { response: (ask $state $guard.questions $config.model) }
+    } catch {|err|
+        { error: $err.msg }
+    })
+    if ($result.error? != null) {
+        return (bash-ask $"Jev could not classify this Bash call: ($result.error). Confirm before running it.")
+    }
+
+    let answers = $result.response.answers
+    let action = ($answers.action.choice? | default "" | str lowercase | str replace --all "-" "_")
+    let reason = ($answers.reason.text? | default "" | str trim)
+    if $action == "retry_nushell" {
+        let message = "Jev recommends Nushell. Do not run this Bash call. Rewrite it using Nushell syntax and try again."
+        return {
+            hookSpecificOutput: {
+                hookEventName: PreToolUse
+                permissionDecision: deny
+                permissionDecisionReason: (if ($reason | is-empty) { $message } else { $"($message) Reason: ($reason)" })
+            }
+        }
+    }
+    if $action == "translate_to_nushell" {
+        let source = ($answers.nushell_command.text? | default "" | str trim)
+        if ($source | is-empty) {
+            return (bash-ask "Jev selected Nushell translation but returned no command. Confirm the original Bash call.")
+        }
+        let nu_bin = ($env.JEV_NUSHELL? | default "nu")
+        let updated = ($tool_input | upsert command $"($nu_bin) -c (shell-quote $source)")
+        return {
+            hookSpecificOutput: {
+                hookEventName: PreToolUse
+                permissionDecision: allow
+                permissionDecisionReason: (if ($reason | is-empty) { "Translated this command to Nushell." } else { $"Translated to Nushell: ($reason)" })
+                updatedInput: $updated
+            }
+        }
+    }
+    if $action == "ask_bash" {
+        return (bash-ask (if ($reason | is-empty) { "Jev determined Bash is appropriate. Confirm before running this command." } else { $reason }))
+    }
+    bash-ask $"Jev returned an unrecognized action '($action)'. Confirm before running Bash."
+}
+
+def "main bash-guard" [] {
+    let output = (try {
+        { result: (bash-guard) }
+    } catch {|err|
+        { error: $err.msg }
+    })
+    if ($output.error? != null) {
+        return (bash-ask $"The Jev Bash guard could not inspect this command: ($output.error). Confirm before running it." | to json -r)
+    }
+    $output.result | to json -r
+}
+
 def main [] {
-    print "Usage: jev ask | jev triage-gate"
+    print "Usage: jev ask | jev triage-gate | jev bash-guard"
 }

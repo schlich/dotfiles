@@ -44,6 +44,30 @@ let
       }
     } $out/hooks/hooks.json
   '';
+  jev = import ../../../jev/package.nix { inherit pkgs; };
+  jevBashGuard = pkgs.runCommand "claude-code-jev-bash-guard" { } ''
+    install -Dm644 ${
+      pkgs.writers.writeJSON "plugin.json" {
+        name = "jev-bash-guard";
+        description = "Ask Jev to route Claude Code Bash commands through Nushell or user confirmation.";
+      }
+    } $out/.claude-plugin/plugin.json
+    install -Dm644 ${
+      pkgs.writers.writeJSON "hooks.json" {
+        hooks.PreToolUse = [
+          {
+            matcher = "Bash";
+            hooks = [
+              {
+                type = "command";
+                command = "${pkgs.coreutils}/bin/env JEV_NUSHELL=${pkgs.nushell}/bin/nu ${jev}/bin/jev bash-guard";
+              }
+            ];
+          }
+        ];
+      }
+    } $out/hooks/hooks.json
+  '';
 in
 {
   imports = [ ./common.nix ];
@@ -62,6 +86,7 @@ in
       } "${agentSource}/trunk-triage.agent.md"
     );
     plugins.jj-guard = jjGuard;
+    plugins.jev-bash-guard = jevBashGuard;
   };
 
   dotfiles.tooling.ai.claude-code = {
