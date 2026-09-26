@@ -1,7 +1,13 @@
 { pkgs }:
 
 let
-  script = pkgs.writeNuScriptBin "jev" (builtins.readFile ./jev.nu);
+  # `--stdin` exposes piped hook payloads as `$in`; writeNuScriptBin omits it.
+  script = pkgs.writeTextFile {
+    name = "jev";
+    destination = "/bin/jev";
+    executable = true;
+    text = "#!${pkgs.nushell}/bin/nu --stdin\n" + builtins.readFile ./jev.nu;
+  };
 in
 pkgs.symlinkJoin {
   name = "jev";

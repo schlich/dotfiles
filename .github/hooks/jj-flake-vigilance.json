@@ -5,7 +5,7 @@
       {
         "matcher": "bash",
         "type": "command",
-        "command": "nu copilot/plugins/jj-flake-vigilance/scripts/guard-git-writes.nu"
+        "command": "nu --stdin copilot/plugins/jj-flake-vigilance/scripts/guard-git-writes.nu"
       }
     ]
   }

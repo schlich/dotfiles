@@ -1,4 +1,4 @@
-#!/usr/bin/env nu
+#!/usr/bin/env -S nu --stdin
 
 # Command-line access to TypeSafe's Jev System One model.
 # Questions and thresholds live in the file named by JEV_QUESTIONS.
@@ -7,6 +7,20 @@ const endpoint = "https://api.typesafe.ai/v1/systemone"
 # Mirrors programs.atuin.settings.history_filter: command lines that assign
 # credentials are never sent to the API.
 const credential_pattern = '\$env\.[A-Z0-9_]*(KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)[A-Z0-9_]*\s*='
+
+# Hook runners spawn jev with a socket for stdin, and Linux cannot reopen a
+# socket through /dev/stdin, so read `$in`, which requires `nu --stdin`.
+def parse-stdin [input: any] {
+    if ($input | describe) == "nothing" {
+        error make { msg: "no JSON on stdin; run jev with `nu --stdin`" }
+    }
+    # `from json` accepts bare words and empty input, so require an object.
+    let value = ($input | into string | from json)
+    if not ($value | describe | str starts-with "record") {
+        error make { msg: $"stdin is not a JSON object \(got ($value | describe)\)" }
+    }
+    $value
+}
 
 def questions-config [] {
     let path = ($env.JEV_QUESTIONS? | default ($env.FILE_PWD | path join "questions.nuon"))
@@ -61,7 +75,7 @@ def ask [state: any, questions: record, model: string] {
 def "main ask" [
     --model: string # Model ID; defaults to the pinned model in the questions file
 ] {
-    let request = (open --raw /dev/stdin | from json)
+    let request = (parse-stdin $in)
     let model = ($model | default (questions-config).model)
     ask $request.state $request.questions $model | to json
 }
@@ -70,7 +84,7 @@ def "main ask" [
 # `terminal.command.failed` event as JSON on stdin and prints a routing record.
 # Any failure to reach Jev routes to triage, preserving the previous behavior.
 def "main triage-gate" [] {
-    let event = (open --raw /dev/stdin | from json)
+    let event = (parse-stdin $in)
     let command = ($event.command? | default "")
     let exit_code = ($event.exit_code? | default null)
 
@@ -125,8 +139,8 @@ def bash-ask [reason: string] {
     }
 }
 
-def bash-guard [] {
-    let event = (open --raw /dev/stdin | from json)
+def bash-guard [input: any] {
+    let event = (parse-stdin $input)
     if ($event.tool_name? | default "") != "Bash" {
         return {}
     }
@@ -168,12 +182,14 @@ def bash-guard [] {
 }
 
 def "main bash-guard" [] {
+    let input = $in
     let output = (try {
-        { result: (bash-guard) }
+        { result: (bash-guard $input) }
     } catch {|err|
         { error: $err.msg }
     })
     if ($output.error? != null) {
+        print --stderr $"jev bash-guard: ($output.error)"
         return (bash-ask $"The Jev Bash guard could not inspect this command: ($output.error). Confirm before running it." | to json -r)
     }
     $output.result | to json -r
