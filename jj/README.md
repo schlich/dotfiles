@@ -141,6 +141,43 @@ publication, queue entry, and stack advancement remain explicit operations in
 the owning workspace. Do not run an unattended auto-rebase: rebasing rewrites
 the topic and can require revision-by-revision conflict decisions.
 
+## Impact classes and releases
+
+Every JJ change ends its description with an `Impact:` trailer that states
+what it does to the built machines:
+
+| Impact     | Meaning                                                                       | Gate                                                                  | Release                                |
+| ---------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------- |
+| `refactor` | Every NixOS closure is unchanged: refactors, docs, CI, and repository tooling | CI proves that each host's toplevel derivation matches the merge base | None                                   |
+| `behavior` | A user-facing change to a host                                                | Normal checks                                                         | CalVer tag when it lands               |
+| `breaking` | A user-facing change that needs manual steps when activating                  | Normal checks; the description body must list the steps               | CalVer tag with the steps in its notes |
+
+```text
+Launch terminals through their configured Home Manager packages
+
+Impact: refactor
+```
+
+`jj-ci publish` refuses a topic with a missing trailer, or one that mixes a
+refactor with a user-facing change: squash merging would ship the refactor
+inside a release and lose its closure-neutral guarantee. Split the refactor
+into its own topic, or make it the parent layer of a stack when the change
+depends on it. Breaking and behavior revisions may share a topic; the PR takes
+the stronger class. Publication generates the PR body from the descriptions,
+applies the `impact:<class>` label, and ends the body with the trailer.
+
+GitHub squash commits use the PR title and body, so the trailer reaches `main`.
+On each push to `main`, the `release` workflow runs `jj-ci release`, which tags
+every behavior or breaking commit since the newest release as `YYYY.MM.DD.N`
+(UTC commit date, numbered within the day) and publishes a GitHub release with
+its notes. Refactors never cut a version, so the list of releases is the list
+of changes that alter a machine. `jj-ci version` prints the newest release in
+the current revision.
+
+A NixOS generation cannot carry the tag: the tag is created after merge, and
+local `path:` builds have no Git revision. Compare a generation with a release
+by the checkout it was built from.
+
 ## Merge strategy
 
 The permanent default is one PR per ordinary JJ topic. The publication
@@ -174,7 +211,15 @@ Tangled's `Submit as stacked PRs` action creates the linked PR stack.
 
 Ordinary topics are queued for auto-merge only after the final automatic rebase
 and only when the publisher explicitly passes `--auto-merge`; stack submission
-remains the explicit ordering decision. Use a rebase merge only when preserving
+remains the explicit ordering decision.
+
+Impact shapes ordering. When topics conflict, `jj-ci plan` still places open
+PRs before unpublished work, but within each group it bases the stack on the
+refactor, so the user-facing layer above it stays a small behavior diff and its
+release notes describe only that behavior. A refactor that must stack on an
+already-published user-facing PR is reported with a note. Refactors can land
+at any time without activation; land each user-facing PR on its own so every
+release maps to exactly one reviewed change. Use a rebase merge only when preserving
 the individual patch-series commits on `main` is more valuable than a single
 atomic commit.
 

@@ -106,6 +106,13 @@
 
 - `prek` is installed declaratively. Run `prek run --all-files` or
   `jj-ci validate` before publication; JJ changes do not invoke Git hooks.
+- End every JJ change description with an `Impact:` trailer. Use `refactor`
+  when no NixOS closure changes (refactors, docs, CI, and tooling; CI verifies
+  it), `behavior` for a user-facing change, and `breaking` for a user-facing
+  change that needs manual steps, which the description body must list. Keep
+  refactors and user-facing changes in separate topics or stack layers. Each
+  behavior or breaking merge becomes a `YYYY.MM.DD.N` release; refactors cut
+  none. See `jj/README.md`.
 - Use a concise JJ change description. Publish a validated ordinary change with
   `jj-ci publish --auto-merge`; it creates or updates a PR and requests
   GitHub auto-merge against the current head SHA. Ordinary publication keeps
@@ -135,7 +142,7 @@
 
 - Use a stack only for a preplanned chain of dependent, independently reviewable
   JJ changes, or when `jj-ci plan` reports that a topic conflicts with an open
-  PR. In that case, stack the later topic on the earlier one and resolve its
+  PR. Put a refactor below the user-facing change it enables, never above it. In that case, stack the later topic on the earlier one and resolve its
   conflicts locally before pushing. Keep unrelated, conflict-free work in
   separate branches.
 - JJ creates, describes, rebases, and pushes every layer. Link existing GitHub
