@@ -37,6 +37,7 @@ jj-ci finish --wait           # Wait for the merge, then finish and remove the w
 jj-ci abandon
 # Occasionally, from any workspace:
 jj-ci prune                   # List leaked workspaces; --apply removes them.
+jj-ci preview --shell         # Try trunk plus open user-facing PRs, unactivated.
 ```
 
 ## Patch-series review
@@ -188,6 +189,24 @@ first, or the topic is left untouched for its owner. Only conflict-free results
 are pushed. `jj-ci refresh --all` also rebases PRs that are merely behind.
 Keep topics short-lived and changes small enough to rebase without large
 manual resolutions.
+
+### Previewing in-flight work
+
+`jj-ci preview` answers what the machine would look like once the open
+user-facing PRs land. It merges `main@origin` with the head of every open
+`impact:behavior` or `impact:breaking` PR (or the PR numbers given; `--all`
+adds refactors) in a temporary workspace, then builds that merge's Home
+Manager generation to `$XDG_STATE_HOME/jj-ci/preview-home`. The merge is
+abandoned afterwards and nothing is pushed, rewritten, or activated.
+
+It reports package changes and changed configuration files against trunk's
+generation, so only what the PRs change is listed; `--active` compares against
+the active generation instead. `--shell` opens Nushell with the preview's programs first
+on `PATH`; `--config` also points `XDG_CONFIG_HOME` at the preview's
+read-only configuration, so applications that write their own configuration
+may refuse to start. System-level (NixOS) changes are not previewed. If the
+selected PRs conflict with each other, the preview stops and lists the files;
+preview a subset or use `jj-ci plan` to decide how to stack them.
 
 ### Herdr and Paseo coordination
 
