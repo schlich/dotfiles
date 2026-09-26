@@ -113,6 +113,8 @@
       url = "github:cablehead/ptyZZZ";
       flake = false;
     };
+    # Keep Yazelix's own locked inputs so builds match yazelix.cachix.org.
+    yazelix.url = "github:Yazelix/nova/stable";
   };
 
   outputs =
@@ -368,9 +370,11 @@
     extra-substituters = [
       "https://noctalia.cachix.org"
       "https://cache.flakehub.com/"
+      "https://yazelix.cachix.org"
     ];
     extra-trusted-public-keys = [
       "noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4="
+      "yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM="
     ];
     trusted-users = [ "schlich" ];
   };
