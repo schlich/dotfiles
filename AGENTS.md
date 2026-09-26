@@ -121,10 +121,12 @@
   deliverable, but allow a small stack of changes when the task contains
   multiple deliverables that should be split. Do not create unrelated
   follow-up changes after publication. Use separate JJ workspaces for
-  concurrent tasks, and `jj-ci rebase` to update a topic in place. When the
-  user asks to catch up published PRs that fell behind `main`, use
-  `jj-ci refresh`; it pushes only conflict-free rebases and leaves conflicted
-  topics local for resolution before anything is pushed.
+  concurrent tasks, and `jj-ci rebase` to update a topic in place. A
+  conflict-free PR does not need to catch up with `main` to merge. The local
+  webhook runs `jj-ci refresh` after each successful `main` build; it restacks
+  only stacked, retargeted, or conflicting PRs, pushes only conflict-free
+  rebases, and leaves conflicted topics local for resolution. Run
+  `jj-ci refresh --all` only when the user asks to rebase every open PR.
 - Before archiving a delivered topic, run `jj-ci finish` and confirm success.
   It verifies delivery of the current head and leaves an empty change on main.
   Pending checks, conflicts, or unpublished edits keep the task open. Native
@@ -133,7 +135,8 @@
   protection with direct pushes or manual merge commands.
 - The required `nix-ci` checks build the headless NixOS bootstrap first, then
   the desktop NixOS system and Home Manager, alongside Niri, Zellij, and
-  whitespace checks. `main` uses strict required checks and linear history.
+  whitespace checks. `main` requires those checks and linear history but not
+  an up-to-date branch: PR builds test the merge with `main` as of the run.
   Pull requests that touch only Home Manager inputs (the paths listed in the
   `changes` job of `nix-ci.yml`) run just the Home Manager check; pushes to
   `main` always run the full suite as the post-merge backstop.
@@ -207,15 +210,17 @@ builds. `nixos-rebuild switch` is never an agent validation step.
 ## Continuous integration and merge-conflict policy
 
 Keep active work continuously integrated: start each dedicated JJ workspace at
-`main@origin`, rebase after trunk advances and before review or queue updates,
-and never share a mutable topic worktree. `jj-ci publish` performs the final
+`main@origin`, rebase before review updates and when a topic conflicts with
+trunk, and never share a mutable topic worktree. `jj-ci publish` performs the final
 rebase and validation before updating GitHub; `jj-ci stack-merge` does the same
 before submitting a stack.
 
 Use `jj-ci conflicts` after a rebase to list conflicted revisions and files.
 A conflicted rebase has already rewritten the topic, so resolve revisions from
-oldest to newest and validate only after the conflict report is clear. Do not
-run unattended auto-rebase or automatic conflict resolution.
+oldest to newest and validate only after the conflict report is clear. The only
+unattended rebase is `jj-ci refresh`, and only when it is conflict-free: it
+rebases a checked-out topic from that topic's own workspace, and only after a
+trial merge predicts no conflict. Never resolve conflicts automatically.
 
 Herdr or Paseo may monitor one existing JJ workspace per topic and notify its
 owner about stale trunk, PR, check, or queue state. They must not take

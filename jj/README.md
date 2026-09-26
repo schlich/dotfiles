@@ -138,11 +138,29 @@ The integration points are deliberately automatic:
 - `jj-ci stack-merge` performs the same final rebase and validation before
   submitting a stack.
 
-Rebase after `main` advances, before each review update, and before requesting
-queue entry. Keep topics short-lived and changes small enough to rebase without
-large manual resolutions. If a queued PR becomes stale or is removed from the
-queue, update the topic from `main@origin`, validate the new head, and request
-queue entry again; never try to merge a stale head manually.
+`main` requires its checks but not an up-to-date branch. A conflict-free PR
+therefore merges as soon as it is green, however far `main` has moved since.
+The PR build already tests the merge with `main` as of the run, and every push
+to `main` runs the full suite as the backstop for two PRs that break only in
+combination. Strict freshness would instead force a rebase and a full rebuild
+of every open PR after each merge.
+
+What still needs rewriting after `main` moves is handled by `jj-ci refresh`,
+which the local webhook runs after every successful `main` build:
+
+- a stacked PR whose parent branch moved is restacked onto it;
+- a PR GitHub retargeted to `main` after its parent merged (it carries the
+  `jj-ci:stacked` label) is restacked onto `main`, dropping the parent's
+  squash-merged commits;
+- a PR GitHub reports as conflicting is rebased so the conflict is recorded
+  locally for resolution.
+
+A topic checked out in a workspace is snapshotted and rebased from that
+workspace, so its files move with it; a trial merge must predict no conflict
+first, or the topic is left untouched for its owner. Only conflict-free results
+are pushed. `jj-ci refresh --all` also rebases PRs that are merely behind.
+Keep topics short-lived and changes small enough to rebase without large
+manual resolutions.
 
 ### Herdr and Paseo coordination
 
@@ -152,10 +170,10 @@ but they do not replace JJ workspace ownership. Create the JJ workspace from
 directory. Keep the mapping one coordinator : one JJ workspace : one topic.
 
 A supervisor may monitor `main@origin`, PR freshness, checks, and queue state,
-and notify the owner when integration is needed. Rebase, conflict resolution,
+and notify the owner when integration is needed. Conflict resolution,
 publication, queue entry, and stack advancement remain explicit operations in
-the owning workspace. Do not run an unattended auto-rebase: rebasing rewrites
-the topic and can require revision-by-revision conflict decisions.
+the owning workspace. The conflict-free restack by `jj-ci refresh` is the only
+unattended rebase; a supervisor does not rebase on its own.
 
 ## Impact classes and releases
 
