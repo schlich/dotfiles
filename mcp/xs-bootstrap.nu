@@ -17,6 +17,28 @@ def main [store: path] {
       }
     } else {
       let event = ($frame.meta | default {})
+      # Jev screens out routine failures before an agent is started.
+      let gate = if (which jev | is-empty) {
+        { route: "triage", reason: "jev is not installed" }
+      } else {
+        let result = (do -i { $event | to json -r | ^jev triage-gate } | complete)
+        if $result.exit_code == 0 {
+          $result.stdout | from json
+        } else {
+          { route: "triage", reason: ($result.stderr | str trim) }
+        }
+      }
+      if $gate.route == "skip" {
+        return {
+          out: {
+            topic: "terminal.triage.skipped"
+            command_id: $frame.id
+            atuin_history_id: ($event.atuin_history_id? | default null)
+            gate: $gate
+          }
+          next: $state
+        }
+      }
       let prompt = $"
 You are performing read-only terminal-error triage.
 Do not edit files, execute corrective commands, publish changes, or ask another agent to mutate state.
@@ -35,6 +57,7 @@ Atuin history ID: ($event.atuin_history_id? | default "unknown")
             topic: "terminal.triage.completed"
             command_id: $frame.id
             atuin_history_id: ($event.atuin_history_id? | default null)
+            gate: $gate
             response: ($result.stdout | str trim)
           }
           next: $state
