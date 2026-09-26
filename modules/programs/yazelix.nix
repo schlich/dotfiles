@@ -18,6 +18,9 @@ in
   # the same Yazi and config are used outside Yazelix sessions.
   programs.yazelix = {
     enable = true;
+    # The module defaults to the stable-channel build even from the edge
+    # source; the channel badge and desktop entry come from the package.
+    package = inputs.yazelix.packages.${pkgs.stdenv.hostPlatform.system}.yazelix-edge;
     # Sparse root config.toml; absent keys keep packaged defaults. Home Manager
     # owns this file, so `yzx config` shows these settings as declarative and
     # cannot save edits to it.
