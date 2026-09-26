@@ -1,7 +1,6 @@
 {
   config,
   lib,
-  pkgs,
   ...
 }:
 
@@ -14,7 +13,7 @@
 
   dotfiles.tooling.terminals.kitty.launcher = ''
     let class_args = if ($class | is-empty) { [] } else { ["--class" $class] }
-    ^${pkgs.kitty}/bin/kitty ...$class_args --directory $directory ...$args
+    ^${lib.getExe config.programs.kitty.package} ...$class_args --directory $directory ...$args
   '';
 
   programs.nushell.extraConfig = lib.mkIf (config.dotfiles.primary.terminal == "kitty") ''
