@@ -124,5 +124,6 @@ in
     jev
     inputs.xs.packages.${pkgs.stdenv.hostPlatform.system}.default
     inputs.ai-usagebar.packages.${pkgs.stdenv.hostPlatform.system}.default
+    inputs.tangled-dash.packages.${pkgs.stdenv.hostPlatform.system}.default
   ];
 }

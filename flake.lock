@@ -1254,6 +1254,7 @@
         "paseo": "paseo",
         "ptyZZZ": "ptyZZZ",
         "tangled": "tangled",
+        "tangled-dash": "tangled-dash",
         "typesafe-skills": "typesafe-skills",
         "xs": "xs"
       }
@@ -1435,6 +1436,26 @@
       "original": {
         "type": "git",
         "url": "https://tangled.org/@tangled.org/core"
+      }
+    },
+    "tangled-dash": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1790406831,
+        "narHash": "sha256-Rwn6gNAFzPy2mDrEzcSV/H1DcvWuYoccq1DaLDwGhTQ=",
+        "owner": "schlich",
+        "repo": "tangled-dash",
+        "rev": "0cb8b98bd4706a10e1f7cd20396228e4e69f8622",
+        "type": "github"
+      },
+      "original": {
+        "owner": "schlich",
+        "repo": "tangled-dash",
+        "type": "github"
       }
     },
     "typesafe-skills": {

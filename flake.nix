@@ -101,6 +101,10 @@
       url = "git+https://tangled.org/@tangled.org/core";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    tangled-dash = {
+      url = "github:schlich/tangled-dash";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     xs = {
       url = "github:cablehead/xs";
       inputs.nixpkgs.follows = "nixpkgs";
