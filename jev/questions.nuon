@@ -35,4 +35,25 @@
       }
     }
   }
+  bash_guard: {
+    questions: {
+      action: {
+        type: choice
+        instructions: "Choose how to handle this Claude Code Bash tool call using the command in bash_command and cwd. Select retry_nushell when the agent can confidently rewrite it in Nushell, translate_to_nushell only when you can provide an equivalent Nushell source in nushell_command, and ask_bash when Bash is appropriate, the translation is uncertain, or the command has destructive, privileged, external, or otherwise meaningful side effects."
+        criteria: {
+          retry_nushell: "Block this call and ask the agent to reformulate it using Nushell syntax."
+          translate_to_nushell: "Translate confidently to Nushell; provide only the complete source in nushell_command."
+          ask_bash: "Require the user to confirm running the original Bash command."
+        }
+      }
+      nushell_command: {
+        type: text
+        instructions: "When action is translate_to_nushell, provide only the complete equivalent Nushell source. Otherwise leave this empty. Do not add operations or guess about ambiguous behavior."
+      }
+      reason: {
+        type: text
+        instructions: "Briefly explain the selected handling and any translation assumptions."
+      }
+    }
+  }
 }
