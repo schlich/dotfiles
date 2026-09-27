@@ -1018,7 +1018,7 @@ def stack-merge [target: string] {
 }
 
 def main [] {
-    print "Use `jj-ci start`, `jj-ci status`, `jj-ci sync`, `jj-ci plan`, `jj-ci rebase`, `jj-ci refresh`, `jj-ci conflicts`, `jj-ci review snapshot`, `jj-ci interdiff`, `jj-ci finish`, `jj-ci abandon`, `jj-ci prune`, `jj-ci validate`, `jj-ci publish`, `jj-ci github reconcile`, `jj-ci stack-merge`, `jj-ci tangled stack-publish`, `jj-ci impact check`, `jj-ci release`, or `jj-ci version`."
+    print "Use `jj-ci start`, `jj-ci status`, `jj-ci sync`, `jj-ci plan`, `jj-ci preview`, `jj-ci rebase`, `jj-ci refresh`, `jj-ci conflicts`, `jj-ci review snapshot`, `jj-ci interdiff`, `jj-ci finish`, `jj-ci abandon`, `jj-ci prune`, `jj-ci validate`, `jj-ci publish`, `jj-ci github reconcile`, `jj-ci stack-merge`, `jj-ci tangled stack-publish`, `jj-ci impact check`, `jj-ci release`, or `jj-ci version`."
 }
 
 def "main status" [] {
@@ -1131,6 +1131,142 @@ def "main plan" [
             print $"  note: this refactor stacks on user-facing ($parent.topic) only because that PR is already published."
         }
     }
+}
+
+# Home Manager is embedded in this host; there is no standalone homeConfigurations output.
+const PREVIEW_ATTRIBUTE = "nixosConfigurations.asus.config.home-manager.users.schlich.home.activationPackage"
+
+def preview-link [] {
+    $env.XDG_STATE_HOME? | default ($env.HOME | path join ".local" "state") | path join "jj-ci" "preview-home"
+}
+
+# Open pull requests to preview: the requested numbers, or every open
+# behavior or breaking PR (all of them with `all`). Refactors leave every
+# closure unchanged, so they add merge risk without anything to try.
+def preview-pull-requests [numbers: list<int>, all: bool] {
+    let prs = (git-command "listing open pull requests" {
+        github pr list --state open --limit 200 --json number,headRefName,title,labels
+    } | from json)
+    if ($numbers | is-not-empty) {
+        let missing = ($numbers | where {|number| $number not-in ($prs | get number) })
+        if ($missing | is-not-empty) {
+            error make { msg: $"Not open pull requests: ($missing | each {|number| $'#($number)' } | str join ', ')" }
+        }
+        return ($prs | where number in $numbers)
+    }
+    if $all { return $prs }
+    $prs | where {|pr| $pr.labels | any {|label| $label.name in ["impact:behavior" "impact:breaking"] } }
+}
+
+# Configuration files that differ between two Home Manager generations. Each
+# entry is a symlink into the store, so a changed target is a changed file;
+# comparing targets also tolerates links whose destination no longer exists.
+def preview-changed-files [current: string, preview: string] {
+    let old = ($current | path join "home-files" | path expand)
+    let new = ($preview | path join "home-files" | path expand)
+    let result = (^diff --recursive --brief --no-dereference $old $new | complete)
+    if $result.exit_code > 1 { error make { msg: $"comparing configuration files failed: ($result.stderr | str trim)" } }
+    $result.stdout | lines | each {|line|
+        let only = ($line | parse --regex '^Only in (?P<directory>.+): (?P<name>.+)$')
+        if ($only | is-not-empty) {
+            let entry = ($only | first)
+            let status = if ($entry.directory | str starts-with $new) { "added" } else { "removed" }
+            let path = ($entry.directory | str replace $new "" | str replace $old "" | path join $entry.name)
+            { status: $status path: $"~($path)" }
+        } else {
+            let path = ($line | parse --regex $"($old | str replace --all '.' '\.')\(?P<path>/[^’'\\s]*\)" | get 0?.path | default "")
+            { status: "changed" path: $"~($path)" }
+        }
+    }
+}
+
+# Build the Home Manager generation that trunk plus in-flight pull requests
+# would produce, without activating it. The merge exists only in a temporary
+# workspace and is abandoned afterwards; nothing is pushed or rewritten.
+def "main preview" [
+    ...prs: int # Pull requests to include (default: every open behavior or breaking PR)
+    --all # Include refactor pull requests when no numbers are given
+    --shell # Open Nushell with the preview's programs first on PATH
+    --config # With --shell, also read configuration from the preview (read-only)
+    --active # Compare against the active generation instead of trunk's
+] {
+    fetch-origin
+    let selected = (preview-pull-requests $prs $all | insert revset {|pr|
+        $"remote_bookmarks\(exact:'($pr.headRefName)', exact:'origin')"
+    })
+    let unavailable = ($selected | where {|pr| revset-change-ids $pr.revset | is-empty })
+    for pr in $unavailable { print $"Skipping #($pr.number): its branch is not on origin." }
+    let included = ($selected | where number not-in ($unavailable | get number))
+    if ($included | is-empty) {
+        print "No open user-facing pull requests to preview."
+        return
+    }
+    for pr in $included { print $"Including #($pr.number) ($pr.title)" }
+
+    let heads = ($included | get revset | append "main@origin" | str join " | ")
+    let parents = (git-command "resolving pull request heads" {
+        ^jj log -r $"heads\(($heads))" --no-graph -T 'commit_id ++ "\n"'
+    } | lines)
+    let marker = $"jj-ci-preview-(random uuid)"
+    git-command "creating the preview merge" { ^jj new --no-edit -m $marker ...$parents } | ignore
+    let merge = (revision-field $"description\(substring:'($marker)')" 'commit_id')
+    let discard = {|| git-command "abandoning the preview merge" { ^jj abandon $"($merge)::" } | ignore }
+
+    if (revision-field $merge 'conflict') == "true" {
+        let files = (git-command "listing conflicted files" { ^jj resolve --list -r $merge })
+        do $discard
+        print "The selected pull requests conflict when merged:"
+        print ($files | lines | each {|line| $"  ($line)" } | str join "\n")
+        error make { msg: "Preview a subset with `jj-ci preview NUMBER ...`, or see `jj-ci plan` for how to stack them." }
+    }
+
+    let name = ($marker | str substring 0..21)
+    let directory = (mktemp --directory --tmpdir "jj-ci-preview.XXXXXX")
+    let tree = ($directory | path join "tree")
+    let link = (preview-link)
+    mkdir ($link | path dirname)
+    let built = (try {
+        git-command "checking out the preview" { ^jj workspace add --revision $merge --name $name $tree } | ignore
+        ^nix build --no-update-lock-file --out-link $link $"path:($tree)#($PREVIEW_ATTRIBUTE)"
+        if not $active {
+            git-command "checking out trunk" { ^jj --repository $tree new main@origin } | ignore
+            ^nix build --no-update-lock-file --out-link $"($link)-trunk" $"path:($tree)#($PREVIEW_ATTRIBUTE)"
+        }
+        null
+    } catch {|error| $error.msg })
+    do { ^jj workspace forget $name } | complete | ignore
+    rm --recursive --force $directory
+    do $discard
+    if $built != null { error make { msg: $"Building the preview failed: ($built)" } }
+
+    let preview = ($link | path expand)
+    let baseline = if $active {
+        { name: "the active generation" path: ($env.HOME | path join ".local" "state" "home-manager" "gcroots" "current-home") }
+    } else {
+        { name: "trunk" path: $"($link)-trunk" }
+    }
+    print $"\nPreview generation: ($preview)"
+    if ($baseline.path | path expand) == $preview {
+        print $"\nNo Home Manager changes against ($baseline.name)."
+    } else if ($baseline.path | path exists) {
+        print $"\nPackage changes against ($baseline.name):"
+        ^nix store diff-closures $baseline.path $preview
+        let files = (preview-changed-files ($baseline.path | path expand) $preview)
+        print "\nConfiguration file changes:"
+        print (if ($files | is-empty) { "  none" } else { $files | each {|file| $"  ($file.status | fill --width 8)($file.path)" } | str join "\n" })
+    }
+    if not $shell {
+        print $"\nTry programs from ($preview | path join 'home-path' 'bin'), or re-run with --shell."
+        return
+    }
+    let overrides = { PATH: ($env.PATH | prepend ($preview | path join "home-path" "bin")) JJ_CI_PREVIEW: $preview }
+    let overrides = if $config {
+        $overrides | insert XDG_CONFIG_HOME ($preview | path join "home-files" ".config")
+    } else {
+        $overrides
+    }
+    print "\nEntering the preview shell. Exit to return; nothing was activated."
+    with-env $overrides { ^nu }
 }
 
 def "main refresh" [

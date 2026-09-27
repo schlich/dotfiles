@@ -55,6 +55,15 @@ export extern "jj-ci plan" [
     --json # Print the plan as JSON
 ]
 
+# Build the Home Manager generation of trunk plus open pull requests without activating it
+export extern "jj-ci preview" [
+    ...prs: int@"nu-complete jj-ci open-prs" # Pull requests to include (default: every open behavior or breaking PR)
+    --all # Include refactor pull requests when no numbers are given
+    --shell # Open Nushell with the preview's programs first on PATH
+    --config # With --shell, also read configuration from the preview (read-only)
+    --active # Compare against the active generation instead of trunk's
+]
+
 # Restack stacked, retargeted, or conflicting pull requests
 export extern "jj-ci refresh" [
     --no-push # Rebase and report conflicts without pushing or touching PRs
