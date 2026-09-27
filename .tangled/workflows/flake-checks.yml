@@ -1,8 +1,11 @@
 name: Nix flake checks
+# `jj-ci land` pushes a topic already rebased onto main and fast-forwards main
+# to it only after this passes on that exact commit, so topic pushes are the
+# gate and main never needs a second run.
 when:
-  - event: ["push", "manual"]
-    branch: ["main"]
-  - event: ["pull_request"]
+  - event: ["push"]
+    branch: ["jj-*"]
+  - event: ["manual"]
     branch: ["main"]
 engine: microvm
 image: nixos
