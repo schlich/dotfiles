@@ -239,6 +239,27 @@
       denAsusPrimary = denAsus.extendModules {
         modules = [ { home-manager.users.schlich.dotfiles.alternates = false; } ];
       };
+      # homelab with the Niri desktop layered on for on-site debugging. The
+      # inventory keeps homelab a headless server; switch to this variant
+      # explicitly and back to `.#homelab` when finished.
+      denHomelabDesktop = denFlake.nixosConfigurations.homelab.extendModules {
+        modules = [
+          inputs.noctalia-greeter.nixosModules.default
+          inputs.niri.nixosModules.niri
+          ./modules/nixos/desktop.nix
+          (
+            { pkgs, ... }:
+            {
+              # Niri's built-in default config binds these for a terminal
+              # and launcher, since homelab has no Home Manager Niri config.
+              environment.systemPackages = with pkgs; [
+                alacritty
+                fuzzel
+              ];
+            }
+          )
+        ];
+      };
       # homelab with the nixbot module, before the host imports it; the App
       # IDs are placeholders until the GitHub App exists.
       nixbotHomelabEvaluationCheck = pkgs.writeText "nixbot-homelab-evaluation" (
@@ -269,7 +290,9 @@
     {
       tests.systems.${system} = import ./tests.nix { inherit lib; };
 
-      nixosConfigurations = denFlake.nixosConfigurations;
+      nixosConfigurations = denFlake.nixosConfigurations // {
+        homelab-desktop = denHomelabDesktop;
+      };
       den = denEval.config.den;
       gen-inspect = inputs.gen-inspect.lib;
 
@@ -299,6 +322,7 @@
         default = denFlake.nixosConfigurations.asus.config.system.build.toplevel;
         headless = denFlake.nixosConfigurations.asus-headless.config.system.build.toplevel;
         desktop-primary = denAsusPrimary.config.system.build.toplevel;
+        homelab-desktop = denHomelabDesktop.config.system.build.toplevel;
         jj = pkgs.jujutsu;
         jjui = pkgs.jjui;
         xr-workbench = xrWorkbench;
