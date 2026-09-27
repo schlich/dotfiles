@@ -217,26 +217,3 @@ jobs:
         run: |
           echo "discover: $DISCOVER, checks: $CHECK"
           [[ "$DISCOVER" == success && "$CHECK" == success ]]
-  # Transitional aliases for the required checks that branch protection still
-  # names. Remove both once `jj-ci github reconcile --apply` requires
-  # `nix flake checks` instead.
-  legacy-desktop:
-    name: build NixOS (shell and compositor)
-    needs: checks
-    if: ${{ !cancelled() }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Mirror nix flake checks
-        env:
-          RESULT: ${{ needs.checks.result }}
-        run: '[[ "$RESULT" == success ]]'
-  legacy-home-manager:
-    name: build Home Manager modules (shell, editor, and desktop)
-    needs: checks
-    if: ${{ !cancelled() }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Mirror nix flake checks
-        env:
-          RESULT: ${{ needs.checks.result }}
-        run: '[[ "$RESULT" == success ]]'
