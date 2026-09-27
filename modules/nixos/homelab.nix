@@ -30,5 +30,9 @@
     helix
     smartmontools
     tmux
+    # homelab has no Home Manager Niri config, so Niri's built-in defaults
+    # bind these as its terminal and launcher.
+    alacritty
+    fuzzel
   ];
 }
