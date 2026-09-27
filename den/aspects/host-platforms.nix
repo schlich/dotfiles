@@ -20,6 +20,7 @@
     nixos.imports = [
       ../../hosts/homelab/default.nix
       ../../modules/nixos/homelab.nix
+      ../../modules/nixos/tangled-spindle.nix
     ];
   };
 

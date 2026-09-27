@@ -25,10 +25,13 @@
     };
   };
 
-  # Funnel requires one-time interactive Tailscale authentication and approval.
-  # Start this unit manually after `tailscale up` on the homelab host.
+  # tangled.org reaches the spindle only through this Funnel: it verifies the
+  # owner and dispatches pipelines at https://${hostname}. Funnel needs a
+  # one-time `tailscale up` and the tailnet's funnel node attribute; until
+  # then this unit fails without affecting the spindle itself.
   systemd.services.tangled-spindle-funnel = {
     description = "Tailscale Funnel for the Tangled spindle";
+    wantedBy = [ "multi-user.target" ];
     after = [
       "network-online.target"
       "tailscaled.service"
