@@ -70,7 +70,7 @@ in
     '';
   };
 
-  xdg.configFile."nushell/vendor/autoload/xs.nu".source = "${inputs.xs}/xs.nu";
+  xdg.configFile."nushell/autoload/xs.nu".source = "${inputs.xs}/xs.nu";
 
   programs.starship = {
     enable = true;

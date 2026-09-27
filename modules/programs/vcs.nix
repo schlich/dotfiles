@@ -77,5 +77,5 @@ in
     (pkgs.writeNuScriptBin "jj-dashboard" (builtins.readFile ../../jj/dashboard.nu))
   ];
 
-  xdg.configFile."nushell/vendor/autoload/jj-ci.nu".source = ../../jj/completions.nu;
+  xdg.configFile."nushell/autoload/jj-ci.nu".source = ../../jj/completions.nu;
 }
