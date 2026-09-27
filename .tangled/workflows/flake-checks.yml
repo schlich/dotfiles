@@ -1,4 +1,4 @@
-name: Build desktop NixOS
+name: Nix flake checks
 when:
   - event: ["push", "manual"]
     branch: ["main"]
@@ -20,5 +20,6 @@ cache:
       - /nix/store
       - /nix/var/nix/db
 steps:
-  - name: "Build desktop system"
-    command: "nix --accept-flake-config build .#nixosConfigurations.asus.config.system.build.toplevel --print-build-logs"
+  # The same checks.x86_64-linux set that GitHub Actions runs as a matrix.
+  - name: "Build flake checks"
+    command: "nix --accept-flake-config run --inputs-from . nixpkgs#nix-fast-build -- --no-nom --skip-cached --flake .#checks.x86_64-linux"

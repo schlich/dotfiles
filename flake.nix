@@ -200,7 +200,8 @@
         )
       );
       # The workstation with only its primary terminal, editor, and agent
-      # desktop client; CI builds this closure and only evaluates the full one.
+      # desktop client; CI builds this closure, and the host evaluation check
+      # covers the full one.
       denAsusPrimary = denAsus.extendModules {
         modules = [ { home-manager.users.schlich.dotfiles.alternates = false; } ];
       };
@@ -263,6 +264,7 @@
           jujutsu
           jjui
           nil
+          nix-fast-build
           nixd
           nixfmt-tree
           nushell
@@ -285,8 +287,12 @@
 
       formatter.${system} = pkgs.nixfmt-tree;
 
+      # CI runs every attribute here as its own job, so a new check needs no
+      # workflow change. Run the same set locally with `nix-fast-build`.
       checks.${system} = {
         den-host-evaluation = denHostEvaluationCheck;
+        desktop-primary = denAsusPrimary.config.system.build.toplevel;
+        headless-system = denFlake.nixosConfigurations.asus-headless.config.system.build.toplevel;
         den-policy = denPolicyCheck;
         dev-shell = pkgs.runCommand "dev-shell-check" { } ''
           test -x ${jjCi}/bin/jj-ci
@@ -319,6 +325,16 @@
               touch "$out"
             '';
         nushell-agent =
+          let
+            # The test sources ../agent/agent.nu, so keep both in one tree.
+            src = lib.fileset.toSource {
+              root = ./.;
+              fileset = lib.fileset.unions [
+                ./agent/agent.nu
+                ./tests/agent.nu
+              ];
+            };
+          in
           pkgs.runCommand "nushell-agent-check"
             {
               nativeBuildInputs = [ pkgs.nushell ];
@@ -326,7 +342,7 @@
             ''
               export HOME="$TMPDIR/home"
               mkdir -p "$HOME"
-              ${pkgs.nushell}/bin/nu --no-config-file ${./tests/agent.nu}
+              ${pkgs.nushell}/bin/nu --no-config-file ${src}/tests/agent.nu
               touch "$out"
             '';
         jj-ci-model =

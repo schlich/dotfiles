@@ -14,74 +14,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  changes:
-    name: Detect affected CI checks
-    runs-on: ubuntu-latest
-    outputs:
-      nix: ${{ steps.changed.outputs.nix }}
-      home: ${{ steps.changed.outputs.home }}
-      niri: ${{ steps.changed.outputs.niri }}
-      zellij: ${{ steps.changed.outputs.zellij }}
-      checkmate: ${{ steps.changed.outputs.checkmate }}
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-      - name: Detect changed paths
-        id: changed
-        shell: bash
-        env:
-          DIFF_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || '' }}
-        run: |
-          if [[ -z "$DIFF_BASE" || "$DIFF_BASE" =~ ^0+$ ]]; then
-            DIFF_BASE=HEAD^
-          fi
-          git diff --name-only --no-renames -z "$DIFF_BASE" HEAD > "$RUNNER_TEMP/changed-paths"
-          mapfile -d '' changed_files < "$RUNNER_TEMP/changed-paths"
-
-          nix=false
-          home=false
-          niri=false
-          zellij=false
-          checkmate=false
-          run_all() {
-            nix=true
-            home=true
-            niri=true
-            zellij=true
-            checkmate=true
-          }
-          # Pushes to main are the post-merge backstop for scoped PR runs.
-          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch || "$GITHUB_EVENT_NAME" == push ]]; then
-            run_all
-          fi
-          if ((${#changed_files[@]} == 0)); then
-            run_all
-          fi
-          for file in "${changed_files[@]}"; do
-            case "$file" in
-              .github/workflows/*|flake.nix|flake.lock) run_all ;;
-              niri/*) niri=true ;;
-              zellij/*) zellij=true ;;
-              *.md|*.mdx|*.yaml|*.yml|docs/*) checkmate=true ;;
-              # Imported only through the user-terminal Home Manager aspect;
-              # no NixOS module, headless host, or other check reads them.
-              modules/home/*|modules/programs/*|modules/tooling/*|den/aspects/users/terminal.nix|\
-              .agents/*|agent/*|config.nu|copilot/*|helix/*|jev/*|nushell/*|plugins/*|wallpapers/*)
-                home=true
-                checkmate=true
-                ;;
-              *) run_all ;;
-            esac
-          done
-
-          {
-            echo "nix=$nix"
-            echo "home=$home"
-            echo "niri=$niri"
-            echo "zellij=$zellij"
-            echo "checkmate=$checkmate"
-          } >> "$GITHUB_OUTPUT"
   impact:
     # Every commit carries an Impact trailer; a refactor must leave every
     # NixOS closure identical to the merge base. Queue and main runs were
@@ -103,13 +35,8 @@ jobs:
         run: nix run --inputs-from . nixpkgs#nushell -- jj/ci.nu impact check "$BASE" "$HEAD"
   checkmate:
     name: Checkmate formatting and unit-test skeleton
-    needs: changes
-    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.checkmate == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - name: Require successful path detection
-        if: ${{ always() && needs.changes.result != 'success' }}
-        run: exit 1
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
@@ -146,31 +73,33 @@ jobs:
           fi
       - name: Run Checkmate nix-unit tests
         run: nix build --no-update-lock-file -L github:denful/checkmate#checks.x86_64-linux.nix-unit --override-input target github:$GITHUB_REPOSITORY/$GITHUB_SHA
-  headless-system:
-    name: build headless NixOS
-    needs: changes
-    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.nix == 'true') }}
+  discover:
+    # The flake's checks output is the only list of CI checks: each attribute
+    # becomes one job below, locally and in CI alike.
+    name: Discover flake checks
     runs-on: ubuntu-latest
+    outputs:
+      checks: ${{ steps.checks.outputs.checks }}
     steps:
-      - name: Require successful path detection
-        if: ${{ always() && needs.changes.result != 'success' }}
-        run: exit 1
       - uses: actions/checkout@v6
       - uses: DeterminateSystems/determinate-nix-action@v3.21.9
       - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
-      - name: Build headless system
-        run: nix --accept-flake-config build .#nixosConfigurations.asus-headless.config.system.build.toplevel --print-build-logs
-  desktop-system:
-    name: build NixOS (shell and compositor)
-    needs: changes
-    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.nix == 'true') }}
+      - name: List flake checks
+        id: checks
+        run: echo "checks=$(nix --accept-flake-config eval --json .#checks.x86_64-linux --apply builtins.attrNames)" >> "$GITHUB_OUTPUT"
+  check:
+    name: flake check (${{ matrix.check }})
+    needs: discover
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        check: ${{ fromJSON(needs.discover.outputs.checks) }}
     steps:
-      - name: Require successful path detection
-        if: ${{ always() && needs.changes.result != 'success' }}
-        run: exit 1
       - uses: actions/checkout@v6
+      # Only the desktop closure outgrows the runner's free disk.
       - name: Start freeing runner disk space
+        if: matrix.check == 'desktop-primary'
         run: |
           status_file="$RUNNER_TEMP/runner-disk-cleanup.status"
           log_file="$RUNNER_TEMP/runner-disk-cleanup.log"
@@ -210,9 +139,8 @@ jobs:
           echo "$!" > "$pid_file"
       - uses: DeterminateSystems/determinate-nix-action@v3.21.9
       - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
-      - name: Evaluate full desktop system
-        run: nix --accept-flake-config eval --raw .#nixosConfigurations.asus.config.system.build.toplevel.drvPath
       - name: Wait for runner disk cleanup
+        if: matrix.check == 'desktop-primary'
         run: |
           status_file="$RUNNER_TEMP/runner-disk-cleanup.status"
           log_file="$RUNNER_TEMP/runner-disk-cleanup.log"
@@ -234,66 +162,48 @@ jobs:
             exit "$cleanup_status"
           fi
           df -h
-      - name: Build desktop system with primary tools only
-        run: nix --accept-flake-config build .#desktop-primary --print-build-logs
-  home-manager:
-    name: build Home Manager modules (shell, editor, and desktop)
-    needs: changes
-    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.nix == 'true' || needs.changes.outputs.home == 'true') }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Require successful path detection
-        if: ${{ always() && needs.changes.result != 'success' }}
-        run: exit 1
-      - uses: actions/checkout@v6
-      - uses: DeterminateSystems/determinate-nix-action@v3.21.9
-      - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
-      - name: Evaluate Home Manager and build tooling checks
-        run: nix --accept-flake-config build .#checks.x86_64-linux.home-manager-nixos --print-build-logs
-  whitespace:
-    name: whitespace
-    needs: changes
+      # --skip-cached replaces path filtering: an unchanged check is already
+      # in the binary cache, so it passes without being downloaded or rebuilt.
+      - name: Build ${{ matrix.check }}
+        env:
+          CHECK: ${{ matrix.check }}
+        run: >-
+          nix --accept-flake-config run --inputs-from . nixpkgs#nix-fast-build -- --no-nom --skip-cached --flake .#checks.x86_64-linux --select "checks: { inherit (checks) $CHECK; }"
+  checks:
+    # The single required status, so adding or renaming a flake check never
+    # requires a branch protection change.
+    name: nix flake checks
+    needs: [discover, check]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
-      - name: Require successful path detection
-        if: ${{ always() && needs.changes.result != 'success' }}
-        run: exit 1
-      - uses: actions/checkout@v6
-      - uses: DeterminateSystems/determinate-nix-action@v3.21.9
-      - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
-      - name: Build whitespace check
-        run: nix --accept-flake-config build .#checks.x86_64-linux.whitespace --print-build-logs
-  niri-config:
-    name: niri compositor config
-    needs: changes
-    if: needs.changes.outputs.niri == 'true'
+      - name: Require every flake check to pass
+        env:
+          DISCOVER: ${{ needs.discover.result }}
+          CHECK: ${{ needs.check.result }}
+        run: |
+          echo "discover: $DISCOVER, checks: $CHECK"
+          [[ "$DISCOVER" == success && "$CHECK" == success ]]
+  # Transitional aliases for the required checks that branch protection still
+  # names. Remove both once `jj-ci github reconcile --apply` requires
+  # `nix flake checks` instead.
+  legacy-desktop:
+    name: build NixOS (shell and compositor)
+    needs: checks
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: DeterminateSystems/determinate-nix-action@v3.21.9
-      - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
-      - name: Build Niri configuration check
-        run: nix --accept-flake-config build .#checks.x86_64-linux.niri-config --print-build-logs
-  zellij-config:
-    name: zellij shell config
-    needs: changes
-    if: needs.changes.outputs.zellij == 'true'
+      - name: Mirror nix flake checks
+        env:
+          RESULT: ${{ needs.checks.result }}
+        run: '[[ "$RESULT" == success ]]'
+  legacy-home-manager:
+    name: build Home Manager modules (shell, editor, and desktop)
+    needs: checks
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: DeterminateSystems/determinate-nix-action@v3.21.9
-      - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
-      - name: Build Zellij configuration check
-        run: nix --accept-flake-config build .#checks.x86_64-linux.zellij-config --print-build-logs
-  host-evaluations:
-    name: host evaluations
-    needs: changes
-    if: needs.changes.outputs.nix == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: DeterminateSystems/determinate-nix-action@v3.21.9
-      - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
-      - name: Build host evaluation check
-        run: nix --accept-flake-config build .#checks.x86_64-linux.den-host-evaluation --print-build-logs
+      - name: Mirror nix flake checks
+        env:
+          RESULT: ${{ needs.checks.result }}
+        run: '[[ "$RESULT" == success ]]'
