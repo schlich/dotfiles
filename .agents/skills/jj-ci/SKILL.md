@@ -156,7 +156,10 @@ copy moves. Topics that conflict with nothing publish as independent PRs.
 Topics that conflict with each other are ordered with open PRs first, then
 refactors before user-facing changes, then by age: the later topic is rebased onto the earlier one, its conflicts are
 resolved locally, and it is published as a stacked PR whose base is the
-earlier topic's branch. Chains longer than three hold the remainder locally
+earlier topic's branch. Age is the topic's oldest author time, then its change
+ID, so rewrites never reorder topics. If the earlier topic has no PR yet, the
+later one publishes as an independent PR instead of waiting, and whichever
+lands second resolves the conflict. Chains longer than three hold the remainder locally
 until a layer lands. Topics that conflict with `main` must be resolved with
 `jj-ci rebase` first. Never rebase an open PR onto unpublished work, and never
 rewrite another session's topic to build a stack; stack new work on top of it.

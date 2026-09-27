@@ -758,7 +758,10 @@ def plan-topics [prs: list] {
             commit: (revision-id $tip)
             pr: ($pr | get number? )
             description: (revision-field $tip 'description.first_line()')
-            timestamp: (revision-field $tip 'committer.timestamp().format("%s")' | into int)
+            # Author time survives rewrites; committer time moves whenever a
+            # topic is validated or redescribed, which would reorder topics.
+            created: (revision-field $"($fork)..($tip)" 'author.timestamp().format("%s") ++ "\n"'
+                | lines | into int | math min)
             files: (git-command "listing topic files" { ^jj diff --name-only --from $fork --to $tip } | lines)
             current: (contains-main $tip)
             impact: (combine-impacts (revisions-in $"($fork)..($tip)" | each {|revision| parse-impact $revision.description }) | get impact)
@@ -831,12 +834,14 @@ def plan-proposals [candidates: list, edges: list] {
 # Published topics go first so an open PR is never rebased onto unpublished
 # work. Within each group refactors come first, so a conflicting user-facing
 # change stacks on the refactor and each release stays a small behavior diff.
+# Every key is stable under rewrites, so concurrent topics agree on which of
+# them is the base; the change ID breaks the remaining ties.
 def plan-order [topics: list] {
     $topics
     | insert unpublished {|topic| $topic.pr == null }
     | insert impact_order {|topic| impact-order $topic.impact }
     | insert pr_order {|topic| $topic.pr | default 0 }
-    | sort-by unpublished impact_order pr_order timestamp
+    | sort-by unpublished impact_order pr_order created tip
 }
 
 def build-plan [prs: list] {
@@ -1167,8 +1172,12 @@ def plan-parent-for-current-topic [branch: string] {
             error make { msg: $"This topic conflicts with a stack that is already ($PLAN_MAX_STACK) layers deep \(($entry.proposal)). Hold it locally until a layer lands." }
         }
         "stack" => {
+            # Waiting on a topic that has no PR can block indefinitely when its
+            # task is idle. Publish independently; whichever lands second
+            # resolves the conflict when it rebases.
             if $entry.stack_on_pr == null {
-                error make { msg: $"This topic conflicts with unpublished work in ($entry.stack_on). Publish that topic first or wait for it to land." }
+                print $"Conflicts with unpublished work in ($entry.stack_on); publishing as an independent PR. Whichever lands second resolves the conflict."
+                return null
             }
             let parent = ($prs | where number == $entry.stack_on_pr | get 0.headRefName)
             print $"Conflicts with ($entry.conflicts_with | str join ', '); stacking on #($entry.stack_on_pr) \(($parent))."
