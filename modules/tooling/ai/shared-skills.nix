@@ -2,6 +2,7 @@
 
 {
   archify = "${inputs.archify}/archify";
+  autoresearch = "${inputs.autoresearch}/.agents/skills/autoresearch";
   jj-ci = ../../../.agents/skills/jj-ci;
   rlm = ../../../.agents/skills/rlm;
   typesafe-ai = "${inputs.typesafe-skills}/skills/typesafe-ai";
