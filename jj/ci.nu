@@ -128,7 +128,8 @@ def pipeline-state [repo: record, commit: string] {
     if ($repo.spindle | is-empty) {
         error make { msg: "The Tangled repository has no spindle, so no pipeline can gate landing. Select one in its settings." }
     }
-    let pipelines = (xrpc $"https://($repo.spindle)" "sh.tangled.ci.queryPipelines" { repo: $repo.did commits: $commit }).pipelines
+    # A spindle that has not recorded the push yet omits `pipelines`.
+    let pipelines = ((xrpc $"https://($repo.spindle)" "sh.tangled.ci.queryPipelines" { repo: $repo.did commits: $commit }).pipelines? | default [])
     let pipeline = ($pipelines | where commit == $commit | get --optional 0)
     let workflows = if $pipeline == null { [] } else { $pipeline.workflows }
     let state = if ($workflows | is-empty) {
