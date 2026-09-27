@@ -7,6 +7,6 @@
     ./shell.nix
     ./ssh.nix
     ./vcs.nix
-    ./yazelix.nix
+    ./yazi.nix
   ];
 }

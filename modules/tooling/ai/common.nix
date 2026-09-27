@@ -28,7 +28,7 @@
         args = [ "mcp-nixos" ];
       };
       nushell = {
-        # Pin the configured Nushell: environments such as Yazelix put an
+        # Pin the configured Nushell: environments such as dev shells can put an
         # older nu first on PATH, which rejects commands config.nu relies on.
         command = lib.getExe config.programs.nushell.package;
         # The limit must be a filesize on the session stack; nu --mcp ignores
