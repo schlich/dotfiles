@@ -9,6 +9,7 @@ in
   # Hosts are small composition declarations. Hardware and storage remain
   # platform-local; reusable behavior follows the host's typed profile.
   den.aspects.asus.includes = aspectsFor (host "asus") ++ [
+    den.aspects.jj-ci-webhook
     den.aspects.system-files
     den.aspects.asus-platform
     den.aspects.asus-storage

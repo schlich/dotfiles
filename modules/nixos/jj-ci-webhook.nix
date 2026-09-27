@@ -51,7 +51,7 @@ in
     };
     funnel.enable = lib.mkOption {
       type = lib.types.bool;
-      default = true;
+      default = false;
       description = "Expose the loopback listener publicly through Tailscale Funnel.";
     };
   };
@@ -76,6 +76,21 @@ in
         RestartSec = "10s";
         NoNewPrivileges = true;
         PrivateTmp = true;
+        PrivateDevices = true;
+        ProtectSystem = "strict";
+        ProtectHome = "read-only";
+        ProtectKernelTunables = true;
+        ProtectKernelModules = true;
+        ProtectControlGroups = true;
+        RestrictSUIDSGID = true;
+        LockPersonality = true;
+        MemoryDenyWriteExecute = true;
+        CapabilityBoundingSet = "";
+        RestrictAddressFamilies = [
+          "AF_UNIX"
+          "AF_INET"
+          "AF_INET6"
+        ];
         ReadWritePaths = [ cfg.projectDir ];
       };
       environment = {
