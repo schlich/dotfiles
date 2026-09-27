@@ -134,6 +134,8 @@ in
     plugins.jj-guard = jjGuard;
     plugins.jev-bash-guard = jevBashGuard;
     plugins.prefer-nushell = preferNushellGuard;
+    # IWE memory: inert outside a workspace whose root has a MEMORY.md policy.
+    plugins.iwe = "${inputs.iwe-skills}";
   };
 
   dotfiles.tooling = {

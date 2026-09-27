@@ -1,10 +1,26 @@
 {
   config,
+  inputs,
   lib,
   pkgs,
   ...
 }:
 
+let
+  iwe = import ../knowledge/iwe-package.nix { inherit inputs lib pkgs; };
+  kbRoot = "${config.home.homeDirectory}/kb";
+  # iwec serves the workspace in its working directory.
+  kbMcp = pkgs.writeNuScriptBin "kb-mcp" ''
+    def main [] {
+      if not ("${kbRoot}/.iwe" | path exists) {
+        print --stderr "kb-mcp: no IWE workspace at ${kbRoot}; run `iwe init` there first"
+        exit 1
+      }
+      cd ${kbRoot}
+      exec ${iwe}/bin/iwec --transport stdio
+    }
+  '';
+in
 {
   programs.mcp = {
     enable = true;
@@ -44,6 +60,8 @@
         command = "atuin";
         args = [ "mcp" ];
       };
+      # The personal knowledge base, for agents working in other repositories.
+      kb.command = "${kbMcp}/bin/kb-mcp";
     }
     // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
       # metavr ships binaries only for macOS and Windows, not Linux.

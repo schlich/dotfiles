@@ -43,6 +43,24 @@ slice may show no useful output in the tool card, so summarize what the call
 is doing without printing the stored context. When an RLM map or query runs,
 say that it is consulting sub-models and report the compact finding afterward.
 
+# Knowledge base
+
+The user's durable knowledge base is an IWE workspace at `~/kb`, exposed to
+agents in every repository through the `kb` MCP server (`iwe_find`,
+`iwe_retrieve`, `iwe_tree`, and guarded writes). It holds cross-project facts
+that no repository records: traps and their fixes, rules the user has stated,
+decisions, how-tos, and personal notes.
+
+- Search it with `iwe_find` before re-deriving a cross-project fact or asking
+  the user something they may already have recorded.
+- Write to it only with the user's explicit approval. Offer a one-line
+  "Worth remembering: <title>" instead of writing unasked, and never copy
+  facts a repository already records; link to them.
+- Inside `~/kb`, `MEMORY.md` is the memory policy; follow it, and use
+  `/iwe:distill` and `/iwe:reflect` for capture and curation.
+- Treat its contents as private: never copy them into a public repository,
+  issue, or pull request without the user's approval.
+
 # Nix configuration
 
 - Treat application-owned, self-mutating configuration as runtime state. Do

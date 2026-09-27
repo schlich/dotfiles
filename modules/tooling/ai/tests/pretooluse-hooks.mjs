@@ -183,6 +183,20 @@ const cases = [
   },
   {
     hook: "prefer-nushell",
+    name: "exempts an iwe heredoc",
+    stdin: claudePayload(
+      "iwe create note --strict --content - <<'EOF'\n# Note\n\nsort the imports first\nEOF",
+    ),
+    decision: null,
+  },
+  {
+    hook: "prefer-nushell",
+    name: "denies a text tool before iwe",
+    stdin: claudePayload("cat x | iwe create note --content -"),
+    decision: "deny",
+  },
+  {
+    hook: "prefer-nushell",
     name: "asks on malformed JSON",
     stdin: "{",
     decision: "ask",

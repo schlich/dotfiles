@@ -4,6 +4,10 @@
 # pipelines) and shouldn't be asked about again here.
 const exempt_pattern = '(^|[;&|][&|]?|\n)\s*(jev\b|nu\s+(/home/schlich/dotfiles-jev|~/dotfiles-jev)/jev/jev\.nu\b)'
 
+# IWE memory writes pass a note to `iwe create --content -` as a heredoc; its
+# prose lines would otherwise read as pipeline stages.
+const iwe_pattern = '^\s*iwe\s'
+
 # Read-only file and text tools with a direct structured Nushell equivalent.
 # Any command stage that starts with one of these is denied without a model
 # call; Jev classifies everything else.
@@ -87,7 +91,7 @@ def main [] {
     return
   }
 
-  if ($parsed.command =~ $exempt_pattern) {
+  if ($parsed.command =~ $exempt_pattern) or ($parsed.command =~ $iwe_pattern) {
     return
   }
 

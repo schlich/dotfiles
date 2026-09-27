@@ -8,6 +8,7 @@
     ../../../modules/tooling/terminals/ghostty.nix
     ../../../modules/tooling/editors/helix.nix
     ../../../modules/tooling/editors/zed.nix
+    ../../../modules/tooling/knowledge/iwe.nix
     ../../../modules/tooling/ai/plugins.nix
     ../../../modules/tooling/ai/opencode-desktop.nix
     ../../../modules/tooling/ai/opencode.nix

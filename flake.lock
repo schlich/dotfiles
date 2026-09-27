@@ -972,6 +972,39 @@
         "url": "https://github.com/rsms/inter/releases/download/v4.1/Inter-4.1.zip"
       }
     },
+    "iwe": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1789931723,
+        "narHash": "sha256-lV87ZG8OpVswHIUIjObAulpv7/IVOdVJFbrR6vtfhac=",
+        "owner": "iwe-org",
+        "repo": "iwe",
+        "rev": "58616fbc943f7802021f949701c3ebeaff57e1ff",
+        "type": "github"
+      },
+      "original": {
+        "owner": "iwe-org",
+        "ref": "iwe-v0.24.2",
+        "repo": "iwe",
+        "type": "github"
+      }
+    },
+    "iwe-skills": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1788612242,
+        "narHash": "sha256-ZuP8Wrvn7rvE4mra0AjxieVJFiSsIfcXggF5eUR4Vhs=",
+        "owner": "iwe-org",
+        "repo": "skills",
+        "rev": "e3908762d5fa661fcba41d836d5fcb75dba4cebc",
+        "type": "github"
+      },
+      "original": {
+        "owner": "iwe-org",
+        "repo": "skills",
+        "type": "github"
+      }
+    },
     "jj-starship": {
       "inputs": {
         "flake-utils": "flake-utils_2",
@@ -1544,6 +1577,8 @@
         "gh-stack": "gh-stack",
         "grill-me": "grill-me",
         "home-manager": "home-manager",
+        "iwe": "iwe",
+        "iwe-skills": "iwe-skills",
         "jj-starship": "jj-starship",
         "marimo-pair": "marimo-pair",
         "marimo-skills": "marimo-skills",
