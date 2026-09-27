@@ -139,6 +139,16 @@ jobs:
           echo "$!" > "$pid_file"
       - uses: DeterminateSystems/determinate-nix-action@v3.21.9
       - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
+      # Evaluation fetches sources outside flake.lock, such as Helix's
+      # tree-sitter grammars, which no binary cache holds. Reuse Nix's fetcher
+      # cache instead of downloading them again in every job.
+      - name: Restore the Nix fetcher cache
+        id: fetcher-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.cache/nix
+          key: nix-fetcher-${{ hashFiles('flake.lock') }}
+          restore-keys: nix-fetcher-
       - name: Wait for runner disk cleanup
         if: matrix.check == 'desktop-primary'
         run: |
@@ -169,6 +179,13 @@ jobs:
           CHECK: ${{ matrix.check }}
         run: >-
           nix --accept-flake-config run --inputs-from . nixpkgs#nix-fast-build -- --no-nom --skip-cached --flake .#checks.x86_64-linux --select "checks: { inherit (checks) $CHECK; }"
+      # This check evaluates every host, so its fetcher cache covers the rest.
+      - name: Save the Nix fetcher cache
+        if: matrix.check == 'den-host-evaluation' && steps.fetcher-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.cache/nix
+          key: ${{ steps.fetcher-cache.outputs.cache-primary-key }}
   checks:
     # The single required status, so adding or renaming a flake check never
     # requires a branch protection change.
