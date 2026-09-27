@@ -190,13 +190,14 @@
         }) denAsus.config.home-manager.users.schlich.dotfiles.tooling.checks
       );
       denHostEvaluationCheck = pkgs.writeText "den-host-evaluation" (
-        # Keep all host derivations evaluated without adding their closures as inputs.
+        # Keep all host derivations evaluated without adding their closures as
+        # inputs. headless-system already evaluates and builds asus-headless.
         builtins.unsafeDiscardStringContext (
           lib.concatStringsSep "" (
             lib.mapAttrsToList (
               name: host:
               "${name}: ${host.config.networking.hostName}: ${host.config.system.build.toplevel.drvPath}\n"
-            ) denFlake.nixosConfigurations
+            ) (removeAttrs denFlake.nixosConfigurations [ "asus-headless" ])
           )
         )
       );
