@@ -31,8 +31,8 @@ def ns [query?: string] {
 # Discover packages and declared modules in the pinned configuration.
 def nix-discover [query: string] {
     let needle = ($query | str lowercase)
-    let matching_options = {|flake_output: string|
-        ^nix eval --json $flake_output --apply 'builtins.attrNames'
+    let matching_options = {|flake_output: string, apply: string = 'builtins.attrNames'|
+        ^nix eval --json $flake_output --apply $apply
         | from json
         | where {|name| ($name | str lowercase | str contains $needle) }
     }
@@ -52,7 +52,9 @@ def nix-discover [query: string] {
 
     {
         packages: $packages
-        home_manager_programs: (do $matching_options ".#homeConfigurations.schlich.options.programs")
+        # Home Manager is embedded in the host, so read its option tree from
+        # the submodule type of home-manager.users.
+        home_manager_programs: (do $matching_options ".#nixosConfigurations.asus.options.home-manager.users" 'users: builtins.attrNames (users.type.getSubOptions []).programs')
         nixos_programs: (do $matching_options ".#nixosConfigurations.asus.options.programs")
         nixos_services: (do $matching_options ".#nixosConfigurations.asus.options.services")
     }
