@@ -1,31 +1,71 @@
+// Dotfiles workbench: open from the repository root with
+// `zellij --layout dotfiles`.
 layout {
+    // Every tab, including ones opened later with Ctrl+t n, keeps the bars.
+    default_tab_template {
+        pane size=1 borderless=true {
+            plugin location="tab-bar"
+        }
+        children
+        pane size=1 borderless=true {
+            plugin location="status-bar"
+        }
+    }
+
+    // Editing: a file browser beside the editor, with a shell underneath.
     tab name="edit" focus=true {
-        pane size=1 borderless=true {
-            plugin location="tab-bar"
-        }
-        pane name="shell"
-        pane size=1 borderless=true {
-            plugin location="status-bar"
-        }
-    }
-
-    tab name="checks" {
-        pane size=1 borderless=true {
-            plugin location="tab-bar"
-        }
-        pane name="shell"
-        pane size=1 borderless=true {
-            plugin location="status-bar"
+        pane split_direction="vertical" {
+            pane name="files" size="20%" command="yazi"
+            pane split_direction="horizontal" {
+                pane name="editor" size="72%" focus=true command="hx" {
+                    args "."
+                }
+                pane name="shell"
+            }
         }
     }
 
+    // Revisions: jjui for history surgery, with live working-copy state and a
+    // shell for jj-ci commands.
     tab name="jj" {
-        pane size=1 borderless=true {
-            plugin location="tab-bar"
+        pane split_direction="vertical" {
+            pane name="jjui" size="64%" focus=true command="jjui"
+            pane stacked=true {
+                pane name="working copy" expanded=true command="nu" {
+                    args "-c" "loop { clear; let st = (^jj --color always status | complete); if $st.exit_code == 0 { print $st.stdout; print (^jj --color always diff --stat | complete).stdout } else { print 'Not in a JJ repository.' }; sleep 5sec }"
+                }
+                pane name="jj-ci"
+            }
         }
-        pane name="shell"
-        pane size=1 borderless=true {
-            plugin location="status-bar"
+    }
+
+    // Local gates start suspended; press Enter in a runner to start it and
+    // again to rerun it after it exits.
+    tab name="checks" {
+        pane split_direction="vertical" {
+            pane stacked=true size="60%" {
+                pane name="prek" expanded=true command="prek" start_suspended=true {
+                    args "run" "--all-files"
+                }
+                pane name="nix fmt" command="nix" start_suspended=true {
+                    args "fmt"
+                }
+                pane name="flake check" command="nix" start_suspended=true {
+                    args "flake" "check" "--no-build" "path:."
+                }
+                pane name="jj-ci validate" command="jj-ci" start_suspended=true {
+                    args "validate"
+                }
+            }
+            pane name="shell" focus=true
+        }
+    }
+
+    // Pull requests, issues, and checks; gh dash filters to this repository
+    // when opened inside it.
+    tab name="gh dash" {
+        pane name="gh dash" command="gh" {
+            args "dash"
         }
     }
 }
