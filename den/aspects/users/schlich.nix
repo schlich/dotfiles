@@ -11,7 +11,7 @@
       home.homeDirectory = "/home/schlich";
       home.stateVersion = "26.05";
       dotfiles.primary = {
-        terminal = "rio";
+        terminal = "ghostty";
         editor = "helix";
         ai = "opencode";
         desktopAgent = "opencode";
