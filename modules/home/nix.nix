@@ -53,7 +53,7 @@
         run-step "Nix formatting" { ^nix fmt -- --check }
         run-step "Flake checks" { ^nix flake check path:. }
         run-step "Home Manager build" {
-          ^nom build path:.#homeConfigurations.schlich.activationPackage
+          ^nom build path:.#nixosConfigurations.asus.config.home-manager.users.schlich.home.activationPackage
         }
         run-step "NixOS build" {
           ^nom build path:.#nixosConfigurations.asus.config.system.build.toplevel
