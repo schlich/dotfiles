@@ -1,4 +1,9 @@
-{ inputs, pkgs, ... }:
+{
+  inputs,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   acreomApp =
@@ -120,7 +125,9 @@ in
     ripgrep
     wl-clipboard-rs
     gh-stack
-    secretspec
+    # The repository's wrappers depend on secretspec; keep this copy ahead of
+    # the one devenv bundles so PATH does not follow devenv's release cadence.
+    (lib.hiPrio secretspec)
     devenv
     jev
     inputs.xs.packages.${pkgs.stdenv.hostPlatform.system}.default
