@@ -124,7 +124,16 @@ def main [event: string] {
 
     let root_result = (^jj --repository $cwd root | complete)
     if $root_result.exit_code != 0 {
-        if $event == "session-start" {
+        if $event != "session-start" {
+            if $event == "guard" or $event == "first-prompt" {
+                block "This checkout is not a JJ workspace. Restart the Codex session so its startup hook can initialize the Git worktree, or start work in a JJ workspace."
+            }
+            return
+        }
+    }
+
+    try {
+        if $root_result.exit_code != 0 and not (initialize-git-worktree $cwd) {
             let warning = (git-worktree-warning $cwd)
             if $warning != null {
                 { hookSpecificOutput: {
@@ -132,14 +141,7 @@ def main [event: string] {
                     additionalContext: $warning
                 } } | to json
             }
-        }
-        return
-    }
-
-    try {
-        let jj_root = (^jj --repository $cwd root | complete)
-        if $jj_root.exit_code != 0 {
-            if $event != "session-start" or not (initialize-git-worktree $cwd) { return }
+            return
         }
         prepare $cwd $session_id $path
         if not ($path | path exists) { return }
