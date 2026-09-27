@@ -33,6 +33,9 @@ REFRESH_COMMAND = shlex.split(required_setting("JJ_CI_WEBHOOK_REFRESH_COMMAND"))
 AGENT_COMMAND = shlex.split(required_setting("JJ_CI_WEBHOOK_AGENT_COMMAND"))
 LISTEN_ADDRESS = os.environ.get("JJ_CI_WEBHOOK_LISTEN_ADDRESS", "127.0.0.1")
 LISTEN_PORT = int(os.environ.get("JJ_CI_WEBHOOK_LISTEN_PORT", "8765"))
+REQUEST_TIMEOUT_SECONDS = 10
+MAX_CONCURRENT_CONNECTIONS = 16
+CONNECTION_BACKLOG = 16
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("jj-ci-webhook")
@@ -124,13 +127,14 @@ def event_requests_action(event: str | None, payload: dict) -> tuple[dict | None
 
 
 class WebhookWorker:
-    def __init__(self) -> None:
-        self.pending: queue.Queue[dict] = queue.Queue(maxsize=16)
+    def __init__(self, *, queue_size: int = 16, start_thread: bool = True) -> None:
+        self.pending: queue.Queue[dict] = queue.Queue(maxsize=queue_size)
         self.seen: set[str] = set()
         self.lock = threading.Lock()
-        threading.Thread(
-            target=self.run, name="jj-ci-webhook-worker", daemon=True
-        ).start()
+        if start_thread:
+            threading.Thread(
+                target=self.run, name="jj-ci-webhook-worker", daemon=True
+            ).start()
 
     def enqueue(self, action: dict) -> str:
         with self.lock:
@@ -156,7 +160,11 @@ class WebhookWorker:
                 cwd=PROJECT_DIR,
                 check=False,
                 timeout=1800,
-                env=os.environ.copy(),
+                env={
+                    name: value
+                    for name, value in os.environ.items()
+                    if name != "JJ_CI_WEBHOOK_SECRET"
+                },
             )
         except (OSError, subprocess.TimeoutExpired) as error:
             logger.exception("%s failed: %s", label, error)
@@ -235,9 +243,6 @@ Event context (JSON data):
                 self.pending.task_done()
 
 
-worker = WebhookWorker()
-
-
 class Handler(http.server.BaseHTTPRequestHandler):
     server_version = "jj-ci-webhook/1"
 
@@ -268,10 +273,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
         except ValueError:
             content_length = -1
         if content_length < 0 or content_length > MAX_PAYLOAD_BYTES:
+            self.close_connection = True
             self.send_text(413, "payload too large\n")
             return
 
-        body = self.rfile.read(content_length)
+        try:
+            body = self.rfile.read(content_length)
+        except TimeoutError:
+            self.close_connection = True
+            self.send_text(408, "request timed out\n")
+            return
+        if len(body) != content_length:
+            self.close_connection = True
+            self.send_text(400, "incomplete request body\n")
+            return
         if not signature_is_valid(body, self.headers.get("X-Hub-Signature-256")):
             self.send_text(401, "invalid signature\n")
             return
@@ -290,7 +305,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_text(202, "ignored\n")
             return
 
-        queued = worker.enqueue(action)
+        queued = self.server.worker.enqueue(action)
         if queued == "full":
             logger.error(
                 "webhook queue full; rejecting delivery %s",
@@ -310,9 +325,48 @@ class Handler(http.server.BaseHTTPRequestHandler):
 class Server(http.server.ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
+    request_queue_size = CONNECTION_BACKLOG
+
+    def __init__(
+        self,
+        server_address: tuple[str, int],
+        request_handler_class: type[http.server.BaseHTTPRequestHandler],
+        worker: WebhookWorker,
+        *,
+        request_timeout: float = REQUEST_TIMEOUT_SECONDS,
+        max_connections: int = MAX_CONCURRENT_CONNECTIONS,
+    ) -> None:
+        self.worker = worker
+        self.request_timeout = request_timeout
+        self.connection_slots = threading.BoundedSemaphore(max_connections)
+        super().__init__(server_address, request_handler_class)
+
+    def get_request(self) -> tuple[object, tuple[str, int]]:
+        request, address = super().get_request()
+        request.settimeout(self.request_timeout)
+        return request, address
+
+    def process_request(self, request: object, client_address: tuple[str, int]) -> None:
+        if not self.connection_slots.acquire(blocking=False):
+            self.shutdown_request(request)
+            return
+        try:
+            super().process_request(request, client_address)
+        except BaseException:
+            self.connection_slots.release()
+            raise
+
+    def process_request_thread(
+        self, request: object, client_address: tuple[str, int]
+    ) -> None:
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self.connection_slots.release()
 
 
 if __name__ == "__main__":
-    with Server((LISTEN_ADDRESS, LISTEN_PORT), Handler) as server:
+    worker = WebhookWorker()
+    with Server((LISTEN_ADDRESS, LISTEN_PORT), Handler, worker) as server:
         logger.info("listening on %s:%s%s", LISTEN_ADDRESS, LISTEN_PORT, WEBHOOK_PATH)
         server.serve_forever()
