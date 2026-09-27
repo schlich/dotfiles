@@ -105,6 +105,10 @@
       url = "git+https://tangled.org/@tangled.org/core";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # The same Tangled core on its own nixpkgs, for the spindle's microVM
+    # guest image, which does not evaluate against this flake's nixpkgs.
+    # Lock it to the `tangled` revision so the guest matches the spindle.
+    tangled-image.url = "git+https://tangled.org/@tangled.org/core";
     tangled-dash = {
       url = "github:schlich/tangled-dash";
       inputs.nixpkgs.follows = "nixpkgs";

@@ -4,6 +4,32 @@
   ...
 }:
 
+let
+  image = inputs.tangled-image;
+  system = pkgs.stdenv.hostPlatform.system;
+  imagePkgs = import image.inputs.nixpkgs {
+    inherit system;
+    overlays = [ image.inputs.fetch-tangled.overlays.default ];
+  };
+  # Tangled's NixOS guest, built as its flake builds `spindle-nixos-image`
+  # but larger: the stock 4 GiB, 2-vCPU guest runs nix-eval-jobs out of
+  # memory on this repository's host checks. homelab has 15 GiB and 8 cores
+  # and runs one workflow at a time, which leaves about 5 GiB and 2 cores for
+  # the host.
+  guest = image.inputs.nixpkgs.lib.nixosSystem {
+    inherit system;
+    modules = [
+      image.nixosModules.spindle-nixos
+      {
+        microvm.mem = image.inputs.nixpkgs.lib.mkForce 10240;
+        microvm.vcpu = image.inputs.nixpkgs.lib.mkForce 6;
+      }
+    ];
+  };
+  nixosImage = imagePkgs.callPackage "${image}/nix/pkgs/spindle-nixos-image.nix" {
+    nixosSystem = guest;
+  };
+in
 {
   imports = [ inputs.tangled.nixosModules.spindle ];
 
@@ -21,7 +47,17 @@
     };
     pipelines = {
       workflowTimeout = "30m";
-      microvm.defaultImage = "nixos";
+      microvm = {
+        defaultImage = "nixos";
+        # Spindle resolves an image name to `<imageDir>/<name>/spec.json`, so
+        # serve the guest from the store instead of files installed by hand.
+        imageDir = "${pkgs.linkFarm "spindle-images" [
+          {
+            name = "nixos";
+            path = nixosImage;
+          }
+        ]}";
+      };
     };
   };
 
