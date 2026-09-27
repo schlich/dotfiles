@@ -1,0 +1,18 @@
+<style>
+  .panel { width: 560px; padding-top: 30px; padding-right: 32px; padding-bottom: 30px; padding-left: 32px; flex-direction: column; background-color: #142019; }
+  .eyebrow { font-size: 20px; color: #b8d99c; }
+  .direction { font-size: 21px; color: #c0e89c; }
+  .direction.pull { color: #b4c8e3; }
+  .title { font-size: 46px; color: #f3f4ea; }
+  .body { font-size: 27px; color: #d2d8c9; }
+  .status { font-size: 21px; color: #b8d99c; }
+  button { font-size: 25px; color: #102016; background-color: #c0e89c; padding-top: 18px; padding-right: 22px; padding-bottom: 18px; padding-left: 22px; }
+</style>
+<Panel class="panel">
+  <span class="eyebrow">03 / PULL BACK THE FEEDBACK</span>
+  <h1 class="title">See what came back</h1>
+  <p class="body">Pull in JJ state, evaluation outcomes, and live development-shell output after each action.</p>
+  <p id="panel-status" class="status">NIX / NUSHELL</p>
+  <p id="flow-status" class="direction">← PULL · Results return from the worktree.</p>
+  <button id="inspect-environment">Inspect development shell</button>
+</Panel>

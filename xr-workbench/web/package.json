@@ -1,0 +1,23 @@
+{
+  "name": "fieldwork-xr-workbench",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node ./dev.mjs",
+    "dev:runtime": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@iwsdk/core": "0.5.3",
+    "three": "npm:super-three@0.181.0"
+  },
+  "devDependencies": {
+    "@iwsdk/cli": "0.5.3",
+    "@iwsdk/vite-plugin-dev": "0.5.3",
+    "vite": "7.1.4"
+  },
+  "engines": {
+    "node": ">=20.19.0 <21 || >=22.12 <23 || >=24"
+  }
+}

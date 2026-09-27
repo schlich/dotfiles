@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#101713" />
+    <title>Fieldwork · XR agent cockpit</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/" aria-label="Fieldwork home"
+        ><span class="brand-mark">f.</span> FIELDWORK
+        <span class="pill">AGENT COCKPIT</span></a
+      >
+      <div class="connection">
+        <i id="connection-dot"></i
+        ><span id="connection">Connecting to workspace</span>
+      </div>
+      <button id="enter-xr" disabled>Checking XR…</button>
+    </header>
+    <main>
+      <aside class="rail">
+        <span class="eyebrow">YOUR WORKSPACE</span>
+        <h1>Room to<br />make things.</h1>
+        <p class="muted">
+          Configuration, changes, environment, and agent activity. Within reach.
+        </p>
+        <div class="repo-name" id="repo-name">dotfiles</div>
+        <p class="path" id="repo-path"></p>
+        <span class="eyebrow">WORKING SET</span>
+        <div id="panels" class="panel-list"></div>
+        <div class="rail-footer">
+          <span class="eyebrow">REPOSITORY WORKFLOW</span>
+          <p>Nushell → Nix → Jujutsu</p>
+          <small
+            >Edits stay in your topic workspace.<br />Activation stays a
+            deliberate step.</small
+          >
+        </div>
+      </aside>
+      <section class="workspace">
+        <div class="workspace-heading">
+          <div>
+            <span class="eyebrow">01 / SPATIAL OPERATIONS DECK</span>
+            <h2>Agent exchange · systems within reach</h2>
+          </div>
+          <div class="segmented" aria-label="Workspace layout">
+            <button data-layout="cockpit" aria-pressed="true">Cockpit</button
+            ><button data-layout="arc" aria-pressed="false">Arc</button
+            ><button data-layout="focus" aria-pressed="false">Focus</button
+            ><button data-layout="wall" aria-pressed="false">Wall</button>
+          </div>
+        </div>
+        <div id="viewport" data-direction="idle">
+          <div class="scene-label">
+            <span class="live-dot"></span> IWSDK / FIELDWORK
+            <span id="layout-name">/ COCKPIT</span>
+          </div>
+          <div
+            id="flow-legend"
+            class="flow-legend"
+            data-direction="idle"
+            aria-live="polite"
+          >
+            <span>YOU PUSH →</span><i class="flow-track"><b></b></i
+            ><span id="flow-summary">Worktree exchange ready</span
+            ><i class="flow-track reverse"><b></b></i><span>← PULL TO YOU</span>
+          </div>
+          <div class="cockpit-overlay" aria-hidden="true">
+            <div class="cockpit-wing push-wing">
+              <span class="wing-label">01 / INPUT BUS</span
+              ><strong>PUSH →</strong
+              ><span id="hud-push">Choose source or action</span>
+              <div class="hud-ticks"><i></i><i></i><i></i><i></i><i></i></div>
+            </div>
+            <div class="cockpit-reticle">
+              <span class="reticle-corner tl"></span
+              ><span class="reticle-corner tr"></span
+              ><span class="reticle-core">◇</span
+              ><span class="reticle-corner bl"></span
+              ><span class="reticle-corner br"></span>
+            </div>
+            <div class="cockpit-wing pull-wing">
+              <span class="wing-label">02 / RETURN BUS</span
+              ><strong>← PULL</strong
+              ><span id="hud-pull">Awaiting feedback</span>
+              <div class="hud-ticks"><i></i><i></i><i></i><i></i><i></i></div>
+            </div>
+            <div class="cockpit-dashboard">
+              <span><b>SYSTEM</b><em id="hud-system">STANDBY</em></span
+              ><span><b>AGENT</b><em id="hud-agent">FIXTURE READY</em></span
+              ><span><b>LINK</b><em id="hud-link">CONNECTING</em></span>
+            </div>
+          </div>
+          <div id="scene-fallback" hidden>
+            Spatial rendering is unavailable. All workspace controls remain
+            available below.
+          </div>
+          <div class="scene-help">
+            Seated control deck · Point and trigger · Grip to reposition
+          </div>
+          <button id="reset-view" class="scene-reset">Reset panels ↗</button>
+        </div>
+        <div class="workspace-toolbar">
+          <div>
+            <span class="eyebrow">COMFORT</span
+            ><label
+              >Distance
+              <input
+                id="distance"
+                type="range"
+                min="1"
+                max="2.2"
+                step="0.1"
+                value="1.7"
+              /><output id="distance-value">1.7 m</output></label
+            ><label
+              >Scale
+              <input
+                id="scale"
+                type="range"
+                min="0.65"
+                max="1.4"
+                step="0.05"
+                value="1"
+              /><output id="scale-value">100%</output></label
+            >
+          </div>
+          <button id="export-layout">Export layout ↓</button>
+        </div>
+        <section class="inspector">
+          <div class="inspector-heading">
+            <div>
+              <span class="eyebrow">02 / INSPECT & ITERATE</span>
+              <h2 id="inspector-title">Configuration studio</h2>
+            </div>
+            <span class="pill" id="editor-state">SOURCE</span>
+          </div>
+          <div class="tabs" role="tablist" aria-label="Workbench tools">
+            <button
+              role="tab"
+              id="tab-config"
+              aria-controls="config-pane"
+              aria-selected="true"
+            >
+              Configuration</button
+            ><button
+              role="tab"
+              id="tab-console"
+              aria-controls="console-pane"
+              aria-selected="false"
+              tabindex="-1"
+            >
+              Command console</button
+            ><button
+              role="tab"
+              id="tab-agent"
+              aria-controls="agent-pane"
+              aria-selected="false"
+              tabindex="-1"
+            >
+              Agent cockpit</button
+            ><button
+              role="tab"
+              id="tab-workflow"
+              aria-controls="workflow-pane"
+              aria-selected="false"
+              tabindex="-1"
+            >
+              Workflow
+            </button>
+          </div>
+          <div id="config-pane" role="tabpanel" aria-labelledby="tab-config">
+            <div class="file-toolbar">
+              <label class="sr-only" for="file-select"
+                >Configuration source</label
+              ><select id="file-select"></select
+              ><button id="reload-file">Reload</button
+              ><button id="save-file" class="primary" disabled>
+                Save to workspace
+              </button>
+            </div>
+            <label class="sr-only" for="editor">Source editor</label
+            ><textarea
+              id="editor"
+              spellcheck="false"
+              aria-describedby="file-note"
+            ></textarea>
+            <p id="file-note" class="muted">Choose a source to inspect.</p>
+          </div>
+          <div
+            id="console-pane"
+            role="tabpanel"
+            aria-labelledby="tab-console"
+            hidden
+          >
+            <div class="command-actions">
+              <button data-action="status">JJ status</button
+              ><button data-action="diff">Review diff</button
+              ><button data-action="history">Change history</button
+              ><button data-action="environment">
+                Enter & inspect dev shell</button
+              ><button data-action="evaluate">Evaluate flake</button>
+            </div>
+            <div class="console-toolbar">
+              <label
+                >Run
+                <select id="job-select">
+                  <option value="">No commands yet</option>
+                </select></label
+              ><button id="stop-job" disabled>Stop command</button>
+            </div>
+            <pre id="console-output" tabindex="0">
+Run a command to see real output from your workspace.</pre
+            >
+            <p class="muted">
+              Commands run only when selected. Environment entry may download
+              dependencies; flake evaluation does not build outputs.
+            </p>
+          </div>
+          <div
+            id="agent-pane"
+            role="tabpanel"
+            aria-labelledby="tab-agent"
+            hidden
+          >
+            <p class="muted">
+              Push a sample request through a deterministic replay, or pull real
+              workspace command output into the stream. No model or tools are
+              called by the sample.
+            </p>
+            <div class="cockpit-grid">
+              <section class="cockpit-card">
+                <span class="eyebrow"
+                  >CAPABILITY HUD / REPOSITORY INVENTORY</span
+                >
+                <div id="capability-hud" class="capability-hud">
+                  Loading repository capabilities…
+                </div>
+                <p id="capability-source" class="muted"></p>
+              </section>
+              <section class="cockpit-card">
+                <span class="eyebrow">PUSH / INPUT</span
+                ><label class="sr-only" for="agent-prompt">Sample request</label
+                ><textarea
+                  id="agent-prompt"
+                  maxlength="400"
+                  placeholder="Describe the outcome you want to evaluate…"
+                >
+Make the XR development loop observable.</textarea
+                >
+                <div class="cockpit-actions">
+                  <button id="agent-replay" class="primary">
+                    Replay sample →</button
+                  ><button id="agent-live">Pull selected command ↓</button
+                  ><button id="agent-pause" disabled>Pause</button>
+                </div>
+                <small id="agent-phase">READY · fixture available</small>
+              </section>
+            </div>
+            <div class="cockpit-grid stream-grid">
+              <section class="cockpit-card">
+                <span class="eyebrow">INPUT / PUSH →</span>
+                <div
+                  id="agent-input-stream"
+                  class="token-stream"
+                  aria-live="off"
+                ></div>
+                <small id="agent-input-count">0 chunks received</small>
+              </section>
+              <section class="cockpit-card">
+                <span class="eyebrow">← PULL / OUTPUT</span>
+                <div
+                  id="agent-output-stream"
+                  class="token-stream"
+                  aria-live="off"
+                ></div>
+                <small id="agent-output-count">0 chunks emitted</small>
+              </section>
+            </div>
+            <section class="cockpit-card">
+              <span class="eyebrow">EXCHANGE TRACE</span>
+              <ol id="agent-events" class="agent-events">
+                <li>Ready for a sample replay or workspace command.</li>
+              </ol>
+            </section>
+            <section class="cockpit-card">
+              <div class="cockpit-section-head">
+                <span class="eyebrow">JEV / TYPED OUTPUT INSPECTOR</span
+                ><button id="jev-example">Load example</button>
+              </div>
+              <label class="sr-only" for="jev-json">Jev response JSON</label
+              ><textarea
+                id="jev-json"
+                spellcheck="false"
+                placeholder='{"answers":{"decision":{"type":"choice","choice":"ship","probabilities":{"ship":0.8,"revise":0.2}}}}'
+              ></textarea>
+              <div class="cockpit-actions">
+                <button id="jev-inspect" class="primary">
+                  Inspect typed output ↓
+                </button>
+              </div>
+              <div id="jev-results" aria-live="polite"></div>
+            </section>
+          </div>
+          <div
+            id="workflow-pane"
+            role="tabpanel"
+            aria-labelledby="tab-workflow"
+            hidden
+          >
+            <div class="workflow-grid">
+              <article>
+                <b>01 / PUSH</b>
+                <h3>Shape the environment</h3>
+                <p>
+                  Inspect host facts and XR policy. Edit XR integration and
+                  development templates in the configuration studio.
+                </p>
+              </article>
+              <article>
+                <b>02 / EXCHANGE</b>
+                <h3>Iterate in place</h3>
+                <p>
+                  Save source or choose a command to push into the worktree.
+                  Pull JJ diffs, evaluation outcomes, and live output back as
+                  evidence.
+                </p>
+              </article>
+              <article>
+                <b>03 / DELIVER</b>
+                <h3>Close the loop</h3>
+                <p>
+                  Use the feedback to review the topic, then publish and
+                  activate through the existing repository workflow.
+                </p>
+              </article>
+            </div>
+            <p class="muted">
+              In XR: point and trigger to select panels or run their action.
+              Hold the grip button to reposition a panel. The configuration
+              editor remains on the desktop companion.
+            </p>
+          </div>
+        </section>
+      </section>
+    </main>
+    <footer>
+      <span>FIELDWORK / A SPATIAL DEVELOPMENT ENVIRONMENT</span
+      ><span id="saved-state">Layout saved on this device</span>
+    </footer>
+    <div id="notice" role="status" aria-live="polite"></div>
+  </body>
+</html>

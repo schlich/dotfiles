@@ -60,6 +60,9 @@ jobs:
             case "$file" in
               # mdformat rewrites skill frontmatter; Prek excludes these too.
               .agents/*|.codex/*) ;;
+              # pnpm generates this YAML lockfile; generic formatting reports
+              # a rewrite even when its formatted bytes are unchanged.
+              */pnpm-lock.yaml|pnpm-lock.yaml) ;;
               *.md|*.mdx) markdown_files+=("$file") ;;
               *.nix|*.yaml|*.yml) formatter_files+=("$file") ;;
               *) ;;

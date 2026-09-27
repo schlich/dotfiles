@@ -155,6 +155,29 @@
             --set JJ_CI_SOURCE_SHA256 ${builtins.hashFile "sha256" ./jj/ci.nu}
         '';
       };
+      xrWorkbench = pkgs.writeShellApplication {
+        name = "xr-workbench";
+        runtimeInputs = [
+          pkgs.nodejs_24
+          pkgs.pnpm
+          pkgs.python3
+        ];
+        text = ''
+          repo="$(pwd -P)"
+          if [ "$#" -ge 2 ] && [ "$1" = "--repo" ]; then
+            repo="$2"
+            shift 2
+          fi
+          web="$repo/xr-workbench/web"
+          if [ ! -f "$web/package.json" ]; then
+            echo "Run xr-workbench from the repository root, or pass --repo PATH." >&2
+            exit 2
+          fi
+          pnpm --dir "$web" install --frozen-lockfile
+          exec pnpm --dir "$web" run dev -- --repo "$repo" "$@"
+        '';
+        meta.description = "Local IWSDK WebXR workbench for Nix, Nushell, and Jujutsu workflows";
+      };
       lib = nixpkgs.lib;
       denEval = lib.evalModules {
         modules = [
@@ -274,6 +297,7 @@
         desktop-primary = denAsusPrimary.config.system.build.toplevel;
         jj = pkgs.jujutsu;
         jjui = pkgs.jjui;
+        xr-workbench = xrWorkbench;
       };
 
       devShells.${system}.default = pkgs.mkShellNoCC {
@@ -291,6 +315,9 @@
           nix-fast-build
           nixd
           nixfmt-tree
+          nodejs_24
+          pnpm
+          python3
           nushell
           prek
           ripgrep
@@ -306,6 +333,10 @@
         jjui = {
           type = "app";
           program = "${pkgs.jjui}/bin/jjui";
+        };
+        xr-workbench = {
+          type = "app";
+          program = "${xrWorkbench}/bin/xr-workbench";
         };
       };
 
