@@ -1,4 +1,9 @@
-{ lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   programs.mcp = {
@@ -23,8 +28,17 @@
         args = [ "mcp-nixos" ];
       };
       nushell = {
-        command = "nu";
-        args = [ "--mcp" ];
+        # Pin the configured Nushell: environments such as Yazelix put an
+        # older nu first on PATH, which rejects commands config.nu relies on.
+        command = lib.getExe config.programs.nushell.package;
+        # The limit must be a filesize on the session stack; nu --mcp ignores
+        # it as a process environment string. Past the ~10kb default, a result
+        # is replaced by a bare "output truncated" note.
+        args = [
+          "--config"
+          "${pkgs.writeText "nu-mcp-config.nu" "$env.NU_MCP_OUTPUT_LIMIT = 50kb\n"}"
+          "--mcp"
+        ];
       };
       atuin = {
         command = "atuin";
