@@ -1,8 +1,21 @@
+// Helix uses Ctrl+o, Ctrl+s, and Ctrl+b, so start locked as in Zellij's
+// unlock-first preset: Ctrl+g reaches the mode bindings, and these Alt
+// bindings work in every mode. Alt+n/i/o are left to Helix.
 keybinds {
-    shared_except "locked" {
+    shared {
         bind "Alt f" { ToggleFloatingPanes; }
+        bind "Alt h" "Alt Left" { MoveFocusOrTab "Left"; }
+        bind "Alt l" "Alt Right" { MoveFocusOrTab "Right"; }
+        bind "Alt j" "Alt Down" { MoveFocus "Down"; }
+        bind "Alt k" "Alt Up" { MoveFocus "Up"; }
+        bind "Alt =" "Alt +" { Resize "Increase"; }
+        bind "Alt -" { Resize "Decrease"; }
+        bind "Alt [" { PreviousSwapLayout; }
+        bind "Alt ]" { NextSwapLayout; }
     }
 }
+
+default_mode "locked"
 
 // Load the repository-managed work layout for new sessions, including the
 // persistent "main" session Niri attaches to at startup.

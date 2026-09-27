@@ -121,10 +121,6 @@
       url = "github:Mic92/nixbot";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    # Keep Yazelix's own locked inputs so builds match yazelix.cachix.org.
-    # Edge carries the Noto Sans Symbols 2 family-name fix (Yazelix/nova#704);
-    # return to github:Yazelix/nova/stable once it reaches stable.
-    yazelix.url = "github:Yazelix/nova/edge";
   };
 
   outputs =
@@ -427,11 +423,9 @@
     extra-substituters = [
       "https://noctalia.cachix.org"
       "https://cache.flakehub.com/"
-      "https://yazelix.cachix.org"
     ];
     extra-trusted-public-keys = [
       "noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4="
-      "yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM="
     ];
     trusted-users = [ "schlich" ];
   };

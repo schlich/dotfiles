@@ -26,11 +26,6 @@
         "flakes"
       ];
       trusted-users = [ "schlich" ];
-      # Yazelix publishes builds of its pinned Rio, Helix, and Zellij forks.
-      extra-substituters = [ "https://yazelix.cachix.org" ];
-      extra-trusted-public-keys = [
-        "yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM="
-      ];
     };
   };
   nixpkgs.config.allowUnfree = true;

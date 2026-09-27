@@ -65,8 +65,8 @@ in
       use ${../../mcp/rlm.nu} *
       source ${../../mcp/terminal-events.nu}
       setup-terminal-events
-      source ${../../nushell/yazelix.nu}
-      setup-yazelix-projects
+      source ${../../nushell/zellij.nu}
+      setup-zellij-projects
     '';
   };
 
