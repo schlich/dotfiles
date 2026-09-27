@@ -1431,6 +1431,22 @@
     },
     "nixpkgs_4": {
       "locked": {
+        "lastModified": 1776683584,
+        "narHash": "sha256-NuTLMrr10Tng72hurYG8jYQ4XKK8wnpJmOGcPiis96g=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "9dd5558b06dbdacbf635a3dd36dce1b1a7ee3a89",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixpkgs-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_5": {
+      "locked": {
         "lastModified": 1781216227,
         "narHash": "sha256-9mUW6gNwoN2SWc/l0fW4svPNOulXLl8ijqKyeSOGgJE=",
         "owner": "nixos",
@@ -1525,6 +1541,25 @@
         "type": "github"
       }
     },
+    "opencode": {
+      "inputs": {
+        "nixpkgs": "nixpkgs_4"
+      },
+      "locked": {
+        "lastModified": 1790231649,
+        "narHash": "sha256-kRaGtktu33a0/RocqTLcP/+eerge8OA7qtZ4Ky1vn+A=",
+        "owner": "anomalyco",
+        "repo": "opencode",
+        "rev": "3a103fe0aff726a4edc7492f03f7b88195d9e4c9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "anomalyco",
+        "ref": "v2.0.16",
+        "repo": "opencode",
+        "type": "github"
+      }
+    },
     "paseo": {
       "inputs": {
         "nixpkgs": [
@@ -1591,6 +1626,7 @@
         "noctalia": "noctalia",
         "noctalia-greeter": "noctalia-greeter",
         "nushellWith": "nushellWith",
+        "opencode": "opencode",
         "paseo": "paseo",
         "ptyZZZ": "ptyZZZ",
         "tangled": "tangled",
@@ -1890,7 +1926,7 @@
         "mathjax-src": "mathjax-src_2",
         "mermaid-src": "mermaid-src_2",
         "microvm": "microvm_2",
-        "nixpkgs": "nixpkgs_4",
+        "nixpkgs": "nixpkgs_5",
         "sqlite-lib-src": "sqlite-lib-src_2",
         "tailwindcss-animated-src": "tailwindcss-animated-src_2"
       },

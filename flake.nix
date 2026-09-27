@@ -73,6 +73,10 @@
       url = "github:ilysenko/codex-desktop-linux";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # Upstream packages OpenCode 2; nixpkgs still ships 1.x.
+    opencode = {
+      url = "github:anomalyco/opencode/v2.0.16";
+    };
     paseo = {
       url = "github:getpaseo/paseo/main";
       inputs.nixpkgs.follows = "nixpkgs";
