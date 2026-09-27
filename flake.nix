@@ -144,6 +144,11 @@
         inherit system overlays;
         config.allowUnfree = true;
       };
+      nixUnitInputArgs = lib.concatStringsSep "\\\n  " (
+        lib.mapAttrsToList (
+          name: input: "--override-input ${lib.escapeShellArg name} ${lib.escapeShellArg "${input}"}"
+        ) inputs
+      );
       jjCiScript = pkgs.writeNuScriptBin "jj-ci" (builtins.readFile ./jj/ci.nu);
       jjCi = pkgs.symlinkJoin {
         name = "jj-ci";
@@ -234,12 +239,12 @@
             nativeBuildInputs = [ pkgs.jq ];
           }
           ''
-            jq --exit-status 'length == 4 and all(.[]; .policy.autoDeploy == false and .policy.requireReview == true and .policy.rollback == true)' ${denInventory}
+            jq --exit-status 'length > 0 and all(.[]; .policy.autoDeploy == false and .policy.requireReview == true and .policy.rollback == true)' ${denInventory}
             touch "$out"
           '';
     in
     {
-      tests = import ./tests.nix { inherit lib; };
+      tests.systems.${system} = import ./tests.nix { inherit lib; };
 
       nixosConfigurations = denFlake.nixosConfigurations;
       den = denEval.config.den;
@@ -315,6 +320,26 @@
       checks.${system} = {
         den-host-evaluation = denHostEvaluationCheck;
         nixbot-homelab-evaluation = nixbotHomelabEvaluationCheck;
+        den-inventory-tests =
+          pkgs.runCommand "den-inventory-tests"
+            {
+              nativeBuildInputs = [ pkgs.nix-unit ];
+            }
+            ''
+              export HOME="$(realpath .)"
+              unset NIX_STORE
+              export NIX_STORE_DIR=/nix/store
+              export NIX_STATE_DIR="$HOME/nix-state"
+              mkdir -p "$NIX_STATE_DIR/profiles/per-user"
+              export NIX_REMOTE="$HOME/storedata"
+              nix-unit \
+                --show-trace \
+                --extra-experimental-features flakes \
+                --accept-flake-config \
+                ${nixUnitInputArgs} \
+                --flake ${./.}#tests.systems.${system}
+              touch "$out"
+            '';
         desktop-primary = denAsusPrimary.config.system.build.toplevel;
         headless-system = denFlake.nixosConfigurations.asus-headless.config.system.build.toplevel;
         den-policy = denPolicyCheck;

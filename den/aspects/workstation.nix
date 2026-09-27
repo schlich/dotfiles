@@ -17,7 +17,6 @@
         imports = [
           ../../modules/nixos/codex.nix
           ../../modules/nixos/docker.nix
-          ../../modules/nixos/jj-ci-webhook.nix
         ];
         nixpkgs.overlays = [
           inputs.jj-starship.overlays.default
@@ -34,5 +33,16 @@
           extraSpecialArgs = { inherit inputs; };
         };
       };
+  };
+
+  den.aspects.jj-ci-webhook = {
+    meta = config.myConfig.aspectPolicy.workstation;
+    nixos = {
+      imports = [ ../../modules/nixos/jj-ci-webhook.nix ];
+      services.jj-ci-webhook = {
+        enable = true;
+        funnel.enable = true;
+      };
+    };
   };
 }
