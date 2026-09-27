@@ -40,7 +40,12 @@ def checked [repository: string, ...args: string] {
 def git-backend-root [cwd: string] {
     let result = (^git -C $cwd rev-parse --path-format=absolute --git-common-dir | complete)
     if $result.exit_code != 0 { return null }
-    ($result.stdout | str trim | path dirname)
+    let common_dir = ($result.stdout | str trim)
+    if ($common_dir | path type) == "dir" {
+        $common_dir
+    } else {
+        null
+    }
 }
 
 def initialize-git-worktree [cwd: string] {
