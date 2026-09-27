@@ -927,10 +927,10 @@ def validate-change [] {
 }
 
 def github-reconcile [apply: bool] {
-    # Path-aware jobs that can be skipped stay optional; these always report.
+    # `nix flake checks` aggregates one job per flake check, so the list of
+    # checks lives in the flake rather than here.
     let required_checks = [
-        "build NixOS (shell and compositor)"
-        "build Home Manager modules (shell, editor, and desktop)"
+        "nix flake checks"
         "impact classification"
     ]
     let repository = (run-command "reading repository metadata" {

@@ -140,10 +140,8 @@
   and `nix flake checks` aggregates them. Add a CI check by adding a flake
   check; the workflow and branch protection need no change. Jobs skip checks
   whose outputs are already in the binary cache, so unchanged checks pass
-  without rebuilding. `main` requires `impact classification`, the
-  aggregate (still reported under the legacy system and Home Manager check
-  names until branch protection is reconciled), and linear history but not an
-  up-to-date branch: PR builds test the merge with `main` as of the run.
+  without rebuilding. `main` requires `nix flake checks`, `impact classification`, and linear history but not an up-to-date branch: PR builds
+  test the merge with `main` as of the run.
 - `jj-ci github reconcile` reports the declared GitHub policy. Use
   `jj-ci github reconcile --apply` only when intentionally reconciling
   auto-merge, branch deletion, and `main` protection.
