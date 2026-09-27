@@ -74,6 +74,13 @@ matching PR. It does not create a follow-up change. After GitHub delivery,
 `jj-ci finish` also mirrors `main` to Tangled.
 Further edits to the series therefore update the same review topic.
 
+A process keeps the `jj-ci` on its PATH from launch, so a long-lived agent
+session can outlive the script it started with. The wrapper records the hash of
+the `jj/ci.nu` it was built from, and `publish` and `stack-merge` refuse to run
+unless that matches this workspace's copy or `main@origin`'s. Rerun a refused
+command as `direnv exec . jj-ci ...`, or activate the configuration and start a
+new session.
+
 To publish a multi-change topic to Tangled as stacked PRs, run:
 
 ```nu

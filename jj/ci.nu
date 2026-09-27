@@ -1197,7 +1197,27 @@ def restack-topic [parent: string] {
     }
 }
 
+# A process keeps the jj-ci on its PATH from launch, so an agent session that
+# predates a rebuild, or a direnv shell from an older checkout, can publish
+# with superseded logic (such as the old literal-`\n` PR body). The wrapper
+# records the hash of the script it was built from; accept it only when it
+# matches this workspace's jj/ci.nu or main@origin's. Unwrapped runs and
+# repositories without jj/ci.nu skip the check.
+def require-current-jj-ci [] {
+    let built = ($env.JJ_CI_SOURCE_SHA256? | default "")
+    if ($built | is-empty) { return }
+    let root = (^jj root | complete)
+    if $root.exit_code != 0 { return }
+    let local = ($root.stdout | str trim | path join "jj" "ci.nu")
+    if not ($local | path exists) { return }
+    if (open --raw $local | hash sha256) == $built { return }
+    let trunk = (^jj file show -r main@origin 'root:"jj/ci.nu"' | complete)
+    if $trunk.exit_code == 0 and ($trunk.stdout | hash sha256) == $built { return }
+    error make { msg: "This jj-ci was built from neither this workspace's jj/ci.nu nor main@origin's. Rerun it as `direnv exec . jj-ci ...` in this workspace, or activate the configuration and start a new session." }
+}
+
 def "main publish" [--auto-merge] {
+    require-current-jj-ci
     require-ready-change
     let branch = (publication-bookmark)
     fetch-origin
@@ -1340,6 +1360,7 @@ def "main github reconcile" [--apply] {
 }
 
 def "main stack-merge" [target: string] {
+    require-current-jj-ci
     require-ready-change
     rebase-topic
     require-ready-change
