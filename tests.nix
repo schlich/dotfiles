@@ -56,9 +56,9 @@ in
     ];
   };
 
-  testServerCannotSelectAGraphicalDesktop = {
+  testServerMaySelectAGraphicalDesktop = {
     expr = profileTools.hostErrors {
-      name = "invalid-server";
+      name = "desktop-server";
       profile = {
         role = "server";
         desktop = "niri";
@@ -72,7 +72,7 @@ in
       inherit policy;
       hasSecretsMechanism = true;
     };
-    expected = [ "host invalid-server: desktop=niri requires role=workstation" ];
+    expected = [ ];
   };
 
   testXRRequiresAGraphicalWorkstation = {

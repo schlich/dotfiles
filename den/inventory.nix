@@ -90,7 +90,8 @@ let
       users.schlich = { };
       profile = {
         role = "server";
-        desktop = "none";
+        # A local session for debugging on the machine itself.
+        desktop = "niri";
         gpu = "intel";
         portable = false;
         development = false;

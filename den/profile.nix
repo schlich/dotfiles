@@ -34,10 +34,7 @@ let
       policy,
       hasSecretsMechanism,
     }:
-    lib.optionals (profile.desktop == "niri" && profile.role != "workstation") [
-      "host ${name}: desktop=niri requires role=workstation"
-    ]
-    ++ lib.optionals (profile.xr && !(profile.role == "workstation" && profile.desktop == "niri")) [
+    lib.optionals (profile.xr && !(profile.role == "workstation" && profile.desktop == "niri")) [
       "host ${name}: xr=true requires a graphical workstation"
     ]
     ++ lib.optionals (profile.secrets && !hasSecretsMechanism) [
