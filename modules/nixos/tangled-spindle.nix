@@ -10,7 +10,10 @@
   services.tangled.spindle = {
     enable = true;
     server = {
-      owner = "did:plc:3ta3pjip7mu36b7dnznhoyri";
+      # The account DID that registers this spindle on tangled.org, which
+      # verifies it against the spindle's reported owner. A repository DID
+      # (such as dotfiles' did:plc:3ta3pjip7mu36b7dnznhoyri) cannot own one.
+      owner = "did:plc:cnyy2sz5ddr4gls245vjgbrd";
       hostname = "homelab.tail338351.ts.net";
       listenAddr = "127.0.0.1:6555";
       queueSize = 10;
