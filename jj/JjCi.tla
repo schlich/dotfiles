@@ -8,18 +8,20 @@ EXTENDS Naturals, FiniteSets, TLC
 (* only the safety-relevant facts: workspace ownership, topic readiness,  *)
 (* exact published head, conflict state, stacked-PR base, and verified    *)
 (* delivery.                                                              *)
+(* Validation is tagged with the head it checked and the head captured at *)
+(* publication, so later edits cannot blur that relationship.              *)
 (***************************************************************************)
 
 CONSTANTS Heads, MainHeads
 ASSUME Heads # {} /\ MainHeads # {}
 
-VARIABLES owner, active, head, base, conflict, validated,
-          published, publishedHead, publishedValidated,
+VARIABLES owner, active, head, base, conflict, validated, validatedHead,
+          published, publishedHead, publishedValidated, publishedValidationHead,
           publishedConflictFree, autoMergeHead, mergedHead,
           delivered, workspaceBase, prBase, deferred
 
-vars == <<owner, active, head, base, conflict, validated,
-          published, publishedHead, publishedValidated,
+vars == <<owner, active, head, base, conflict, validated, validatedHead,
+          published, publishedHead, publishedValidated, publishedValidationHead,
           publishedConflictFree, autoMergeHead, mergedHead,
           delivered, workspaceBase, prBase, deferred>>
 
@@ -35,9 +37,11 @@ Init ==
     /\ base \in MainHeads
     /\ conflict = FALSE
     /\ validated = FALSE
+    /\ validatedHead = "none"
     /\ published = FALSE
     /\ publishedHead = "none"
     /\ publishedValidated = FALSE
+    /\ publishedValidationHead = "none"
     /\ publishedConflictFree = FALSE
     /\ autoMergeHead = "none"
     /\ mergedHead = "none"
@@ -51,8 +55,9 @@ Edit ==
     /\ \E h \in Heads :
          /\ head' = h
     /\ validated' = FALSE
+    /\ validatedHead' = "none"
     /\ UNCHANGED <<owner, active, base, conflict, published,
-                   publishedHead, publishedValidated,
+                   publishedHead, publishedValidated, publishedValidationHead,
                    publishedConflictFree, autoMergeHead, mergedHead,
                    delivered, workspaceBase>>
     /\ UNCHANGED stackVars
@@ -64,8 +69,9 @@ RebaseClean ==
          /\ base' = b
          /\ head' = h
     /\ validated' = FALSE
+    /\ validatedHead' = "none"
     /\ UNCHANGED <<owner, active, conflict, published,
-                   publishedHead, publishedValidated,
+                   publishedHead, publishedValidated, publishedValidationHead,
                    publishedConflictFree, autoMergeHead, mergedHead,
                    delivered, workspaceBase>>
     /\ UNCHANGED stackVars
@@ -76,8 +82,9 @@ RebaseConflicted ==
          /\ head' = h
     /\ conflict' = TRUE
     /\ validated' = FALSE
+    /\ validatedHead' = "none"
     /\ UNCHANGED <<owner, active, base, published, publishedHead,
-                   publishedValidated, publishedConflictFree,
+                   publishedValidated, publishedValidationHead, publishedConflictFree,
                    autoMergeHead, mergedHead, delivered, workspaceBase>>
     /\ UNCHANGED stackVars
 
@@ -85,29 +92,33 @@ Resolve ==
     /\ owner /\ active /\ conflict /\ ~delivered
     /\ conflict' = FALSE
     /\ validated' = FALSE
+    /\ validatedHead' = "none"
     /\ UNCHANGED <<owner, active, head, base, published, publishedHead,
-                   publishedValidated, publishedConflictFree,
+                   publishedValidated, publishedValidationHead, publishedConflictFree,
                    autoMergeHead, mergedHead, delivered, workspaceBase>>
     /\ UNCHANGED stackVars
 
 Validate ==
     /\ owner /\ active /\ ~conflict /\ ~delivered
     /\ validated' = TRUE
+    /\ validatedHead' = head
     /\ UNCHANGED <<owner, active, head, base, conflict, published,
-                   publishedHead, publishedValidated,
+                   publishedHead, publishedValidated, publishedValidationHead,
                    publishedConflictFree, autoMergeHead, mergedHead,
                    delivered, workspaceBase>>
     /\ UNCHANGED stackVars
 
 (* Pushing a new head disarms auto-merge, which was pinned to the old one. *)
 Publish ==
-    /\ owner /\ active /\ validated /\ ~conflict /\ ~delivered
+    /\ owner /\ active /\ validated /\ validatedHead = head
+    /\ ~conflict /\ ~delivered
     /\ published' = TRUE
     /\ publishedHead' = head
     /\ publishedValidated' = validated
+    /\ publishedValidationHead' = validatedHead
     /\ publishedConflictFree' = ~conflict
     /\ autoMergeHead' = "none"
-    /\ UNCHANGED <<owner, active, head, base, conflict, validated,
+    /\ UNCHANGED <<owner, active, head, base, conflict, validated, validatedHead,
                    mergedHead, delivered, workspaceBase>>
     /\ UNCHANGED stackVars
 
@@ -122,8 +133,8 @@ RequestAutoMerge ==
               /\ deferred' = FALSE
          ELSE /\ deferred' = TRUE
               /\ UNCHANGED autoMergeHead
-    /\ UNCHANGED <<owner, active, head, base, conflict, validated,
-                   published, publishedHead, publishedValidated,
+    /\ UNCHANGED <<owner, active, head, base, conflict, validated, validatedHead,
+                   published, publishedHead, publishedValidated, publishedValidationHead,
                    publishedConflictFree, mergedHead, delivered,
                    workspaceBase, prBase>>
 
@@ -131,8 +142,8 @@ RequestAutoMerge ==
 ParentLands ==
     /\ prBase = "parent"
     /\ prBase' = "main"
-    /\ UNCHANGED <<owner, active, head, base, conflict, validated,
-                   published, publishedHead, publishedValidated,
+    /\ UNCHANGED <<owner, active, head, base, conflict, validated, validatedHead,
+                   published, publishedHead, publishedValidated, publishedValidationHead,
                    publishedConflictFree, autoMergeHead, mergedHead,
                    delivered, workspaceBase, deferred>>
 
@@ -143,8 +154,8 @@ ArmDeferred ==
     /\ publishedHead = head
     /\ autoMergeHead' = head
     /\ deferred' = FALSE
-    /\ UNCHANGED <<owner, active, head, base, conflict, validated,
-                   published, publishedHead, publishedValidated,
+    /\ UNCHANGED <<owner, active, head, base, conflict, validated, validatedHead,
+                   published, publishedHead, publishedValidated, publishedValidationHead,
                    publishedConflictFree, mergedHead, delivered,
                    workspaceBase, prBase>>
 
@@ -155,8 +166,8 @@ Merge ==
     /\ publishedHead = head
     /\ (autoMergeHead = head \/ autoMergeHead = "none")
     /\ mergedHead' = head
-    /\ UNCHANGED <<owner, active, head, base, conflict, validated,
-                   published, publishedHead, publishedValidated,
+    /\ UNCHANGED <<owner, active, head, base, conflict, validated, validatedHead,
+                   published, publishedHead, publishedValidated, publishedValidationHead,
                    publishedConflictFree, autoMergeHead, delivered,
                    workspaceBase>>
     /\ UNCHANGED stackVars
@@ -165,8 +176,8 @@ DeliverToMain ==
     /\ mergedHead = head
     /\ mergedHead = publishedHead
     /\ delivered' = TRUE
-    /\ UNCHANGED <<owner, active, head, base, conflict, validated,
-                   published, publishedHead, publishedValidated,
+    /\ UNCHANGED <<owner, active, head, base, conflict, validated, validatedHead,
+                   published, publishedHead, publishedValidated, publishedValidationHead,
                    publishedConflictFree, autoMergeHead, mergedHead,
                    workspaceBase>>
     /\ UNCHANGED stackVars
@@ -180,8 +191,8 @@ Finish ==
     /\ owner' = FALSE
     /\ active' = FALSE
     /\ workspaceBase' \in {"main", "dropped"}
-    /\ UNCHANGED <<head, base, conflict, validated, published,
-                   publishedHead, publishedValidated,
+    /\ UNCHANGED <<head, base, conflict, validated, validatedHead, published,
+                   publishedHead, publishedValidated, publishedValidationHead,
                    publishedConflictFree, autoMergeHead, mergedHead, delivered>>
     /\ UNCHANGED stackVars
 
@@ -193,8 +204,8 @@ Abandon ==
     /\ active' = FALSE
     /\ conflict' = FALSE
     /\ workspaceBase' \in {"main", "dropped"}
-    /\ UNCHANGED <<head, base, validated, published,
-                   publishedHead, publishedValidated,
+    /\ UNCHANGED <<head, base, validated, validatedHead, published,
+                   publishedHead, publishedValidated, publishedValidationHead,
                    publishedConflictFree, autoMergeHead, mergedHead, delivered>>
     /\ UNCHANGED stackVars
 
@@ -211,9 +222,11 @@ TypeOK ==
     /\ base \in MainHeads
     /\ conflict \in BOOLEAN
     /\ validated \in BOOLEAN
+    /\ validatedHead \in Heads \cup {"none"}
     /\ published \in BOOLEAN
     /\ publishedHead \in Heads \cup {"none"}
     /\ publishedValidated \in BOOLEAN
+    /\ publishedValidationHead \in Heads \cup {"none"}
     /\ publishedConflictFree \in BOOLEAN
     /\ autoMergeHead \in Heads \cup {"none"}
     /\ mergedHead \in Heads \cup {"none"}
@@ -224,6 +237,7 @@ TypeOK ==
 
 NoPublishWhileUnsafe ==
     published => publishedHead \in Heads /\ publishedValidated /\ publishedConflictFree
+PublishedHeadWasValidated == published => publishedHead = publishedValidationHead
 NoFinishWithConflict == ~(~owner /\ conflict)
 FinishLeavesMain == ~active => workspaceBase \in {"main", "dropped"}
 (* A workspace is freed only by its released owner, with nothing in flight. *)
