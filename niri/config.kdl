@@ -260,9 +260,8 @@ layout {
 // See the binds section below for more spawn examples.
 // spawn-at-startup "noctalia-shell"
 
-// Start (or reattach to) the persistent "main" Zellij session on the snorkel
-// workspace, and land there instead of whichever workspace happens to be first.
-spawn-sh-at-startup "exec terminal --class niri-terminal --directory \"$HOME/starfish-projects\" zellij attach --create main"
+// Start (or reattach to) the terminal session assigned to snorkel.
+spawn-sh-at-startup "exec nu \"$HOME/.config/niri/launch-terminal.nu\" snorkel"
 spawn-sh-at-startup "niri msg action focus-workspace snorkel"
 
 hotkey-overlay {
@@ -313,10 +312,30 @@ window-rule {
   open-on-workspace "config"
 }
 
-// Keep the primary work tools in predictable places.
+// Keep each workspace's Zellij client with its named Niri workspace.
 window-rule {
   match app-id=r#"^niri-terminal$"#
   open-on-workspace "snorkel"
+}
+window-rule {
+  match app-id=r#"^niri-terminal-snorkel$"#
+  open-on-workspace "snorkel"
+}
+window-rule {
+  match app-id=r#"^niri-terminal-vcs$"#
+  open-on-workspace "vcs"
+}
+window-rule {
+  match app-id=r#"^niri-terminal-overview$"#
+  open-on-workspace "overview"
+}
+window-rule {
+  match app-id=r#"^niri-terminal-config$"#
+  open-on-workspace "config"
+}
+window-rule {
+  match app-id=r#"^niri-terminal-scratch$"#
+  open-on-workspace "scratch"
 }
 
 // The JJ dashboard is always reachable with Mod+2.
@@ -522,7 +541,7 @@ binds {
     // The primary named workspaces have stable direct shortcuts.
     Mod+1 { focus-workspace "snorkel"; }
     Mod+2 hotkey-overlay-title="JJ dashboard" { spawn "jj-dashboard"; }
-    Mod+3 hotkey-overlay-title="Project overview" { spawn-sh "exec terminal --class niri-overview --directory \"$HOME\" zellij --layout overview"; }
+    Mod+3 hotkey-overlay-title="Project overview" { spawn-sh "exec nu \"$HOME/.config/niri/launch-terminal.nu\" overview"; }
     Mod+Shift+3 hotkey-overlay-title="Focus project overview" { focus-workspace "overview"; }
     Mod+0 { focus-workspace "config"; }
     Mod+Shift+1 { move-column-to-workspace "snorkel"; }
