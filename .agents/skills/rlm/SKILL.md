@@ -45,6 +45,15 @@ Keep every large intermediate result in a `let` binding and print only
 summaries. `$history.N` holds the full result of each evaluation if an output
 was truncated.
 
+## User-facing readout
+
+Before loading or searching a large source set, give a brief commentary update
+that names the source and task. Give another update before a `rlm map` or
+`rlm query` that calls sub-models, and report the useful finding after it
+returns. Adjacent `rlm peek`, `rlm find`, and saved-history slices can share one
+readout. Describe the work in plain language so an opaque `let` binding or MCP
+tool label does not hide what is happening from the user.
+
 ## Choosing the call
 
 - `rlm query` without `--recursive` is one model turn with no tools. Use it for

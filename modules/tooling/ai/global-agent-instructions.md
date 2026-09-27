@@ -28,6 +28,21 @@ script, use valid Nushell syntax.
   Nushell evaluate tool when available. Use `nu -c` only when that tool is
   unavailable or when validation specifically requires a fresh Nushell process.
 
+# User-facing shell activity
+
+Codex Desktop can show a generic MCP tool label for Nushell evaluations. Before
+a group of shell calls, give the user a short commentary readout naming the
+operation and its target, such as checking JJ status in the current workspace
+or searching specific configuration files. Keep one readout for closely related
+probes and update it when the work moves to a new phase or finds a material
+result.
+
+For RLM work, name the source set and the visible phase: loading, searching,
+chunking, or asking sub-models to analyze it. A `let` binding and a history
+slice may show no useful output in the tool card, so summarize what the call
+is doing without printing the stored context. When an RLM map or query runs,
+say that it is consulting sub-models and report the compact finding afterward.
+
 # Nix configuration
 
 - Treat application-owned, self-mutating configuration as runtime state. Do

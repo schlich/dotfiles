@@ -40,6 +40,10 @@ $answers | to json | rlm query "Summarize the unsafe usage across the crate."
 rlm usage
 ```
 
+The native `nushell` MCP server provides this REPL to Codex Desktop. It does
+not require a separate Nu Pair plugin; installing that plugin exposes a second
+copy of the evaluator with a misleading tool label.
+
 `rlm query --recursive` gives the sub-model its own Nushell MCP REPL with these
 commands, bounded by `RLM_MAX_DEPTH` (default 1). Sub-calls default to
 `RLM_MODEL` (`haiku`), run `RLM_THREADS` (4) at a time in `rlm map`, and append
