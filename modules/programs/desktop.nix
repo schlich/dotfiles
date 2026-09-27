@@ -1,6 +1,44 @@
-{ config, ... }:
+{
+  config,
+  inputs,
+  lib,
+  pkgs,
+  ...
+}:
+
+let
+  usageResetAlert = pkgs.writeNuScriptBin "usage-reset-alert" (
+    builtins.readFile ../../noctalia/usage-reset-alert.nu
+  );
+in
 
 {
+  # Warn through Noctalia notifications half an hour before a Claude or Codex
+  # usage window resets.
+  systemd.user.services.usage-reset-alert = {
+    Unit.Description = "Notify before Claude or Codex usage resets";
+    Service = {
+      Type = "oneshot";
+      ExecStart = "${usageResetAlert}/bin/usage-reset-alert --lead 30min";
+      Environment = [
+        "PATH=${
+          lib.makeBinPath [
+            inputs.ai-usagebar.packages.${pkgs.stdenv.hostPlatform.system}.default
+            pkgs.libnotify
+          ]
+        }"
+      ];
+    };
+  };
+  systemd.user.timers.usage-reset-alert = {
+    Unit.Description = "Check Claude and Codex usage resets every five minutes";
+    Timer = {
+      OnStartupSec = "1min";
+      OnUnitActiveSec = "5min";
+    };
+    Install.WantedBy = [ "timers.target" ];
+  };
+
   programs = {
     bottom.enable = true;
     herdr.enable = true;
