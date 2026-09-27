@@ -15,7 +15,9 @@ let
   # but larger: the stock 4 GiB, 2-vCPU guest runs nix-eval-jobs out of
   # memory on this repository's host checks. homelab has 15 GiB and 8 cores
   # and runs one workflow at a time, which leaves about 5 GiB and 2 cores for
-  # the host.
+  # the host. The stock 24 GiB /persist volume, which holds the writable
+  # store, /tmp, and the workspace, fills up while building the desktop and
+  # headless system checks; the sparse image grows on homelab's root disk.
   guest = image.inputs.nixpkgs.lib.nixosSystem {
     inherit system;
     modules = [
@@ -23,6 +25,14 @@ let
       {
         microvm.mem = image.inputs.nixpkgs.lib.mkForce 10240;
         microvm.vcpu = image.inputs.nixpkgs.lib.mkForce 6;
+        microvm.volumes = image.inputs.nixpkgs.lib.mkForce [
+          {
+            image = "persist.img";
+            mountPoint = "/persist";
+            size = 96 * 1024;
+            fsType = "ext4";
+          }
+        ];
       }
     ];
   };
