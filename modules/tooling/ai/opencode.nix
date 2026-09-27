@@ -26,7 +26,7 @@ in
     enable = true;
     package = pkgs.writeNuScriptBin "opencode" ''
       def --wrapped main [...args] {
-        ^secretspec run --file ${../../secretspec.toml} --provider keyring --reason "OpenCode invocation" -- ${pkgs.opencode}/bin/opencode ...$args
+        ^${pkgs.secretspec}/bin/secretspec run --file ${../../secretspec.toml} --provider keyring --reason "OpenCode invocation" -- ${pkgs.opencode}/bin/opencode ...$args
       }
     '';
     enableMcpIntegration = true;
