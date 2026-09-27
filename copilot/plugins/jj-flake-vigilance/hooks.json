@@ -5,7 +5,7 @@
       {
         "matcher": "bash",
         "type": "command",
-        "command": "nu ${COPILOT_PLUGIN_ROOT}/scripts/guard-git-writes.nu"
+        "command": "nu --stdin ${COPILOT_PLUGIN_ROOT}/scripts/guard-git-writes.nu"
       }
     ]
   }

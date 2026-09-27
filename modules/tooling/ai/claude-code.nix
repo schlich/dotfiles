@@ -36,7 +36,7 @@ let
             hooks = [
               {
                 type = "command";
-                command = "${pkgs.nushell}/bin/nu ${../../../copilot/plugins/jj-flake-vigilance/scripts/guard-git-writes.nu} --claude";
+                command = "${pkgs.nushell}/bin/nu --stdin ${../../../copilot/plugins/jj-flake-vigilance/scripts/guard-git-writes.nu} --claude";
               }
             ];
           }
@@ -85,7 +85,7 @@ let
     install -Dm644 ${
       pkgs.writers.writeJSON "plugin.json" {
         name = "prefer-nushell";
-        description = "Ask before Bash calls so shell work defaults to the nushell MCP tool.";
+        description = "Deny Bash text-processing pipelines so shell work defaults to the nushell MCP tool.";
       }
     } $out/.claude-plugin/plugin.json
     install -Dm644 ${
@@ -96,7 +96,7 @@ let
             hooks = [
               {
                 type = "command";
-                command = "${pkgs.nushell}/bin/nu ${./scripts/prefer-nushell-bash.nu}";
+                command = "${pkgs.nushell}/bin/nu --stdin ${./scripts/prefer-nushell-bash.nu}";
               }
             ];
           }
@@ -136,10 +136,31 @@ in
     plugins.prefer-nushell = preferNushellGuard;
   };
 
-  dotfiles.tooling.ai.claude-code = {
-    command = "${pkgs.claude-code}/bin/claude";
-    automation = ''
-      ^${pkgs.claude-code}/bin/claude --print --dangerously-skip-permissions $prompt
-    '';
+  dotfiles.tooling = {
+    ai.claude-code = {
+      command = "${pkgs.claude-code}/bin/claude";
+      automation = ''
+        ^${pkgs.claude-code}/bin/claude --print --dangerously-skip-permissions $prompt
+      '';
+    };
+    # Run the generated hook commands from Node, as the agent CLIs do.
+    checks.pretooluse-hooks =
+      pkgs.runCommand "pretooluse-hooks-check"
+        {
+          nativeBuildInputs = [
+            pkgs.nodejs
+            pkgs.nushell
+          ];
+        }
+        ''
+          export HOME="$TMPDIR/home"
+          mkdir -p "$HOME"
+          node ${./tests/pretooluse-hooks.mjs} \
+            jj-guard=${jjGuard} \
+            prefer-nushell=${preferNushellGuard} \
+            jev-bash-guard=${jevBashGuard} \
+            copilot-guard=${../../../copilot/plugins/jj-flake-vigilance}
+          touch "$out"
+        '';
   };
 }
