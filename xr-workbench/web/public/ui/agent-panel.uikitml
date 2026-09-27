@@ -1,0 +1,31 @@
+<style>
+  .panel { width: 660px; padding-top: 30px; padding-right: 32px; padding-bottom: 30px; padding-left: 32px; flex-direction: column; background-color: #10242a; }
+  .eyebrow { font-size: 20px; color: #b4c8e3; }
+  .title { font-size: 45px; color: #f3f4ea; }
+  .body { font-size: 25px; color: #d2d8c9; }
+  .status { font-size: 22px; color: #c0e89c; }
+  .direction { font-size: 22px; color: #c0e89c; }
+  .direction.pull { color: #b4c8e3; }
+  .gauge-row { flex-direction: row; }
+  .gauge { width: 280px; padding-top: 12px; padding-right: 15px; padding-bottom: 12px; padding-left: 15px; background-color: #1c3539; flex-direction: column; }
+  .gauge-title { font-size: 19px; color: #9ebcb1; }
+  .gauge-value { font-size: 35px; color: #f3f4ea; }
+  .preview { font-size: 23px; color: #d3e1d3; }
+  .button-row { flex-direction: row; }
+  button { font-size: 25px; color: #102016; background-color: #c0e89c; padding-top: 19px; padding-right: 23px; padding-bottom: 19px; padding-left: 23px; }
+</style>
+<Panel class="panel">
+  <span class="eyebrow">FIELDWORK / AGENT CONTROL DECK</span>
+  <h1 class="title">Agent exchange</h1>
+  <p class="body">Push a sample request. Pull workspace results. Inspect the trace.</p>
+  <p id="agent-state" class="status">STANDBY</p>
+  <div class="gauge-row">
+    <div class="gauge"><span class="gauge-title">PUSH → INPUT</span><span id="input-gauge" class="gauge-value">0 / 0</span></div>
+    <div class="gauge"><span class="gauge-title">← PULL OUTPUT</span><span id="output-gauge" class="gauge-value">0 / 0</span></div>
+  </div>
+  <p id="agent-preview" class="preview">Ready to inspect the exchange.</p>
+  <p id="panel-status" class="status">CAPABILITIES · INPUT · OUTPUT</p>
+  <p id="flow-status" class="direction">PUSH → request · ← PULL output</p>
+  <div class="button-row"><button id="open-cockpit">Open cockpit</button><button id="replay-agent">Replay sample</button></div>
+  <div class="button-row"><button id="pull-command">Pull command</button><button id="inspect-jev">Inspect Jev</button></div>
+</Panel>

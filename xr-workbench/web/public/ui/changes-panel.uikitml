@@ -1,0 +1,19 @@
+<style>
+  .panel { width: 560px; padding-top: 30px; padding-right: 32px; padding-bottom: 30px; padding-left: 32px; flex-direction: column; background-color: #142019; }
+  .eyebrow { font-size: 20px; color: #b8d99c; }
+  .direction { font-size: 21px; color: #c0e89c; }
+  .direction.pull { color: #b4c8e3; }
+  .title { font-size: 46px; color: #f3f4ea; }
+  .body { font-size: 27px; color: #d2d8c9; }
+  .status { font-size: 21px; color: #b8d99c; }
+  .button-row { flex-direction: row; }
+  button { font-size: 25px; color: #102016; background-color: #c0e89c; padding-top: 18px; padding-right: 22px; padding-bottom: 18px; padding-left: 22px; }
+</style>
+<Panel class="panel">
+  <span class="eyebrow">02 / WORKTREE EXCHANGE</span>
+  <h1 class="title">Your change, in motion</h1>
+  <p class="body">The active JJ topic is the hub. Source and chosen actions enter; status, diffs, and results come back.</p>
+  <p id="panel-status" class="status">JUJUTSU</p>
+  <p id="flow-status" class="direction">Changes in → worktree → feedback out</p>
+  <div class="button-row"><button id="refresh-status">JJ status</button><button id="review-diff">Review diff</button><button id="change-history">History</button></div>
+</Panel>
