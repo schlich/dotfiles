@@ -220,3 +220,24 @@ jobs:
         run: |
           echo "discover: $DISCOVER, checks: $CHECK"
           [[ "$DISCOVER" == success && "$CHECK" == success ]]
+  failure-review:
+    name: CI failure architecture review
+    needs: [impact, checkmate, discover, check, checks]
+    if: ${{ always() && failure() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add failure review prompts to the run summary
+        run: |
+          {
+            echo '## CI failure: turn this into a lasting guarantee'
+            echo
+            echo 'Before treating the failure as fixed, record the root cause and consider which guarantee would prevent this class of bug or improve the architecture:'
+            echo
+            echo '- **TLA+ model:** Does this expose a missing state, transition, invariant, or liveness property? Extend and check the model when the behavior is stateful or protocol-like.'
+            echo '- **Property-based test:** Can generated inputs, operation sequences, or failure schedules cover the boundary that failed? Add a property and retain a minimal regression example.'
+            echo '- **Rust concurrency guarantee:** If this is a concurrent Rust component, can ownership, synchronization, atomics, or a concurrency test make the invariant explicit and enforceable?'
+            echo '- **TigerBeetle transaction guarantee:** If this involves TigerBeetle or ledger-style state, should transaction boundaries, atomicity, idempotency, or transfer invariants be modeled and tested?'
+            echo '- **Architecture:** What design change would make the invalid state harder to represent or the guarantee easier to verify? Record why the chosen mechanism fits.'
+            echo
+            echo 'These are options to assess, not mandatory technologies. Choose the smallest applicable durable guarantee; explain when none adds value. See [CI failure review guide](../blob/main/docs/ci-failure-review.md).'
+          } >> "$GITHUB_STEP_SUMMARY"
