@@ -279,7 +279,12 @@ Impact shapes ordering. When topics conflict, `jj-ci plan` still places open
 PRs before unpublished work, but within each group it bases the stack on the
 refactor, so the user-facing layer above it stays a small behavior diff and its
 release notes describe only that behavior. A refactor that must stack on an
-already-published user-facing PR is reported with a note. Refactors can land
+already-published user-facing PR is reported with a note. The order uses only
+keys that rewrites leave alone (publication, impact, PR number, the topic's
+oldest author time, and change ID), so concurrent tasks agree on the base.
+`jj-ci publish` stacks only on a topic that already has a PR; when the planned
+parent is unpublished it opens an independent PR instead of waiting, and
+whichever topic lands second resolves the conflict when it rebases. Refactors can land
 at any time without activation; land each user-facing PR on its own so every
 release maps to exactly one reviewed change. Use a rebase merge only when preserving
 the individual patch-series commits on `main` is more valuable than a single

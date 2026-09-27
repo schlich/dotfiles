@@ -327,11 +327,14 @@ for-all "plan-order keeps published topics first and refactors early" {|key|
             tip: $"t($i)"
             pr: (if (pick $"($key)/pr/($i)" 2) == 0 { 100 + $i } else { null })
             impact: (pick-from $"($key)/impact/($i)" ["refactor" "behavior" "breaking" null])
-            timestamp: (pick $"($key)/time/($i)" 1000)
+            created: (pick $"($key)/time/($i)" 1000)
         }
     })
     let ordered = (plan-order $topics)
     assert equal ($ordered | length) ($topics | length)
+    # Two workspaces see the topics in different orders; both must pick the
+    # same base, or each tells the other to publish first.
+    assert equal ($ordered | get tip) (plan-order ($topics | reverse) | get tip)
     $ordered | window 2 | each {|pair|
         let a = ($pair | first)
         let b = ($pair | last)
