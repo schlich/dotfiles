@@ -39,6 +39,19 @@ let
   nixosImage = imagePkgs.callPackage "${image}/nix/pkgs/spindle-nixos-image.nix" {
     nixosSystem = guest;
   };
+
+  # Workflow guests build in their own store, so without a cache every run
+  # whose flake.lock differs starts cold. Spindle imports each path a guest
+  # builds into this host's store as the guest commits it, which keeps work
+  # from a run that times out, and Harmonia serves that store back to later
+  # guests. Imported paths are unrooted, so the weekly GC resets the cache.
+  harmoniaAddress = "127.0.0.1:5000";
+  # The secret half was generated on the host and never enters the
+  # repository or the store; to rotate it, rerun this on homelab and
+  # replace cachePublicKey with what it prints:
+  #   nix key generate-secret --key-name homelab-cache-1 | sudo tee /var/lib/harmonia-secrets/signing-key | nix key convert-secret-to-public
+  cacheSigningKey = "/var/lib/harmonia-secrets/signing-key";
+  cachePublicKey = "homelab-cache-1:iRxSmTDiOFX6oY5jLwiUiXCNJ5KSfHtmJBG7RDzLDaQ=";
 in
 {
   imports = [ inputs.tangled.nixosModules.spindle ];
@@ -56,7 +69,25 @@ in
       maxJobCount = 1;
     };
     pipelines = {
-      workflowTimeout = "30m";
+      # A run after a flake.lock change rebuilds whatever the cache lacks;
+      # every path it finishes is kept, so the next run resumes from there.
+      workflowTimeout = "2h";
+      nixCache = {
+        # Operator caches bypass spindle's address guard, so loopback works.
+        # The guest reads these through spindle's proxy; keep cache.nixos.org
+        # listed so the proxy never becomes the guest's only, narrower cache.
+        readUrls = [
+          "http://${harmoniaAddress}"
+          "https://cache.nixos.org"
+        ];
+        trustedPublicKeys = [
+          cachePublicKey
+          "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
+        ];
+        # Spindle runs as root, which the Nix daemon trusts to import the
+        # guest's unsigned paths; Harmonia signs them when serving.
+        uploadUrl = "daemon";
+      };
       microvm = {
         defaultImage = "nixos";
         # Spindle resolves an image name to `<imageDir>/<name>/spec.json`, so
@@ -70,6 +101,14 @@ in
       };
     };
   };
+
+  services.harmonia.cache = {
+    enable = true;
+    signKeyPaths = [ cacheSigningKey ];
+    settings.bind = harmoniaAddress;
+  };
+
+  systemd.tmpfiles.rules = [ "d /var/lib/harmonia-secrets 0700 root root -" ];
 
   # tangled.org reaches the spindle only through this Funnel: it verifies the
   # owner and dispatches pipelines at https://${hostname}. Funnel needs a
