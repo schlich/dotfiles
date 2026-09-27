@@ -117,6 +117,10 @@
       url = "github:cablehead/ptyZZZ";
       flake = false;
     };
+    nixbot = {
+      url = "github:Mic92/nixbot";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     # Keep Yazelix's own locked inputs so builds match yazelix.cachix.org.
     # Edge carries the Noto Sans Symbols 2 family-name fix (Yazelix/nova#704);
     # return to github:Yazelix/nova/stable once it reaches stable.
@@ -207,6 +211,23 @@
       denAsusPrimary = denAsus.extendModules {
         modules = [ { home-manager.users.schlich.dotfiles.alternates = false; } ];
       };
+      # homelab with the nixbot module, before the host imports it; the App
+      # IDs are placeholders until the GitHub App exists.
+      nixbotHomelabEvaluationCheck = pkgs.writeText "nixbot-homelab-evaluation" (
+        builtins.unsafeDiscardStringContext "${
+          (denFlake.nixosConfigurations.homelab.extendModules {
+            modules = [
+              ./modules/nixos/nixbot.nix
+              {
+                services.nixbot.github = {
+                  appId = 0;
+                  oauthId = "placeholder";
+                };
+              }
+            ];
+          }).config.system.build.toplevel.drvPath
+        }\n"
+      );
       denPolicyCheck =
         pkgs.runCommand "den-policy-check"
           {
@@ -293,6 +314,7 @@
       # workflow change. Run the same set locally with `nix-fast-build`.
       checks.${system} = {
         den-host-evaluation = denHostEvaluationCheck;
+        nixbot-homelab-evaluation = nixbotHomelabEvaluationCheck;
         desktop-primary = denAsusPrimary.config.system.build.toplevel;
         headless-system = denFlake.nixosConfigurations.asus-headless.config.system.build.toplevel;
         den-policy = denPolicyCheck;
