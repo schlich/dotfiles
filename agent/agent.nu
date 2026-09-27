@@ -67,7 +67,7 @@ def _agent-describe [operation: string, args: record] {
         "dev.check" => ($common | merge {capability: "nix.eval", backend: "nix", argv: ["nix" "flake" "check" "path:."]})
         "nix.check" => ($common | merge {capability: "nix.eval", backend: "nix", argv: ["nix" "flake" "check" "path:."]})
         "dev.build" => {
-            let target = ($args.target? | default "path:.#homeConfigurations.schlich.activationPackage")
+            let target = ($args.target? | default "path:.#nixosConfigurations.asus.config.home-manager.users.schlich.home.activationPackage")
             $common | merge {capability: "nix.build", backend: "nix", argv: ["nix" "build" $target]}
         }
         _ => (error make {msg: $"Unknown agent operation: ($operation)"})
@@ -183,6 +183,6 @@ export def "agent repo log" [] { agent run (agent plan "repo.log" {}) }
 export def "agent repo diff" [] { agent run (agent plan "repo.diff" {}) }
 export def "agent dev check" [] { agent run (agent plan "dev.check" {}) }
 export def "agent dev build" [target?: string] {
-    agent run (agent plan "dev.build" {target: ($target | default "path:.#homeConfigurations.schlich.activationPackage")})
+    agent run (agent plan "dev.build" {target: ($target | default "path:.#nixosConfigurations.asus.config.home-manager.users.schlich.home.activationPackage")})
 }
 
