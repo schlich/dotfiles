@@ -11,9 +11,9 @@ def block [reason: string] {
 }
 
 def git-worktree-warning [cwd: path] {
-    let main_result = (^git -C $cwd rev-parse --verify refs/remotes/origin/main | complete)
+    let main_result = (^git -C $cwd rev-parse --verify refs/remotes/tangled/main | complete)
     if $main_result.exit_code != 0 { return null }
-    let stale = (^git -C $cwd merge-base --is-ancestor refs/remotes/origin/main HEAD | complete).exit_code != 0
+    let stale = (^git -C $cwd merge-base --is-ancestor refs/remotes/tangled/main HEAD | complete).exit_code != 0
     if not $stale { return null }
     let branch_result = (^git -C $cwd symbolic-ref --short -q HEAD | complete)
     let branch = if $branch_result.exit_code == 0 {
@@ -23,9 +23,9 @@ def git-worktree-warning [cwd: path] {
     }
     let jj_workspace = (($cwd | path join ".jj") | path exists)
     if $jj_workspace {
-        $"This worktree ($branch) is behind or diverged from origin/main. Run `jj-ci rebase` before continuing. Use `jj-ci worktree-status` to inspect the other worktrees."
+        $"This worktree ($branch) is behind or diverged from tangled/main. Run `jj-ci rebase` before continuing. Use `jj-ci worktree-status` to inspect the other worktrees."
     } else {
-        $"This checkout ($branch) is a Git worktree, not a JJ workspace, and is behind or diverged from origin/main. Enter the devshell with `nix develop path:.` and inspect it with `jj-ci worktree-status`; do not assume `jj-ci rebase` can safely operate here until this checkout is converted to a JJ workspace."
+        $"This checkout ($branch) is a Git worktree, not a JJ workspace, and is behind or diverged from tangled/main. Enter the devshell with `nix develop path:.` and inspect it with `jj-ci worktree-status`; do not assume `jj-ci rebase` can safely operate here until this checkout is converted to a JJ workspace."
     }
 }
 
@@ -102,7 +102,7 @@ def prepare [cwd: string, session_id: string, path: path] {
     }
     try {
         # Independent topics start from trunk, preserving any earlier local work.
-        checked $root -- new main@origin -m "Codex session" | ignore
+        checked $root -- new main@tangled -m "Codex session" | ignore
         let change_id = (checked $root -- log -r @ --no-graph -T change_id)
         let state = { cwd: $root, session_id: $session_id, change_id: $change_id, described: false, finished: false }
         mkdir ($path | path dirname)

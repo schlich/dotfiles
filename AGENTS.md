@@ -82,9 +82,11 @@
 - Before risky history operations (`jj rebase`, `jj squash`, `jj abandon`,
   `jj split`, or `jj op restore`), create a checkpoint with
   `.agents/skills/jj/scripts/jj-checkpoint`.
+- Tangled (`tangled` remote) hosts `main` and every topic branch; GitHub is no
+  longer part of the workflow.
 - Use `jj-ci sync` only from an empty working copy without an active task owner.
-  It fetches `origin`,
-  advances the local `main` bookmark to `main@origin`, and rebases the working
+  It fetches `tangled`,
+  advances the local `main` bookmark to `main@tangled`, and rebases the working
   copy onto it.
 - Use `jj-ci` for all trunk work, including lock-file-only updates.
 - Before implementing or publishing, inspect the working-copy diff for mixed
@@ -102,69 +104,66 @@
   surgery. If more than two coherent changes are present, repeat the split
   and re-evaluate the dependency graph after each operation.
 
-## Local gates and pull requests
+## Local gates and landing
 
 - `prek` is installed declaratively. Run `prek run --all-files` or
   `jj-ci validate` before publication; JJ changes do not invoke Git hooks.
 - End every JJ change description with an `Impact:` trailer. Use `refactor`
-  when no NixOS closure changes (refactors, docs, CI, and tooling; CI verifies
-  it), `behavior` for a user-facing change, and `breaking` for a user-facing
-  change that needs manual steps, which the description body must list. Keep
-  refactors and user-facing changes in separate topics or stack layers. Each
-  behavior or breaking merge becomes a `YYYY.MM.DD.N` release; refactors cut
-  none. See `jj/README.md`.
-- Use a concise JJ change description. Publish a validated ordinary change with
-  `jj-ci publish --auto-merge`; it creates or updates a PR and requests
-  GitHub auto-merge against the current head SHA. Ordinary publication keeps
-  editing the same change ID; enable auto-merge only at topic closeout.
+  when no NixOS closure changes (refactors, docs, CI, and tooling;
+  `jj-ci land` verifies it), `behavior` for a user-facing change, and
+  `breaking` for a user-facing change that needs manual steps, which the
+  description body must list. Keep refactors and user-facing changes in
+  separate topics or stack layers. Each behavior or breaking revision that
+  lands becomes a `YYYY.MM.DD.N` release; refactors cut none. See
+  `jj/README.md`.
+- Use a concise JJ change description. `jj-ci publish` validates and pushes
+  the topic's stable `jj-*` branch to Tangled, which starts its pipeline; open
+  a Tangled pull request from that branch when the topic needs review.
+  Ordinary publication keeps editing the same change ID. Deliver it with
+  `jj-ci land` only at topic closeout.
 - Keep one coherent topic per Codex task. Use one stable JJ change for a single
   deliverable, but allow a small stack of changes when the task contains
   multiple deliverables that should be split. Do not create unrelated
   follow-up changes after publication. Create each concurrent task's
-  workspace with `jj-ci start NAME`, and `jj-ci rebase` to update a topic in place. A
-  conflict-free PR does not need to catch up with `main` to merge. The local
-  webhook runs `jj-ci refresh` after each successful `main` build; it restacks
-  only stacked, retargeted, or conflicting PRs, pushes only conflict-free
-  rebases, and leaves conflicted topics local for resolution. Run
-  `jj-ci refresh --all` only when the user asks to rebase every open PR.
+  workspace with `jj-ci start NAME`, and `jj-ci rebase` to update a topic in
+  place. A conflict-free topic does not need to catch up with `main` before
+  landing; `jj-ci land` rebases it. `jj-ci refresh` restacks only stacked or
+  conflicting topics, pushes only conflict-free rebases, and leaves conflicted
+  topics local for resolution. Run `jj-ci refresh --all` only when the user
+  asks to rebase every published topic.
 - Before archiving a delivered topic, run `jj-ci finish` and confirm success.
-  It verifies delivery of the current head and removes a workspace that
+  It verifies that the current head landed and removes a workspace that
   `jj-ci start` created (`--keep` leaves it on an empty change on main).
   Use `jj-ci abandon` for a topic that will not land.
-  Pending checks, conflicts, or unpublished edits keep the task open. Native
+  A failed pipeline, conflicts, or unpublished edits keep the task open. Native
   archive-button clicks are not a closeout hook.
-- GitHub owns PR state, required checks, and delivery to `main`. Do not bypass
-  protection with direct pushes or manual merge commands.
-- `nix-ci` runs every attribute of the flake's `checks.x86_64-linux` output
-  as its own job, including the headless and primary desktop system builds,
-  and `nix flake checks` aggregates them. Add a CI check by adding a flake
-  check; the workflow and branch protection need no change. Jobs skip checks
-  whose outputs are already in the binary cache, so unchanged checks pass
-  without rebuilding. `main` requires `nix flake checks`, `impact classification`, and linear history but not an up-to-date branch: PR builds
-  test the merge with `main` as of the run.
-- `jj-ci github reconcile` reports the declared GitHub policy. Use
-  `jj-ci github reconcile --apply` only when intentionally reconciling
-  auto-merge, branch deletion, and `main` protection.
+- `jj-ci land` owns delivery to `main`. It rebases the topic onto
+  `main@tangled`, proves a declared refactor leaves every closure unchanged,
+  waits for the repository's spindle to pass that exact commit, and only then
+  fast-forwards `main` and tags releases. Never push `main` any other way.
+- The spindle runs `.tangled/workflows` on every push of a `jj-*` branch. The
+  flake-checks workflow builds every attribute of `checks.x86_64-linux`,
+  including the headless and primary desktop system builds, and skips checks
+  whose outputs are already cached. Add a check by adding a flake check; the
+  workflow needs no change.
 
-## Stacked pull requests
+## Stacked topics
 
-- Use a stack only for a preplanned chain of dependent, independently reviewable
-  JJ changes, or when `jj-ci plan` reports that a topic conflicts with an open
-  PR. Put a refactor below the user-facing change it enables, never above it. In that case, stack the later topic on the earlier one and resolve its
-  conflicts locally before pushing. Keep unrelated, conflict-free work in
-  separate branches.
-- JJ creates, describes, rebases, and pushes every layer. Link existing GitHub
-  PRs with `gh stack link` and inspect them non-interactively with
-  `gh stack view --json`.
-- Once every layer is green at its current head, submit the stack with
-  `jj-ci stack-merge <stack-or-pr>`. GitHub handles queue-compatible delivery
-  to `main`.
-- `jj-ci publish` stacks a new topic on the open PR it is built on or
-  conflicts with, and `jj-ci refresh` restacks children after a parent
-  changes or merges. Never enable GitHub auto-merge on a PR whose base is
-  not `main`; `--auto-merge` defers it with the `jj-ci:auto-merge` label.
-- Do not run `gh stack init`, `add`, `submit`, `sync`, or `rebase`; they mutate
-  Git-managed branches and violate the JJ boundary.
+- Use a stack only for a preplanned chain of dependent, independently
+  reviewable JJ changes, or when `jj-ci plan` reports that a topic conflicts
+  with a published one. Put a refactor below the user-facing change it
+  enables, never above it. In that case, stack the later topic on the earlier
+  one and resolve its conflicts locally before pushing. Keep unrelated,
+  conflict-free work in separate branches.
+- JJ creates, describes, rebases, and pushes every layer. The stack lives in
+  the commit graph: `jj-ci publish` stacks a topic on the published topic it is
+  built on or conflicts with, and `jj-ci refresh` restacks children after a
+  parent changes.
+- Land parents first. `jj-ci land` refuses a topic whose parent has not
+  landed; once it has, the child is already on `main` and lands next.
+- For stacked review on Tangled, `jj-ci tangled stack-publish` pushes each
+  revision as its own branch for `Submit as stacked PRs`. Pull requests are
+  for review only; `jj-ci land` still delivers.
 
 ## User-visible progress
 
@@ -182,9 +181,10 @@
 ## Agents
 
 - Use the `trunk-triage` agent (GPT-5.6 Luna) only for read-only repository
-  status, CI and PR summaries, stack inspection, and formatting-only fixes.
+  status, pipeline and pull request summaries, stack inspection, and
+  formatting-only fixes.
 - Escalate configuration edits, conflicts, failed validation, JJ mutations,
-  GitHub writes, and merge decisions to the primary agent.
+  Tangled writes, and landing decisions to the primary agent.
 - Do not inspect `/nix/store` routinely. Prefer workspace files and Nix MCP
   package, option, and documentation queries; inspect the store only for an
   explicit user request, a specific path reported by a failure, or necessary
@@ -213,10 +213,10 @@ only when explicitly requested because they are expensive; `nix-fast-build --ski
 ## Continuous integration and merge-conflict policy
 
 Keep active work continuously integrated: start each dedicated JJ workspace at
-`main@origin`, rebase before review updates and when a topic conflicts with
-trunk, and never share a mutable topic worktree. `jj-ci publish` performs the final
-rebase and validation before updating GitHub; `jj-ci stack-merge` does the same
-before submitting a stack.
+`main@tangled`, rebase before review updates and when a topic conflicts with
+trunk, and never share a mutable topic worktree. `jj-ci publish` performs the
+final rebase and validation before pushing; `jj-ci land` does the same and
+lands only the commit the spindle passed.
 
 Use `jj-ci conflicts` after a rebase to list conflicted revisions and files.
 A conflicted rebase has already rewritten the topic, so resolve revisions from
@@ -226,11 +226,11 @@ rebases a checked-out topic from that topic's own workspace, and only after a
 trial merge predicts no conflict. Never resolve conflicts automatically.
 
 Herdr or Paseo may monitor one existing JJ workspace per topic and notify its
-owner about stale trunk, PR, check, or queue state. They must not take
-ownership of the workspace or silently rebase, resolve conflicts, publish, enter
-a queue, or advance a stack.
+owner about stale trunk, topic, or pipeline state. They must not take
+ownership of the workspace or silently rebase, resolve conflicts, publish,
+land, or advance a stack.
 
-Prefer one ordinary PR for a coherent topic. Use a stack only for independently
+Prefer one ordinary branch for a coherent topic. Use a stack only for independently
 reviewable changes with real dependency order, including conflict order
 reported by `jj-ci plan`; keep children based on their
 immediate parent and rebase the remaining stack after each parent lands.

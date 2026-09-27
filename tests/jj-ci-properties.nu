@@ -12,7 +12,7 @@ use std/assert
 source ../jj/ci.nu
 
 const CASES = 100
-const BLOCKING = ["conflicted" "parent not local" "waiting on parent"]
+const BLOCKING = ["conflicted" "waiting on parent"]
 const TITLE_CHARS = ["a" "b" "z" "Q" "0" "7" " " "  " "-" "--" "_" "." "/" ":" "!" "é" "日"]
 const CHANGE_CHARS = ["k" "l" "m" "n" "o" "p" "q" "r" "s" "t" "u" "v" "w" "x" "y" "z"]
 const REFRESH_STATES = [
@@ -50,17 +50,16 @@ def gen-change-id [key: string] {
     0..<32 | each {|i| pick-from $"($key)/($i)" $CHANGE_CHARS } | str join
 }
 
-# Open PRs with unique head branches. A base is main, another PR's head
-# (possibly forming a cycle), or a branch that is no longer open.
-def gen-prs [key: string] {
+# Published topics with unique names. Parents may be another topic, absent, or
+# null for a root. Cycles and missing parents exercise unrooted topic handling.
+def gen-topics [key: string] {
     let count = (pick $"($key)/count" 8)
-    let heads = (0..<$count | each {|i| $"b($i)" })
-    let bases = (["main" "main" "gone"] ++ $heads)
+    let names = (0..<$count | each {|i| $"b($i)" })
+    let parents = ([null "gone"] ++ $names)
     shuffle $"($key)/order" (0..<$count | each {|i|
         {
-            number: (100 + $i)
-            headRefName: ($heads | get $i)
-            baseRefName: (pick-from $"($key)/base/($i)" $bases)
+            name: ($names | get $i)
+            parent: (pick-from $"($key)/parent/($i)" $parents)
         }
     })
 }
@@ -75,16 +74,19 @@ def gen-graph [key: string] {
     { nodes: $nodes edges: $edges }
 }
 
-# PR heads that reach main through a chain of open PRs, by fixpoint.
-def rooted-heads [prs: list] {
-    mut rooted = ["main"]
+# Topic names whose parent chain reaches a root, by fixpoint.
+def rooted-names [topics: list] {
+    mut rooted = []
     loop {
         let known = $rooted
-        let next = ($prs | where {|pr| $pr.baseRefName in $known and $pr.headRefName not-in $known } | get headRefName)
+        let next = ($topics
+            | where {|topic| $topic.parent == null or $topic.parent in $known }
+            | get name
+            | where {|name| $name not-in $known })
         if ($next | is-empty) { break }
         $rooted = ($rooted ++ $next)
     }
-    $rooted | where {|head| $head != "main" }
+    $rooted
 }
 
 def reachable [start: string, edges: list] {
@@ -150,54 +152,52 @@ for-all "distinct topics never share a new bookmark" {|key|
 
 # Stack ordering: parents are always refreshed before their children.
 
-for-all "stack-order partitions the open PRs" {|key|
-    let prs = (gen-prs $key)
-    let order = (stack-order $prs)
-    let numbers = ($order.ordered ++ $order.unrooted | get number? | default [])
-    assert equal ($numbers | sort) ($prs | get number? | default [] | sort)
-    assert equal ($numbers | uniq | length) ($numbers | length)
+for-all "stack-order returns each rooted topic exactly once" {|key|
+    let topics = (gen-topics $key)
+    let names = (stack-order $topics | get name? | default [])
+    assert equal ($names | sort) (rooted-names $topics | sort)
+    assert equal ($names | uniq | length) ($names | length)
 }
 
 for-all "stack-order is topological" {|key|
-    let order = (stack-order (gen-prs $key))
-    $order.ordered | enumerate | each {|entry|
-        let earlier = ($order.ordered | first $entry.index | get headRefName? | default [])
-        assert ($entry.item.baseRefName == "main" or $entry.item.baseRefName in $earlier) $"#($entry.item.number) precedes its parent ($entry.item.baseRefName)"
+    let order = (stack-order (gen-topics $key))
+    $order | enumerate | each {|entry|
+        let earlier = ($order | first $entry.index | get name? | default [])
+        assert ($entry.item.parent == null or $entry.item.parent in $earlier) $"($entry.item.name) precedes its parent ($entry.item.parent)"
     } | ignore
 }
 
-for-all "stack-order roots exactly the PRs that reach main" {|key|
-    let prs = (gen-prs $key)
-    let order = (stack-order $prs)
-    assert equal ($order.ordered | get headRefName? | default [] | sort) (rooted-heads $prs | sort)
+for-all "stack-order excludes cycles and topics with missing parents" {|key|
+    let topics = (gen-topics $key)
+    let order = (stack-order $topics | get name? | default [])
+    assert equal ($order | sort) (rooted-names $topics | sort)
 }
 
 for-all "stack-order ignores input order" {|key|
-    let prs = (gen-prs $key)
-    let left = (stack-order $prs)
-    let right = (stack-order (shuffle $"($key)/again" $prs))
-    assert equal ($left.unrooted | get number? | default [] | sort) ($right.unrooted | get number? | default [] | sort)
+    let topics = (gen-topics $key)
+    let left = (stack-order $topics | get name? | default [] | sort)
+    let right = (stack-order (shuffle $"($key)/again" $topics) | get name? | default [] | sort)
+    assert equal $left $right
 }
 
 # Refresh: a blocked parent blocks everything stacked above it (TLA: a
 # conflicted topic is never published, delivered, or finished).
 
-for-all "refresh never touches PRs above a blocked parent" {|key|
-    let prs = (gen-prs $key)
-    let outcome = {|pr| pick-from $"($key)/state/($pr.number)" $REFRESH_STATES }
-    let results = (refresh-outcomes (stack-order $prs) {|pr|
-        { pr: $pr.number branch: $pr.headRefName state: (do $outcome $pr) }
+for-all "refresh never touches topics above a blocked parent" {|key|
+    let topics = (gen-topics $key)
+    let ordered = (stack-order $topics)
+    let outcome = {|topic| pick-from $"($key)/state/($topic.name)" $REFRESH_STATES }
+    let results = (refresh-outcomes $ordered {|topic|
+        { branch: $topic.name state: (do $outcome $topic) }
     })
-    assert equal ($results | get pr? | default [] | sort) ($prs | get number? | default [] | sort)
+    assert equal ($results | get branch? | default [] | sort) ($ordered | get name? | default [] | sort)
     for result in $results {
-        let pr = ($prs | where number == $result.pr | first)
-        let parent = ($results | where branch == $pr.baseRefName | get 0?)
-        if $result.state == "base is not main or an open PR" {
-            assert ($pr.headRefName not-in (rooted-heads $prs))
-        } else if $parent != null and $parent.state in $BLOCKING {
+        let topic = ($topics | where name == $result.branch | first)
+        let parent = ($results | where branch == $topic.parent | get 0?)
+        if $parent != null and $parent.state in $BLOCKING {
             assert equal $result.state "waiting on parent"
         } else {
-            assert equal $result.state (do $outcome $pr)
+            assert equal $result.state (do $outcome $topic)
         }
     }
 }
@@ -310,22 +310,12 @@ for-all "next-version is unique and increments per day" {|key|
     }
 }
 
-for-all "pull-request-body ends with the impact trailer" {|key|
-    let impact = (pick-from $"($key)/impact" ["refactor" "behavior" "breaking"])
-    let revisions = (0..<(1 + (pick $"($key)/count" 3)) | each {|i|
-        { change_id: $"c($i)" description: (with-trailer $"($key)/($i)" $impact) }
-    })
-    let body = (pull-request-body $revisions $impact)
-    assert equal (parse-impact $body) $impact
-    assert equal ($body | lines | last) $"Impact: ($impact)"
-    assert equal ($body | str contains "## Manual steps") ($impact == "breaking")
-}
-
 for-all "plan-order keeps published topics first and refactors early" {|key|
     let topics = (0..<(pick $"($key)/count" 8) | each {|i|
+        let published = (pick $"($key)/pr/($i)" 2) == 0
         {
             tip: $"t($i)"
-            pr: (if (pick $"($key)/pr/($i)" 2) == 0 { 100 + $i } else { null })
+            bookmark: (if $published { $"b($i)" } else { null })
             impact: (pick-from $"($key)/impact/($i)" ["refactor" "behavior" "breaking" null])
             created: (pick $"($key)/time/($i)" 1000)
         }
@@ -338,8 +328,8 @@ for-all "plan-order keeps published topics first and refactors early" {|key|
     $ordered | window 2 | each {|pair|
         let a = ($pair | first)
         let b = ($pair | last)
-        assert (($a.pr != null) or ($b.pr == null)) "an unpublished topic precedes a published one"
-        if (($a.pr == null) == ($b.pr == null)) {
+        assert (($a.bookmark != null) or ($b.bookmark == null)) "an unpublished topic precedes a published one"
+        if (($a.bookmark == null) == ($b.bookmark == null)) {
             assert ((impact-order $a.impact) <= (impact-order $b.impact)) "a user-facing topic precedes a refactor"
         }
     } | ignore
@@ -357,7 +347,6 @@ def gen-workspace-facts [key: string] {
         stale: (do $flag stale)
         error: (if (do $flag error) { "unreadable" } else { null })
         pending: (do $flag pending)
-        squash_delivered: (do $flag squash)
     }
 }
 
@@ -372,7 +361,7 @@ for-all "prune never removes a workspace that is live or unknown" {|key|
             assert ($facts.owner != "active") "prune removed an owned workspace"
             assert (not $facts.stale) "prune removed an unrefreshed workspace"
             assert ($facts.error == null) "prune removed an unreadable workspace"
-            assert ((not $facts.pending) or $facts.squash_delivered) "prune removed undelivered work"
+            assert (not $facts.pending) "prune removed undelivered work"
         }
     }
 }
@@ -383,6 +372,6 @@ for-all "prune reclaims every released, delivered workspace" {|key|
         stale: false error: null
     })
     let owner = (pick-from $"($key)/released" ["none" "finished"])
-    let delivered = (not $facts.pending) or $facts.squash_delivered
+    let delivered = not $facts.pending
     assert equal ((prune-verdict ($facts | upsert owner $owner)) == null) $delivered
 }

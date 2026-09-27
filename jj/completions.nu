@@ -9,10 +9,13 @@ def "nu-complete jj-ci review-labels" [] {
     open $path | each {|version| { value: $version.label, description: $version.created_at? } }
 }
 
-def "nu-complete jj-ci open-prs" [] {
-    let prs = (^gh pr list --state open --json number,title | complete)
-    if $prs.exit_code != 0 { return [] }
-    $prs.stdout | from json | each {|pr| { value: ($pr.number | into string), description: $pr.title } }
+def "nu-complete jj-ci topics" [] {
+    let topics = (^jj bookmark list --template 'if(!remote, name ++ "\t" ++ normal_target.description().first_line() ++ "\n")' 'glob:jj-*' | complete)
+    if $topics.exit_code != 0 { return [] }
+    $topics.stdout | lines | where {|line| $line | is-not-empty } | each {|line|
+        let fields = ($line | split row "\t")
+        { value: ($fields | first), description: ($fields | skip 1 | str join "\t") }
+    }
 }
 
 def "nu-complete jj-ci revisions" [] {
@@ -24,13 +27,13 @@ def "nu-complete jj-ci revisions" [] {
 # Inspect, synchronize, validate, publish, and reconcile JJ changes
 export extern "jj-ci" []
 
-# Show the working copy and open pull requests against main
+# Show the working copy and each published topic with its pipeline and pull request
 export extern "jj-ci status" []
 
-# Fetch origin, advance main, and rebase the empty working copy onto it
+# Fetch Tangled, advance main, and rebase the empty working copy onto it
 export extern "jj-ci sync" []
 
-# Report Git worktrees and how far they are from origin/main
+# Report Git worktrees and how far they are from tangled/main
 export extern "jj-ci worktree-status" []
 
 # Validate the current change
@@ -50,32 +53,38 @@ export extern "jj-ci interdiff" [
 # Rebase the current topic onto main
 export extern "jj-ci rebase" []
 
-# Plan how open pull requests should be ordered or stacked
+# Plan how published topics should be ordered or stacked
 export extern "jj-ci plan" [
     --json # Print the plan as JSON
 ]
 
-# Build the Home Manager generation of trunk plus open pull requests without activating it
+# Build the Home Manager generation of trunk plus published topics without activating it
 export extern "jj-ci preview" [
-    ...prs: int@"nu-complete jj-ci open-prs" # Pull requests to include (default: every open behavior or breaking PR)
-    --all # Include refactor pull requests when no numbers are given
+    ...topics: string@"nu-complete jj-ci topics" # Topic branches to include (default: every published behavior or breaking topic)
+    --all # Include refactor topics when no branches are given
     --shell # Open Nushell with the preview's programs first on PATH
     --config # With --shell, also read configuration from the preview (read-only)
     --active # Compare against the active generation instead of trunk's
 ]
 
-# Restack stacked, retargeted, or conflicting pull requests
+# Restack stacked or conflicting published topics
 export extern "jj-ci refresh" [
-    --no-push # Rebase and report conflicts without pushing or touching PRs
-    --all # Also rebase conflict-free PRs that are merely behind main
+    --no-push # Rebase and report conflicts without pushing
+    --all # Also rebase conflict-free topics that are merely behind main
 ]
 
 # List conflicted revisions and files in the current topic
 export extern "jj-ci conflicts" []
 
-# Create or update the pull request for the current change
+# Rebase, validate, and push the current topic to Tangled
 export extern "jj-ci publish" [
-    --auto-merge # Request GitHub auto-merge against the current head
+    --land # Land the topic once the spindle passes it
+    --timeout: duration # How long --land waits for the pipeline (default 2hr)
+]
+
+# Publish the current topic, wait for the spindle to pass it, and fast-forward main
+export extern "jj-ci land" [
+    --timeout: duration # How long to wait for the pipeline (default 2hr)
 ]
 
 # Check Impact trailers on the commits between two revisions
@@ -92,23 +101,12 @@ export extern "jj-ci release" [
 # Describe the current revision against release tags
 export extern "jj-ci version" []
 
-# Report or apply the declared GitHub repository policy
-export extern "jj-ci github reconcile" [
-    --apply # Apply the declared policy
-]
-
-# Rebase, validate, and submit a stacked pull request chain
-export extern "jj-ci stack-merge" [
-    target: string@"nu-complete jj-ci open-prs" # Stack or pull request to merge
-]
-
 # Publish the current stack to Tangled
 export extern "jj-ci tangled stack-publish" []
 
-# Verify the current head merged to main and leave a clean working copy
+# Verify the current head landed on main and leave a clean working copy
 export extern "jj-ci finish" [
-    --wait # Wait for GitHub to merge the current head before finishing
-    --timeout: duration # How long --wait waits (default 2hr)
+    --keep # Keep a workspace that `jj-ci start` created
 ]
 
 # List stale workspaces and checkpoints
