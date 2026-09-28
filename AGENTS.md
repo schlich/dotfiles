@@ -82,8 +82,10 @@
 - Before risky history operations (`jj rebase`, `jj squash`, `jj abandon`,
   `jj split`, or `jj op restore`), create a checkpoint with
   `.agents/skills/jj/scripts/jj-checkpoint`.
-- Tangled (`tangled` remote) hosts `main` and every topic branch; GitHub is no
-  longer part of the workflow.
+- Tangled (`tangled` remote) hosts `main` and every topic branch. GitHub
+  (`origin`) mirrors `main` and can gate a landing with
+  `jj-ci land --gate github`. Never merge a GitHub pull request: squash and
+  rebase merges rewrite the tested commit and lose change IDs and trailers.
 - Use `jj-ci sync` only from an empty working copy without an active task owner.
   It fetches `tangled`,
   advances the local `main` bookmark to `main@tangled`, and rebases the working
@@ -139,13 +141,15 @@
   archive-button clicks are not a closeout hook.
 - `jj-ci land` owns delivery to `main`. It rebases the topic onto
   `main@tangled`, proves a declared refactor leaves every closure unchanged,
-  waits for the repository's spindle to pass that exact commit, and only then
-  fast-forwards `main` and tags releases. Never push `main` any other way.
+  builds every flake check at that exact commit on the local machine, and only
+  then fast-forwards `main` and tags releases. Never push `main` any other way.
+  `--gate spindle` or `--gate github` waits for that CI on the exact head
+  instead.
 - The spindle runs `.tangled/workflows` on every push of a `jj-*` branch. The
-  flake-checks workflow builds every attribute of `checks.x86_64-linux`,
-  including the headless and primary desktop system builds, and skips checks
-  whose outputs are already cached. Add a check by adding a flake check; the
-  workflow needs no change.
+  flake-checks workflow and the local gate run the same command: it builds
+  every attribute of `checks.x86_64-linux`, including the headless and primary
+  desktop system builds, and skips checks whose outputs are already cached.
+  Add a check by adding a flake check; neither needs a change.
 
 ## Stacked topics
 

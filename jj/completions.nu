@@ -18,6 +18,14 @@ def "nu-complete jj-ci topics" [] {
     }
 }
 
+def "nu-complete jj-ci gates" [] {
+    [
+        { value: "local", description: "The flake checks built on this machine" }
+        { value: "spindle", description: "The Tangled repository's spindle" }
+        { value: "github", description: "GitHub Actions on the origin mirror" }
+    ]
+}
+
 def "nu-complete jj-ci revisions" [] {
     let bookmarks = (^jj bookmark list --all-remotes --template 'name ++ if(remote, "@" ++ remote) ++ "\n"' | complete)
     if $bookmarks.exit_code != 0 { return [] }
@@ -78,12 +86,14 @@ export extern "jj-ci conflicts" []
 
 # Rebase, validate, and push the current topic to Tangled
 export extern "jj-ci publish" [
-    --land # Land the topic once the spindle passes it
+    --land # Land the topic once the gate passes it
+    --gate: string@"nu-complete jj-ci gates" # What must pass the head before --land (default local)
     --timeout: duration # How long --land waits for the pipeline (default 2hr)
 ]
 
-# Publish the current topic, wait for the spindle to pass it, and fast-forward main
+# Publish the current topic, wait for its gate to pass it, and fast-forward main
 export extern "jj-ci land" [
+    --gate: string@"nu-complete jj-ci gates" # What must pass the head (default local)
     --timeout: duration # How long to wait for the pipeline (default 2hr)
 ]
 

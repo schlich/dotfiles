@@ -77,6 +77,10 @@ def git-context [] {
 # Tangled hosts main and every topic branch. `jj-ci land` is the only path to
 # main: it fast-forwards main to a head the spindle has already passed.
 const TRUNK_REMOTE = "tangled"
+# GitHub mirrors main, and its Actions can gate a landing in the spindle's
+# place with `jj-ci land --gate github`. Its rules accept only fast-forwards.
+const GITHUB_REMOTE = "origin"
+const GITHUB_REQUIRED_CHECKS = ["impact classification" "nix flake checks"]
 const TANGLED_INDEX = "https://api.tangled.org"
 const TANGLED_WEB = "https://tangled.org"
 const IDENTITY_RESOLVER = "https://slingshot.microcosm.blue"
@@ -144,23 +148,118 @@ def pipeline-state [repo: record, commit: string] {
     { state: $state workflows: $workflows }
 }
 
-# Poll the spindle until it passes `commit`. Stop at the first failure; never
+# The GitHub repository behind the mirror remote, as `owner/name`.
+def github-repo [] {
+    let remotes = (git-command "listing remotes" { ^jj git remote list } | lines | parse "{name} {url}")
+    let url = ($remotes | where name == $GITHUB_REMOTE | get --optional 0.url)
+    if $url == null { error make { msg: $"This repository has no ($GITHUB_REMOTE) remote." } }
+    let location = ($url | parse --regex 'github\.com[:/](?P<owner>[^/]+)/(?P<name>[^/]+?)(?:\.git)?/?$' | get --optional 0)
+    if $location == null { error make { msg: $"($url) is not a GitHub repository." } }
+    $"($location.owner)/($location.name)"
+}
+
+# GitHub's verdict on one commit, in the spindle's shape: the newest run of
+# each required check decides, and a check that has not reported is missing.
+# A skipped run proves nothing, so it counts as not having reported.
+def github-checks-state [repo: string, commit: string] {
+    let runs = (git-command "reading GitHub check runs" {
+        ^gh api --paginate $"repos/($repo)/commits/($commit)/check-runs?per_page=100" --jq '.check_runs[] | {name, status, conclusion, id}'
+    } | lines | where {|line| $line | is-not-empty } | each {|line| $line | from json }
+    | where {|run| $run.conclusion not-in ["skipped" "neutral"] })
+    let workflows = ($GITHUB_REQUIRED_CHECKS | each {|name|
+        let matching = ($runs | where name == $name)
+        let run = if ($matching | is-empty) { null } else { $matching | sort-by id | last }
+        let status = if $run == null {
+            "missing"
+        } else if $run.status != "completed" {
+            $run.status
+        } else if $run.conclusion == "success" {
+            "success"
+        } else {
+            "failed"
+        }
+        { name: $name status: $status }
+    })
+    let state = if ($workflows | any {|workflow| $workflow.status == "failed" }) {
+        "failed"
+    } else if ($workflows | all {|workflow| $workflow.status == "success" }) {
+        "success"
+    } else if ($workflows | all {|workflow| $workflow.status == "missing" }) {
+        "missing"
+    } else {
+        "running"
+    }
+    { state: $state workflows: $workflows }
+}
+
+# Build every flake check at `commit` on this machine with the command the
+# spindle workflow runs, streaming the build log. Outputs already in the local
+# store or a binary cache are skipped, so a topic that leaves the system
+# closures alone builds only the cheap checks.
+def local-checks-state [commit: string] {
+    let error = (with-commit-trees { head: $commit } {|trees|
+        let flake = $"path:($trees.head)"
+        try {
+            ^nix --accept-flake-config run --inputs-from $flake nixpkgs#nix-fast-build -- --no-nom --skip-cached --eval-workers 2 --eval-max-memory-size 3072 --flake $"($flake)#checks.x86_64-linux"
+            null
+        } catch {|err|
+            $err.msg
+        }
+    })
+    let status = if $error == null { "success" } else { "failed" }
+    { state: $status workflows: [{ name: "flake checks" status: $status error: ($error | default "") }] }
+}
+
+# The check that gates a landing: the flake checks built on this machine, the
+# repository's spindle, or GitHub Actions on the mirror.
+def landing-gate [gate: string, repo: record] {
+    match $gate {
+        "local" => {
+            {
+                name: $"local flake checks on (sys host | get hostname)"
+                probe: {|commit| local-checks-state $commit }
+                hint: ""
+            }
+        }
+        "spindle" => {
+            if ($repo.spindle | is-empty) {
+                error make { msg: "The Tangled repository has no spindle, so no pipeline can gate landing. Select one in its settings." }
+            }
+            {
+                name: $repo.spindle
+                probe: {|commit| pipeline-state $repo $commit }
+                hint: "If none started, check that .tangled/workflows runs on pushes to jj-* branches."
+            }
+        }
+        "github" => {
+            let github = (github-repo)
+            {
+                name: $"GitHub Actions on ($github)"
+                probe: {|commit| github-checks-state $github $commit }
+                hint: "If none started, check that .github/workflows/nix-ci.yml runs on pushes to jj-* branches."
+            }
+        }
+        _ => { error make { msg: $"Unknown gate ($gate); use local, spindle, or github." } }
+    }
+}
+
+# Poll the gate until it passes `commit`. Stop at the first failure; never
 # rebase or push.
-def wait-for-pipeline [repo: record, commit: string, timeout: duration] {
+def wait-for-pipeline [gate: record, commit: string, timeout: duration] {
     let deadline = (date now) + $timeout
     mut last = ""
     loop {
-        let pipeline = (pipeline-state $repo $commit)
+        let pipeline = (do $gate.probe $commit)
         if $pipeline.state == "success" { return }
         if $pipeline.state == "failed" {
             let failed = ($pipeline.workflows | where status != "success" | each {|workflow|
                 let detail = if ($workflow.error? | is-empty) { "" } else { $" \(($workflow.error | lines | last))" }
                 $"($workflow.name): ($workflow.status)($detail)"
             })
-            error make { msg: $"The spindle rejected ($commit | str substring 0..11): ($failed | str join '; '). Leave the task open." }
+            error make { msg: $"($gate.name) rejected ($commit | str substring 0..11): ($failed | str join '; '). Leave the task open." }
         }
         let status = if $pipeline.state == "missing" {
-            "waiting for the spindle to start a pipeline"
+            $"waiting for ($gate.name) to start"
         } else {
             $"($pipeline.workflows | where status != 'success' | length) workflow\(s) running"
         }
@@ -169,7 +268,7 @@ def wait-for-pipeline [repo: record, commit: string, timeout: duration] {
             $last = $status
         }
         if (date now) > $deadline {
-            error make { msg: $"No passing pipeline for ($commit | str substring 0..11) after ($timeout). If none started, check that .tangled/workflows runs on pushes to jj-* branches." }
+            error make { msg: $"No passing pipeline for ($commit | str substring 0..11) after ($timeout). ($gate.hint)" }
         }
         sleep 30sec
     }
@@ -277,19 +376,22 @@ def push-topic-bookmark [bookmark: string] {
     push-bookmark $TRUNK_REMOTE $bookmark
 }
 
-def remote-bookmark-revset [bookmark: string] {
-    $"remote_bookmarks\(exact:'($bookmark)', exact:'($TRUNK_REMOTE)')"
+def remote-bookmark-revset [bookmark: string, remote: string = $TRUNK_REMOTE] {
+    $"remote_bookmarks\(exact:'($bookmark)', exact:'($remote)')"
 }
 
-# Delete a delivered topic's bookmark locally and on the trunk remote.
+# Delete a delivered topic's bookmark locally, on the trunk remote, and on the
+# GitHub mirror if a GitHub-gated landing pushed it there.
 def delete-topic-bookmark [bookmark: string] {
     if (revset-change-ids (bookmark-revset $bookmark) | is-not-empty) {
         run-command $"deleting ($bookmark)" { ^jj bookmark delete $bookmark } | ignore
     }
-    if (revset-change-ids (remote-bookmark-revset $bookmark) | is-not-empty) {
-        run-command $"deleting ($bookmark) from ($TRUNK_REMOTE)" {
-            ^jj git push --remote $TRUNK_REMOTE --bookmark $bookmark
-        } | ignore
+    for remote in [$TRUNK_REMOTE $GITHUB_REMOTE] {
+        if (revset-change-ids (remote-bookmark-revset $bookmark $remote) | is-not-empty) {
+            run-command $"deleting ($bookmark) from ($remote)" {
+                ^jj git push --remote $remote --bookmark $bookmark
+            } | ignore
+        }
     }
 }
 
@@ -1322,26 +1424,43 @@ def publish-topic [] {
 }
 
 # Land a published topic. A declared refactor must leave every closure
-# unchanged, and the spindle must pass the exact head; main then fast-forwards
+# unchanged, and the gate must pass the exact head; main then fast-forwards
 # to that commit, so main only ever holds tested trees. If main moved while the
 # pipeline ran, the push lease rejects the update instead of landing untested
-# history, and `jj-ci land` starts over from the new main.
-def land-published [published: record, repo: record, timeout: duration] {
+# history, and `jj-ci land` starts over from the new main. Delivery is never a
+# squash, rebase, or merge on a forge: both remotes receive the same commits.
+def land-published [published: record, repo: record, timeout: duration, gate: string] {
     if $published.parent != null {
         error make { msg: $"This topic is stacked on ($published.parent). Land that topic first, then land this one." }
     }
+    let checker = (landing-gate $gate $repo)
     let base = (revision-id "main@tangled")
     if $published.impact == "refactor" { require-closure-neutral $base $published.head }
-    print $"Waiting for ($repo.spindle) to pass ($published.head | str substring 0..11)."
-    wait-for-pipeline $repo $published.head $timeout
+    if $gate == "github" { push-bookmark $GITHUB_REMOTE $published.branch }
+    print $"Waiting for ($checker.name) to pass ($published.head | str substring 0..11)."
+    wait-for-pipeline $checker $published.head $timeout
     run-command "advancing main" { ^jj bookmark set main -r $published.head } | ignore
     run-command $"landing on ($TRUNK_REMOTE)" { ^jj git push --remote $TRUNK_REMOTE --bookmark main } | ignore
+    mirror-main
     cut-releases $"($base)..($published.head)" false
     print $"Landed ($published.branch) on main. `jj-ci finish` releases the workspace."
 }
 
+# Fast-forward GitHub's main to the trunk's. Tangled is authoritative, so a
+# rejected mirror push leaves the landing in place and reports how to retry.
+def mirror-main [] {
+    let fetched = (do { ^jj git fetch --remote $GITHUB_REMOTE --branch main } | complete)
+    let pushed = if $fetched.exit_code == 0 {
+        do { ^jj git push --remote $GITHUB_REMOTE --bookmark main } | complete
+    } else { $fetched }
+    if $pushed.exit_code != 0 {
+        print --stderr $"Landed on ($TRUNK_REMOTE), but mirroring main to ($GITHUB_REMOTE) failed: ($pushed.stderr | str trim). Retry with `jj git push --remote ($GITHUB_REMOTE) --bookmark main`."
+    }
+}
+
 def "main publish" [
-    --land # Land the topic once the spindle passes it
+    --land # Land the topic once the gate passes it
+    --gate: string = "local" # What must pass the head before --land: local, spindle, or github
     --timeout: duration = 2hr # How long --land waits for the pipeline
 ] {
     let published = (publish-topic)
@@ -1358,44 +1477,60 @@ def "main publish" [
     }
     print $"Impact: ($published.impact)"
     if $land {
-        land-published $published $repo $timeout
+        land-published $published $repo $timeout $gate
     } else {
         print "Published this topic in place. Further edits update the same JJ series and branch; `jj-ci land` delivers it."
     }
 }
 
 def "main land" [
+    --gate: string = "local" # What must pass the head: local, spindle, or github
     --timeout: duration = 2hr # How long to wait for the pipeline
 ] {
     let published = (publish-topic)
-    land-published $published (tangled-repo) $timeout
+    land-published $published (tangled-repo) $timeout $gate
+}
+
+# Export each revision in `revisions` (a record of name to commit) into its own
+# temporary directory, run `body` with a record of name to path, and remove
+# the directories again. An export holds exactly the commit's tree and no
+# `.git`, so a check that reads its own source as a flake cannot follow a Git
+# pointer out of the Nix store. In a JJ workspace the commits live in its Git
+# backend, so Git is pointed there; a plain Git checkout needs nothing extra.
+# Only the export sees that Git environment, not `body`.
+def with-commit-trees [revisions: record, body: closure] {
+    let backend = (try { ^jj git root | complete } catch { { exit_code: 1 stdout: "" } })
+    let environment = if $backend.exit_code == 0 { { GIT_DIR: ($backend.stdout | str trim) } } else { {} }
+    let root = (mktemp --directory --tmpdir "jj-ci-tree.XXXXXX")
+    let trees = ($revisions | columns | reduce --fold {} {|name, trees| $trees | insert $name ($root | path join $name) })
+    let outcome = try {
+        with-env $environment {
+            for name in ($revisions | columns) {
+                let tree = ($trees | get $name)
+                mkdir $tree
+                let exported = (do { ^git archive --format=tar ($revisions | get $name) | ^tar -x -C $tree } | complete)
+                if $exported.exit_code != 0 {
+                    error make { msg: $"exporting ($name) failed: ($exported.stderr | str trim)" }
+                }
+            }
+        }
+        { value: (do $body $trees) error: null }
+    } catch {|err|
+        { value: null error: $err.msg }
+    }
+    rm --recursive --force $root
+    if $outcome.error != null { error make { msg: $outcome.error } }
+    $outcome.value
 }
 
 # Prove every NixOS closure at `head` matches `base`, or fail naming the hosts
-# that changed. In a JJ workspace the commits live in its Git backend, so Git
-# is pointed there; a plain Git checkout needs nothing extra.
+# that changed.
 def require-closure-neutral [base: string, head: string] {
-    let backend = (try { ^jj git root | complete } catch { { exit_code: 1 stdout: "" } })
-    let environment = if $backend.exit_code == 0 { { GIT_DIR: ($backend.stdout | str trim) } } else { {} }
-    with-env $environment {
-        let root = (mktemp --directory --tmpdir "jj-ci-impact.XXXXXX")
-        let trees = { base: ($root | path join "base") head: ($root | path join "head") }
-        let outcome = try {
-            git-command "checking out the base" { ^git worktree add --detach $trees.base $base } | ignore
-            git-command "checking out the head" { ^git worktree add --detach $trees.head $head } | ignore
-            let differences = (closure-differences (closure-fingerprint $"path:($trees.base)") (closure-fingerprint $"path:($trees.head)"))
-            { differences: $differences error: null }
-        } catch {|err|
-            { differences: [] error: $err.msg }
-        }
-        for tree in [$trees.base $trees.head] {
-            ^git worktree remove --force $tree | complete | ignore
-        }
-        rm --recursive --force $root
-        if $outcome.error != null { error make { msg: $outcome.error } }
-        if ($outcome.differences | is-not-empty) {
-            error make { msg: $"Declared refactor, but these host closures changed: ($outcome.differences | str join ', '). Make the change closure-neutral or reclassify it as behavior or breaking." }
-        }
+    let differences = (with-commit-trees { base: $base head: $head } {|trees|
+        closure-differences (closure-fingerprint $"path:($trees.base)") (closure-fingerprint $"path:($trees.head)")
+    })
+    if ($differences | is-not-empty) {
+        error make { msg: $"Declared refactor, but these host closures changed: ($differences | str join ', '). Make the change closure-neutral or reclassify it as behavior or breaking." }
     }
     print "Every NixOS closure matches the base."
 }

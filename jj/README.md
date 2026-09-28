@@ -31,7 +31,8 @@ jj-ci publish                 # Push the same topic branch to Tangled.
 jj-ci review snapshot v2
 jj-ci interdiff v1 v2
 # At topic closeout:
-jj-ci land                    # Wait for the spindle, then fast-forward main.
+jj-ci land                    # Build the flake checks locally, then fast-forward main.
+jj-ci land --gate spindle     # Gate on the spindle instead (or --gate github).
 jj-ci finish                  # Verify the landing and remove the workspace.
 # To drop an unpublished or closed topic instead:
 jj-ci abandon
@@ -72,8 +73,10 @@ range-diff command supplies the true interdiff between review rounds.
 an owned workspace. Use `jj-ci rebase` during an active topic; it fetches trunk
 and rebases the whole series in place.
 
-Tangled is the trunk remote: `main@tangled` is the base of every topic, and
-`jj-ci` neither pushes to nor reads from GitHub. `jj-ci publish` rebases,
+Tangled is the trunk remote: `main@tangled` is the base of every topic.
+GitHub (`origin`) is a mirror of `main` that `jj-ci land` fast-forwards after
+each landing, and an optional landing gate; `jj-ci publish` never pushes there.
+`jj-ci publish` rebases,
 validates, and pushes the stable `jj-<slug>-<change-id>` bookmark to Tangled.
 It does not create a follow-up change, so further edits to the series update
 the same branch. Open a Tangled pull request from that branch when the topic
@@ -82,12 +85,12 @@ needs no credentials beyond the SSH key used to push.
 
 `jj-ci land` is the only way a change reaches `main`. It publishes the topic,
 which rebases it onto `main@tangled`; for a declared refactor, it proves that
-every NixOS closure matches that base. It then waits for the repository's
-spindle to pass that exact commit, fast-forwards `main` to it, and tags any
-release. `main` therefore holds only commits that were tested as they are, and
-history stays linear without squashing. The push of `main` carries JJ's lease
-on the fetched `main@tangled`, so if another topic landed while the pipeline
-ran, the push fails and `jj-ci land` starts again from the new trunk. A stacked
+every NixOS closure matches that base. It then passes that exact commit
+through the landing gate, fast-forwards `main` to it, and tags any release.
+`main` therefore holds only commits that were tested as they are, and history
+stays linear without squashing. The push of `main` carries JJ's lease on the
+fetched `main@tangled`, so if another topic landed while the gate ran, the
+push fails and `jj-ci land` starts again from the new trunk. A stacked
 topic lands after its parent. `jj-ci publish --land` publishes and lands in one
 step.
 
@@ -111,9 +114,29 @@ choose `Submit as stacked PRs` for the pushed branches. Later edits retain
 their JJ change IDs, so Tangled can associate rewritten commits with the
 corresponding stack layer and review round.
 
-`jj-ci land` polls the spindle every 30 seconds (default timeout
-`--timeout 2hr`) and stops at the first failed, timed-out, or cancelled
-workflow without landing anything.
+The default gate, `--gate local`, exports the exact commit's tree with
+`git archive` and builds its `checks.x86_64-linux` on this machine with the
+same `nix-fast-build --skip-cached` command the spindle workflow runs,
+streaming the build log. Anything already in the local store or a binary
+cache is skipped, so once `main`'s systems have been built, a topic that
+leaves them unchanged (every refactor, for instance) builds only the cheap
+checks. The first landing after a large input update pays for the full
+system builds. Nix's configured remote builders apply as usual.
+
+`jj-ci land --gate spindle` gates on the repository's spindle instead. It
+polls every 30 seconds (default timeout `--timeout 2hr`) and stops at the
+first failed, timed-out, or cancelled workflow without landing anything.
+
+`jj-ci land --gate github` gates on GitHub Actions. It pushes the topic branch to `origin`, where
+`nix-ci.yml` runs on every `jj-*` push, waits for the `impact classification`
+and `nix flake checks` runs on the exact head, and then fast-forwards `main`
+on Tangled and GitHub exactly as a spindle-gated landing does. Never merge a
+GitHub pull request instead: GitHub's squash and rebase merges rewrite
+commits, so `main` would hold a commit no check ran on, change IDs and
+per-revision trailers would be lost, and `finish` and `prune` could no longer
+tell that the topic landed. The GitHub repository therefore allows only
+merge commits, which its linear-history rule rejects, so its merge button
+cannot land anything; its `main` rule accepts only fast-forward pushes.
 
 `jj-ci finish` checks that the current revision is on `main@tangled`. It then
 deletes the topic bookmark locally and on Tangled, advances local main, and
@@ -314,7 +337,9 @@ user-facing topic on its own so every release maps to exactly one reviewed
 change.
 
 Merge commits are not part of the repository policy: `jj-ci land` only ever
-fast-forwards `main`.
+fast-forwards `main`. Squash only while authoring, with `jj squash` or
+`jj absorb` before publishing, so each published change is already one logical
+unit; never squash at delivery.
 
 ## Desktop
 

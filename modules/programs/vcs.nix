@@ -11,7 +11,7 @@ let
     paths = [ jjCiScript ];
     nativeBuildInputs = [ pkgs.makeWrapper ];
     postBuild = ''
-      wrapProgram "$out/bin/jj-ci" --prefix PATH : ${pkgs.git}/bin \
+      wrapProgram "$out/bin/jj-ci" --prefix PATH : ${pkgs.git}/bin:${pkgs.gh}/bin \
         --set JJ_CI_SOURCE_SHA256 ${builtins.hashFile "sha256" ../../jj/ci.nu}
     '';
   };
