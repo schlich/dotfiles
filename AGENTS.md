@@ -123,6 +123,13 @@
   a Tangled pull request from that branch when the topic needs review.
   Ordinary publication keeps editing the same change ID. Deliver it with
   `jj-ci land` only at topic closeout.
+- For a small change that affects a single host, a user request to publish
+  also authorizes delivery: run `jj-ci publish`, then `jj-ci land` once the
+  pipeline passes, and `jj-ci finish` afterwards. Still stop after publishing
+  and ask before landing when the change affects several hosts, is part of a
+  stack, is `Impact: breaking`, or touches boot, storage, encryption, or
+  security configuration. A failed validation, pipeline, or rebase conflict
+  stops delivery and is reported, never resolved automatically.
 - Keep one coherent topic per Codex task. Use one stable JJ change for a single
   deliverable, but allow a small stack of changes when the task contains
   multiple deliverables that should be split. Do not create unrelated
