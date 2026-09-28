@@ -123,7 +123,9 @@ corresponding stack layer and review round.
 The default gate, `--gate local`, exports the exact commit's tree with
 `git archive` and builds its `checks.x86_64-linux` on this machine with the
 same `nix-fast-build --skip-cached` command the spindle workflow runs,
-streaming the build log. Anything already in the local store or a binary
+streaming the build log. Its evaluation budget (workers times per-worker
+size) is 8 GiB rather than the spindle guest's 6 GiB, since evaluating every
+host can need about 6 GiB in a single evaluator. Anything already in the local store or a binary
 cache is skipped, so once `main`'s systems have been built, a topic that
 leaves them unchanged (every refactor, for instance) builds only the cheap
 checks. The first landing after a large input update pays for the full

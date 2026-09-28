@@ -195,12 +195,15 @@ def github-checks-state [repo: string, commit: string] {
 # Build every flake check at `commit` on this machine with the command the
 # spindle workflow runs, streaming the build log. Outputs already in the local
 # store or a binary cache are skipped, so a topic that leaves the system
-# closures alone builds only the cheap checks.
+# closures alone builds only the cheap checks. nix-fast-build caps evaluation
+# at workers times the per-worker size; this machine allows 8 GiB rather than
+# the spindle guest's 6 GiB, because den-host-evaluation alone needs about
+# 6 GiB once a flake input brings its own nixpkgs.
 def local-checks-state [commit: string] {
     let error = (with-commit-trees { head: $commit } {|trees|
         let flake = $"path:($trees.head)"
         try {
-            ^nix --accept-flake-config run --inputs-from $flake nixpkgs#nix-fast-build -- --no-nom --skip-cached --eval-workers 2 --eval-max-memory-size 3072 --flake $"($flake)#checks.x86_64-linux"
+            ^nix --accept-flake-config run --inputs-from $flake nixpkgs#nix-fast-build -- --no-nom --skip-cached --eval-workers 2 --eval-max-memory-size 4096 --flake $"($flake)#checks.x86_64-linux"
             null
         } catch {|err|
             $err.msg
