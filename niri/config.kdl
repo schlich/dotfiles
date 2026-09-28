@@ -260,9 +260,8 @@ layout {
 // See the binds section below for more spawn examples.
 // spawn-at-startup "noctalia-shell"
 
-// Start (or reattach to) the terminal session assigned to snorkel.
-spawn-sh-at-startup "exec nu \"$HOME/.config/niri/launch-terminal.nu\" snorkel"
-spawn-sh-at-startup "niri msg action focus-workspace snorkel"
+// Build the snorkel session's Ghostty layout and focus it.
+spawn-sh-at-startup "exec nu \"$HOME/.config/niri/session.nu\" restore snorkel"
 
 hotkey-overlay {
     skip-at-startup
@@ -310,32 +309,6 @@ window-rule {
 window-rule {
   match app-id=r#"^niri-config$"#
   open-on-workspace "config"
-}
-
-// Keep each workspace's Zellij client with its named Niri workspace.
-window-rule {
-  match app-id=r#"^niri-terminal$"#
-  open-on-workspace "snorkel"
-}
-window-rule {
-  match app-id=r#"^niri-terminal-snorkel$"#
-  open-on-workspace "snorkel"
-}
-window-rule {
-  match app-id=r#"^niri-terminal-vcs$"#
-  open-on-workspace "vcs"
-}
-window-rule {
-  match app-id=r#"^niri-terminal-overview$"#
-  open-on-workspace "overview"
-}
-window-rule {
-  match app-id=r#"^niri-terminal-config$"#
-  open-on-workspace "config"
-}
-window-rule {
-  match app-id=r#"^niri-terminal-scratch$"#
-  open-on-workspace "scratch"
 }
 
 // The JJ dashboard is always reachable with Mod+2.
@@ -401,7 +374,10 @@ binds {
     Mod+Shift+Slash { show-hotkey-overlay; }
 
     // Applications and session controls.
-    Mod+Return { spawn-sh "exec nu \"$HOME/.config/niri/launch-terminal.nu\""; }
+    // Workspaces are terminal sessions (niri/session.nu): Mod+Return opens a
+    // shell in the session's directory, Mod+Shift+Return rebuilds its layout.
+    Mod+Return hotkey-overlay-title="Terminal in this session" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" open"; }
+    Mod+Shift+Return hotkey-overlay-title="Restore session layout" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" restore"; }
     Mod+Space { spawn-sh "noctalia msg panel-toggle launcher"; }
     Mod+S { spawn-sh "noctalia msg panel-toggle control-center"; }
     Mod+Shift+S { spawn-sh "noctalia msg settings-toggle"; }
@@ -541,7 +517,7 @@ binds {
     // The primary named workspaces have stable direct shortcuts.
     Mod+1 { focus-workspace "snorkel"; }
     Mod+2 hotkey-overlay-title="JJ dashboard" { spawn "jj-dashboard"; }
-    Mod+3 hotkey-overlay-title="Project overview" { spawn-sh "exec nu \"$HOME/.config/niri/launch-terminal.nu\" overview"; }
+    Mod+3 hotkey-overlay-title="Project overview" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" restore overview"; }
     Mod+Shift+3 hotkey-overlay-title="Focus project overview" { focus-workspace "overview"; }
     Mod+0 { focus-workspace "config"; }
     Mod+Shift+1 { move-column-to-workspace "snorkel"; }

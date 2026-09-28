@@ -6,36 +6,29 @@
 }:
 
 let
-  zellij = lib.getExe config.programs.zellij.package;
-
-  # Runs in a floating Zellij pane: Yazi's open action writes the chosen paths
-  # and quits, and they are typed into the Helix pane as an :open command.
-  yaziPick = pkgs.writeNuScriptBin "hx-yazi-pick" ''
-    def main [helix_pane: string, start: path] {
-      let chooser = (mktemp --tmpdir "hx-yazi.XXXXXX")
-      ^${lib.getExe config.programs.yazi.package} $start --chooser-file $chooser
-      let paths = (open --raw $chooser | lines | where {|p| $p | is-not-empty })
-      rm --force $chooser
-      if ($paths | is-not-empty) {
-        let args = ($paths | each {|p| $'"($p)"' } | str join " ")
-        ^${zellij} action write-chars --pane-id $helix_pane $":open ($args)\r"
-      }
-    }
-  '';
-
-  # Bound in Helix; returns at once so Helix stays responsive while picking.
+  # Yazi takes over Helix's terminal (it draws on /dev/tty), writes the chosen
+  # paths to a chooser file, and leaves the alternate screen on exit; `pick`
+  # restores the screen and bracketed paste for Helix, and `paths` hands the
+  # choice to :open.
   yaziPicker = pkgs.writeNuScriptBin "hx-yazi" ''
-    def main [buffer: string = ""] {
-      if ($env.ZELLIJ_PANE_ID? | is-empty) {
-        error make { msg: "hx-yazi opens Yazi in a Zellij floating pane; start Helix inside Zellij" }
-      }
-      let start = if ($buffer | is-not-empty) and ($buffer | path exists) { $buffer | path expand } else { $env.PWD }
-      (
-        ^${zellij} run --floating --close-on-exit --name yazi
-          --width 90% --height 90% -x 5% -y 5%
-          -- ${lib.getExe yaziPick} $env.ZELLIJ_PANE_ID $start
-      ) | ignore
+    def chooser [] {
+      $"($env.XDG_RUNTIME_DIR? | default $env.TMPDIR? | default "/tmp")/hx-yazi-chooser"
     }
+
+    def "main pick" [buffer: string = ""] {
+      let start = if ($buffer | is-not-empty) and ($buffer | path exists) { $buffer | path expand } else { $env.PWD }
+      rm --force (chooser)
+      ^${lib.getExe config.programs.yazi.package} $start --chooser-file (chooser)
+      $"(ansi --escape '?1049h')(ansi --escape '?2004h')" | save --raw --append /dev/tty
+    }
+
+    def "main paths" [] {
+      if ((chooser) | path exists) {
+        open --raw (chooser) | lines | where {|p| $p | is-not-empty } | str join "\n"
+      }
+    }
+
+    def main [] {}
   '';
 in
 {
@@ -76,7 +69,14 @@ in
           tab = "move_parent_node_end";
           S-tab = "move_parent_node_start";
           # Pick files with Yazi, starting at the current buffer.
-          C-y = ":sh ${lib.getExe yaziPicker} '%{buffer_name}'";
+          C-y = [
+            ":insert-output ${lib.getExe yaziPicker} pick '%{buffer_name}'"
+            ":open %sh{${lib.getExe yaziPicker} paths}"
+            ":redraw"
+            # Re-enable mouse capture, which Yazi turns off on exit.
+            ":set mouse false"
+            ":set mouse true"
+          ];
         };
         insert.S-tab = "move_parent_node_end";
         select = {

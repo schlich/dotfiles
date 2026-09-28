@@ -65,8 +65,7 @@ in
       use ${../../mcp/rlm.nu} *
       source ${../../mcp/terminal-events.nu}
       setup-terminal-events
-      source ${../../nushell/zellij.nu}
-      setup-zellij-projects
+      source ${../../nushell/project.nu}
     '';
   };
 
@@ -87,8 +86,6 @@ in
       git_status.disabled = true;
     };
   };
-
-  programs.zellij.enable = true;
 
   programs.zoxide = {
     enable = true;

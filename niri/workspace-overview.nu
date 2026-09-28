@@ -28,7 +28,7 @@ def project_snapshot [] {
     } else {
         $projects | each {|project| print $"  ($project | path basename)  ($project)" }
     }
-    print "\nUse the control pane to open a project, start a Zellij session, or switch Niri workspaces."
+    print "\nRun `project <dir>` in the control window to open a project workspace, or switch Niri workspaces."
 }
 
 loop {
