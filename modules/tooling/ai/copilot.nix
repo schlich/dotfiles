@@ -1,5 +1,4 @@
 {
-  config,
   inputs,
   pkgs,
   ...
@@ -32,29 +31,15 @@ in
     inherit package;
     enableMcpIntegration = true;
     agents.trunk-triage = ../../../copilot/plugins/jj-flake-vigilance/agents/trunk-triage.agent.md;
-    settings.notifications = true;
+    # No `settings`: Copilot rewrites config.json as runtime state and keeps
+    # user preferences such as notifications in its own settings.json.
     skills = import ./shared-skills.nix { inherit inputs; };
   };
 
-  dotfiles.tooling = {
-    ai.copilot = {
-      command = "${package}/bin/copilot";
-      automation = ''
-        ^${package}/bin/copilot --prompt $prompt --allow-all
-      '';
-    };
-    checks.copilot-config =
-      let
-        homeFiles = config.home.file;
-        copilotConfig = homeFiles."/home/schlich/.copilot/config.json".source;
-      in
-      pkgs.runCommand "copilot-config-check"
-        {
-          nativeBuildInputs = [ pkgs.jq ];
-        }
-        ''
-          jq --exit-status '.notifications == true' ${copilotConfig}
-          touch "$out"
-        '';
+  dotfiles.tooling.ai.copilot = {
+    command = "${package}/bin/copilot";
+    automation = ''
+      ^${package}/bin/copilot --prompt $prompt --allow-all
+    '';
   };
 }
