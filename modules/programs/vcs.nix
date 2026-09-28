@@ -78,4 +78,6 @@ in
   ];
 
   xdg.configFile."nushell/autoload/jj-ci.nu".source = ../../jj/completions.nu;
+  # Refuses an interactive `jj new` that would strand a jj-ci topic.
+  xdg.configFile."nushell/autoload/jj-guard.nu".source = ../../jj/guard.nu;
 }

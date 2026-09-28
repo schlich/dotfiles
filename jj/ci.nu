@@ -490,6 +490,45 @@ def require-owned-change [topic_id?: string] {
             error make { msg: "This workspace is on a different change from its active Codex task. Resolve ownership before continuing." }
         }
     }
+    require-topic-checked-out
+}
+
+# Whether the working copy has wandered off the topic that `jj-ci start`
+# recorded, as after a manual `jj new main`: it is an empty change the topic is
+# not an ancestor of, while the topic still holds unlanded work. A topic that
+# was abandoned, squashed away, or landed no longer counts, and a stack or a
+# split keeps the topic below the working copy, so neither trips this.
+def topic-stranded [facts: record] {
+    $facts.recorded and $facts.visible and not $facts.landed and not $facts.ancestor and $facts.working_copy_empty and not $facts.topic_empty
+}
+
+def topic-facts [] {
+    let root = (^jj root | complete)
+    if $root.exit_code != 0 { error make { msg: ($root.stderr | str trim) } }
+    let marker = (owned-workspace-marker ($root.stdout | str trim))
+    let topic = if ($marker | path exists) { open $marker | get change_id? } else { null }
+    if $topic == null {
+        return { recorded: false visible: false landed: false ancestor: false working_copy_empty: false topic_empty: false topic: null }
+    }
+    let has = {|revset| revset-change-ids $"change_id\(($topic)\) & \(($revset)\)" | is-not-empty }
+    {
+        recorded: true
+        visible: (do $has "all()")
+        landed: (do $has "::main@tangled")
+        ancestor: (do $has "::@")
+        working_copy_empty: ((current-change "empty") == "true")
+        topic_empty: (do $has "empty() & description(exact:\"\")")
+        topic: $topic
+    }
+}
+
+def require-topic-checked-out [] {
+    let facts = (topic-facts)
+    if not (topic-stranded $facts) { return }
+    let short = ($facts.topic | str substring 0..7)
+    let title = (revision-field $"change_id\(($facts.topic)\)" "description.first_line()")
+    let stray = (current-change "change_id.short()")
+    error make { msg: $"The working copy \(($stray)) has left this workspace's topic ($short) \"($title)\", as after `jj new main`. Return with `jj edit ($short)` and `jj abandon ($stray)`, or run `jj abandon ($short)` if the topic is meant to be dropped." }
 }
 
 def require-ready-change [] {
@@ -1719,7 +1758,11 @@ def "main start" [
     run-command $"creating workspace ($name)" {
         ^jj --repository (workspace-root "default") workspace add --revision main@tangled --name $name $root
     } | ignore
-    { name: $name created: (date now | format date "%+") } | to json | save (owned-workspace-marker $root)
+    # The working-copy change JJ just created is the topic; recording it lets
+    # later commands notice when the working copy leaves it.
+    let topic = (^jj --repository $root log -r @ --no-graph -T change_id | complete)
+    if $topic.exit_code != 0 { error make { msg: ($topic.stderr | str trim) } }
+    { name: $name created: (date now | format date "%+") change_id: ($topic.stdout | str trim) } | to json | save (owned-workspace-marker $root)
     print $"Created ($root) on main@tangled. `jj-ci finish` or `jj-ci abandon` removes it when the topic ends."
 }
 

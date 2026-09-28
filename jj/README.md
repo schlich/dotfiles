@@ -43,6 +43,15 @@ jj-ci prune                   # List leaked workspaces; --apply removes them.
 jj-ci preview --shell         # Try trunk plus published user-facing topics, unactivated.
 ```
 
+A workspace stays on its topic until `finish` or `abandon` releases it.
+`jj-ci start` records the topic's change ID in `.jj/jj-ci-workspace.json`, and
+every command that checks ownership refuses to run when the working copy is an
+empty change beside that unlanded topic, as after a manual `jj new main`; the
+error names the `jj edit` that returns to it. In an interactive Nushell, the
+`jj` wrapper from `jj/guard.nu` refuses such a `jj new` before it runs when the
+working copy holds unfinished work. Plain `jj new` and `jj new --no-edit` still
+work, and `^jj new …` leaves the topic on purpose.
+
 ## Patch-series review
 
 The intended review model is an evolving patch series:

@@ -10,6 +10,7 @@
 use std/assert
 
 source ../jj/ci.nu
+source ../jj/guard.nu
 
 const CASES = 100
 const BLOCKING = ["conflicted" "waiting on parent"]
@@ -375,3 +376,60 @@ for-all "prune reclaims every released, delivered workspace" {|key|
     let delivered = not $facts.pending
     assert equal ((prune-verdict ($facts | upsert owner $owner)) == null) $delivered
 }
+
+# Topic guard: the working copy must not wander off the topic that
+# `jj-ci start` recorded, and the interactive `jj new` guard only inspects
+# invocations that would move the working copy.
+
+def gen-topic-facts [key: string] {
+    let flag = {|name| (pick $"($key)/($name)" 2) == 0 }
+    {
+        recorded: (do $flag recorded)
+        visible: (do $flag visible)
+        landed: (do $flag landed)
+        ancestor: (do $flag ancestor)
+        working_copy_empty: (do $flag working_copy_empty)
+        topic_empty: (do $flag topic_empty)
+        topic: "t"
+    }
+}
+
+for-all "a topic below the working copy, landed, or gone is never stranded" {|key|
+    let facts = (gen-topic-facts $key)
+    for safe in [{ ancestor: true } { landed: true } { visible: false } { recorded: false } { topic_empty: true }] {
+        assert (not (topic-stranded ($facts | merge $safe))) $"stranded despite ($safe | to nuon)"
+    }
+}
+
+for-all "an empty working copy beside unlanded topic work is stranded" {|key|
+    let facts = (gen-topic-facts $key | merge {
+        recorded: true visible: true landed: false ancestor: false working_copy_empty: true topic_empty: false
+    })
+    assert (topic-stranded $facts) "`jj new main` beside the topic went unnoticed"
+}
+
+const JJ_NEW_CASES = [
+    [args expected];
+    [["log"] null]
+    [["new"] null]
+    [["new" "-m" "later"] null]
+    [["new" "-m" "main"] null]
+    [["new" "main"] ["main"]]
+    [["new" "main@tangled" "other"] ["main@tangled" "other"]]
+    [["new" "-m" "fresh" "main"] ["main"]]
+    [["new" "--message=fresh" "main"] ["main"]]
+    [["new" "-A" "main"] ["main"]]
+    [["new" "--insert-after=main"] ["main"]]
+    [["new" "-o" "main"] ["main"]]
+    [["new" "--no-edit" "main"] null]
+    [["new" "main" "--no-edit"] null]
+    [["new" "-B" "main"] null]
+    [["new" "-R" "/elsewhere" "main"] null]
+    [["new" "--at-op=abc" "main"] null]
+    [["new" "--color" "never" "main"] ["main"]]
+]
+
+for case in $JJ_NEW_CASES {
+    assert equal (jj-new-parents $case.args) $case.expected $"jj ($case.args | str join ' ')"
+}
+print $"ok jj new parents \(($JJ_NEW_CASES | length) cases)"

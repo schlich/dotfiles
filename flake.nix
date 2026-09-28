@@ -441,6 +441,7 @@
               root = ./.;
               fileset = lib.fileset.unions [
                 ./jj/ci.nu
+                ./jj/guard.nu
                 ./tests/jj-ci-properties.nu
               ];
             };
