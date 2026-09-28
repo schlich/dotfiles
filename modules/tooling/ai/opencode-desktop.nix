@@ -11,7 +11,16 @@ let
   # Upstream's postInstall generates shell completions with
   # `opencode completion`, a 1.x subcommand. The v2 CLI treats `completion`
   # as a project directory, fails to chdir into it, and aborts the build.
-  opencode = upstream.opencode.overrideAttrs { postInstall = ""; };
+  # Upstream also builds the CLI for channel "prod", so the service registers
+  # itself in service-prod.json, while the desktop only discovers service.json
+  # and times out waiting for its background service. "latest" is the official
+  # release channel and keeps the same database.
+  opencode = upstream.opencode.overrideAttrs (old: {
+    postInstall = "";
+    env = old.env // {
+      OPENCODE_CHANNEL = "latest";
+    };
+  });
   # Upstream's nix/electron.nix reads Electron's version from the desktop
   # package.json (44.4.3) but still pins Electron 42.10.1's checksums, so the
   # download fails its hash check. Its older nixpkgs also patches ANGLE
