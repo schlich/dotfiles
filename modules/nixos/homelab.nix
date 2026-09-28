@@ -6,6 +6,8 @@
 }:
 
 let
+  adminKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINJRdPuDm1hX5iOgHNl63aUVPIUvkMhAFlBaoxOiSPEA schlich@tangled";
+
   # The live system monitor drawn as the desktop wallpaper. Use
   # `lib.getExe pkgs.htop` to show htop instead.
   wallpaperMonitor = lib.getExe pkgs.bottom;
@@ -23,9 +25,26 @@ in
 
   # Allow the administrator's existing client key to log in over the private
   # LAN or Tailscale address. Only the public key is stored in the repository.
-  users.users.schlich.openssh.authorizedKeys.keys = [
-    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINJRdPuDm1hX5iOgHNl63aUVPIUvkMhAFlBaoxOiSPEA schlich@tangled"
-  ];
+  users.users.schlich.openssh.authorizedKeys.keys = [ adminKey ];
+
+  # sudo also accepts that key from a forwarded SSH agent and falls back to the
+  # password without one. Its root-owned key list is separate from SSH logins,
+  # so a new login key does not also grant sudo.
+  security.pam = {
+    sshAgentAuth = {
+      enable = true;
+      authorizedKeysFiles = [ "/etc/ssh/sudo_authorized_keys" ];
+    };
+    services.sudo.sshAgentAuth = true;
+  };
+  # A copy, not a store symlink: pam_ssh_agent_auth rejects a key file under
+  # a group-writable directory, which /nix/store is.
+  environment.etc."ssh/sudo_authorized_keys" = {
+    mode = "0444";
+    text = ''
+      ${adminKey}
+    '';
+  };
 
   # Keep the machine running when its broken lid is closed or a power key is
   # pressed. A long hardware power-button hold remains an emergency shutdown.
