@@ -13,7 +13,13 @@ let
         if command -v dbus-update-activation-environment >/dev/null 2>&1; then
           dbus-update-activation-environment --all
         fi
-        exec systemctl --user --wait start niri.service
+        systemctl --user --wait start niri.service
+
+        # Mirror upstream niri-session: stop graphical-session.target so its
+        # units, including Noctalia, start again with the next login.
+        systemctl --user start --job-mode=replace-irreversibly niri-shutdown.target
+        systemctl --user unset-environment WAYLAND_DISPLAY DISPLAY XDG_SESSION_ID XDG_SESSION_TYPE XDG_CURRENT_DESKTOP NIRI_SOCKET
+        exit 0
       fi
       sleep 0.1
     done
