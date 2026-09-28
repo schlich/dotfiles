@@ -64,6 +64,10 @@
         "nix"
       ];
     };
+    agent-account = {
+      risk = "high";
+      reviewers = [ "security" ];
+    };
     xr = {
       risk = "high";
       reviewers = [

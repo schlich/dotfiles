@@ -214,6 +214,7 @@
             policy = host.policy;
             users = lib.mapAttrs (_: user: {
               classes = user.classes;
+              environment = user.environment;
               primary = user.primary;
             }) host.users;
           }) denEval.config.den.hosts.x86_64-linux

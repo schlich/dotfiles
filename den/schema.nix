@@ -124,9 +124,15 @@ in
             type = types.enum [
               "personal"
               "service"
+              "agent"
             ];
             default = "personal";
-            description = "The kind of user environment represented by this account.";
+            description = ''
+              The kind of user environment represented by this account. An
+              agent account runs coding agents for the host's personal users:
+              it shares /srv/dev with them through the dev group and never
+              holds their credentials, sudo, or Nix daemon trust.
+            '';
           };
           primary = mkOption {
             type = types.bool;
