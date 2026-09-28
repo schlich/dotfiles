@@ -9,5 +9,9 @@
     port = 6767;
     relay.enable = true;
     inheritUserEnvironment = true;
+    settings.daemon.mcp = {
+      enabled = true;
+      injectIntoAgents = true;
+    };
   };
 }
