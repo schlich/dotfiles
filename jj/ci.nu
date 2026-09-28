@@ -1426,9 +1426,10 @@ def publish-topic [] {
 # Land a published topic. A declared refactor must leave every closure
 # unchanged, and the gate must pass the exact head; main then fast-forwards
 # to that commit, so main only ever holds tested trees. If main moved while the
-# pipeline ran, the push lease rejects the update instead of landing untested
-# history, and `jj-ci land` starts over from the new main. Delivery is never a
-# squash, rebase, or merge on a forge: both remotes receive the same commits.
+# gate ran, landing would not be a fast-forward of what was tested, so this
+# returns false without touching main and the caller starts over from the new
+# main. Delivery is never a squash, rebase, or merge on a forge: both remotes
+# receive the same commits.
 def land-published [published: record, repo: record, timeout: duration, gate: string] {
     if $published.parent != null {
         error make { msg: $"This topic is stacked on ($published.parent). Land that topic first, then land this one." }
@@ -1439,11 +1440,40 @@ def land-published [published: record, repo: record, timeout: duration, gate: st
     if $gate == "github" { push-bookmark $GITHUB_REMOTE $published.branch }
     print $"Waiting for ($checker.name) to pass ($published.head | str substring 0..11)."
     wait-for-pipeline $checker $published.head $timeout
+    # Other workspaces share this repository and may have landed meanwhile.
+    fetch-trunk
+    if not (contains-main $published.head) { return false }
     run-command "advancing main" { ^jj bookmark set main -r $published.head } | ignore
-    run-command $"landing on ($TRUNK_REMOTE)" { ^jj git push --remote $TRUNK_REMOTE --bookmark main } | ignore
+    let pushed = (do { ^jj git push --remote $TRUNK_REMOTE --bookmark main } | complete)
+    if $pushed.exit_code != 0 {
+        # The lease lost a race with a landing after the fetch above. Put the
+        # local bookmark back on the trunk so the retry starts from it.
+        fetch-trunk
+        if not (contains-main $published.head) {
+            run-command "resetting main" { ^jj bookmark set main -r main@tangled --allow-backwards } | ignore
+            return false
+        }
+        error make { msg: $"landing on ($TRUNK_REMOTE) failed with exit code ($pushed.exit_code): ($pushed.stderr | str trim)" }
+    }
     mirror-main
     cut-releases $"($base)..($published.head)" false
     print $"Landed ($published.branch) on main. `jj-ci finish` releases the workspace."
+    true
+}
+
+# Land a published topic, starting over when main moves under it. Each retry
+# republishes (rebasing onto the new main and validating) and waits for the
+# gate to pass the new head; a rebase conflict or a failing gate still stops.
+def land-with-retries [published: record, repo: record, timeout: duration, gate: string, attempts: int] {
+    if $attempts < 1 { error make { msg: "--attempts must be at least 1." } }
+    mut current = $published
+    for attempt in 1..$attempts {
+        if (land-published $current $repo $timeout $gate) { return }
+        if $attempt == $attempts { break }
+        print $"main moved while the gate ran; rebasing onto the new main and trying again \(attempt ($attempt + 1) of ($attempts))."
+        $current = (publish-topic)
+    }
+    error make { msg: $"main moved during each of ($attempts) landing attempts. Nothing landed; run `jj-ci land` again once main is quiet." }
 }
 
 # Fast-forward GitHub's main to the trunk's. Tangled is authoritative, so a
@@ -1462,6 +1492,7 @@ def "main publish" [
     --land # Land the topic once the gate passes it
     --gate: string = "local" # What must pass the head before --land: local, spindle, or github
     --timeout: duration = 2hr # How long --land waits for the pipeline
+    --attempts: int = 5 # How many times --land starts over when main moves
 ] {
     let published = (publish-topic)
     let repo = (tangled-repo)
@@ -1477,7 +1508,7 @@ def "main publish" [
     }
     print $"Impact: ($published.impact)"
     if $land {
-        land-published $published $repo $timeout $gate
+        land-with-retries $published $repo $timeout $gate $attempts
     } else {
         print "Published this topic in place. Further edits update the same JJ series and branch; `jj-ci land` delivers it."
     }
@@ -1486,9 +1517,10 @@ def "main publish" [
 def "main land" [
     --gate: string = "local" # What must pass the head: local, spindle, or github
     --timeout: duration = 2hr # How long to wait for the pipeline
+    --attempts: int = 5 # How many times to start over when main moves
 ] {
     let published = (publish-topic)
-    land-published $published (tangled-repo) $timeout $gate
+    land-with-retries $published (tangled-repo) $timeout $gate $attempts
 }
 
 # Export each revision in `revisions` (a record of name to commit) into its own

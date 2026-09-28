@@ -89,12 +89,14 @@ export extern "jj-ci publish" [
     --land # Land the topic once the gate passes it
     --gate: string@"nu-complete jj-ci gates" # What must pass the head before --land (default local)
     --timeout: duration # How long --land waits for the pipeline (default 2hr)
+    --attempts: int # How many times --land starts over when main moves (default 5)
 ]
 
 # Publish the current topic, wait for its gate to pass it, and fast-forward main
 export extern "jj-ci land" [
     --gate: string@"nu-complete jj-ci gates" # What must pass the head (default local)
     --timeout: duration # How long to wait for the pipeline (default 2hr)
+    --attempts: int # How many times to start over when main moves (default 5)
 ]
 
 # Check Impact trailers on the commits between two revisions

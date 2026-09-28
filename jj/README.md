@@ -90,9 +90,13 @@ which rebases it onto `main@tangled`; for a declared refactor, it proves that
 every NixOS closure matches that base. It then passes that exact commit
 through the landing gate, fast-forwards `main` to it, and tags any release.
 `main` therefore holds only commits that were tested as they are, and history
-stays linear without squashing. The push of `main` carries JJ's lease on the
-fetched `main@tangled`, so if another topic landed while the gate ran, the
-push fails and `jj-ci land` starts again from the new trunk. A stacked
+stays linear without squashing. Other workspaces land into the same trunk, so
+once the gate passes, `jj-ci land` fetches `main@tangled` again, and the push
+of `main` carries JJ's lease on it. If another topic landed while the gate
+ran, `jj-ci land` leaves `main` alone and starts again from the new trunk:
+it rebases and republishes the topic and waits for the gate to pass the new
+head, up to `--attempts` times (default 5). A rebase conflict or a failing
+gate still stops it. A stacked
 topic lands after its parent. `jj-ci publish --land` publishes and lands in one
 step.
 
