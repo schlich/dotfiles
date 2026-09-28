@@ -37,6 +37,14 @@ def checked [repository: string, ...args: string] {
     $result.stdout | str trim
 }
 
+# This hook runs in every Codex project, so trunk may live on any remote.
+def trunk-revset [root: string] {
+    let candidates = ["main@tangled" "main@origin" "trunk()"]
+    $candidates | where {|revset|
+        (^jj --repository $root log -r $revset --no-graph -T commit_id | complete).exit_code == 0
+    } | first
+}
+
 def git-backend-root [cwd: string] {
     let result = (^git -C $cwd rev-parse --path-format=absolute --git-common-dir | complete)
     if $result.exit_code != 0 { return null }
@@ -102,7 +110,7 @@ def prepare [cwd: string, session_id: string, path: path] {
     }
     try {
         # Independent topics start from trunk, preserving any earlier local work.
-        checked $root -- new main@tangled -m "Codex session" | ignore
+        checked $root -- new (trunk-revset $root) -m "Codex session" | ignore
         let change_id = (checked $root -- log -r @ --no-graph -T change_id)
         let state = { cwd: $root, session_id: $session_id, change_id: $change_id, described: false, finished: false }
         mkdir ($path | path dirname)
