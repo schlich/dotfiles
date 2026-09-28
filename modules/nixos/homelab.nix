@@ -1,5 +1,22 @@
-{ pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
+let
+  # The live system monitor drawn as the desktop wallpaper. Use
+  # `lib.getExe pkgs.htop` to show htop instead.
+  wallpaperMonitor = lib.getExe pkgs.bottom;
+
+  # Niri's own default config, minus its waybar autostart: homelab has no
+  # waybar, and the desktop session instead starts the monitor wallpaper.
+  niriConfig = pkgs.runCommand "niri-homelab-config.kdl" { } ''
+    substitute ${config.programs.niri.package.src}/resources/default-config.kdl $out \
+      --replace-fail 'spawn-at-startup "waybar"' '// The monitor wallpaper starts as a systemd user service.'
+  '';
+in
 {
   networking.hostName = "homelab";
   networking.networkmanager.enable = true;
@@ -35,4 +52,21 @@
     alacritty
     fuzzel
   ];
+
+  # homelab has no Home Manager, so Niri reads this system-wide config.
+  environment.etc."niri/config.kdl".source = niriConfig;
+
+  # Render a live system monitor on the background layer in place of a static
+  # wallpaper. Windows tile above it, and it takes no keyboard focus.
+  systemd.user.services.desktop-monitor = {
+    description = "Live system monitor wallpaper";
+    wantedBy = [ "graphical-session.target" ];
+    partOf = [ "graphical-session.target" ];
+    after = [ "graphical-session.target" ];
+    serviceConfig = {
+      ExecStart = "${pkgs.kitty}/bin/kitten panel --edge=background ${wallpaperMonitor}";
+      Restart = "on-failure";
+      RestartSec = 2;
+    };
+  };
 }
