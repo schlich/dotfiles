@@ -9,7 +9,7 @@ layout {
             }
             pane name="control"
         }
-        pane size=1 borderless=true {
+        pane size=2 borderless=true {
             plugin location="status-bar"
         }
     }

@@ -17,6 +17,12 @@ keybinds {
 
 default_mode "locked"
 
+// Zellij 0.45 defaults to title-only frames and shows a stack as a small list
+// box; keep the classic look: a full frame around each pane, and a stack's
+// collapsed panes as one-line title bars.
+pane_frame_style "full"
+stacked_pane_list false
+
 // Load the repository-managed work layout for new sessions, including the
 // persistent "main" session Niri attaches to at startup.
 default_layout "default"
