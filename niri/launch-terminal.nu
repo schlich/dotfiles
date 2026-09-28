@@ -94,7 +94,7 @@ def main [workspace?: string] {
     ^terminal
       --class $app_id
       --directory $route.directory
-      zellij attach --create $route.session options
+      zellij attach --create --force-run-commands $route.session options
         --default-layout $route.layout
         --default-cwd $route.directory
   }

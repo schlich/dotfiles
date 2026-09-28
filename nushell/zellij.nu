@@ -19,7 +19,7 @@ export def zellij-project-session-name [dir: path] {
 export def zellij-project [dir?: path] {
     let root = ($dir | default $env.PWD | path expand)
     cd $root
-    ^zellij attach --create (zellij-project-session-name $root)
+    ^zellij attach --create --force-run-commands (zellij-project-session-name $root)
 }
 
 export def --env setup-zellij-projects [] {
