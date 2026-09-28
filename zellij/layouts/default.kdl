@@ -10,17 +10,18 @@ layout {
         }
     }
 
-    // Main work area: a wide primary shell beside a column with the PR
-    // dashboard above the JJ revision UI.
+    // Main work area: a wide primary shell beside the JJ revision UI.
     tab name="work" focus=true {
         pane split_direction="vertical" {
             pane name="main" size="60%" focus=true
-            pane split_direction="horizontal" {
-                pane name="gh dash" command="gh" {
-                    args "dash"
-                }
-                pane name="jjui" command="jjui"
-            }
+            pane name="jjui" command="jjui"
+        }
+    }
+
+    // Pull requests, issues, and checks.
+    tab name="gh dash" {
+        pane name="gh dash" command="gh" {
+            args "dash"
         }
     }
 
