@@ -1,6 +1,6 @@
 # Property-based tests for context-status: its reading of ownership records
-# and the audit's findings, which check the ownership invariants in
-# jj/JjCi.tla against real workspaces. Run with:
+# and the audit's findings, which check the ownership rules in
+# jj/README.md against real workspaces. Run with:
 #
 #   nu --no-config-file -c "source tests/context-status-properties.nu"
 #

@@ -1,5 +1,5 @@
 # Property-based tests for the Codex session hook's claim decisions, derived
-# from the ownership invariants in jj/JjCi.tla. Run with:
+# from the ownership rules in jj/README.md. Run with:
 #
 #   nu --no-config-file -c "source tests/codex-session-properties.nu"
 #

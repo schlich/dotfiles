@@ -4,11 +4,11 @@
 resolution, validation, publication, the landing gate, fast-forward landing,
 and workspace finish. `JjCi.cfg` supplies a small TLC state space for checking
 its safety invariants. Validation records the exact topic head it checked, and
-publication must capture that same head. Landing moves `main` only to the exact
-head a gate passed, and only from the trunk that head was based on, so `main`
-never holds a commit no gate ran on. The model intentionally abstracts command failures
-and detailed multi-revision stack topology; the operational rules below remain
-authoritative.
+publication must capture that same head from the current trunk. Landing moves
+`main` only to the exact head a gate passed, and only from the trunk that head
+was based on, so `main` never holds a commit no gate ran on. The model
+intentionally abstracts command failures and detailed multi-revision stack
+topology; the operational rules below remain authoritative.
 
 Codex shell commands and OpenCode server shell execution receive a no-op
 `JJ_EDITOR` and an unpaginated `PAGER`. This keeps agent-run JJ commands from
@@ -272,7 +272,7 @@ the pipeline verdict and pull request for the published head.
   workspace's state.
 - `context-status json` prints the collected record.
 - `context-status audit` checks every workspace of the repository against the
-  ownership invariants in `JjCi.tla` and reports each violation with the
+  ownership rules below and reports each violation with the
   command that repairs it: a working copy that left its recorded topic (the
   state the topic guard refuses, which the prompt shows as off topic),
   orphaned or leftover claims, a task on the shared
@@ -460,10 +460,8 @@ request alone, and also clears a claim directory that no active task holds.
 An ended record from before `state` is rewritten as `released`.
 Never edit `.jj/codex-session.json` by hand.
 
-`JjCi.tla` models these rules, and `JjCiLegacy.cfg` restores the old behavior
-so the model check can show each ownership invariant catches its failure.
-`tests/ci-properties.nu` and `tests/codex-session-properties.nu` check the
-same invariants against the helpers that decide them.
+`tests/codex-session-properties.nu` checks these rules against the helpers
+that decide them.
 
 ## Git worktrees and the devshell
 
