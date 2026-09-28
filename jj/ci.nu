@@ -326,16 +326,16 @@ def remember-publication-bookmark [bookmark: string] {
     save-publication-state { topics: $topics }
 }
 
-def forget-publication-bookmark [] {
-    let topic_id = (current-topic-id)
+def forget-publication-bookmark [topic_id?: string] {
+    let topic_id = ($topic_id | default (current-topic-id))
     let topics = (publication-topics)
     if $topic_id in $topics {
         save-publication-state { topics: ($topics | reject $topic_id) }
     }
 }
 
-def publication-bookmark [] {
-    let topic_id = (current-topic-id)
+def publication-bookmark [topic_id?: string] {
+    let topic_id = ($topic_id | default (current-topic-id))
     let topics = (publication-topics)
     let remembered = if $topic_id in $topics {
         $topics | get $topic_id
@@ -483,10 +483,10 @@ def session-owner [] {
     if ($path | path exists) { open $path } else { null }
 }
 
-def require-owned-change [] {
+def require-owned-change [topic_id?: string] {
     let owner = (session-owner)
     if $owner != null and not ($owner.finished? | default false) {
-        if $owner.change_id != (current-topic-id) {
+        if $owner.change_id != ($topic_id | default (current-topic-id)) {
             error make { msg: "This workspace is on a different change from its active Codex task. Resolve ownership before continuing." }
         }
     }
@@ -1723,12 +1723,30 @@ def "main start" [
     print $"Created ($root) on main@tangled. `jj-ci finish` or `jj-ci abandon` removes it when the topic ends."
 }
 
+# The topic that `finish` closes. Landing fast-forwards main onto the topic
+# head, which makes the working-copy commit immutable, so jj parks the
+# workspace on a new empty child. That child has no publication of its own;
+# the landed parent it sits on is the topic.
+def finish-topic-id [] {
+    let current = (current-topic-id)
+    if (current-change "empty") != "true" or (current-change "description") != "" {
+        return $current
+    }
+    let parent = (^jj log -r "@- ~ root()" --no-graph -T 'change_id ++ "\n"' | complete)
+    let parents = ($parent.stdout | lines | where {|line| $line | is-not-empty })
+    if $parent.exit_code == 0 and ($parents | length) == 1 and ($parents | first) in (publication-topics) {
+        $parents | first
+    } else {
+        $current
+    }
+}
+
 def --env "main finish" [
     --keep # Keep a workspace that `jj-ci start` created
 ] {
-    require-owned-change
-    let change = (current-change "change_id")
-    let branch = (publication-bookmark)
+    let change = (finish-topic-id)
+    require-owned-change $change
+    let branch = (publication-bookmark $change)
     let empty = (current-change "empty") == "true"
     checkpoint "finish"
     fetch-trunk
@@ -1743,7 +1761,7 @@ def --env "main finish" [
         error make { msg: "The current revision is not on main. Land it with `jj-ci land`, and leave the task open until it has." }
     }
     delete-topic-bookmark $branch
-    forget-publication-bookmark
+    forget-publication-bookmark $change
     run-command "advancing main" { ^jj bookmark move main --to main@tangled } | ignore
     let summary = if $published { $"Finished ($branch)." } else { "Finished an unpublished topic." }
     release-workspace $summary $change $keep
