@@ -1,10 +1,12 @@
 # JJ project workflow
 
 `JjCi.tla` is a bounded TLA+ state-machine model of topic rebase, conflict
-resolution, validation, publication, auto-merge, delivery, and workspace
-finish. `JjCi.cfg` supplies a small TLC state space for checking its safety
-invariants. Validation records the exact topic head it checked, and publication
-must capture that same head. The model intentionally abstracts command failures
+resolution, validation, publication, the landing gate, fast-forward landing,
+and workspace finish. `JjCi.cfg` supplies a small TLC state space for checking
+its safety invariants. Validation records the exact topic head it checked, and
+publication must capture that same head. Landing moves `main` only to the exact
+head a gate passed, and only from the trunk that head was based on, so `main`
+never holds a commit no gate ran on. The model intentionally abstracts command failures
 and detailed multi-revision stack topology; the operational rules below remain
 authoritative.
 
@@ -197,8 +199,8 @@ The integration points are deliberately automatic:
 - `jj-ci rebase` fetches `tangled` and rebases the complete topic stack onto
   `main@tangled`.
 - `jj-ci publish` rebases before validation and pushing.
-- `jj-ci land` performs the same final rebase, so the commit the spindle tests
-  is the commit `main` receives.
+- `jj-ci land` performs the same final rebase, so the commit the landing gate
+  tests is the commit `main` receives.
 
 The spindle runs `.tangled/workflows` on every push of a `jj-*` branch.
 Landing requires a fresh, passing run on the rebased head, so two topics that
@@ -297,7 +299,7 @@ by the checkout it was built from.
 
 The permanent default is one branch per ordinary JJ topic. The publication
 bookmark is a stable `jj-<slug>-<change-id>` branch, and `jj-ci land`
-fast-forwards `main` to it after the spindle passes it. `main` stays linear
+fast-forwards `main` to it after the landing gate passes it. `main` stays linear
 without squashing, and every revision keeps its change ID and trailer. Branches
 from older sessions may retain their descriptive names, but new topics must use
 the `jj-` prefix: the spindle runs only on `jj-*` pushes, and `jj-ci` treats

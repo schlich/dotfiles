@@ -6,35 +6,41 @@ EXTENDS Naturals, FiniteSets, TLC
 (*                                                                       *)
 (* The model abstracts command execution and remote failures. It tracks   *)
 (* only the safety-relevant facts: workspace ownership, topic readiness,  *)
-(* exact published head, conflict state, stacked-PR base, and verified    *)
-(* delivery.                                                              *)
+(* exact published head, conflict state, the head a landing gate passed,  *)
+(* the stack parent, and the trunk tip.                                   *)
 (* Validation is tagged with the head it checked and the head captured at *)
 (* publication, so later edits cannot blur that relationship.              *)
+(*                                                                       *)
+(* Landing is a fast-forward of main to the exact head a gate (the flake   *)
+(* checks built locally by default, the spindle, or GitHub Actions)       *)
+(* passed, pushed with a lease on the trunk the topic is based on. No     *)
+(* forge merges: a squash, rebase, or merge commit would put a commit on  *)
+(* main that no gate ran on.                                              *)
 (***************************************************************************)
 
 CONSTANTS Heads, MainHeads
-ASSUME Heads # {} /\ MainHeads # {}
+ASSUME Heads # {} /\ MainHeads # {} /\ Heads \cap MainHeads = {}
 
 VARIABLES owner, active, head, base, conflict, validated, validatedHead,
           published, publishedHead, publishedValidated, publishedValidationHead,
-          publishedConflictFree, autoMergeHead, mergedHead,
-          delivered, workspaceBase, prBase, deferred
+          publishedConflictFree, passedHead, parentLanded, mainHead,
+          landedOnto, delivered, workspaceBase
 
 vars == <<owner, active, head, base, conflict, validated, validatedHead,
           published, publishedHead, publishedValidated, publishedValidationHead,
-          publishedConflictFree, autoMergeHead, mergedHead,
-          delivered, workspaceBase, prBase, deferred>>
+          publishedConflictFree, passedHead, parentLanded, mainHead,
+          landedOnto, delivered, workspaceBase>>
 
-(* prBase is "parent" while the topic is stacked on an open PR and "main"  *)
-(* once that parent has landed and GitHub retargets it. deferred records  *)
-(* the jj-ci:auto-merge label on a stacked PR.                            *)
-stackVars == <<prBase, deferred>>
+(* Facts owned by the outside world: the gate's verdicts, the stack        *)
+(* parent, and other topics landing on trunk.                             *)
+worldVars == <<passedHead, parentLanded, mainHead>>
 
 Init ==
     /\ owner = TRUE
     /\ active = TRUE
     /\ head \in Heads
     /\ base \in MainHeads
+    /\ mainHead = base
     /\ conflict = FALSE
     /\ validated = FALSE
     /\ validatedHead = "none"
@@ -43,12 +49,12 @@ Init ==
     /\ publishedValidated = FALSE
     /\ publishedValidationHead = "none"
     /\ publishedConflictFree = FALSE
-    /\ autoMergeHead = "none"
-    /\ mergedHead = "none"
+    /\ passedHead = "none"
+    /\ landedOnto = "none"
+    \* FALSE for a topic stacked on an unlanded parent.
+    /\ parentLanded \in BOOLEAN
     /\ delivered = FALSE
     /\ workspaceBase = "topic"
-    /\ prBase \in {"main", "parent"}
-    /\ deferred = FALSE
 
 Edit ==
     /\ owner /\ active /\ ~delivered
@@ -58,35 +64,35 @@ Edit ==
     /\ validatedHead' = "none"
     /\ UNCHANGED <<owner, active, base, conflict, published,
                    publishedHead, publishedValidated, publishedValidationHead,
-                   publishedConflictFree, autoMergeHead, mergedHead,
-                   delivered, workspaceBase>>
-    /\ UNCHANGED stackVars
+                   publishedConflictFree, landedOnto, delivered, workspaceBase>>
+    /\ UNCHANGED worldVars
 
-(* A rebase rewrites every commit in the topic, so the head changes too. *)
+(* A rebase onto the current trunk rewrites every commit in the topic, so  *)
+(* the head changes too.                                                  *)
 RebaseClean ==
     /\ owner /\ active /\ ~conflict /\ ~delivered
-    /\ \E b \in MainHeads, h \in Heads :
-         /\ base' = b
+    /\ base' = mainHead
+    /\ \E h \in Heads :
          /\ head' = h
     /\ validated' = FALSE
     /\ validatedHead' = "none"
     /\ UNCHANGED <<owner, active, conflict, published,
                    publishedHead, publishedValidated, publishedValidationHead,
-                   publishedConflictFree, autoMergeHead, mergedHead,
-                   delivered, workspaceBase>>
-    /\ UNCHANGED stackVars
+                   publishedConflictFree, landedOnto, delivered, workspaceBase>>
+    /\ UNCHANGED worldVars
 
 RebaseConflicted ==
     /\ owner /\ active /\ ~conflict /\ ~delivered
+    /\ base' = mainHead
     /\ \E h \in Heads :
          /\ head' = h
     /\ conflict' = TRUE
     /\ validated' = FALSE
     /\ validatedHead' = "none"
-    /\ UNCHANGED <<owner, active, base, published, publishedHead,
+    /\ UNCHANGED <<owner, active, published, publishedHead,
                    publishedValidated, publishedValidationHead, publishedConflictFree,
-                   autoMergeHead, mergedHead, delivered, workspaceBase>>
-    /\ UNCHANGED stackVars
+                   landedOnto, delivered, workspaceBase>>
+    /\ UNCHANGED worldVars
 
 Resolve ==
     /\ owner /\ active /\ conflict /\ ~delivered
@@ -95,8 +101,8 @@ Resolve ==
     /\ validatedHead' = "none"
     /\ UNCHANGED <<owner, active, head, base, published, publishedHead,
                    publishedValidated, publishedValidationHead, publishedConflictFree,
-                   autoMergeHead, mergedHead, delivered, workspaceBase>>
-    /\ UNCHANGED stackVars
+                   landedOnto, delivered, workspaceBase>>
+    /\ UNCHANGED worldVars
 
 Validate ==
     /\ owner /\ active /\ ~conflict /\ ~delivered
@@ -104,11 +110,9 @@ Validate ==
     /\ validatedHead' = head
     /\ UNCHANGED <<owner, active, head, base, conflict, published,
                    publishedHead, publishedValidated, publishedValidationHead,
-                   publishedConflictFree, autoMergeHead, mergedHead,
-                   delivered, workspaceBase>>
-    /\ UNCHANGED stackVars
+                   publishedConflictFree, landedOnto, delivered, workspaceBase>>
+    /\ UNCHANGED worldVars
 
-(* Pushing a new head disarms auto-merge, which was pinned to the old one. *)
 Publish ==
     /\ owner /\ active /\ validated /\ validatedHead = head
     /\ ~conflict /\ ~delivered
@@ -117,70 +121,55 @@ Publish ==
     /\ publishedValidated' = validated
     /\ publishedValidationHead' = validatedHead
     /\ publishedConflictFree' = ~conflict
-    /\ autoMergeHead' = "none"
     /\ UNCHANGED <<owner, active, head, base, conflict, validated, validatedHead,
-                   mergedHead, delivered, workspaceBase>>
-    /\ UNCHANGED stackVars
+                   landedOnto, delivered, workspaceBase>>
+    /\ UNCHANGED worldVars
 
-(* A stacked PR would merge into its parent's branch, so the request is    *)
-(* recorded as a label instead of arming GitHub auto-merge. Arming a PR   *)
-(* that targets main removes any leftover label.                          *)
-RequestAutoMerge ==
-    /\ owner /\ active /\ published /\ ~conflict /\ ~delivered
-    /\ publishedHead = head
-    /\ IF prBase = "main"
-         THEN /\ autoMergeHead' = head
-              /\ deferred' = FALSE
-         ELSE /\ deferred' = TRUE
-              /\ UNCHANGED autoMergeHead
+(* The gate checks an exact published head (CI on every push, the local   *)
+(* gate when jj-ci land runs) and passes it by commit, so a verdict never *)
+(* carries over to a rewritten head. A failing run simply never passes.   *)
+GatePasses ==
+    /\ published
+    /\ passedHead' = publishedHead
     /\ UNCHANGED <<owner, active, head, base, conflict, validated, validatedHead,
                    published, publishedHead, publishedValidated, publishedValidationHead,
-                   publishedConflictFree, mergedHead, delivered,
-                   workspaceBase, prBase>>
+                   publishedConflictFree, parentLanded, mainHead,
+                   landedOnto, delivered, workspaceBase>>
 
-(* The parent PR lands and GitHub retargets this PR to main. *)
+(* The stack parent lands; the child is then based on trunk. *)
 ParentLands ==
-    /\ prBase = "parent"
-    /\ prBase' = "main"
+    /\ ~parentLanded
+    /\ parentLanded' = TRUE
     /\ UNCHANGED <<owner, active, head, base, conflict, validated, validatedHead,
                    published, publishedHead, publishedValidated, publishedValidationHead,
-                   publishedConflictFree, autoMergeHead, mergedHead,
-                   delivered, workspaceBase, deferred>>
+                   publishedConflictFree, passedHead, mainHead,
+                   landedOnto, delivered, workspaceBase>>
 
-(* jj-ci refresh arms a deferred request once the PR targets main. *)
-ArmDeferred ==
-    /\ prBase = "main" /\ deferred
-    /\ published /\ ~conflict
+(* Another topic lands first and moves trunk. *)
+TrunkAdvances ==
+    /\ ~delivered
+    /\ \E m \in MainHeads \ {mainHead} :
+         /\ mainHead' = m
+    /\ UNCHANGED <<owner, active, head, base, conflict, validated, validatedHead,
+                   published, publishedHead, publishedValidated, publishedValidationHead,
+                   publishedConflictFree, passedHead, parentLanded,
+                   landedOnto, delivered, workspaceBase>>
+
+(* jj-ci land fast-forwards main to the exact head the gate passed. The    *)
+(* push carries a lease on the trunk the topic is based on, so it fails if *)
+(* trunk moved, and the topic must rebase, republish, and pass again.      *)
+Land ==
+    /\ owner /\ active /\ published /\ ~conflict /\ ~delivered
+    /\ parentLanded
     /\ publishedHead = head
-    /\ autoMergeHead' = head
-    /\ deferred' = FALSE
-    /\ UNCHANGED <<owner, active, head, base, conflict, validated, validatedHead,
-                   published, publishedHead, publishedValidated, publishedValidationHead,
-                   publishedConflictFree, mergedHead, delivered,
-                   workspaceBase, prBase>>
-
-(* GitHub merges the published head, by auto-merge or manually. *)
-Merge ==
-    /\ published /\ ~conflict
-    /\ prBase = "main"
-    /\ publishedHead = head
-    /\ (autoMergeHead = head \/ autoMergeHead = "none")
-    /\ mergedHead' = head
-    /\ UNCHANGED <<owner, active, head, base, conflict, validated, validatedHead,
-                   published, publishedHead, publishedValidated, publishedValidationHead,
-                   publishedConflictFree, autoMergeHead, delivered,
-                   workspaceBase>>
-    /\ UNCHANGED stackVars
-
-DeliverToMain ==
-    /\ mergedHead = head
-    /\ mergedHead = publishedHead
+    /\ passedHead = head
+    /\ base = mainHead
+    /\ landedOnto' = mainHead
+    /\ mainHead' = head
     /\ delivered' = TRUE
     /\ UNCHANGED <<owner, active, head, base, conflict, validated, validatedHead,
                    published, publishedHead, publishedValidated, publishedValidationHead,
-                   publishedConflictFree, autoMergeHead, mergedHead,
-                   workspaceBase>>
-    /\ UNCHANGED stackVars
+                   publishedConflictFree, passedHead, parentLanded, workspaceBase>>
 
 (* Releasing a topic leaves its workspace on main (--keep, or one that    *)
 (* jj-ci start did not create) or drops it, so no workspace outlives its  *)
@@ -193,8 +182,8 @@ Finish ==
     /\ workspaceBase' \in {"main", "dropped"}
     /\ UNCHANGED <<head, base, conflict, validated, validatedHead, published,
                    publishedHead, publishedValidated, publishedValidationHead,
-                   publishedConflictFree, autoMergeHead, mergedHead, delivered>>
-    /\ UNCHANGED stackVars
+                   publishedConflictFree, landedOnto, delivered>>
+    /\ UNCHANGED worldVars
 
 (* Abandoning discards unpublished work, conflicts included. The model    *)
 (* omits PR closure, so a published topic cannot be abandoned.            *)
@@ -206,12 +195,12 @@ Abandon ==
     /\ workspaceBase' \in {"main", "dropped"}
     /\ UNCHANGED <<head, base, validated, validatedHead, published,
                    publishedHead, publishedValidated, publishedValidationHead,
-                   publishedConflictFree, autoMergeHead, mergedHead, delivered>>
-    /\ UNCHANGED stackVars
+                   publishedConflictFree, landedOnto, delivered>>
+    /\ UNCHANGED worldVars
 
 Next == Edit \/ RebaseClean \/ RebaseConflicted \/ Resolve \/ Validate
-        \/ Publish \/ RequestAutoMerge \/ ParentLands \/ ArmDeferred
-        \/ Merge \/ DeliverToMain \/ Finish \/ Abandon
+        \/ Publish \/ GatePasses \/ ParentLands \/ TrunkAdvances
+        \/ Land \/ Finish \/ Abandon
 
 Spec == Init /\ [][Next]_vars
 
@@ -228,12 +217,12 @@ TypeOK ==
     /\ publishedValidated \in BOOLEAN
     /\ publishedValidationHead \in Heads \cup {"none"}
     /\ publishedConflictFree \in BOOLEAN
-    /\ autoMergeHead \in Heads \cup {"none"}
-    /\ mergedHead \in Heads \cup {"none"}
+    /\ passedHead \in Heads \cup {"none"}
+    /\ parentLanded \in BOOLEAN
+    /\ mainHead \in MainHeads \cup Heads
+    /\ landedOnto \in MainHeads \cup {"none"}
     /\ delivered \in BOOLEAN
     /\ workspaceBase \in {"topic", "main", "dropped"}
-    /\ prBase \in {"main", "parent"}
-    /\ deferred \in BOOLEAN
 
 NoPublishWhileUnsafe ==
     published => publishedHead \in Heads /\ publishedValidated /\ publishedConflictFree
@@ -243,14 +232,18 @@ FinishLeavesMain == ~active => workspaceBase \in {"main", "dropped"}
 (* A workspace is freed only by its released owner, with nothing in flight. *)
 NoDropWhilePending ==
     workspaceBase = "dropped" => ~owner /\ (delivered \/ ~published)
-AutoMergePinsPublishedHead == autoMergeHead # "none" => autoMergeHead = publishedHead
-DeliveryIsPublishedHead == delivered => mergedHead = publishedHead
 
-(* GitHub auto-merge on a stacked PR would merge into the parent branch. *)
-AutoMergeOnlyTargetsMain == autoMergeHead # "none" => prBase = "main"
-DeferredOnlyWhileUnarmed == deferred => autoMergeHead = "none"
-MergeOnlyIntoMain == mergedHead # "none" => prBase = "main"
-(* An edit or rebase after merging keeps the topic undelivered. *)
-DeliveredHeadIsLocal == delivered => mergedHead = head
+(* Not rocket science: main only ever holds a topic commit a gate passed.  *)
+MainOnlyHoldsPassedHeads == mainHead \in Heads => mainHead = passedHead
+(* Delivery is the published commit itself, not a forge-made copy of it,  *)
+(* so change IDs, trailers, and ancestry checks survive landing.           *)
+DeliveryIsPublishedHead == delivered => mainHead = publishedHead
+(* An edit or rebase after landing keeps the topic undelivered. *)
+DeliveredHeadIsLocal == delivered => mainHead = head
+(* A stacked topic lands only after its parent. *)
+LandsAfterParent == delivered => parentLanded
+(* Landing fast-forwards from the trunk the topic was based on: main moved *)
+(* from the topic's own base, never from a trunk the gate did not test.   *)
+LandingIsFastForward == delivered => landedOnto = base
 
 ===============================================================
