@@ -66,6 +66,23 @@ let
       };
     };
   jev = import ../../jev/package.nix { inherit pkgs; };
+  # Opens a URL in Quest Browser over ADB. A localhost URL is reverse-forwarded
+  # so the headset reaches this machine's port without an IP address.
+  questOpen = pkgs.writeNuScriptBin "quest-open" ''
+    def main [url: string = "https://localhost:8081/"] {
+      let adb = "${pkgs.android-tools}/bin/adb"
+      let devices = (^$adb devices | lines | skip 1 | where $it =~ '\tdevice$')
+      if ($devices | is-empty) {
+        error make {msg: "No headset is connected over ADB. Enable developer mode, connect it by USB, and accept the debugging prompt in the headset."}
+      }
+      let parsed = ($url | url parse)
+      if $parsed.host in ["localhost" "127.0.0.1"] {
+        let port = if ($parsed.port | is-empty) { if $parsed.scheme == "https" { "443" } else { "80" } } else { $parsed.port }
+        ^$adb reverse $"tcp:($port)" $"tcp:($port)"
+      }
+      ^$adb shell am start -a android.intent.action.VIEW -d $url com.oculus.browser
+    }
+  '';
 in
 {
   home.packages = with pkgs; [
@@ -130,6 +147,7 @@ in
     (lib.hiPrio secretspec)
     devenv
     jev
+    questOpen
     inputs.xs.packages.${pkgs.stdenv.hostPlatform.system}.default
     inputs.ai-usagebar.packages.${pkgs.stdenv.hostPlatform.system}.default
     inputs.tangled-dash.packages.${pkgs.stdenv.hostPlatform.system}.default
