@@ -9,3 +9,6 @@
 # Local tooling state and dependency trees
 .aider*
 **/node_modules/
+
+# IWSDK dev-server state, including its private HTTPS certificate
+/xr-workbench/web/.iwsdk/
