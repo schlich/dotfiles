@@ -345,7 +345,7 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", type=Path, default=Path.cwd())
-    parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--port", type=int, default=8766)
     args = parser.parse_args()
     if not args.repo.is_dir():
         parser.error("--repo must be a directory")

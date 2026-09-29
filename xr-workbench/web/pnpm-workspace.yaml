@@ -1,2 +1,4 @@
+allowBuilds:
+  esbuild: true
 overrides:
   sharp: 0.35.3
