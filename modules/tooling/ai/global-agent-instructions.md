@@ -14,12 +14,18 @@ script, use valid Nushell syntax.
 - Use Nushell (`nu`) for shell pipelines and text processing instead of tools
   such as `jq`, `awk`, `sed`, `grep`, or `rg`; prefer structured Nushell
   commands and pipelines for searching, filtering, and transforming data.
-- Make the Nushell evaluate tool your default shell, including for external
-  programs such as `jj`, `nix`, and `git` (wrap them in `| complete`). It
-  preserves the Nushell session and structured results, and keeps every
-  result in `$history` for later slicing; do not invoke `nu -c` through a
-  shell just to evaluate Nushell. Reach for a Bash tool only for work the
-  evaluate tool cannot do, and expect hooks to deny Bash text processing.
+- Make the Nushell evaluate tool your default shell for inspection, queries,
+  and text processing, including quick external programs such as `jj`, `nix`,
+  and `git` (wrap them in `| complete`). It preserves the Nushell session and
+  structured results, and keeps every result in `$history` for later slicing;
+  do not invoke `nu -c` through a shell just to evaluate Nushell. Expect hooks
+  to deny Bash text processing.
+- The evaluate tool returns only when a command finishes, so the user sees
+  nothing while it runs. Run long external commands whose progress matters,
+  such as `jj-ci publish`, `jj-ci land`, and `nix build`, with the Bash tool in
+  the background, writing to a log in the scratchpad, and check that log as
+  it runs. Do not pipe that output through text-processing tools in Bash;
+  read or filter the log with Nushell.
 - When a file, log, diff, or command output is too large to read comfortably,
   keep it in a Nushell variable and follow the `rlm` skill (`rlm load`,
   `rlm find`, `rlm peek`, `rlm chunk`, `rlm map`) instead of printing it or

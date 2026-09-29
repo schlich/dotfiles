@@ -1,13 +1,14 @@
 #!/usr/bin/env -S nu --stdin
 
 # Claude Code renders a Nushell MCP evaluation as a bare `input:` argument and
-# a collapsed result. Show the full command before the call and a one-line
-# summary after it as a `systemMessage`, which the user sees and the model
-# does not. This hook only displays: it never decides, and any problem leaves
+# a collapsed result. Show the full command before the call and, after it, a
+# summary with the output's last lines as a `systemMessage`, which the user
+# sees and the model does not. This hook only displays: it never decides, and any problem leaves
 # it silent so the tool call proceeds exactly as it would without it.
 
 const max_command_lines = 40
 const max_text = 160
+const preview_lines = 12
 
 def emit [message: string] {
   print ({ systemMessage: $message } | to json --raw)
@@ -51,29 +52,43 @@ def response-text [response: any] {
   | str join "\n"
 }
 
+# The last few non-blank lines of some output, indented under the summary, so
+# a finished command shows its outcome rather than only line counts.
+def tail-preview [text: string, label: string = ""] {
+  let all = ($text | lines | where ($it | str trim) != "")
+  if ($all | is-empty) { return "" }
+  let shown = ($all | last $preview_lines | each {|line|
+    if ($line | str length) > $max_text { $"($line | str substring 0..<($max_text - 1))…" } else { $line }
+  })
+  let skipped = ($all | length) - ($shown | length)
+  let header = if $label != "" { $"\n  ($label):" } else { "" }
+  let gap = if $skipped > 0 { $"\n    … ($skipped) earlier lines" } else { "" }
+  $"($header)($gap)\n($shown | each {|line| $'    ($line)' } | str join "\n")"
+}
+
 def describe-value [value: any] {
   let kind = ($value | describe | str replace --regex '<.*' '')
   match $kind {
     "nothing" => "no output"
     "string" => {
       let count = ($value | lines | length)
-      if $count <= 1 { $"\"(clip $value)\"" } else { $"($count) lines" }
+      if $count <= 1 { $"\"(clip $value)\"" } else { $"($count) lines(tail-preview $value)" }
     }
     "list" | "table" => {
       let count = ($value | length)
-      if $count == 1 { "1 row" } else { $"($count) rows" }
+      let rows = if $count == 1 { "1 row" } else { $"($count) rows" }
+      # Render only the last rows so a huge table stays within the hook timeout.
+      $"($rows)(tail-preview ($value | last $preview_lines | table --expand | ansi strip))"
     }
     "record" => {
       let columns = ($value | columns)
       if ("exit_code" in $columns) and ("stdout" in $columns) {
-        let stdout = ($value.stdout | into string | lines | length)
+        let stdout = ($value.stdout | into string)
         let stderr = ($value.stderr? | default "" | into string)
-        let base = $"exit ($value.exit_code) · stdout ($stdout) lines · stderr ($stderr | lines | length) lines"
-        if $value.exit_code != 0 and ($stderr | str trim) != "" {
-          $"($base) · (clip $stderr)"
-        } else {
-          $base
-        }
+        let base = $"exit ($value.exit_code) · stdout ($stdout | lines | length) lines · stderr ($stderr | lines | length) lines"
+        # A failure's cause is usually on stderr; a success's result on stdout.
+        let err = if $value.exit_code != 0 { tail-preview $stderr "stderr" } else { "" }
+        $"($base)(tail-preview $stdout 'stdout')($err)"
       } else {
         let shown = ($columns | first 6 | str join ", ")
         let more = if ($columns | length) > 6 { ", …" } else { "" }
