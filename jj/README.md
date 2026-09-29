@@ -257,7 +257,7 @@ APIs only; it never fetches, pushes, or rewrites anything.
 
 `context-status` summarizes the current workspace's topic: its stage in the
 lifecycle modelled by `JjCi.tla` (editing, validated, published, passed,
-failed, landed, finished), the next jj-ci step, the changes above trunk and
+failed, landed, finished, or off topic when the working copy left it), the next jj-ci step, the changes above trunk and
 trunk commits the topic lacks, conflicts, lint freshness, the task owner, and
 the pipeline verdict and pull request for the published head.
 
@@ -269,6 +269,15 @@ the pipeline verdict and pull request for the published head.
   Codex run it with `--hook` at session start, so every session opens with the
   workspace's state.
 - `context-status json` prints the collected record.
+- `context-status audit` checks every workspace of the repository against the
+  ownership invariants in `JjCi.tla` and reports each violation with the
+  command that repairs it: a working copy that left its recorded topic (the
+  state the topic guard refuses, which the prompt shows as off topic),
+  orphaned or leftover claims, a task on the shared
+  canonical checkout, legacy records that cannot prove delivery, conflicts,
+  unpublished work `jj-ci status` does not list, stale publication entries,
+  and Codex session records for workspaces that no longer exist. It only
+  reads; `--json` prints the findings.
 
 Local facts are read on each call. Pipeline and pull request state is cached in
 `.jj/context-status.json` and refreshed in a detached process, so the prompt

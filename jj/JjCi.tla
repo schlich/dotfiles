@@ -101,7 +101,10 @@ Claim ==
     /\ UNCHANGED worldVars
 
 (* The workspace leaves the owner's change (`jj new` or `jj edit`) without *)
-(* finish or abandon. The session guard then blocks every topic command.  *)
+(* finish or abandon. The Codex session guard and, for a workspace that    *)
+(* `jj-ci start` created, jj-ci's topic guard then refuse every topic      *)
+(* command, and context-status reports the workspace as stranded. The     *)
+(* interactive `jj` wrapper refuses the move itself; `^jj` still makes it. *)
 MoveAway ==
     /\ active /\ checkedOut
     /\ checkedOut' = FALSE

@@ -456,10 +456,12 @@
               fileset = lib.fileset.unions [
                 ./jj/ci.nu
                 ./jj/codex-session.nu
+                ./jj/context-status.nu
                 ./jj/guard.nu
                 ./tests/pbt.nu
                 ./tests/jj-ci-properties.nu
                 ./tests/codex-session-properties.nu
+                ./tests/context-status-properties.nu
               ];
             };
           in
@@ -472,6 +474,7 @@
               mkdir -p "$HOME"
               nu --no-config-file -c "source ${src}/tests/jj-ci-properties.nu"
               nu --no-config-file -c "source ${src}/tests/codex-session-properties.nu"
+              nu --no-config-file -c "source ${src}/tests/context-status-properties.nu"
               touch "$out"
             '';
         whitespace =

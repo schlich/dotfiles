@@ -107,6 +107,7 @@ def ttl [ci: record] {
 # validated at its head, published, passed by the pipeline, landed.
 def lifecycle [facts: record] {
     if $facts.owner in ["delivered" "discarded"] { return "finished" }
+    if $facts.stranded != null { return "stranded" }
     if $facts.ci?.landed? == true { return "landed" }
     if ($facts.stack | is-empty) { return "idle" }
     if $facts.published_head != null {
@@ -125,6 +126,7 @@ def next-step [facts: record] {
         return "resolve the conflicts oldest first (`jj-ci conflicts` lists them), then `jj-ci validate`"
     }
     match $facts.stage {
+        "stranded" => $"the working copy left this workspace's topic ($facts.stranded.short) \"($facts.stranded.title)\"; return with `jj edit ($facts.stranded.short)` and `jj abandon ($facts.stranded.stray)`"
         "finished" => "archive this task; start a new task for further work"
         "landed" => "run `jj-ci finish` to verify delivery and release the workspace"
         "idle" => "edit files to start the topic, or `jj-ci finish` if it was delivered"
@@ -140,6 +142,36 @@ def next-step [facts: record] {
         "failed" => "inspect the failed pipeline, fix the topic, and `jj-ci publish` again"
         _ => ""
     }
+}
+
+# Whether the working copy has wandered off the topic that `jj-ci start`
+# recorded. Keep in step with topic-stranded in jj/ci.nu, which refuses jj-ci
+# commands in this state.
+def topic-stranded [facts: record] {
+    $facts.recorded and $facts.visible and not $facts.landed and not $facts.ancestor and $facts.working_copy_empty and not $facts.topic_empty
+}
+
+# The recorded topic this workspace has left, as { short title stray } with
+# stray the working copy that left it, or null. A topic in the stack below the
+# working copy needs no JJ call to rule out.
+def stranded-topic [root: path, stack_ids: list, wc: record] {
+    let marker = (read-json ($root | path join ".jj" "jj-ci-workspace.json"))
+    let topic = ($marker.change_id? | default null)
+    if $topic == null or $topic in $stack_ids or not $wc.empty { return null }
+    # The trunk revset sits inside a template string, so its quotes are escaped.
+    let trunk = ($TRUNK | str replace --all '"' '\"')
+    let template = ('"{\"landed\":" ++ json(self.contained_in("::' + $trunk + '")) ++ ",\"ancestor\":" ++ json(self.contained_in("::@")) ++ ",\"empty\":" ++ json(empty && description == "") ++ ",\"short\":" ++ json(change_id.short(8)) ++ ",\"title\":" ++ json(description.first_line()) ++ "}\n"')
+    let found = (try { jj-lines $root [log --no-graph -r $"change_id\(($topic))" -T $template] } catch { [] })
+    let topic_facts = ($found | get --optional 0 | if $in == null { null } else { $in | from json })
+    let stranded = (topic-stranded {
+        recorded: true
+        visible: ($topic_facts != null)
+        landed: ($topic_facts.landed? | default false)
+        ancestor: ($topic_facts.ancestor? | default false)
+        working_copy_empty: $wc.empty
+        topic_empty: ($topic_facts.empty? | default false)
+    })
+    if $stranded { $topic_facts | select short title | insert stray $wc.short } else { null }
 }
 
 # Every local fact, plus the cached pipeline state for the published head.
@@ -167,12 +199,14 @@ def collect [root: path] {
     let lint = if $validation == null { "never" } else if $validation.commit_id == $head.commit_id { "passed" } else { "stale" }
     let cache = (read-json ($jj_dir | path join $CACHE_FILE))
     let ci = if $cache != null and $published_head != null and $cache.state?.published_head? == $published_head { $cache.state } else { null }
+    let stranded = (stranded-topic $root ($stack | get change_id) $wc)
 
     let facts = {
         root: $root
         workspace: ($root | path basename)
         owner: $owner
         owner_change: (if $owned { $owner_record.change_id } else { null })
+        checked_out: ([$wc.change_id $head.change_id] | uniq)
         head: $head
         stack: $stack
         behind: ($revisions | where not above | length)
@@ -185,6 +219,7 @@ def collect [root: path] {
         ci: $ci
         ci_checked_at: (if $ci == null { null } else { $cache.checked_at })
         refresh_due: ($published_head != null and ($ci == null or ((date now) - ($cache.checked_at | into datetime)) > (ttl $ci)))
+        stranded: $stranded
     }
     let facts = ($facts | insert stage (lifecycle $facts))
     $facts | insert next (next-step $facts)
@@ -233,6 +268,7 @@ def stage-label [stage: string] {
         "editing" => $"(ansi blue)✎ editing(ansi reset)"
         "validated" => $"(ansi cyan)✓ validated(ansi reset)"
         "republish" => $"(ansi yellow)↻ edited since publish(ansi reset)"
+        "stranded" => $"(ansi red)⚠ off topic(ansi reset)"
         "published" => $"(ansi purple)↑ published(ansi reset)"
         "passed" => $"(ansi green)✔ passed(ansi reset)"
         "failed" => $"(ansi red)✗ pipeline failed(ansi reset)"
@@ -358,6 +394,136 @@ def "main handoff" [
     let facts = (collect $root)
     let facts = if $facts.refresh_due and not (locked $root) { refresh-now $root; collect $root } else { $facts }
     print (handoff-text $facts)
+}
+
+# Audit: every workspace of the repository checked against the ownership and
+# publication invariants in jj/JjCi.tla. It reads state and reports; each
+# finding names the command that repairs it.
+
+const SEVERITIES = ["error" "warning" "info"]
+
+# Findings for one workspace, from facts `audit-facts` gathers:
+#   name, root, exists, error      the workspace and whether it could be read
+#   default, dedicated             canonical checkout of a repository with
+#                                  topic workspaces
+#   owner, owner_change, legacy    the ownership record's status, change, and
+#                                  whether it predates `state`
+#   owner_checked_out              whether that change is checked out here
+#   claim                          whether a claim directory exists
+#   stack, published, behind       work above trunk, whether it has a branch
+#   conflicts                      conflicted revisions in the stack
+#   stale_entries                  publication entries for changes not here
+#   stranded                       the working copy left its `jj-ci start` topic
+def audit-findings [facts: record] {
+    let finding = {|severity, code, detail, fix| { workspace: $facts.name severity: $severity code: $code detail: $detail fix: $fix } }
+    if not $facts.exists {
+        return [(do $finding "error" "missing-workspace" $"($facts.root) no longer exists." "`jj-ci prune --apply` forgets it")]
+    }
+    if $facts.error != null {
+        return [(do $finding "error" "unreadable" $facts.error "`jj workspace update-stale` in the workspace, then audit again")]
+    }
+    let change = ($facts.owner_change | default "" | str substring 0..7)
+    [
+        # TLA: OwnerRecordMatchesSession, UnclaimOnlyOrphans.
+        (if $facts.owner == "active" and not $facts.owner_checked_out {
+            do $finding "error" "orphaned-claim" $"An active task owns change ($change), which is no longer checked out here; every new session is refused." "`jj-ci unclaim` in the workspace"
+        })
+        # The topic guard in jj/ci.nu: jj-ci refuses to run until the working
+        # copy returns (TLA: topic commands require `checkedOut`).
+        (if $facts.stranded {
+            do $finding "error" "stranded-topic" "The working copy left the topic `jj-ci start` recorded; jj-ci refuses to run here." "`jj edit` the topic, as `context-status` in the workspace names it"
+        })
+        # TLA: ClaimOnlyWhileActive.
+        (if $facts.claim and $facts.owner != "active" {
+            do $finding "error" "leftover-claim" "A session claim remains without an active task; new Codex sessions are refused." "`jj-ci unclaim` in the workspace"
+        })
+        # TLA: NoClaimOnSharedDefault.
+        (if $facts.owner == "active" and $facts.default and $facts.dedicated {
+            do $finding "error" "shared-default-claim" $"A task owns the canonical checkout with change ($change)." "move the topic to `jj-ci start NAME`, then `jj-ci unclaim` here"
+        })
+        # TLA: DeliveredRecordIsTrue.
+        (if $facts.legacy {
+            do $finding "warning" "legacy-record" $"The ownership record for change ($change) predates `state`; it cannot say whether the topic was delivered." "check the topic's branch; `jj-ci finish` or `jj-ci unclaim` rewrites the record"
+        })
+        (if ($facts.conflicts | is-not-empty) {
+            do $finding "warning" "conflicts" $"Conflicted revisions: ($facts.conflicts | str join ', ')." "resolve oldest first; `jj-ci conflicts` lists them"
+        })
+        (if $facts.stack > 0 and not $facts.published {
+            let behind = if $facts.behind > 0 { $", based ($facts.behind) trunk commits back" } else { "" }
+            do $finding "warning" "unpublished-work" $"The head of ($facts.stack) change\(s) above trunk is unpublished($behind); `jj-ci status` does not list it." "`jj-ci publish` it, or `jj-ci abandon` it"
+        })
+        (if ($facts.stale_entries | is-not-empty) {
+            do $finding "info" "stale-publication-entries" $"($facts.stale_entries | length) publication entries name changes not checked out here: ($facts.stale_entries | str join ', ')." "harmless; they are reused only if those changes return here"
+        })
+    ] | compact
+}
+
+def list-workspaces [root: path] {
+    jj-lines $root [workspace list -T 'name ++ "\t" ++ root ++ "\n"'] | parse "{name}\t{root}"
+}
+
+def audit-facts [workspace: record, dedicated: bool] {
+    let blank = {
+        name: $workspace.name root: $workspace.root exists: false error: null
+        default: ($workspace.name == "default") dedicated: $dedicated
+        owner: "none" owner_change: null legacy: false owner_checked_out: false claim: false
+        stack: 0 published: false behind: 0 conflicts: [] stale_entries: [] stranded: false
+    }
+    if not ($workspace.root | path exists) { return $blank }
+    let jj_dir = ($workspace.root | path join ".jj")
+    let record = (read-json ($jj_dir | path join "codex-session.json"))
+    let facts = (try { collect $workspace.root } catch {|err| return ($blank | merge { exists: true error: ($err.msg | lines | first) }) })
+    let topics = ((read-json ($jj_dir | path join "jj-ci-publication.json")) | default {} | get --optional topics | default {})
+    $blank | merge {
+        exists: true
+        owner: (owner-status $record)
+        owner_change: ($record.change_id? | default null)
+        legacy: ($record != null and ($record.state? | default "") == "" and ($record.finished? | default false))
+        owner_checked_out: ($record != null and ($record.change_id? in $facts.checked_out))
+        claim: ($jj_dir | path join "codex-session-claim" | path exists)
+        stack: ($facts.stack | length)
+        published: ($facts.branch != null)
+        behind: $facts.behind
+        conflicts: $facts.conflicts
+        stale_entries: ($topics | transpose change branch | where {|entry| $entry.change not-in $facts.checked_out } | get branch)
+        stranded: ($facts.stranded != null)
+    }
+}
+
+# Codex session records whose workspace no longer exists.
+def orphaned-session-records [] {
+    let dir = ($env.XDG_STATE_HOME? | default ($env.HOME | path join ".local" "state") | path join "codex-jj-sessions")
+    if not ($dir | path exists) { return [] }
+    ls $dir | get name | each {|path| read-json $path } | compact | where {|state| not ($state.cwd? | default "" | path exists) }
+}
+
+def "main audit" [
+    dir?: path
+    --json # Print the findings as JSON
+] {
+    let root = (require-root $dir)
+    let workspaces = (list-workspaces $root)
+    let dedicated = (($workspaces | length) > 1)
+    let findings = ($workspaces | each {|workspace| audit-findings (audit-facts $workspace $dedicated) } | flatten)
+    let orphans = (orphaned-session-records)
+    let findings = if ($orphans | is-empty) { $findings } else {
+        $findings | append { workspace: "(codex)" severity: "info" code: "orphaned-session-records" detail: $"($orphans | length) Codex session records name workspaces that no longer exist." fix: "harmless; delete them from $XDG_STATE_HOME/codex-jj-sessions" }
+    }
+    if $json { return ($findings | to json) }
+    if ($findings | is-empty) {
+        print $"(ansi green)✔(ansi reset) ($workspaces | length) workspaces, no findings."
+        return
+    }
+    for group in ($findings | group-by workspace | transpose workspace items) {
+        print $"(ansi attr_bold)($group.workspace)(ansi reset)"
+        for item in $group.items {
+            let color = match $item.severity { "error" => (ansi red) "warning" => (ansi yellow) _ => (ansi dark_gray) }
+            print $"  ($color)($item.severity)(ansi reset) ($item.code): ($item.detail)"
+            print $"    fix: ($item.fix)"
+        }
+    }
+    let counts = ($SEVERITIES | each {|severity| $"($findings | where severity == $severity | length) ($severity)" } | str join ", ")
+    print $"\n($workspaces | length) workspaces: ($counts)."
 }
 
 def main [dir?: path] {
