@@ -48,7 +48,7 @@ let
       xr = mkOption {
         type = types.bool;
         default = false;
-        description = "Whether the host needs the existing XR integration.";
+        description = "Whether the host is used for XR work.";
       };
       secrets = mkOption {
         type = types.bool;

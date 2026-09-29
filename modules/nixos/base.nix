@@ -21,7 +21,6 @@
     settings.General.Experimental = true;
   };
 
-  programs.immersed.enable = true;
   xdg = {
     portal = {
       enable = true;
