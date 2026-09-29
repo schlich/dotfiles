@@ -104,6 +104,38 @@ let
       }
     } $out/hooks/hooks.json
   '';
+  # MCP calls render as a bare `input:` argument; echo the full command before
+  # a Nushell evaluation and a one-line result summary after it.
+  nushellDisplay =
+    let
+      hook = {
+        matcher = "mcp__.*nushell__evaluate";
+        hooks = [
+          {
+            type = "command";
+            command = "${pkgs.nushell}/bin/nu --stdin ${./scripts/nushell-evaluate-display.nu}";
+            timeout = 5;
+          }
+        ];
+      };
+    in
+    pkgs.runCommand "claude-code-nushell-display" { } ''
+      install -Dm644 ${
+        pkgs.writers.writeJSON "plugin.json" {
+          name = "nushell-display";
+          description = "Show each Nushell MCP evaluation's command and a result summary.";
+        }
+      } $out/.claude-plugin/plugin.json
+      install -Dm644 ${
+        pkgs.writers.writeJSON "hooks.json" {
+          hooks = {
+            PreToolUse = [ hook ];
+            PostToolUse = [ hook ];
+            PostToolUseFailure = [ hook ];
+          };
+        }
+      } $out/hooks/hooks.json
+    '';
 in
 {
   imports = [ ./common.nix ];
@@ -134,6 +166,7 @@ in
     plugins.jj-guard = jjGuard;
     plugins.jev-bash-guard = jevBashGuard;
     plugins.prefer-nushell = preferNushellGuard;
+    plugins.nushell-display = nushellDisplay;
     # IWE memory: inert outside a workspace whose root has a MEMORY.md policy.
     plugins.iwe = "${inputs.iwe-skills}";
   };
