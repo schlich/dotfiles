@@ -478,14 +478,30 @@ def checkpoint [label: string] {
 }
 
 def session-owner [] {
-    let root = (run-command "locating the workspace" { ^jj root })
+    let root = (git-command "locating the workspace" { ^jj root })
     let path = ($root | path join ".jj" "codex-session.json")
     if ($path | path exists) { open $path } else { null }
 }
 
+# How a Codex task's ownership record ends. `delivered` and `discarded` come
+# from `finish` and `abandon`; `released` frees a workspace whose task left its
+# change behind, and says nothing about the topic, which may continue elsewhere.
+const OWNER_ENDINGS = ["delivered" "discarded" "released"]
+
+# The state an ownership record declares: none, active, or one of the endings.
+# A record from before `state` has only `finished`, which a hand edit could set
+# as easily as `finish`, so it proves release but never delivery. Keep in step
+# with owner-status in jj/codex-session.nu and jj/context-status.nu.
+def owner-status [owner: any] {
+    if $owner == null { return "none" }
+    let state = ($owner.state? | default "")
+    if $state == "active" or $state in $OWNER_ENDINGS { return $state }
+    if ($owner.finished? | default false) { "released" } else { "active" }
+}
+
 def require-owned-change [topic_id?: string] {
     let owner = (session-owner)
-    if $owner != null and not ($owner.finished? | default false) {
+    if (owner-status $owner) == "active" {
         if $owner.change_id != ($topic_id | default (current-topic-id)) {
             error make { msg: "This workspace is on a different change from its active Codex task. Resolve ownership before continuing." }
         }
@@ -1052,9 +1068,8 @@ def build-plan [published: list] {
 }
 
 def sync-main [] {
-    let owner = (session-owner)
-    if $owner != null and not ($owner.finished? | default false) {
-        error make { msg: "An active Codex topic owns this workspace. Use `jj-ci rebase`, or finish the topic before syncing." }
+    if (owner-status (session-owner)) == "active" {
+        error make { msg: "An active Codex topic owns this workspace. Use `jj-ci rebase`, finish the topic, or `jj-ci unclaim` a claim its task left behind before syncing." }
     }
     if (current-change "empty") != "true" {
         error make { msg: "Sync needs an empty change. Use `jj-ci rebase` to update this topic in place." }
@@ -1135,7 +1150,7 @@ def probe-state [probe: closure] {
 }
 
 def main [] {
-    print "Use `jj-ci start`, `jj-ci status`, `jj-ci sync`, `jj-ci plan`, `jj-ci preview`, `jj-ci rebase`, `jj-ci refresh`, `jj-ci conflicts`, `jj-ci review snapshot`, `jj-ci interdiff`, `jj-ci validate`, `jj-ci publish`, `jj-ci land`, `jj-ci finish`, `jj-ci abandon`, `jj-ci prune`, `jj-ci tangled stack-publish`, `jj-ci impact check`, `jj-ci release`, or `jj-ci version`."
+    print "Use `jj-ci start`, `jj-ci status`, `jj-ci sync`, `jj-ci plan`, `jj-ci preview`, `jj-ci rebase`, `jj-ci refresh`, `jj-ci conflicts`, `jj-ci review snapshot`, `jj-ci interdiff`, `jj-ci validate`, `jj-ci publish`, `jj-ci land`, `jj-ci finish`, `jj-ci abandon`, `jj-ci unclaim`, `jj-ci prune`, `jj-ci tangled stack-publish`, `jj-ci impact check`, `jj-ci release`, or `jj-ci version`."
 }
 
 def "main status" [] {
@@ -1794,9 +1809,36 @@ def --env drop-workspace [workspace: record] {
     if ($workspace.root | path exists) { rm --recursive $workspace.root }
 }
 
+# The Codex hook's per-session record, which maps a task to its workspace.
+def codex-session-state-path [session_id: string] {
+    let state_dir = ($env.XDG_STATE_HOME? | default ($env.HOME | path join ".local" "state"))
+    $state_dir | path join "codex-jj-sessions" $"($session_id).json"
+}
+
+# End a Codex task's ownership record with `outcome`, in the workspace and in
+# the task's session record, and remove the claim that serialized its startup.
+# `finished` stays for hooks built before `state` existed.
+def end-ownership [root: string, outcome: string] {
+    let owner_path = ($root | path join ".jj" "codex-session.json")
+    if ($owner_path | path exists) {
+        let owner = (open $owner_path | upsert state $outcome | upsert finished true)
+        $owner | to json | save --force $owner_path
+        let session_id = ($owner.session_id? | default "")
+        if $session_id =~ '^[a-zA-Z0-9_-]+$' {
+            let session_path = (codex-session-state-path $session_id)
+            if ($session_path | path exists) {
+                open $session_path | upsert state $outcome | upsert finished true | to json | save --force $session_path
+            }
+        }
+    }
+    let claim = ($root | path join ".jj" "codex-session-claim")
+    if ($claim | path exists) { rm --recursive $claim }
+}
+
 # Release the topic onto an empty change on main. A workspace that `jj-ci start`
-# created is then dropped; any other one stays and its Codex owner is finished.
-def --env release-workspace [summary: string, change: string, keep: bool] {
+# created is then dropped; any other one stays and its Codex owner records
+# `outcome` (delivered or discarded).
+def --env release-workspace [summary: string, change: string, keep: bool, outcome: string] {
     let workspace = (current-workspace)
     run-command "leaving a clean workspace on main" { ^jj new main@tangled } | ignore
     if not $keep and $workspace.name != "default" and (owned-workspace-marker $workspace.root | path exists) {
@@ -1805,15 +1847,42 @@ def --env release-workspace [summary: string, change: string, keep: bool] {
         return
     }
     let owner_path = ($workspace.root | path join ".jj" "codex-session.json")
-    if ($owner_path | path exists) {
-        let owner = (open $owner_path)
-        if $owner.change_id == $change {
-            $owner | upsert finished true | to json | save --force $owner_path
-            let claim = ($workspace.root | path join ".jj" "codex-session-claim")
-            if ($claim | path exists) { rm --recursive $claim }
-        }
+    if ($owner_path | path exists) and (open $owner_path).change_id? == $change {
+        end-ownership $workspace.root $outcome
     }
     print $"($summary) Workspace is on main; the Codex task can now be archived."
+}
+
+# What `jj-ci unclaim` may do, from the ownership record's status, whether the
+# owner's change is still checked out here, and whether a claim remains. It
+# never releases a change that is checked out: `finish` or `abandon` owns that.
+def unclaim-verdict [facts: record] {
+    # An ended record from before `state` is rewritten as released, so no
+    # reader can mistake its `finished` for delivery.
+    let nothing = { release: false clear_claim: false normalize: (($facts.legacy? | default false) and $facts.status != "active") refuse: null }
+    match $facts.status {
+        "none" => (if $facts.claim {
+            $nothing | upsert clear_claim true
+        } else {
+            $nothing | upsert refuse "No Codex task owns this workspace."
+        })
+        "active" => (if $facts.at_owner_change {
+            $nothing | upsert refuse "The owning task's change is checked out here. Use `jj-ci finish` or `jj-ci abandon` to end the topic."
+        } else {
+            { release: true clear_claim: true normalize: false refuse: null }
+        })
+        _ => ($nothing | upsert clear_claim $facts.claim)
+    }
+}
+
+# The changes this workspace holds: @, and its parent when @ is an empty,
+# undescribed scratch change on top of it.
+def checked-out-changes [] {
+    let scratch = (current-change 'empty && description == ""') == "true"
+    let revset = if $scratch { "@ | @-" } else { "@" }
+    git-command "reading the checked-out changes" {
+        ^jj log -r $revset --no-graph -T 'change_id ++ "\n"'
+    } | lines | where {|line| $line | is-not-empty }
 }
 
 def "main start" [
@@ -1882,7 +1951,8 @@ def --env "main finish" [
     forget-publication-bookmark $change
     run-command "advancing main" { ^jj bookmark move main --to main@tangled } | ignore
     let summary = if $published { $"Finished ($branch)." } else { "Finished an unpublished topic." }
-    release-workspace $summary $change $keep
+    # Past the checks above, a published or non-empty topic is on main.
+    release-workspace $summary $change $keep (if $published or not $empty { "delivered" } else { "discarded" })
 }
 
 def --env "main abandon" [
@@ -1902,13 +1972,45 @@ def --env "main abandon" [
     if ($revisions | is-not-empty) {
         run-command "abandoning the topic" { ^jj abandon ...($revisions | get change_id) } | ignore
     }
-    release-workspace $"Abandoned ($revisions | length) revision\(s)." $change $keep
+    release-workspace $"Abandoned ($revisions | length) revision\(s)." $change $keep "discarded"
+}
+
+# Release a Codex task's claim on this workspace when the task left its change
+# behind without `finish` or `abandon`, or clear a claim left without an owner.
+# The topic itself is untouched: its revisions, branch, and pull request stay
+# where they are, and it can continue in another workspace.
+def "main unclaim" [] {
+    let root = (git-command "locating the workspace" { ^jj root })
+    let owner = (session-owner)
+    let claim = ($root | path join ".jj" "codex-session-claim")
+    let verdict = (unclaim-verdict {
+        status: (owner-status $owner)
+        at_owner_change: ($owner != null and ($owner.change_id? in (checked-out-changes)))
+        claim: ($claim | path exists)
+        legacy: ($owner != null and ($owner.state? | default "") == "")
+    })
+    if $verdict.refuse != null { error make { msg: $verdict.refuse } }
+    if $verdict.normalize {
+        # end-ownership also removes the claim.
+        end-ownership $root "released"
+        print $"Marked the pre-`state` record for change ($owner.change_id? | default 'unknown' | str substring 0..7) as released; it no longer reads as finished."
+    } else if $verdict.release {
+        end-ownership $root "released"
+        # This workspace no longer holds the topic, so its publication entry
+        # would only mislead a later task here.
+        forget-publication-bookmark $owner.change_id
+        print $"Released change ($owner.change_id | str substring 0..7) from Codex task ($owner.session_id? | default 'unknown'). Its revisions and branch are unchanged."
+    } else if $verdict.clear_claim {
+        rm --recursive $claim
+        print "Removed a session claim that no active task holds."
+    } else {
+        print "Nothing to release."
+    }
 }
 
 def owner-state [root: string] {
     let path = ($root | path join ".jj" "codex-session.json")
-    if not ($path | path exists) { return "none" }
-    if ((open $path).finished? | default false) { "finished" } else { "active" }
+    owner-status (if ($path | path exists) { open $path } else { null })
 }
 
 # The facts prune decides from. Running JJ inside a workspace snapshots any

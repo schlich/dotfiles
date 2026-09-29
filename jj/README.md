@@ -423,6 +423,30 @@ independent topic at `main@tangled`, records ownership in
 `.jj/codex-session.json`, and guards prompts and tool calls against change-ID
 drift. It never automatically switches another task's working copy.
 
+The hook does not claim the default workspace of a repository that has topic
+workspaces: that checkout stays on `main`, so a session opened there is told to
+use `jj-ci start` and its edits are blocked. A repository with a single
+workspace, such as one Codex initialized in a Git worktree, is claimed as
+before.
+
+An ownership record's `state` says how its task ended: `delivered` by
+`jj-ci finish` after landing, `discarded` by `jj-ci abandon` or finishing an
+empty topic, or `released` by `jj-ci unclaim`. Records written before `state`
+carry only `finished`, which reads as released, never as delivered.
+
+If a task leaves its change behind (the workspace moved to another change
+without `finish` or `abandon`), its claim blocks every later session. Run
+`jj-ci unclaim` in that workspace to release it. It refuses while the owner's
+change is still checked out, leaves the topic's revisions, branch, and pull
+request alone, and also clears a claim directory that no active task holds.
+An ended record from before `state` is rewritten as `released`.
+Never edit `.jj/codex-session.json` by hand.
+
+`JjCi.tla` models these rules, and `JjCiLegacy.cfg` restores the old behavior
+so the model check can show each ownership invariant catches its failure.
+`tests/jj-ci-properties.nu` and `tests/codex-session-properties.nu` check the
+same invariants against the helpers that decide them.
+
 ## Git worktrees and the devshell
 
 This repository's default devshell provides the Nushell, JJ, GitHub CLI,

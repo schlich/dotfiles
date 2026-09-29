@@ -40,6 +40,17 @@ if(self.contained_in("::@"),
   "{\"above\":false}\n")
 '
 
+# The state a Codex ownership record declares: none, active, delivered,
+# discarded, or released. A record from before `state` has only `finished`,
+# which proves release but never delivery. Keep in step with owner-status in
+# jj/ci.nu.
+def owner-status [owner: any] {
+    if $owner == null { return "none" }
+    let state = ($owner.state? | default "")
+    if $state in ["active" "delivered" "discarded" "released"] { return $state }
+    if ($owner.finished? | default false) { "released" } else { "active" }
+}
+
 # The nearest directory at or above `dir` that holds a JJ workspace.
 def workspace-root [dir: path] {
     mut current = ($dir | path expand)
@@ -95,7 +106,7 @@ def ttl [ci: record] {
 # Where the topic stands in the jj-ci lifecycle (see JjCi.tla): edited,
 # validated at its head, published, passed by the pipeline, landed.
 def lifecycle [facts: record] {
-    if $facts.owner == "finished" { return "finished" }
+    if $facts.owner in ["delivered" "discarded"] { return "finished" }
     if $facts.ci?.landed? == true { return "landed" }
     if ($facts.stack | is-empty) { return "idle" }
     if $facts.published_head != null {
@@ -148,7 +159,7 @@ def collect [root: path] {
     # left over from an earlier task in this workspace.
     let owner_record = (read-json ($jj_dir | path join "codex-session.json"))
     let owned = $owner_record != null and ($owner_record.change_id? in [$wc.change_id $head.change_id])
-    let owner = if not $owned { "none" } else if ($owner_record.finished? | default false) { "finished" } else { "active" }
+    let owner = if $owned { owner-status $owner_record } else { "none" }
     let topics = ((read-json ($jj_dir | path join "jj-ci-publication.json")) | default {} | get --optional topics | default {})
     let branch = ($topics | get --optional $head.change_id)
     let published_head = if $branch == null { null } else { remote-head $root $branch }
@@ -300,7 +311,9 @@ def "main refresh" [dir?: path] {
 def handoff-text [facts: record] {
     let owner = match $facts.owner {
         "active" => $"owned by an active Codex task on change ($facts.owner_change)"
-        "finished" => "its Codex task is finished"
+        "delivered" => "its Codex task delivered the topic"
+        "discarded" => "its Codex task ended without delivering"
+        "released" => "its Codex task released the workspace; the topic may continue elsewhere"
         _ => "no task owner recorded"
     }
     let stack = ($facts.stack | each {|rev|

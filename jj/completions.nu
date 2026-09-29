@@ -124,6 +124,9 @@ export extern "jj-ci finish" [
     --keep # Keep a workspace that `jj-ci start` created
 ]
 
+# Release a Codex task's claim that its task left behind, without touching the topic
+export extern "jj-ci unclaim" []
+
 # List stale workspaces and checkpoints
 export extern "jj-ci prune" [
     --apply # Forget and delete the listed workspaces and checkpoints

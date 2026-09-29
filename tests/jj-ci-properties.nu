@@ -4,52 +4,17 @@
 #   nu --no-config-file -c "source tests/jj-ci-properties.nu"
 #
 # Sourcing through `-c` defines ci.nu's helpers without running its `main`.
-# Randomness is keyed by PBT_SEED, property name, and case number, so a
-# failure report is enough to replay it exactly.
+# tests/pbt.nu holds the generators and the runner.
 
-use std/assert
-
+source pbt.nu
 source ../jj/ci.nu
 source ../jj/guard.nu
 
-const CASES = 100
 const BLOCKING = ["conflicted" "waiting on parent"]
-const TITLE_CHARS = ["a" "b" "z" "Q" "0" "7" " " "  " "-" "--" "_" "." "/" ":" "!" "é" "日"]
-const CHANGE_CHARS = ["k" "l" "m" "n" "o" "p" "q" "r" "s" "t" "u" "v" "w" "x" "y" "z"]
 const REFRESH_STATES = [
     "current" "pushed" "ready to push" "conflicted"
     "parent not local" "no local bookmark" "checked out"
 ]
-
-def seed [] { $env.PBT_SEED? | default "0" }
-
-# A deterministic integer in 0..<n for the given key.
-def pick [key: string, n: int] {
-    if $n <= 0 { return 0 }
-    # The leading 1 keeps `into int` from reading a 0b or 0x prefix.
-    let hex = ($key | hash sha256 | str substring 0..11)
-    ($"1($hex)" | into int --radix 16) mod $n
-}
-
-def pick-from [key: string, items: list] {
-    $items | get (pick $key ($items | length))
-}
-
-def shuffle [key: string, items: list] {
-    $items | enumerate | sort-by {|entry| pick $"($key)/($entry.index)" 1000000007 } | get item
-}
-
-# Half of the titles are long enough to exercise the 48-character cut.
-def gen-title [key: string] {
-    let length = if (pick $"($key)/long" 2) == 0 { 60 + (pick $"($key)/len" 60) } else { pick $"($key)/len" 40 }
-    0..<$length
-    | each {|i| pick-from $"($key)/($i)" $TITLE_CHARS }
-    | str join
-}
-
-def gen-change-id [key: string] {
-    0..<32 | each {|i| pick-from $"($key)/($i)" $CHANGE_CHARS } | str join
-}
 
 # Published topics with unique names. Parents may be another topic, absent, or
 # null for a root. Cycles and missing parents exercise unrooted topic handling.
@@ -107,18 +72,6 @@ def reachable [start: string, edges: list] {
 
 def canonical-partition [components: list] {
     $components | each {|component| $component | sort } | sort-by {|component| $component | str join "," }
-}
-
-def for-all [name: string, property: closure] {
-    for case in 0..<$CASES {
-        let key = $"(seed)/($name)/($case)"
-        try {
-            do $property $key
-        } catch {|error|
-            error make { msg: $"property `($name)` failed at PBT_SEED=(seed) case ($case): ($error.msg)" }
-        }
-    }
-    print $"ok ($name) \(($CASES) cases)"
 }
 
 # Publication bookmarks: stable, branch-safe names for a topic.
@@ -344,7 +297,7 @@ def gen-workspace-facts [key: string] {
         exists: (do $flag exists)
         git_worktree: (do $flag git)
         codex_worktree: (do $flag codex)
-        owner: (pick-from $"($key)/owner" ["none" "active" "finished"])
+        owner: (pick-from $"($key)/owner" ["none" "active" "delivered" "discarded" "released"])
         stale: (do $flag stale)
         error: (if (do $flag error) { "unreadable" } else { null })
         pending: (do $flag pending)
@@ -372,7 +325,7 @@ for-all "prune reclaims every released, delivered workspace" {|key|
         name: "topic" current: false exists: true git_worktree: false codex_worktree: false
         stale: false error: null
     })
-    let owner = (pick-from $"($key)/released" ["none" "finished"])
+    let owner = (pick-from $"($key)/released" ["none" "delivered" "discarded" "released"])
     let delivered = not $facts.pending
     assert equal ((prune-verdict ($facts | upsert owner $owner)) == null) $delivered
 }
@@ -433,3 +386,62 @@ for case in $JJ_NEW_CASES {
     assert equal (jj-new-parents $case.args) $case.expected $"jj ($case.args | str join ' ')"
 }
 print $"ok jj new parents \(($JJ_NEW_CASES | length) cases)"
+
+# Ownership records (TLA: DeliveredRecordIsTrue). A hand-edited `finished`
+# must never read as a delivered topic.
+
+owner-status-properties {|record| owner-status $record }
+
+# jj-ci unclaim (TLA: Unclaim, UnclaimOnlyOrphans, ClaimOnlyWhileActive).
+
+def gen-unclaim-facts [key: string] {
+    {
+        status: (pick-from $"($key)/status" ["none" "active" "delivered" "discarded" "released"])
+        at_owner_change: (flag $"($key)/at")
+        claim: (flag $"($key)/claim")
+        legacy: (flag $"($key)/legacy")
+    }
+}
+
+for-all "unclaim rewrites every ended legacy record and no active one" {|key|
+    let facts = (gen-unclaim-facts $key)
+    let verdict = (unclaim-verdict $facts)
+    let ended = $facts.status in ["delivered" "discarded" "released"]
+    assert equal $verdict.normalize ($facts.legacy and $facts.status != "active")
+    if $verdict.normalize { assert (not $verdict.release) "normalized and released at once" }
+    if $ended and $facts.legacy { assert $verdict.normalize }
+}
+
+for-all "unclaim never frees a change that is checked out" {|key|
+    let facts = (gen-unclaim-facts $key)
+    let verdict = (unclaim-verdict $facts)
+    if $facts.status == "active" and $facts.at_owner_change {
+        assert (not $verdict.release) "released a checked-out change"
+        assert (not $verdict.clear_claim) "cleared the claim of a checked-out change"
+        assert ($verdict.refuse != null) "gave no reason to use finish or abandon"
+    }
+}
+
+for-all "unclaim frees every orphaned active claim" {|key|
+    let facts = (gen-unclaim-facts $key | upsert status "active" | upsert at_owner_change false)
+    let verdict = (unclaim-verdict $facts)
+    assert $verdict.release "left an orphaned claim active"
+    assert $verdict.clear_claim "released the record but kept its claim"
+    assert equal $verdict.refuse null
+}
+
+for-all "unclaim only ever changes an active record" {|key|
+    let facts = (gen-unclaim-facts $key)
+    let verdict = (unclaim-verdict $facts)
+    if $verdict.release { assert equal $facts.status "active" }
+}
+
+for-all "unclaim leaves no claim without an active owner" {|key|
+    let facts = (gen-unclaim-facts $key)
+    let verdict = (unclaim-verdict $facts)
+    let owner_active_after = ($facts.status == "active" and not $verdict.release)
+    let claim_after = ($facts.claim and not $verdict.clear_claim)
+    if $verdict.refuse == null {
+        assert ((not $claim_after) or $owner_active_after) "a claim outlived its owner"
+    }
+}

@@ -432,7 +432,21 @@
             ''
               cp ${./jj/JjCi.tla} JjCi.tla
               cp ${./jj/JjCi.cfg} JjCi.cfg
+              cp ${./jj/JjCiLegacy.cfg} JjCiLegacy.cfg
               tlc -metadir "$TMPDIR/tlc" -config JjCi.cfg JjCi.tla
+              # Each ownership invariant must catch the legacy behavior it
+              # guards against, or it no longer tests anything.
+              for invariant in $(sed -n '/^INVARIANTS/,$p' JjCiLegacy.cfg | tail -n +2); do
+                { sed '/^INVARIANTS/,$d' JjCiLegacy.cfg; printf 'INVARIANT %s\n' "$invariant"; } > "legacy-$invariant.cfg"
+                if tlc -metadir "$TMPDIR/tlc-$invariant" -config "legacy-$invariant.cfg" JjCi.tla > "legacy-$invariant.log"; then
+                  echo "The legacy model satisfies $invariant, so it no longer detects that failure."
+                  exit 1
+                fi
+                if ! grep -q "Invariant $invariant is violated" "legacy-$invariant.log"; then
+                  cat "legacy-$invariant.log"
+                  exit 1
+                fi
+              done
               touch "$out"
             '';
         jj-ci-properties =
@@ -441,8 +455,11 @@
               root = ./.;
               fileset = lib.fileset.unions [
                 ./jj/ci.nu
+                ./jj/codex-session.nu
                 ./jj/guard.nu
+                ./tests/pbt.nu
                 ./tests/jj-ci-properties.nu
+                ./tests/codex-session-properties.nu
               ];
             };
           in
@@ -454,6 +471,7 @@
               export HOME="$TMPDIR/home"
               mkdir -p "$HOME"
               nu --no-config-file -c "source ${src}/tests/jj-ci-properties.nu"
+              nu --no-config-file -c "source ${src}/tests/codex-session-properties.nu"
               touch "$out"
             '';
         whitespace =
