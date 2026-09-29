@@ -1,0 +1,35 @@
+{
+  "task": {
+    "description": "Review a small Python change",
+    "difficulty": "medium",
+    "error_cost": "medium",
+    "allowed": ["codex", "claude"]
+  },
+  "policy": { "weekly_reserve": 0.1, "stale_hours": 6 },
+  "subscriptions": {
+    "codex": {
+      "five_hour": {
+        "remaining": 0.35,
+        "observed_at": "2026-09-29T07:40:00-05:00",
+        "resets_at": "2026-09-29T10:00:00-05:00"
+      },
+      "weekly": {
+        "remaining": 0.25,
+        "observed_at": "2026-09-29T07:40:00-05:00",
+        "resets_at": "2026-10-03T07:40:00-05:00"
+      }
+    },
+    "claude": {
+      "five_hour": {
+        "remaining": 0.75,
+        "observed_at": "2026-09-29T07:40:00-05:00",
+        "resets_at": "2026-09-29T11:00:00-05:00"
+      },
+      "weekly": {
+        "remaining": 0.65,
+        "observed_at": "2026-09-29T07:40:00-05:00",
+        "resets_at": "2026-10-03T07:40:00-05:00"
+      }
+    }
+  }
+}
