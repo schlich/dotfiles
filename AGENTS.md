@@ -56,6 +56,12 @@
   approval before activating anything.
 - For NixOS changes, offer `sudo nixos-rebuild switch --flake .#asus`; never
   run it automatically.
+- Create a NixOS generation only when the candidate
+  `system.build.toplevel` store path differs from the active
+  `/run/current-system` target. If they match, do not switch merely to record a
+  source change. Home-only activation is separate; `home.packages` is
+  system-owned here and is covered by the toplevel comparison. See
+  `docs/architecture.md` for the full policy.
 - Home Manager is embedded in the `asus` NixOS configuration. Do not use the
   standalone `home-manager switch` workflow for this repository. Use
   `home-activate` for a home-only activation without `sudo`. This does not

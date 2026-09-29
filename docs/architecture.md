@@ -51,3 +51,18 @@ activation graph, and runs the independent desktop configuration checks.
 No activation is implied by evaluation or builds. A system or home activation
 requires an explicit operator decision after the generated output has been
 reviewed.
+
+## NixOS generation policy
+
+A NixOS generation is warranted exactly when the candidate system toplevel's
+store path differs from the active system at `/run/current-system`. Compare the
+realized `nixosConfigurations.<host>.config.system.build.toplevel` path with
+the active symlink target. If they match, do not run a NixOS switch just to
+record the source change; evaluation and builds do not create generations.
+
+When the paths differ and the system change is to be applied, use the deliberate
+NixOS activation workflow. Home Manager-only changes use `home-activate` when
+they leave the NixOS toplevel unchanged. In this repository,
+`home-manager.useUserPackages = true`, so changes to `home.packages` are
+system-owned and can change the NixOS toplevel; classify those by the same path
+comparison rather than by where the option is declared.
