@@ -9,6 +9,7 @@ nix develop  # if Nix with flakes is available
 python3 -m pip install -e .
 quota-advisor example.json --at 2026-09-29T07:45:00-05:00
 OPENROUTER_API_KEY=... quota-advisor example.json --jev
+# In the dotfiles repository: nix run .#quota-advisor -- tools/quota-advisor/example.json
 # Without installation: PYTHONPATH=src python3 -m quota_advisor.cli example.json
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```
