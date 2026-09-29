@@ -1,47 +1,59 @@
 { den, lib, ... }:
 let
   profileTools = import ./profile.nix { inherit lib; };
-  aspectsFor = host: map (name: den.aspects.${name}) (profileTools.behaviorAspects host.profile);
-  host = name: den.hosts.x86_64-linux.${name};
+
+  # Every host is composed the same way: its profile's behavior aspects, with
+  # host services kept right after the first one (base or workstation) so
+  # package order stays stable, then what every host needs, then its
+  # platform. Hardware and storage remain platform-local.
+  hostIncludes =
+    name:
+    {
+      services ? [ ],
+      platform,
+    }:
+    let
+      behavior = map (aspect: den.aspects.${aspect}) (
+        profileTools.behaviorAspects den.hosts.x86_64-linux.${name}.profile
+      );
+    in
+    [ (builtins.head behavior) ]
+    ++ services
+    ++ builtins.tail behavior
+    ++ [ den.aspects.system-files ]
+    ++ platform;
 in
 
 {
-  # Hosts are small composition declarations. Hardware and storage remain
-  # platform-local; reusable behavior follows the host's typed profile.
-  den.aspects.asus.includes = aspectsFor (host "asus") ++ [
-    den.aspects.jj-ci-webhook
-    den.aspects.system-files
-    den.aspects.asus-platform
-    den.aspects.asus-storage
-  ];
+  den.aspects.asus.includes = hostIncludes "asus" {
+    services = [ den.aspects.jj-ci-webhook ];
+    platform = [
+      den.aspects.asus-platform
+      den.aspects.asus-storage
+    ];
+  };
 
-  den.aspects.asus-headless.includes = aspectsFor (host "asus-headless") ++ [
-    den.aspects.system-files
-    den.aspects.asus-platform
-    den.aspects.asus-storage
-  ];
+  den.aspects.asus-headless.includes = hostIncludes "asus-headless" {
+    platform = [
+      den.aspects.asus-platform
+      den.aspects.asus-storage
+    ];
+  };
 
-  den.aspects.asus-usb.includes = aspectsFor (host "asus-usb") ++ [
-    den.aspects.system-files
-    den.aspects.asus-platform
-    den.aspects.asus-usb-hardware
-  ];
+  den.aspects.asus-usb.includes = hostIncludes "asus-usb" {
+    platform = [
+      den.aspects.asus-platform
+      den.aspects.asus-usb-hardware
+    ];
+  };
 
-  den.aspects.homelab.includes =
-    let
-      behavior = aspectsFor (host "homelab");
-    in
-    # Keep the service aspects right after base so package order stays stable.
-    [
-      (builtins.head behavior)
+  den.aspects.homelab.includes = hostIncludes "homelab" {
+    services = [
       den.aspects.paseo
       den.aspects.opencode-server
-    ]
-    ++ builtins.tail behavior
-    ++ [
-      den.aspects.system-files
-      den.aspects.homelab-platform
     ];
+    platform = [ den.aspects.homelab-platform ];
+  };
 
   den.schema.user.classes = lib.mkDefault [ "user" ];
 }

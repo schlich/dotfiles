@@ -1,31 +1,55 @@
 { lib }:
 let
+  # What each profile fact needs. An aspect's own dependencies stay in its
+  # `includes`: the workstation aspect already includes base.
+  roleAspects = {
+    workstation = [ "workstation" ];
+    wsl = [ "wsl" ];
+    server = [
+      "base"
+      "server"
+    ];
+  };
+
+  desktopAspects = {
+    niri = [ "desktop-niri" ];
+    none = [ "headless" ];
+  };
+
+  # A list, not an attrset, so the aspect order stays as written.
+  flagAspects = [
+    {
+      flag = "portable";
+      aspect = "laptop";
+    }
+    {
+      flag = "development";
+      aspect = "development";
+    }
+    {
+      flag = "remote";
+      aspect = "remote";
+    }
+    {
+      flag = "secrets";
+      aspect = "secrets";
+    }
+    {
+      flag = "xr";
+      aspect = "xr";
+    }
+  ];
+
   gpuAspects = {
-    amd = "gpu-amd";
+    amd = [ "gpu-amd" ];
   };
 
   behaviorAspects =
     profile:
-    # The workstation aspect already includes base; servers select it here.
-    (
-      if profile.role == "workstation" then
-        [ "workstation" ]
-      else if profile.role == "wsl" then
-        [ "wsl" ]
-      else
-        [
-          "base"
-          "server"
-        ]
-    )
-    ++ lib.optional (profile.desktop == "niri") "desktop-niri"
-    ++ lib.optional (profile.desktop == "none") "headless"
-    ++ lib.optional profile.portable "laptop"
-    ++ lib.optional profile.development "development"
-    ++ lib.optional profile.remote "remote"
-    ++ lib.optional profile.secrets "secrets"
-    ++ lib.optional profile.xr "xr"
-    ++ lib.optional (builtins.hasAttr profile.gpu gpuAspects) gpuAspects.${profile.gpu};
+    roleAspects.${profile.role}
+    ++ desktopAspects.${profile.desktop}
+    ++ lib.concatMap ({ flag, aspect }: lib.optional profile.${flag} aspect) flagAspects
+    ++ gpuAspects.${profile.gpu} or [ ];
 
   hostErrors =
     {

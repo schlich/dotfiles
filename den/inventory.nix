@@ -4,127 +4,104 @@
   ...
 }:
 let
-  inventory = {
-    asus = {
-      users.schlich = {
-        classes = [
-          "user"
-          "homeManager"
-        ];
-        primary = true;
-      };
-      users.agent = {
-        classes = [
-          "user"
-          "homeManager"
-        ];
-        environment = "agent";
-      };
-      profile = {
-        role = "workstation";
-        desktop = "niri";
-        gpu = "amd";
-        portable = true;
-        development = true;
-        xr = true;
-        secrets = false;
-        remote = true;
-      };
-      policy = {
-        criticality = "workstation";
-        autoDeploy = false;
-        requireReview = true;
-        rollback = true;
-        healthChecks = [
-          "niri-config"
-          "home-manager-nixos"
-        ];
-      };
+  # Hosts are built from layers, like namespaces in a tree: each host merges
+  # the layers it sits under, and a later layer's facts win over an earlier
+  # one's. Lists are replaced, not appended.
+  fleet = {
+    profile = {
+      role = "workstation";
+      desktop = "none";
+      gpu = "none";
+      portable = false;
+      development = false;
+      xr = false;
+      secrets = false;
+      remote = false;
     };
-
-    asus-headless = {
-      users.schlich = { };
-      profile = {
-        role = "server";
-        desktop = "none";
-        gpu = "amd";
-        portable = true;
-        development = false;
-        xr = false;
-        secrets = false;
-        remote = false;
-      };
-      policy = {
-        criticality = "workstation";
-        autoDeploy = false;
-        requireReview = true;
-        rollback = true;
-        healthChecks = [ ];
-      };
-    };
-
-    asus-usb = {
-      users.schlich = {
-        classes = [
-          "user"
-          "homeManager"
-        ];
-        primary = true;
-      };
-      users.agent = {
-        classes = [
-          "user"
-          "homeManager"
-        ];
-        environment = "agent";
-      };
-      profile = {
-        role = "workstation";
-        desktop = "niri";
-        gpu = "amd";
-        portable = true;
-        development = true;
-        xr = true;
-        secrets = false;
-        remote = true;
-      };
-      policy = {
-        criticality = "disposable";
-        autoDeploy = false;
-        requireReview = true;
-        rollback = true;
-        healthChecks = [
-          "niri-config"
-          "home-manager-nixos"
-        ];
-      };
-    };
-
-    homelab = {
-      users.schlich = { };
-      profile = {
-        role = "server";
-        # A local session for debugging on the machine itself.
-        desktop = "niri";
-        gpu = "intel";
-        portable = false;
-        development = false;
-        xr = false;
-        secrets = false;
-        remote = true;
-      };
-      policy = {
-        criticality = "critical";
-        autoDeploy = false;
-        requireReview = true;
-        rollback = true;
-        healthChecks = [
-          "ssh"
-          "tailscale"
-        ];
-      };
+    policy = {
+      criticality = "workstation";
+      autoDeploy = false;
+      requireReview = true;
+      rollback = true;
+      healthChecks = [ ];
     };
   };
+
+  asusHardware.profile = {
+    gpu = "amd";
+    portable = true;
+  };
+
+  personalWorkstation = {
+    users.schlich = {
+      classes = [
+        "user"
+        "homeManager"
+      ];
+      primary = true;
+    };
+    users.agent = {
+      classes = [
+        "user"
+        "homeManager"
+      ];
+      environment = "agent";
+    };
+    profile = {
+      role = "workstation";
+      desktop = "niri";
+      development = true;
+      xr = true;
+      remote = true;
+    };
+    policy.healthChecks = [
+      "niri-config"
+      "home-manager-nixos"
+    ];
+  };
+
+  hostLayers = {
+    asus = [
+      asusHardware
+      personalWorkstation
+    ];
+
+    asus-headless = [
+      asusHardware
+      {
+        users.schlich = { };
+        profile.role = "server";
+      }
+    ];
+
+    asus-usb = [
+      asusHardware
+      personalWorkstation
+      { policy.criticality = "disposable"; }
+    ];
+
+    homelab = [
+      {
+        users.schlich = { };
+        profile = {
+          role = "server";
+          # A local session for debugging on the machine itself.
+          desktop = "niri";
+          gpu = "intel";
+          remote = true;
+        };
+        policy = {
+          criticality = "critical";
+          healthChecks = [
+            "ssh"
+            "tailscale"
+          ];
+        };
+      }
+    ];
+  };
+
+  inventory = lib.mapAttrs (_: layers: lib.foldl' lib.recursiveUpdate fleet layers) hostLayers;
 
   profileTools = import ./profile.nix { inherit lib; };
 
