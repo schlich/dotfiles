@@ -197,6 +197,15 @@
         '';
         meta.description = "Local IWSDK WebXR workbench for Nix, Nushell, and Jujutsu workflows";
       };
+      quotaAdvisor = pkgs.writeShellApplication {
+        name = "quota-advisor";
+        runtimeInputs = [ pkgs.python3 ];
+        text = ''
+          export PYTHONPATH=${./tools/quota-advisor/src}
+          exec python3 -m quota_advisor.cli "$@"
+        '';
+        meta.description = "Explainable Codex and Claude subscription pacing advisor";
+      };
       lib = nixpkgs.lib;
       denEval = lib.evalModules {
         modules = [
@@ -318,6 +327,7 @@
         jj = pkgs.jujutsu;
         jjui = pkgs.jjui;
         xr-workbench = xrWorkbench;
+        quota-advisor = quotaAdvisor;
       };
 
       devShells.${system}.default = pkgs.mkShellNoCC {
@@ -358,6 +368,10 @@
           type = "app";
           program = "${xrWorkbench}/bin/xr-workbench";
         };
+        quota-advisor = {
+          type = "app";
+          program = "${quotaAdvisor}/bin/quota-advisor";
+        };
       };
 
       formatter.${system} = pkgs.nixfmt-tree;
@@ -365,6 +379,11 @@
       # CI runs every attribute here as its own job, so a new check needs no
       # workflow change. Run the same set locally with `nix-fast-build`.
       checks.${system} = {
+        quota-advisor = pkgs.runCommand "quota-advisor-check" { nativeBuildInputs = [ pkgs.python3 ]; } ''
+          cd ${./tools/quota-advisor}
+          PYTHONPATH=src python3 -m unittest discover -s tests -v
+          touch "$out"
+        '';
         den-host-evaluation = denHostEvaluationCheck;
         nixbot-homelab-evaluation = nixbotHomelabEvaluationCheck;
         den-inventory-tests =
