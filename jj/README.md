@@ -253,6 +253,28 @@ pushed it there) as JSON. A run that only timed out reports `timeout` rather
 than `failed`, since it says nothing about the topic. It reads the last-fetched remote state and the forge
 APIs only; it never fetches, pushes, or rewrites anything.
 
+### Context status
+
+`context-status` summarizes the current workspace's topic: its stage in the
+lifecycle modelled by `JjCi.tla` (editing, validated, published, passed,
+failed, landed, finished), the next jj-ci step, the changes above trunk and
+trunk commits the topic lacks, conflicts, lint freshness, the task owner, and
+the pipeline verdict and pull request for the published head.
+
+- `context-status` prints the full readout, refreshing a stale verdict first.
+- `context-status prompt` is the Starship segment next to the JJ one.
+- `context-status brief` prints when an interactive Nushell enters a different
+  workspace; set `CONTEXT_STATUS_ON_CD=false` to silence it.
+- `context-status handoff` prints Markdown for the next agent. Claude Code and
+  Codex run it with `--hook` at session start, so every session opens with the
+  workspace's state.
+- `context-status json` prints the collected record.
+
+Local facts are read on each call. Pipeline and pull request state is cached in
+`.jj/context-status.json` and refreshed in a detached process, so the prompt
+never waits on the network. An owner record in `.jj/codex-session.json` counts
+only while it names the current change.
+
 ### Previewing in-flight work
 
 `jj-ci preview` answers what the machine would look like once the published

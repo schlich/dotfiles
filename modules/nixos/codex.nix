@@ -4,6 +4,7 @@ let
   codexJjSession = pkgs.writeNuScriptBin "codex-jj-session" (
     builtins.readFile ../../jj/codex-session.nu
   );
+  contextStatus = import ../../jj/context-status.nix { inherit pkgs; };
   codexConfig = (pkgs.formats.toml { }).generate "codex-system-config" {
     # JJ has no global non-interactive environment switch. Codex shell tools
     # are non-interactive, so prevent an accidental editor or pager from
@@ -22,6 +23,12 @@ let
               command = "${codexJjSession}/bin/codex-jj-session session-start";
               timeout = 10;
               statusMessage = "Initializing and checking JJ topic ownership";
+            }
+            {
+              type = "command";
+              command = "${contextStatus}/bin/context-status handoff --hook";
+              timeout = 10;
+              statusMessage = "Reading the JJ workspace's context status";
             }
           ];
         }

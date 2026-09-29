@@ -44,6 +44,33 @@ let
       }
     } $out/hooks/hooks.json
   '';
+  contextStatus = import ../../../jj/context-status.nix { inherit pkgs; };
+  # Hand each new or resumed session the workspace's topic, lifecycle stage,
+  # lint and pipeline state, and next jj-ci step.
+  contextStatusHandoff = pkgs.runCommand "claude-code-context-status" { } ''
+    install -Dm644 ${
+      pkgs.writers.writeJSON "plugin.json" {
+        name = "context-status";
+        description = "Add the JJ workspace's context status to each session.";
+      }
+    } $out/.claude-plugin/plugin.json
+    install -Dm644 ${
+      pkgs.writers.writeJSON "hooks.json" {
+        hooks.SessionStart = [
+          {
+            matcher = "startup|resume|clear|compact";
+            hooks = [
+              {
+                type = "command";
+                command = "${contextStatus}/bin/context-status handoff --hook";
+                timeout = 10;
+              }
+            ];
+          }
+        ];
+      }
+    } $out/hooks/hooks.json
+  '';
   jev = import ../../../jev/package.nix { inherit pkgs; };
   jevBashGuard = pkgs.runCommand "claude-code-jev-bash-guard" { } ''
     install -Dm644 ${
@@ -167,6 +194,7 @@ in
     plugins.jev-bash-guard = jevBashGuard;
     plugins.prefer-nushell = preferNushellGuard;
     plugins.nushell-display = nushellDisplay;
+    plugins.context-status = contextStatusHandoff;
     # IWE memory: inert outside a workspace whose root has a MEMORY.md policy.
     plugins.iwe = "${inputs.iwe-skills}";
   };

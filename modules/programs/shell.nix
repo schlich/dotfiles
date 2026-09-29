@@ -66,6 +66,8 @@ in
       source ${../../mcp/terminal-events.nu}
       setup-terminal-events
       source ${../../nushell/project.nu}
+      source ${../../nushell/context-status.nu}
+      setup-context-status
     '';
   };
 
@@ -79,6 +81,16 @@ in
         when = "jj-starship detect";
         shell = [ "jj-starship" ];
         format = "$output ";
+      };
+      # The topic's jj-ci stage, pipeline verdict, and trunk drift. It reads
+      # only local state and a cache that it refreshes in the background.
+      custom.context = {
+        when = "jj-starship detect";
+        shell = [
+          "context-status"
+          "prompt"
+        ];
+        format = "($output )";
       };
       gcloud.disabled = true;
       git_branch.disabled = true;

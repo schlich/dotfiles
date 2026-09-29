@@ -75,6 +75,7 @@ in
     (pkgs.writeNuScriptBin "jj-describe" (builtins.readFile ../../jj/describe.nu))
     jjCi
     (pkgs.writeNuScriptBin "jj-dashboard" (builtins.readFile ../../jj/dashboard.nu))
+    (import ../../jj/context-status.nix { inherit pkgs; })
   ];
 
   xdg.configFile."nushell/autoload/jj-ci.nu".source = ../../jj/completions.nu;
