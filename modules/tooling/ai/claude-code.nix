@@ -131,6 +131,35 @@ let
       }
     } $out/hooks/hooks.json
   '';
+  # Record background Bash tasks for the homelab Fieldnotes wallpaper;
+  # agent-tasks-push marks them finished and copies the list there.
+  backgroundTasks = pkgs.runCommand "claude-code-background-tasks" { } ''
+    install -Dm644 ${
+      pkgs.writers.writeJSON "plugin.json" {
+        name = "background-tasks";
+        description = "Record background Bash tasks for the Fieldnotes wallpaper.";
+      }
+    } $out/.claude-plugin/plugin.json
+    install -Dm644 ${
+      pkgs.writers.writeJSON "hooks.json" {
+        hooks.PostToolUse = [
+          {
+            matcher = "Bash";
+            hooks = [
+              {
+                type = "command";
+                command = "${pkgs.nushell}/bin/nu --stdin ${../../../agent-monitor/record-background-task.nu}";
+                timeout = 5;
+              }
+            ];
+          }
+        ];
+      }
+    } $out/hooks/hooks.json
+  '';
+  pushBackgroundTasks = pkgs.writeNuScriptBin "push-background-tasks" (
+    builtins.readFile ../../../agent-monitor/push-background-tasks.nu
+  );
   # MCP calls render as a bare `input:` argument; echo the full command before
   # a Nushell evaluation and a one-line result summary after it.
   nushellDisplay =
@@ -195,8 +224,32 @@ in
     plugins.prefer-nushell = preferNushellGuard;
     plugins.nushell-display = nushellDisplay;
     plugins.context-status = contextStatusHandoff;
+    plugins.background-tasks = backgroundTasks;
     # IWE memory: inert outside a workspace whose root has a MEMORY.md policy.
     plugins.iwe = "${inputs.iwe-skills}";
+  };
+
+  # The hook also starts this unit, so a new task appears within seconds;
+  # the timer notices finished tasks and keeps homelab's copy fresh.
+  systemd.user.services.agent-tasks-push = {
+    Unit.Description = "Copy Claude Code background tasks to the homelab wallpaper";
+    Service = {
+      Type = "oneshot";
+      ExecStart = "${pushBackgroundTasks}/bin/push-background-tasks --target homelab";
+      Environment = [
+        "PATH=${lib.makeBinPath [ pkgs.openssh ]}"
+        "SSH_AUTH_SOCK=%t/gcr/ssh"
+      ];
+    };
+  };
+  systemd.user.timers.agent-tasks-push = {
+    Unit.Description = "Refresh the homelab wallpaper's Claude Code background tasks";
+    Timer = {
+      OnStartupSec = "30s";
+      OnUnitActiveSec = "20s";
+      AccuracySec = "1s";
+    };
+    Install.WantedBy = [ "timers.target" ];
   };
 
   dotfiles.tooling = {

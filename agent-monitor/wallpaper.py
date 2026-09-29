@@ -13,6 +13,12 @@ from datetime import datetime
 
 CI_REPO = os.environ.get("FIELDNOTES_CI_REPO", "schlich/dotfiles")
 POLL_SECONDS = 30
+# Other hosts push one `<host>.json` of Claude Code background tasks here.
+TASKS_DIR = os.path.expanduser(
+    os.environ.get("FIELDNOTES_TASKS_DIR", "~/.local/state/fieldnotes/agent-tasks")
+)
+# A host that has not pushed for this long is shown as stale.
+TASKS_STALE_SECONDS = 90
 
 
 def command_json(
@@ -91,6 +97,60 @@ def fetch_runs() -> tuple[list[dict], str | None]:
         ]
     )
     return (data if isinstance(data, list) else []), error
+
+
+def parse_time(value: object) -> datetime | None:
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00")).astimezone()
+    except (ValueError, TypeError):
+        return None
+
+
+def load_tasks() -> list[dict]:
+    try:
+        names = sorted(os.listdir(TASKS_DIR))
+    except OSError:
+        return []
+    now = datetime.now().astimezone()
+    tasks = []
+    for name in names:
+        if not name.endswith(".json"):
+            continue
+        try:
+            with open(os.path.join(TASKS_DIR, name), encoding="utf-8") as handle:
+                data = json.load(handle)
+        except (OSError, json.JSONDecodeError):
+            continue
+        updated = parse_time(data.get("updated"))
+        stale = updated is None or (now - updated).total_seconds() > TASKS_STALE_SECONDS
+        for task in data.get("tasks", []):
+            tasks.append(
+                {
+                    "host": data.get("host", name.removesuffix(".json")),
+                    "description": task.get("description") or task.get("id"),
+                    "cwd": task.get("cwd", ""),
+                    "started": parse_time(task.get("started")),
+                    "finished": parse_time(task.get("finished")),
+                    "stale": stale,
+                }
+            )
+    # Running tasks first, newest first within each group.
+    tasks.sort(
+        key=lambda task: (
+            task["finished"] is not None,
+            -(task["finished"] or task["started"] or now).timestamp(),
+        )
+    )
+    return tasks
+
+
+def ago(moment: datetime | None) -> str:
+    if moment is None:
+        return "—"
+    minutes = int((datetime.now().astimezone() - moment).total_seconds() // 60)
+    if minutes < 1:
+        return "<1m"
+    return f"{minutes // 60}h {minutes % 60:02d}m" if minutes >= 60 else f"{minutes}m"
 
 
 def shorten(value: object, width: int) -> str:
@@ -177,6 +237,7 @@ def draw(
     usage_error: str | None,
     runs: list[dict],
     ci_error: str | None,
+    tasks: list[dict],
     colors: dict[str, int],
 ) -> None:
     screen.erase()
@@ -280,6 +341,7 @@ def draw(
             put(screen, row_y + 2, left_x + 2, details, colors["muted"], left_width - 4)
             row_y += 4
 
+    ci_end = body_y + 4
     if ci_error:
         put(
             screen,
@@ -316,7 +378,9 @@ def draw(
         )
     else:
         label_width = max(10, right_width - 23)
-        for index, run in enumerate(runs[:visible_rows]):
+        shown_runs = runs[: max(1, (visible_rows - 6) // 2)]
+        ci_end = body_y + len(shown_runs) * 2
+        for index, run in enumerate(shown_runs):
             row_y = body_y + index * 2
             conclusion = run.get("conclusion") or run.get("status", "unknown")
             state = str(conclusion).lower()
@@ -342,12 +406,67 @@ def draw(
                 label_width,
             )
 
+    tasks_y = ci_end + 1
+    running = sum(1 for task in tasks if task["finished"] is None)
+    draw_panel(
+        screen,
+        right_x,
+        tasks_y,
+        right_width,
+        f"CLAUDE BACKGROUND TASKS  /  {running} running",
+        colors,
+    )
+    row_y = tasks_y + 3
+    if not tasks:
+        put(
+            screen,
+            row_y,
+            right_x + 2,
+            "No background tasks reported.",
+            colors["muted"],
+            right_width - 4,
+        )
+    label_width = max(10, right_width - 20)
+    for task in tasks:
+        if row_y + 1 >= height - 3:
+            break
+        if task["finished"] is not None:
+            marker, color = "✓", colors["mint"]
+            state = f"done {ago(task['finished'])} ago"
+        elif task["stale"]:
+            marker, color = "?", colors["amber"]
+            state = "host silent"
+        else:
+            marker, color = "●", colors["lime"]
+            state = f"running {ago(task['started'])}"
+        put(screen, row_y, right_x + 2, marker, color, 1)
+        put(
+            screen,
+            row_y,
+            right_x + 4,
+            shorten(task["description"], label_width),
+            colors["normal"],
+            label_width,
+        )
+        put(screen, row_y, right_x + right_width - 16, f"{state:>14}", color, 14)
+        where = f"↳ {task['host']}  ·  {os.path.basename(task['cwd'].rstrip('/'))}"
+        put(
+            screen,
+            row_y + 1,
+            right_x + 4,
+            shorten(where, label_width),
+            colors["muted"],
+            label_width,
+        )
+        row_y += 2
+
     divider_y = min(height - 2, max(body_y + 7, height - 3))
     put(screen, divider_y, 2, "─" * max(0, width - 4), colors["muted"], width - 4)
     put(screen, divider_y + 1, 2, "POLLING EVERY 30s", colors["muted"], 20)
     windows = sum(1 for item in usage if "percent" in item)
     put(screen, divider_y + 1, 23, f"AI USAGE  {windows} windows", colors["mint"], 24)
     put(screen, divider_y + 1, 48, f"CI  {len(runs)} runs", colors["mint"], 18)
+    put(screen, divider_y + 1, 67, f"TASKS  {running} running", colors["mint"], 20)
     screen.refresh()
 
 
@@ -370,7 +489,7 @@ def main(screen: curses.window) -> None:
             usage, usage_error = fetch_usage()
             runs, ci_error = fetch_runs()
             last_poll = time.monotonic()
-        draw(screen, usage, usage_error, runs, ci_error, colors)
+        draw(screen, usage, usage_error, runs, ci_error, load_tasks(), colors)
         time.sleep(0.5)
 
 
