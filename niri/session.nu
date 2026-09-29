@@ -18,6 +18,10 @@ const layouts = {
     { role: jjui, command: [jjui] }
     { role: gh-dash, command: [gh dash] }
   ]
+  # Window rules place the desktop agents; the session adds only a shell.
+  agents: [
+    { role: shell }
+  ]
   overview: [
     { role: overview, width: "50%", command: [nu -e "source ~/.config/niri/workspace-overview.nu"] }
     { role: control }
@@ -71,6 +75,7 @@ def session-route [session: string] {
     "snorkel" => { { layout: default, directory: $"($env.HOME)/starfish-projects" } }
     "vcs" => { { layout: default, directory: (project-directory) } }
     "overview" => { { layout: overview, directory: $env.HOME } }
+    "agents" => { { layout: agents, directory: (project-directory) } }
     "config" => { { layout: dotfiles, directory: $"($env.HOME)/dotfiles" } }
     "scratch" => { { layout: default, directory: (project-directory) } }
     _ => {

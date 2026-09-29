@@ -102,11 +102,14 @@ input {
 }
 
 // Keep the primary contexts available even when they have no windows.
+// Declaration order is their index, which Mod+1..Mod+6 follow; project
+// sessions opened with `session.nu project` land after them, on Mod+7..Mod+9.
 workspace "snorkel"
 workspace "vcs"
 workspace "overview"
-workspace "config"
+workspace "agents"
 workspace "scratch"
+workspace "config"
 
 // Settings that influence how windows are positioned and sized.
 // Find more information on the wiki:
@@ -323,6 +326,15 @@ window-rule {
   open-on-workspace "overview"
 }
 
+// Desktop coding agents (OpenCode autostarts) share the agents workspace
+// instead of landing on whichever workspace has focus.
+window-rule {
+  match app-id=r#"^ai\.opencode\.desktop$"#
+  match app-id=r#"^codex-desktop$"#
+  open-on-workspace "agents"
+  open-maximized true
+}
+
 // Floating Noctalia settings window.
 window-rule {
   match app-id="dev.noctalia.Noctalia"
@@ -519,29 +531,24 @@ binds {
     Mod+2 hotkey-overlay-title="JJ dashboard" { spawn "jj-dashboard"; }
     Mod+3 hotkey-overlay-title="Project overview" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" restore overview"; }
     Mod+Shift+3 hotkey-overlay-title="Focus project overview" { focus-workspace "overview"; }
+    Mod+4 hotkey-overlay-title="Coding agents" { focus-workspace "agents"; }
+    Mod+5 hotkey-overlay-title="Scratch" { focus-workspace "scratch"; }
+    Mod+6 hotkey-overlay-title="Dotfiles config" { focus-workspace "config"; }
     Mod+0 { focus-workspace "config"; }
     Mod+Shift+1 { move-column-to-workspace "snorkel"; }
     Mod+Shift+2 { move-column-to-workspace "vcs"; }
+    Mod+Shift+4 { move-column-to-workspace "agents"; }
+    Mod+Shift+5 { move-column-to-workspace "scratch"; }
+    Mod+Shift+6 { move-column-to-workspace "config"; }
     Mod+Shift+0 { move-column-to-workspace "config"; }
     Super+Ctrl+0 { move-window-to-workspace "scratch"; }
 
-    // You can refer to workspaces by index. However, keep in mind that
-    // niri is a dynamic workspace system, so these commands are kind of
-    // "best effort". Trying to refer to a workspace index bigger than
-    // the current workspace count will instead refer to the bottommost
-    // (empty) workspace.
-    //
-    // For example, with 2 workspaces + 1 empty, indices 3, 4, 5 and so on
-    // will all refer to the 3rd workspace.
-    Mod+4 { focus-workspace 4; }
-    Mod+5 { focus-workspace 5; }
-    Mod+6 { focus-workspace 6; }
-    Mod+7 { focus-workspace 7; }
-    Mod+8 { focus-workspace 8; }
-    Mod+9 { focus-workspace 9; }
-    Mod+Shift+4 { move-column-to-workspace 4; }
-    Mod+Shift+5 { move-column-to-workspace 5; }
-    Mod+Shift+6 { move-column-to-workspace 6; }
+    // Project sessions sit after the six named workspaces, in the order they
+    // were opened. Indices are best effort: past the last workspace they
+    // refer to the trailing empty one.
+    Mod+7 hotkey-overlay-title="Project session 1" { focus-workspace 7; }
+    Mod+8 hotkey-overlay-title="Project session 2" { focus-workspace 8; }
+    Mod+9 hotkey-overlay-title="Project session 3" { focus-workspace 9; }
     Mod+Shift+7 { move-column-to-workspace 7; }
     Mod+Shift+8 { move-column-to-workspace 8; }
     Mod+Shift+9 { move-column-to-workspace 9; }
