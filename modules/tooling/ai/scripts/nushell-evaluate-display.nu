@@ -1,12 +1,18 @@
 #!/usr/bin/env -S nu --stdin
 
 # Claude Code renders a Nushell MCP evaluation as a bare `input:` argument and
-# a collapsed result. Show the full command before the call and, after it, a
-# summary with the output's last lines as a `systemMessage`, which the user
-# sees and the model does not. This hook only displays: it never decides, and any problem leaves
-# it silent so the tool call proceeds exactly as it would without it.
+# a collapsed result. Show the full command, wrapped to the terminal, before
+# the call as a `systemMessage`, which the user sees and the model does not.
+# After the call, report only what the collapsed result hides: a failure, an
+# interruption, or a slow command's summary. This hook only displays: it never
+# decides, and any problem leaves it silent so the tool call proceeds exactly
+# as it would without it.
 
 const max_command_lines = 40
+# Report a successful evaluation only when it took at least this long.
+const slow_ms = 5000
+# Extra indent that marks a wrapped continuation of one command line.
+const wrap_indent = "  "
 const max_text = 160
 const preview_lines = 12
 # Columns Claude Code spends before a message line: its gutter plus our indent.
@@ -46,6 +52,22 @@ def clip-line [line: string, width: int] {
   } else {
     $line
   }
+}
+
+# Split one line into pieces of at most `width` columns, breaking at the last
+# space when one falls in the second half of the piece.
+def wrap-line [line: string, width: int] {
+  let limit = ([$width 20] | math max)
+  mut rest = $line
+  mut pieces = []
+  while ($rest | str length --grapheme-clusters) > $limit {
+    let head = ($rest | str substring --grapheme-clusters 0..<$limit)
+    let space = ($head | str index-of --grapheme-clusters --end ' ')
+    let cut = if $space > ($limit // 2) { $space } else { $limit }
+    $pieces = ($pieces | append ($rest | str substring --grapheme-clusters 0..<$cut | str trim --right))
+    $rest = ($rest | str substring --grapheme-clusters $cut.. | str trim --left)
+  }
+  $pieces | append $rest
 }
 
 def line-width [] {
@@ -139,19 +161,24 @@ def elapsed [payload: record] {
 def show-command [payload: record] {
   let command = ($payload.tool_input?.input? | default "")
   if ($command | str trim) == "" { return }
-  let all = ($command | str trim | lines)
-  let shown = ($all | first $max_command_lines)
-  let hidden = ($all | length) - ($shown | length)
-  let width = (line-width)
-  let body = ($shown | enumerate | each {|line|
-    let text = (clip-line $line.item $width)
-    if $line.index == 0 { $text } else { $"    ($text)" }
-  } | str join "\n")
+  let width = (line-width) - ($wrap_indent | str length)
+  # Wrap every command line, then cap the rows actually displayed.
+  let rows = ($command | str trim | lines | enumerate | each {|line|
+    wrap-line $line.item $width | enumerate | each {|piece|
+      let text = if $piece.index == 0 { $piece.item } else { $"($wrap_indent)($piece.item)" }
+      let indent = if $line.index == 0 and $piece.index == 0 { "" } else { "    " }
+      { line: $line.index, text: $"($indent)($text)" }
+    }
+  } | flatten)
+  let shown = ($rows | first $max_command_lines)
+  let hidden = ($rows | skip ($shown | length) | get line | uniq | length)
+  let body = ($shown | get text | str join "\n")
   let tail = if $hidden > 0 { $"\n    … ($hidden) more lines" } else { "" }
   emit $"nu ▸ ($body)($tail)"
 }
 
 def show-result [payload: record] {
+  if ($payload.duration_ms? | default 0) < $slow_ms { return }
   let reply = (parse-reply (response-text ($payload.tool_response? | default null)))
   if not ($reply | describe | str starts-with "record") {
     emit $"nu ✓(elapsed $payload) · (describe-value $reply)"
