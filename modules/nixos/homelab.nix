@@ -1,6 +1,6 @@
 {
   config,
-  lib,
+  inputs,
   pkgs,
   ...
 }:
@@ -8,9 +8,17 @@
 let
   adminKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINJRdPuDm1hX5iOgHNl63aUVPIUvkMhAFlBaoxOiSPEA schlich@tangled";
 
-  # The live system monitor drawn as the desktop wallpaper. Use
-  # `lib.getExe pkgs.htop` to show htop instead.
-  wallpaperMonitor = lib.getExe pkgs.bottom;
+  wallpaperMonitor = pkgs.writeShellApplication {
+    name = "agent-wallpaper";
+    runtimeInputs = [
+      pkgs.python3
+      pkgs.gh
+      inputs.ai-usagebar.packages.${pkgs.stdenv.hostPlatform.system}.default
+    ];
+    text = ''
+      exec python3 ${../../agent-monitor/wallpaper.py}
+    '';
+  };
 
   # Niri's own default config, minus its waybar autostart: homelab has no
   # waybar, and the desktop session instead starts the monitor wallpaper.
@@ -75,15 +83,16 @@ in
   # homelab has no Home Manager, so Niri reads this system-wide config.
   environment.etc."niri/config.kdl".source = niriConfig;
 
-  # Render a live system monitor on the background layer in place of a static
-  # wallpaper. Windows tile above it, and it takes no keyboard focus.
+  # Render live agent usage and CI status on the background layer. Windows tile
+  # above it, and it takes no keyboard focus.
   systemd.user.services.desktop-monitor = {
-    description = "Live system monitor wallpaper";
+    description = "Live agent usage and CI wallpaper";
     wantedBy = [ "graphical-session.target" ];
     partOf = [ "graphical-session.target" ];
     after = [ "graphical-session.target" ];
     serviceConfig = {
-      ExecStart = "${pkgs.kitty}/bin/kitten panel --edge=background ${wallpaperMonitor}";
+      ExecStart = "${pkgs.kitty}/bin/kitten panel --edge=background ${wallpaperMonitor}/bin/agent-wallpaper";
+      Environment = [ "FIELDNOTES_CI_REPO=schlich/dotfiles" ];
       Restart = "on-failure";
       RestartSec = 2;
     };
