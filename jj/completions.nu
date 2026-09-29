@@ -38,6 +38,9 @@ export extern "jj-ci" []
 # Show the working copy and each published topic with its pipeline and pull request
 export extern "jj-ci status" []
 
+# Print the current topic's published head, pipeline verdicts, and pull request as JSON
+export extern "jj-ci ci-state" []
+
 # Fetch Tangled, advance main, and rebase the empty working copy onto it
 export extern "jj-ci sync" []
 

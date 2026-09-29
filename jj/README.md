@@ -239,6 +239,20 @@ are pushed. `jj-ci refresh --all` also rebases topics that are merely behind.
 Keep topics short-lived and changes small enough to rebase without large
 manual resolutions.
 
+### Validation and pipeline state
+
+`jj-ci validate` and `jj-ci publish` record the commit Prek passed in
+`.jj/jj-ci-validation.json`. JJ snapshots every edit as a new commit, so the
+record stops matching the working copy as soon as the topic changes; comparing
+the two answers whether lint is fresh without running Prek again.
+
+`jj-ci ci-state` prints the current topic's publication branch, the head
+Tangled holds for it, whether it landed, its open pull request, and the
+spindle's verdict on that head (and GitHub's, when a GitHub-gated landing
+pushed it there) as JSON. A run that only timed out reports `timeout` rather
+than `failed`, since it says nothing about the topic. It reads the last-fetched remote state and the forge
+APIs only; it never fetches, pushes, or rewrites anything.
+
 ### Previewing in-flight work
 
 `jj-ci preview` answers what the machine would look like once the published

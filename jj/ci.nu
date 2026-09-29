@@ -282,7 +282,7 @@ def current-topic-id [] {
 }
 
 def publication-state-path [] {
-    let root = (run-command "locating the workspace" { ^jj root })
+    let root = (git-command "locating the workspace" { ^jj root })
     $root | path join ".jj" "jj-ci-publication.json"
 }
 
@@ -1091,6 +1091,47 @@ def validate-change [] {
             ^prek run --files ...$paths
         }
     } | ignore
+    record-validation
+}
+
+def validation-path [] {
+    let root = (git-command "locating the workspace" { ^jj root })
+    $root | path join ".jj" "jj-ci-validation.json"
+}
+
+# Remember the exact commit Prek passed. Any later edit snapshots a new commit,
+# so the record goes stale by itself; context-status reads it to report lint
+# freshness without running Prek.
+def record-validation [] {
+    {
+        change_id: (current-topic-id)
+        commit_id: (current-change "commit_id")
+        validated_at: (date now | format date "%+")
+    } | to json | save --force (validation-path)
+}
+
+# The commit a remote bookmark points at, or null when it is not on the remote.
+def remote-bookmark-commit [bookmark: string, remote: string] {
+    let result = (^jj log -r (remote-bookmark-revset $bookmark $remote) --no-graph -T 'commit_id' | complete)
+    if $result.exit_code != 0 { return null }
+    let commit = ($result.stdout | str trim)
+    if ($commit | is-empty) { null } else { $commit }
+}
+
+# One probe's verdict, or `unknown` with the reason when it could not be read.
+# A run that only timed out reports `timeout`: the gate treats it as a failure,
+# but it says nothing about the topic, and the homelab spindle's 30 minute
+# limit ends every cold run that way.
+def probe-state [probe: closure] {
+    try {
+        let result = (do $probe)
+        let statuses = ($result.workflows? | default [] | get --optional status | default [])
+        if $result.state == "failed" and "timeout" in $statuses and "failed" not-in $statuses {
+            { state: "timeout" }
+        } else {
+            $result | select state
+        }
+    } catch {|err| { state: "unknown" error: $err.msg } }
 }
 
 def main [] {
@@ -1109,6 +1150,40 @@ def "main status" [] {
             pull: ($pulls | where branch == $topic.name | get --optional 0.title)
         }
     }
+}
+
+# The current topic's publication and pipeline facts as JSON. It reads the
+# remotes' last-fetched state and the forges' APIs; it never fetches, pushes,
+# or rewrites anything, so a background status refresh can run it safely.
+def "main ci-state" [] {
+    let topic_id = (current-topic-id)
+    let topics = (publication-topics)
+    let branch = if $topic_id in $topics { $topics | get $topic_id } else { null }
+    let head = if $branch == null { null } else { remote-bookmark-commit $branch $TRUNK_REMOTE }
+    let base = {
+        change_id: $topic_id
+        branch: $branch
+        published_head: $head
+        landed: false
+        pull: null
+        spindle: null
+        github: null
+    }
+    if $head == null { return ($base | to json) }
+    let repo = (try { tangled-repo } catch { null })
+    let github = if (remote-bookmark-commit $branch $GITHUB_REMOTE) == $head {
+        probe-state { github-checks-state (github-repo) $head }
+    } else { null }
+    $base | merge {
+        landed: (topic-landed $branch)
+        pull: (if $repo == null { null } else {
+            try { open-pulls $repo | where branch == $branch | get --optional 0.title } catch { null }
+        })
+        spindle: (if $repo == null { { state: "unknown" error: "Could not read the Tangled repository." } } else {
+            probe-state { pipeline-state $repo $head }
+        })
+        github: $github
+    } | to json
 }
 
 def "main sync" [] {
