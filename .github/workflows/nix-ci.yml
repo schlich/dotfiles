@@ -1,7 +1,7 @@
 name: nix-ci
 on:
   pull_request:
-  # `jj-ci land --gate github` pushes the topic branch and waits for these
+  # `ci land --gate github` pushes the topic branch and waits for these
   # checks on its exact head before fast-forwarding main.
   push:
     branches:

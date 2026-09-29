@@ -9,8 +9,8 @@
 #   context-status refresh    update the cached pipeline state now
 #
 # Local facts are read on every call: the change graph against trunk, the task
-# owner, and jj-ci's publication and validation records. Pipeline and pull
-# request state comes from `jj-ci ci-state`, cached in .jj/context-status.json
+# owner, and `ci`'s publication and validation records. Pipeline and pull
+# request state comes from `ci ci-state`, cached in .jj/context-status.json
 # and refreshed in the background, so the prompt never waits on the network.
 
 const TRUNK = 'coalesce(remote_bookmarks(exact:"main", exact:"tangled"), trunk())'
@@ -105,7 +105,7 @@ def ttl [ci: record] {
     if ($ci.spindle?.state? | default "") in ["success" "failed" "timeout" "missing"] { $SETTLED_TTL } else { $PENDING_TTL }
 }
 
-# Where the topic stands in the jj-ci lifecycle (see JjCi.tla): edited,
+# Where the topic stands in the `ci` lifecycle (see JjCi.tla): edited,
 # validated at its head, published, passed by the pipeline, landed.
 def lifecycle [facts: record] {
     if $facts.owner in ["delivered" "discarded"] { return "finished" }
@@ -125,27 +125,27 @@ def lifecycle [facts: record] {
 
 def next-step [facts: record] {
     if ($facts.conflicts | is-not-empty) {
-        return "resolve the conflicts oldest first (`jj-ci conflicts` lists them), then `jj-ci validate`"
+        return "resolve the conflicts oldest first (`ci conflicts` lists them), then `ci validate`"
     }
     match $facts.stage {
         "stranded" => $"the working copy left this workspace's topic ($facts.stranded.short) \"($facts.stranded.title)\"; return with `jj edit ($facts.stranded.short)` and `jj abandon ($facts.stranded.stray)`"
         "finished" => "archive this task; start a new task for further work"
-        "landed" => "run `jj-ci finish` to verify delivery and release the workspace"
-        "idle" => "edit files to start the topic, or `jj-ci finish` if it was delivered"
+        "landed" => "run `ci finish` to verify delivery and release the workspace"
+        "idle" => "edit files to start the topic, or `ci finish` if it was delivered"
         "editing" => (if not $facts.head.described {
-            "describe the change with an `Impact:` trailer, then `jj-ci validate`"
-        } else { "run `jj-ci validate`, then `jj-ci publish`" })
-        "validated" => "run `jj-ci publish`"
-        "republish" => "the head moved since publication; run `jj-ci publish` to update the branch"
-        "published" => "run `jj-ci land` when the topic is ready to deliver; it builds the checks locally"
-        "passed" => "run `jj-ci land` when the topic is ready to deliver"
-        "failed" => "inspect the failed pipeline, fix the topic, and `jj-ci publish` again"
+            "describe the change with an `Impact:` trailer, then `ci validate`"
+        } else { "run `ci validate`, then `ci publish`" })
+        "validated" => "run `ci publish`"
+        "republish" => "the head moved since publication; run `ci publish` to update the branch"
+        "published" => "run `ci land` when the topic is ready to deliver; it builds the checks locally"
+        "passed" => "run `ci land` when the topic is ready to deliver"
+        "failed" => "inspect the failed pipeline, fix the topic, and `ci publish` again"
         _ => ""
     }
 }
 
-# Whether the working copy has wandered off the topic that `jj-ci start`
-# recorded. Keep in step with topic-stranded in jj/ci.nu, which refuses jj-ci
+# Whether the working copy has wandered off the topic that `ci start`
+# recorded. Keep in step with topic-stranded in jj/ci.nu, which refuses `ci`
 # commands in this state.
 def topic-stranded [facts: record] {
     $facts.recorded and $facts.visible and not $facts.landed and not $facts.ancestor and $facts.working_copy_empty and not $facts.topic_empty
@@ -233,7 +233,7 @@ def locked [root: path] {
 def refresh-now [root: path] {
     let lock = ($root | path join ".jj" $LOCK_FILE)
     touch $lock
-    let result = (do { cd $root; ^jj-ci ci-state } | complete)
+    let result = (do { cd $root; ^ci ci-state } | complete)
     if $result.exit_code == 0 {
         let state = (try { $result.stdout | from json } catch { null })
         if $state != null {
@@ -415,11 +415,11 @@ const SEVERITIES = ["error" "warning" "info"]
 #   stack, published, behind       work above trunk, whether it has a branch
 #   conflicts                      conflicted revisions in the stack
 #   stale_entries                  publication entries for changes not here
-#   stranded                       the working copy left its `jj-ci start` topic
+#   stranded                       the working copy left its `ci start` topic
 def audit-findings [facts: record] {
     let finding = {|severity, code, detail, fix| { workspace: $facts.name severity: $severity code: $code detail: $detail fix: $fix } }
     if not $facts.exists {
-        return [(do $finding "error" "missing-workspace" $"($facts.root) no longer exists." "`jj-ci prune --apply` forgets it")]
+        return [(do $finding "error" "missing-workspace" $"($facts.root) no longer exists." "`ci prune --apply` forgets it")]
     }
     if $facts.error != null {
         return [(do $finding "error" "unreadable" $facts.error "`jj workspace update-stale` in the workspace, then audit again")]
@@ -428,31 +428,31 @@ def audit-findings [facts: record] {
     [
         # TLA: OwnerRecordMatchesSession, UnclaimOnlyOrphans.
         (if $facts.owner == "active" and not $facts.owner_checked_out {
-            do $finding "error" "orphaned-claim" $"An active task owns change ($change), which is no longer checked out here; every new session is refused." "`jj-ci unclaim` in the workspace"
+            do $finding "error" "orphaned-claim" $"An active task owns change ($change), which is no longer checked out here; every new session is refused." "`ci unclaim` in the workspace"
         })
-        # The topic guard in jj/ci.nu: jj-ci refuses to run until the working
+        # The topic guard in jj/ci.nu: `ci` refuses to run until the working
         # copy returns (TLA: topic commands require `checkedOut`).
         (if $facts.stranded {
-            do $finding "error" "stranded-topic" "The working copy left the topic `jj-ci start` recorded; jj-ci refuses to run here." "`jj edit` the topic, as `context-status` in the workspace names it"
+            do $finding "error" "stranded-topic" "The working copy left the topic `ci start` recorded; `ci` refuses to run here." "`jj edit` the topic, as `context-status` in the workspace names it"
         })
         # TLA: ClaimOnlyWhileActive.
         (if $facts.claim and $facts.owner != "active" {
-            do $finding "error" "leftover-claim" "A session claim remains without an active task; new Codex sessions are refused." "`jj-ci unclaim` in the workspace"
+            do $finding "error" "leftover-claim" "A session claim remains without an active task; new Codex sessions are refused." "`ci unclaim` in the workspace"
         })
         # TLA: NoClaimOnSharedDefault.
         (if $facts.owner == "active" and $facts.default and $facts.dedicated {
-            do $finding "error" "shared-default-claim" $"A task owns the canonical checkout with change ($change)." "move the topic to `jj-ci start NAME`, then `jj-ci unclaim` here"
+            do $finding "error" "shared-default-claim" $"A task owns the canonical checkout with change ($change)." "move the topic to `ci start NAME`, then `ci unclaim` here"
         })
         # TLA: DeliveredRecordIsTrue.
         (if $facts.legacy {
-            do $finding "warning" "legacy-record" $"The ownership record for change ($change) predates `state`; it cannot say whether the topic was delivered." "check the topic's branch; `jj-ci finish` or `jj-ci unclaim` rewrites the record"
+            do $finding "warning" "legacy-record" $"The ownership record for change ($change) predates `state`; it cannot say whether the topic was delivered." "check the topic's branch; `ci finish` or `ci unclaim` rewrites the record"
         })
         (if ($facts.conflicts | is-not-empty) {
-            do $finding "warning" "conflicts" $"Conflicted revisions: ($facts.conflicts | str join ', ')." "resolve oldest first; `jj-ci conflicts` lists them"
+            do $finding "warning" "conflicts" $"Conflicted revisions: ($facts.conflicts | str join ', ')." "resolve oldest first; `ci conflicts` lists them"
         })
         (if $facts.stack > 0 and not $facts.published {
             let behind = if $facts.behind > 0 { $", based ($facts.behind) trunk commits back" } else { "" }
-            do $finding "warning" "unpublished-work" $"The head of ($facts.stack) change\(s) above trunk is unpublished($behind); `jj-ci status` does not list it." "`jj-ci publish` it, or `jj-ci abandon` it"
+            do $finding "warning" "unpublished-work" $"The head of ($facts.stack) change\(s) above trunk is unpublished($behind); `ci status` does not list it." "`ci publish` it, or `ci abandon` it"
         })
         (if ($facts.stale_entries | is-not-empty) {
             do $finding "info" "stale-publication-entries" $"($facts.stale_entries | length) publication entries name changes not checked out here: ($facts.stale_entries | str join ', ')." "harmless; they are reused only if those changes return here"
@@ -545,5 +545,5 @@ def main [dir?: path] {
         print ""
         for file in $facts.working_copy { print $"  ($file.0) ($file.1)" }
     }
-    if $facts.published_head != null and $facts.ci == null { print "\n  (pipeline state unavailable; is jj-ci current?)" }
+    if $facts.published_head != null and $facts.ci == null { print "\n  (pipeline state unavailable; is `ci` current?)" }
 }

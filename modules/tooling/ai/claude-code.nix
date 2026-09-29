@@ -46,7 +46,7 @@ let
   '';
   contextStatus = import ../../../jj/context-status.nix { inherit pkgs; };
   # Hand each new or resumed session the workspace's topic, lifecycle stage,
-  # lint and pipeline state, and next jj-ci step.
+  # lint and pipeline state, and next `ci` step.
   contextStatusHandoff = pkgs.runCommand "claude-code-context-status" { } ''
     install -Dm644 ${
       pkgs.writers.writeJSON "plugin.json" {
@@ -170,7 +170,7 @@ in
   programs.claude-code = {
     enable = true;
     enableMcpIntegration = true;
-    # Read-only: GitHub writes go through jj-ci.
+    # Read-only: GitHub writes go through ci.
     mcpServers.github = {
       type = "http";
       url = "https://api.githubcopilot.com/mcp/readonly";

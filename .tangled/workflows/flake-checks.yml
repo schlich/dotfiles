@@ -1,8 +1,8 @@
 name: Nix flake checks
-# Runs only when started by hand. `jj-ci land` gates on the same command built
+# Runs only when started by hand. `ci land` gates on the same command built
 # locally by default; on every push, the homelab spindle's serial queue filled
 # with 30-minute cold-store timeouts and never passed a run. Start it manually
-# on a `jj-*` branch before `jj-ci land --gate spindle`.
+# on a `jj-*` branch before `ci land --gate spindle`.
 when:
   - event: ["manual"]
     branch: ["main", "jj-*"]

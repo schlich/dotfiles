@@ -23,8 +23,8 @@ os.environ.update(
         "JJ_CI_WEBHOOK_WORKFLOW": "nix-ci",
         "JJ_CI_WEBHOOK_PATH": "/github/webhook",
         "JJ_CI_WEBHOOK_SECRET": "test-secret",
-        "JJ_CI_WEBHOOK_SYNC_COMMAND": "jj-ci sync",
-        "JJ_CI_WEBHOOK_REFRESH_COMMAND": "jj-ci refresh",
+        "JJ_CI_WEBHOOK_SYNC_COMMAND": "ci sync",
+        "JJ_CI_WEBHOOK_REFRESH_COMMAND": "ci refresh",
         "JJ_CI_WEBHOOK_AGENT_COMMAND": "codex exec",
     }
 )
@@ -145,7 +145,7 @@ class WebhookTests(unittest.TestCase):
         with mock.patch.object(
             webhook.subprocess, "run", return_value=mock.Mock(returncode=0)
         ) as run:
-            self.assertTrue(worker.run_local("sync", ["jj-ci", "sync"], "a" * 40))
+            self.assertTrue(worker.run_local("sync", ["ci", "sync"], "a" * 40))
         self.assertNotIn("JJ_CI_WEBHOOK_SECRET", run.call_args.kwargs["env"])
 
     def test_deduplicates_deliveries_and_rejects_queue_saturation(self):

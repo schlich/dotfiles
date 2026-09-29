@@ -33,7 +33,7 @@
   project. Do not use the desktop Git worktree or commit actions.
 - Start each workspace from `main@origin`, rebase after trunk advances and
   before review or queue updates, and never share a mutable topic worktree.
-- Where available, use `jj-ci rebase`, `jj-ci publish`, and `jj-ci finish` for
+- Where available, use `ci rebase`, `ci publish`, and `ci finish` for
   updating, publishing, and closing out the topic. Archive only after verified
   delivery of the current head to main.
 - Before implementation or publication, inspect for mixed deliverables and

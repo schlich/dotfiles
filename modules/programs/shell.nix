@@ -82,7 +82,7 @@ in
         shell = [ "jj-starship" ];
         format = "$output ";
       };
-      # The topic's jj-ci stage, pipeline verdict, and trunk drift. It reads
+      # The topic's `ci` stage, pipeline verdict, and trunk drift. It reads
       # only local state and a cache that it refreshes in the background.
       custom.context = {
         when = "jj-starship detect";

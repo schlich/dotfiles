@@ -4,7 +4,7 @@ These JSON files are export/import sources for the repository ruleset UI and
 REST API; GitHub does not automatically apply files committed under `.github`.
 
 `main-checks.json` describes the active personal-repository ruleset. Required
-checks live in the classic branch protection that `jj-ci github reconcile`
+checks live in the classic branch protection that `ci github reconcile`
 manages; they are not strict, so a PR need not be up to date with `main`.
 
 `main-checks-merge-queue.json` is the queue profile for when this repository is

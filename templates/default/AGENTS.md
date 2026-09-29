@@ -30,7 +30,7 @@
   before review or queue updates, and never share a mutable topic worktree.
 - Use `path:` references such as `nix develop path:.` to include new files in
   local flakes without Git staging. Path sources also include ignored files.
-- Where available, use `jj-ci rebase`, `jj-ci publish`, and `jj-ci finish` for
+- Where available, use `ci rebase`, `ci publish`, and `ci finish` for
   updating, publishing, and closing out the topic. Archive only after verified
   delivery of the current head to main.
 - Before implementation or publication, inspect for mixed deliverables and

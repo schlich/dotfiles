@@ -74,11 +74,11 @@ def git-context [] {
     { GIT_DIR: ($backend.stdout | str trim) GIT_WORK_TREE: ($root.stdout | str trim) }
 }
 
-# Tangled hosts main and every topic branch. `jj-ci land` is the only path to
+# Tangled hosts main and every topic branch. `ci land` is the only path to
 # main: it fast-forwards main to a head the landing gate has already passed.
 const TRUNK_REMOTE = "tangled"
 # GitHub mirrors main, and its Actions can gate a landing in the spindle's
-# place with `jj-ci land --gate github`. Its rules accept only fast-forwards.
+# place with `ci land --gate github`. Its rules accept only fast-forwards.
 const GITHUB_REMOTE = "origin"
 const GITHUB_REQUIRED_CHECKS = ["impact classification" "nix flake checks"]
 const TANGLED_INDEX = "https://api.tangled.org"
@@ -509,7 +509,7 @@ def require-owned-change [topic_id?: string] {
     require-topic-checked-out
 }
 
-# Whether the working copy has wandered off the topic that `jj-ci start`
+# Whether the working copy has wandered off the topic that `ci start`
 # recorded, as after a manual `jj new main`: it is an empty change the topic is
 # not an ancestor of, while the topic still holds unlanded work. A topic that
 # was abandoned, squashed away, or landed no longer counts, and a stack or a
@@ -598,9 +598,9 @@ def print-conflicts [context: string] {
     print-conflicted-files $revisions "  "
     print ""
     print $"Topic tip before selecting a revision: (current-topic-id)"
-    print "Resolve each revision in order, then run `jj-ci conflicts` again."
+    print "Resolve each revision in order, then run `ci conflicts` again."
     print "For a revision that is not @: run `jj edit CHANGE_ID`, edit or `jj resolve` its files, then return with `jj edit TOPIC_TIP`."
-    print "Do not re-run `jj-ci rebase` until the current topic is conflict-free; the rebase already completed."
+    print "Do not re-run `ci rebase` until the current topic is conflict-free; the rebase already completed."
     true
 }
 
@@ -797,7 +797,7 @@ def restack-checked-out [bookmark: string, onto: string, workspaces: list<string
     { stack: $stack }
 }
 
-# Whether a published topic needs rewriting. `jj-ci land` rebases a topic
+# Whether a published topic needs rewriting. `ci land` rebases a topic
 # onto main itself, so rebasing one that merely fell behind only restarts its
 # pipeline. A stacked topic must follow its parent, and a conflicting one
 # cannot land at all.
@@ -888,7 +888,7 @@ def refresh-topics [push: bool, all: bool] {
     let results = (refresh-outcomes (stack-order (topic-bookmarks)) {|topic| refresh-topic $topic $push $all })
     print ($results | table)
     if ($results | where state == "conflicted" | is-not-empty) {
-        error make { msg: "Some topics have conflicts. Resolve them locally, then run `jj-ci refresh` again." }
+        error make { msg: "Some topics have conflicts. Resolve them locally, then run `ci refresh` again." }
     }
 }
 
@@ -1045,7 +1045,7 @@ def build-plan [published: list] {
     $topics | each {|topic|
         let placement = match $topic.main {
             "landed" => { action: "landed" proposal: "already in main; finish or abandon" parent: null }
-            "conflicts with main" => { action: "resolve-main" proposal: "resolve against main first (jj-ci rebase)" parent: null }
+            "conflicts with main" => { action: "resolve-main" proposal: "resolve against main first (ci rebase)" parent: null }
             _ => ($proposals | where tip == $topic.tip | get 0)
         }
         let conflicts = ($edges
@@ -1069,10 +1069,10 @@ def build-plan [published: list] {
 
 def sync-main [] {
     if (owner-status (session-owner)) == "active" {
-        error make { msg: "An active Codex topic owns this workspace. Use `jj-ci rebase`, finish the topic, or `jj-ci unclaim` a claim its task left behind before syncing." }
+        error make { msg: "An active Codex topic owns this workspace. Use `ci rebase`, finish the topic, or `ci unclaim` a claim its task left behind before syncing." }
     }
     if (current-change "empty") != "true" {
-        error make { msg: "Sync needs an empty change. Use `jj-ci rebase` to update this topic in place." }
+        error make { msg: "Sync needs an empty change. Use `ci rebase` to update this topic in place." }
     }
     checkpoint "sync"
     fetch-trunk
@@ -1150,7 +1150,7 @@ def probe-state [probe: closure] {
 }
 
 def main [] {
-    print "Use `jj-ci start`, `jj-ci status`, `jj-ci sync`, `jj-ci plan`, `jj-ci preview`, `jj-ci rebase`, `jj-ci refresh`, `jj-ci conflicts`, `jj-ci review snapshot`, `jj-ci interdiff`, `jj-ci validate`, `jj-ci publish`, `jj-ci land`, `jj-ci finish`, `jj-ci abandon`, `jj-ci unclaim`, `jj-ci prune`, `jj-ci tangled stack-publish`, `jj-ci impact check`, `jj-ci release`, or `jj-ci version`."
+    print "Use `ci start`, `ci status`, `ci sync`, `ci plan`, `ci preview`, `ci rebase`, `ci refresh`, `ci conflicts`, `ci review snapshot`, `ci interdiff`, `ci validate`, `ci publish`, `ci land`, `ci finish`, `ci abandon`, `ci unclaim`, `ci prune`, `ci tangled stack-publish`, `ci impact check`, `ci release`, or `ci version`."
 }
 
 def "main status" [] {
@@ -1391,7 +1391,7 @@ def "main preview" [
         do $discard
         print "The selected topics conflict when merged:"
         print ($files | lines | each {|line| $"  ($line)" } | str join "\n")
-        error make { msg: "Preview a subset with `jj-ci preview BRANCH ...`, or see `jj-ci plan` for how to stack them." }
+        error make { msg: "Preview a subset with `ci preview BRANCH ...`, or see `ci plan` for how to stack them." }
     }
 
     let name = ($marker | str substring 0..21)
@@ -1459,7 +1459,7 @@ def "main conflicts" [] {
 
 # Choose the branch a topic should stack on. A topic built on top of another
 # published topic depends on it and stacks on the nearest one; otherwise
-# `jj-ci plan` decides. Returns null when the topic can go straight to main.
+# `ci plan` decides. Returns null when the topic can go straight to main.
 def plan-parent-for-current-topic [branch: string] {
     let published = (topic-bookmarks | where name != $branch)
     let below = ($published | where {|topic|
@@ -1508,17 +1508,17 @@ def restack-topic [parent: string] {
     if ($conflicts | is-not-empty) {
         print $"Restacked onto ($parent) with ($conflicts | length) conflicted revision\(s):"
         print-conflicted-files $conflicts "  "
-        error make { msg: "Resolve these conflicts locally, oldest first, then run `jj-ci publish` again." }
+        error make { msg: "Resolve these conflicts locally, oldest first, then run `ci publish` again." }
     }
 }
 
-# A process keeps the jj-ci on its PATH from launch, so an agent session that
+# A process keeps the `ci` on its PATH from launch, so an agent session that
 # predates a rebuild, or a direnv shell from an older checkout, can publish
 # with superseded logic (such as the old literal-`\n` PR body). The wrapper
 # records the hash of the script it was built from; accept it only when it
 # matches this workspace's jj/ci.nu or main@tangled's. Unwrapped runs and
 # repositories without jj/ci.nu skip the check.
-def require-current-jj-ci [] {
+def require-current-ci [] {
     let built = ($env.JJ_CI_SOURCE_SHA256? | default "")
     if ($built | is-empty) { return }
     let root = (^jj root | complete)
@@ -1528,14 +1528,14 @@ def require-current-jj-ci [] {
     if (open --raw $local | hash sha256) == $built { return }
     let trunk = (^jj file show -r main@tangled 'root:"jj/ci.nu"' | complete)
     if $trunk.exit_code == 0 and ($trunk.stdout | hash sha256) == $built { return }
-    error make { msg: "This jj-ci was built from neither this workspace's jj/ci.nu nor main@tangled's. Rerun it as `direnv exec . jj-ci ...` in this workspace, or activate the configuration and start a new session." }
+    error make { msg: "This `ci` was built from neither this workspace's jj/ci.nu nor main@tangled's. Rerun it as `direnv exec . ci ...` in this workspace, or activate the configuration and start a new session." }
 }
 
 # Rebase or restack the current topic, validate it, and push its bookmark to
 # the trunk remote. A topic keeps one bookmark for its whole life, so every
 # publish updates the same branch and any pull request opened from it.
 def publish-topic [] {
-    require-current-jj-ci
+    require-current-ci
     require-ready-change
     let branch = (publication-bookmark)
     fetch-trunk
@@ -1589,7 +1589,7 @@ def land-published [published: record, repo: record, timeout: duration, gate: st
     }
     mirror-main
     cut-releases $"($base)..($published.head)" false
-    print $"Landed ($published.branch) on main. `jj-ci finish` releases the workspace."
+    print $"Landed ($published.branch) on main. `ci finish` releases the workspace."
     true
 }
 
@@ -1605,7 +1605,7 @@ def land-with-retries [published: record, repo: record, timeout: duration, gate:
         print $"main moved while the gate ran; rebasing onto the new main and trying again \(attempt ($attempt + 1) of ($attempts))."
         $current = (publish-topic)
     }
-    error make { msg: $"main moved during each of ($attempts) landing attempts. Nothing landed; run `jj-ci land` again once main is quiet." }
+    error make { msg: $"main moved during each of ($attempts) landing attempts. Nothing landed; run `ci land` again once main is quiet." }
 }
 
 # Fast-forward GitHub's main to the trunk's. Tangled is authoritative, so a
@@ -1642,7 +1642,7 @@ def "main publish" [
     if $land {
         land-with-retries $published $repo $timeout $gate $attempts
     } else {
-        print "Published this topic in place. Further edits update the same JJ series and branch; `jj-ci land` delivers it."
+        print "Published this topic in place. Further edits update the same JJ series and branch; `ci land` delivers it."
     }
 }
 
@@ -1701,7 +1701,7 @@ def require-closure-neutral [base: string, head: string] {
 
 # Classify `base..head` from its commit trailers and, for a refactor, prove
 # that every NixOS closure matches the merge base. Uses Git and Nix only, so it
-# runs without a JJ workspace; `jj-ci land` runs the same proof itself.
+# runs without a JJ workspace; `ci land` runs the same proof itself.
 def "main impact check" [base: string, head: string] {
     let log = (git-command "reading the topic commits" {
         ^git log --no-merges --format=%h%x1f%B%x1e $"($base)..($head)"
@@ -1748,7 +1748,7 @@ def cut-releases [range: string, dry_run: bool] {
     }
 }
 
-# Release every user-facing revision on main since the newest release. `jj-ci
+# Release every user-facing revision on main since the newest release. `ci
 # land` releases what it lands; this catches up after a failed tag push.
 # Without an earlier release, only main itself is considered.
 def "main release" [--dry-run] {
@@ -1791,7 +1791,7 @@ def current-workspace [] {
     list-workspaces | where root == $root | first
 }
 
-# `jj-ci start` writes this marker. A workspace that carries it belongs to its
+# `ci start` writes this marker. A workspace that carries it belongs to its
 # topic, and `finish` or `abandon` removes it when the topic ends.
 def owned-workspace-marker [root: string] {
     $root | path join ".jj" "jj-ci-workspace.json"
@@ -1835,7 +1835,7 @@ def end-ownership [root: string, outcome: string] {
     if ($claim | path exists) { rm --recursive $claim }
 }
 
-# Release the topic onto an empty change on main. A workspace that `jj-ci start`
+# Release the topic onto an empty change on main. A workspace that `ci start`
 # created is then dropped; any other one stays and its Codex owner records
 # `outcome` (delivered or discarded).
 def --env release-workspace [summary: string, change: string, keep: bool, outcome: string] {
@@ -1853,7 +1853,7 @@ def --env release-workspace [summary: string, change: string, keep: bool, outcom
     print $"($summary) Workspace is on main; the Codex task can now be archived."
 }
 
-# What `jj-ci unclaim` may do, from the ownership record's status, whether the
+# What `ci unclaim` may do, from the ownership record's status, whether the
 # owner's change is still checked out here, and whether a claim remains. It
 # never releases a change that is checked out: `finish` or `abandon` owns that.
 def unclaim-verdict [facts: record] {
@@ -1867,7 +1867,7 @@ def unclaim-verdict [facts: record] {
             $nothing | upsert refuse "No Codex task owns this workspace."
         })
         "active" => (if $facts.at_owner_change {
-            $nothing | upsert refuse "The owning task's change is checked out here. Use `jj-ci finish` or `jj-ci abandon` to end the topic."
+            $nothing | upsert refuse "The owning task's change is checked out here. Use `ci finish` or `ci abandon` to end the topic."
         } else {
             { release: true clear_claim: true normalize: false refuse: null }
         })
@@ -1896,7 +1896,7 @@ def "main start" [
     }
     let root = (workspace-root "default" | path join ".jj-workspaces" $name)
     if ($root | path exists) {
-        error make { msg: $"($root) already exists. Inspect it with `jj-ci prune` before reusing the name." }
+        error make { msg: $"($root) already exists. Inspect it with `ci prune` before reusing the name." }
     }
     fetch-trunk
     run-command $"creating workspace ($name)" {
@@ -1907,7 +1907,7 @@ def "main start" [
     let topic = (^jj --repository $root log -r @ --no-graph -T change_id | complete)
     if $topic.exit_code != 0 { error make { msg: ($topic.stderr | str trim) } }
     { name: $name created: (date now | format date "%+") change_id: ($topic.stdout | str trim) } | to json | save (owned-workspace-marker $root)
-    print $"Created ($root) on main@tangled. `jj-ci finish` or `jj-ci abandon` removes it when the topic ends."
+    print $"Created ($root) on main@tangled. `ci finish` or `ci abandon` removes it when the topic ends."
 }
 
 # The topic that `finish` closes. Landing fast-forwards main onto the topic
@@ -1929,7 +1929,7 @@ def finish-topic-id [] {
 }
 
 def --env "main finish" [
-    --keep # Keep a workspace that `jj-ci start` created
+    --keep # Keep a workspace that `ci start` created
 ] {
     let change = (finish-topic-id)
     require-owned-change $change
@@ -1945,7 +1945,7 @@ def --env "main finish" [
             error make { msg: $"($branch) is published but not on main. Land or abandon it explicitly before releasing the workspace." }
         }
     } else if (revset-change-ids "@ & ::main@tangled" | is-empty) {
-        error make { msg: "The current revision is not on main. Land it with `jj-ci land`, and leave the task open until it has." }
+        error make { msg: "The current revision is not on main. Land it with `ci land`, and leave the task open until it has." }
     }
     delete-topic-bookmark $branch
     forget-publication-bookmark $change
@@ -1956,7 +1956,7 @@ def --env "main finish" [
 }
 
 def --env "main abandon" [
-    --keep # Keep a workspace that `jj-ci start` created
+    --keep # Keep a workspace that `ci start` created
 ] {
     require-owned-change
     let change = (current-change "change_id")
@@ -2059,7 +2059,7 @@ def prune-verdict [facts: record] {
     if $facts.git_worktree { return "Git worktree; remove it with its owner" }
     if $facts.codex_worktree { return "Codex worktree; archive its task instead" }
     if $facts.owner == "active" { return "owned by an active task" }
-    if $facts.stale { return "stale; `jj-ci prune --apply` updates it and decides again" }
+    if $facts.stale { return "stale; `ci prune --apply` updates it and decides again" }
     if $facts.error != null { return $"unreadable: ($facts.error)" }
     if $facts.pending { return "has undelivered changes" }
     null
@@ -2074,7 +2074,7 @@ def prune-checkpoints [root: string, cutoff: datetime, apply: bool] {
 }
 
 # Prune is the backstop for owners that never released their workspace: a
-# crashed task, or a workspace created before `jj-ci start`.
+# crashed task, or a workspace created before `ci start`.
 def --env "main prune" [
     --apply # Update stale workspaces, then forget and delete the listed ones and checkpoints
     --keep-days: int = 14 # Keep checkpoints newer than this
@@ -2098,5 +2098,5 @@ def --env "main prune" [
     }
     let checkpoints = ($kept | where {|workspace| $workspace.root | path exists } | each {|workspace| prune-checkpoints $workspace.root $cutoff $apply } | math sum)
     print $"(if $apply { 'Removed' } else { 'Would remove' }) ($checkpoints) checkpoint\(s) older than ($keep_days) days."
-    if not $apply { print "Dry run only. Re-run with `jj-ci prune --apply` to remove them." }
+    if not $apply { print "Dry run only. Re-run with `ci prune --apply` to remove them." }
 }

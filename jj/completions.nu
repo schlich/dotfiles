@@ -1,7 +1,7 @@
-# Nushell completions for jj-ci. Keep these signatures in step with the
+# Nushell completions for ci. Keep these signatures in step with the
 # `main` subcommands in jj/ci.nu.
 
-def "nu-complete jj-ci review-labels" [] {
+def "nu-complete ci review-labels" [] {
     let root = (^jj root | complete)
     if $root.exit_code != 0 { return [] }
     let path = ($root.stdout | str trim | path join ".jj" "jj-ci-review-versions.json")
@@ -9,7 +9,7 @@ def "nu-complete jj-ci review-labels" [] {
     open $path | each {|version| { value: $version.label, description: $version.created_at? } }
 }
 
-def "nu-complete jj-ci topics" [] {
+def "nu-complete ci topics" [] {
     let topics = (^jj bookmark list --template 'if(!remote, name ++ "\t" ++ normal_target.description().first_line() ++ "\n")' 'glob:jj-*' | complete)
     if $topics.exit_code != 0 { return [] }
     $topics.stdout | lines | where {|line| $line | is-not-empty } | each {|line|
@@ -18,7 +18,7 @@ def "nu-complete jj-ci topics" [] {
     }
 }
 
-def "nu-complete jj-ci gates" [] {
+def "nu-complete ci gates" [] {
     [
         { value: "local", description: "The flake checks built on this machine" }
         { value: "spindle", description: "The Tangled repository's spindle" }
@@ -26,52 +26,52 @@ def "nu-complete jj-ci gates" [] {
     ]
 }
 
-def "nu-complete jj-ci revisions" [] {
+def "nu-complete ci revisions" [] {
     let bookmarks = (^jj bookmark list --all-remotes --template 'name ++ if(remote, "@" ++ remote) ++ "\n"' | complete)
     if $bookmarks.exit_code != 0 { return [] }
     $bookmarks.stdout | lines | uniq
 }
 
 # Inspect, synchronize, validate, publish, and reconcile JJ changes
-export extern "jj-ci" []
+export extern "ci" []
 
 # Show the working copy and each published topic with its pipeline and pull request
-export extern "jj-ci status" []
+export extern "ci status" []
 
 # Print the current topic's published head, pipeline verdicts, and pull request as JSON
-export extern "jj-ci ci-state" []
+export extern "ci ci-state" []
 
 # Fetch Tangled, advance main, and rebase the empty working copy onto it
-export extern "jj-ci sync" []
+export extern "ci sync" []
 
 # Report Git worktrees and how far they are from tangled/main
-export extern "jj-ci worktree-status" []
+export extern "ci worktree-status" []
 
 # Validate the current change
-export extern "jj-ci validate" []
+export extern "ci validate" []
 
 # Record the current change as a named review version
-export extern "jj-ci review snapshot" [
+export extern "ci review snapshot" [
     label: string # Name for this review version
 ]
 
 # Show the diff between two recorded review versions
-export extern "jj-ci interdiff" [
-    old: string@"nu-complete jj-ci review-labels" # Earlier review version
-    new: string@"nu-complete jj-ci review-labels" # Later review version
+export extern "ci interdiff" [
+    old: string@"nu-complete ci review-labels" # Earlier review version
+    new: string@"nu-complete ci review-labels" # Later review version
 ]
 
 # Rebase the current topic onto main
-export extern "jj-ci rebase" []
+export extern "ci rebase" []
 
 # Plan how published topics should be ordered or stacked
-export extern "jj-ci plan" [
+export extern "ci plan" [
     --json # Print the plan as JSON
 ]
 
 # Build the Home Manager generation of trunk plus published topics without activating it
-export extern "jj-ci preview" [
-    ...topics: string@"nu-complete jj-ci topics" # Topic branches to include (default: every published behavior or breaking topic)
+export extern "ci preview" [
+    ...topics: string@"nu-complete ci topics" # Topic branches to include (default: every published behavior or breaking topic)
     --all # Include refactor topics when no branches are given
     --shell # Open Nushell with the preview's programs first on PATH
     --config # With --shell, also read configuration from the preview (read-only)
@@ -79,56 +79,56 @@ export extern "jj-ci preview" [
 ]
 
 # Restack stacked or conflicting published topics
-export extern "jj-ci refresh" [
+export extern "ci refresh" [
     --no-push # Rebase and report conflicts without pushing
     --all # Also rebase conflict-free topics that are merely behind main
 ]
 
 # List conflicted revisions and files in the current topic
-export extern "jj-ci conflicts" []
+export extern "ci conflicts" []
 
 # Rebase, validate, and push the current topic to Tangled
-export extern "jj-ci publish" [
+export extern "ci publish" [
     --land # Land the topic once the gate passes it
-    --gate: string@"nu-complete jj-ci gates" # What must pass the head before --land (default local)
+    --gate: string@"nu-complete ci gates" # What must pass the head before --land (default local)
     --timeout: duration # How long --land waits for the pipeline (default 2hr)
     --attempts: int # How many times --land starts over when main moves (default 5)
 ]
 
 # Publish the current topic, wait for its gate to pass it, and fast-forward main
-export extern "jj-ci land" [
-    --gate: string@"nu-complete jj-ci gates" # What must pass the head (default local)
+export extern "ci land" [
+    --gate: string@"nu-complete ci gates" # What must pass the head (default local)
     --timeout: duration # How long to wait for the pipeline (default 2hr)
     --attempts: int # How many times to start over when main moves (default 5)
 ]
 
 # Check Impact trailers on the commits between two revisions
-export extern "jj-ci impact check" [
-    base: string@"nu-complete jj-ci revisions" # Base revision
-    head: string@"nu-complete jj-ci revisions" # Head revision
+export extern "ci impact check" [
+    base: string@"nu-complete ci revisions" # Base revision
+    head: string@"nu-complete ci revisions" # Head revision
 ]
 
 # Tag a release for behavior or breaking changes since the last release
-export extern "jj-ci release" [
+export extern "ci release" [
     --dry-run # Report the release without tagging it
 ]
 
 # Describe the current revision against release tags
-export extern "jj-ci version" []
+export extern "ci version" []
 
 # Publish the current stack to Tangled
-export extern "jj-ci tangled stack-publish" []
+export extern "ci tangled stack-publish" []
 
 # Verify the current head landed on main and leave a clean working copy
-export extern "jj-ci finish" [
-    --keep # Keep a workspace that `jj-ci start` created
+export extern "ci finish" [
+    --keep # Keep a workspace that `ci start` created
 ]
 
 # Release a Codex task's claim that its task left behind, without touching the topic
-export extern "jj-ci unclaim" []
+export extern "ci unclaim" []
 
 # List stale workspaces and checkpoints
-export extern "jj-ci prune" [
+export extern "ci prune" [
     --apply # Forget and delete the listed workspaces and checkpoints
     --keep-days: int # Keep checkpoints newer than this (default 14)
 ]

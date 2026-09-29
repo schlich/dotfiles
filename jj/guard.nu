@@ -1,6 +1,6 @@
-# Interactive guard for workspaces that `jj-ci start` created. A bare
+# Interactive guard for workspaces that `ci start` created. A bare
 # `jj new main` there moves the working copy off an unfinished topic, which
-# then sits beside main while jj-ci works on an empty change. This refuses a
+# then sits beside main while `ci` works on an empty change. This refuses a
 # `jj new` whose parents do not descend from the unlanded working copy. `^jj`
 # runs JJ directly and skips the guard.
 
@@ -63,7 +63,7 @@ def --wrapped jj [...args: string] {
         if $refusal != null {
             error make {
                 msg: $"Refusing `jj ($args | str join ' ')`: ($refusal)."
-                help: "Keep working here with `jj new` or `jj new --no-edit`, start other work with `jj-ci start NAME`, end the topic with `jj-ci finish` or `jj-ci abandon`, or run `^jj` to leave the topic on purpose."
+                help: "Keep working here with `jj new` or `jj new --no-edit`, start other work with `ci start NAME`, end the topic with `ci finish` or `ci abandon`, or run `^jj` to leave the topic on purpose."
             }
         }
     }

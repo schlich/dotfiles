@@ -20,7 +20,7 @@ EXTENDS Naturals, FiniteSets, TLC
 (* Ownership follows jj/codex-session.nu. A Codex task claims a workspace *)
 (* at startup (a claim directory plus an ownership record), and its record *)
 (* ends as delivered or discarded by finish or abandon, or as released     *)
-(* when the task left its change behind and `jj-ci unclaim` frees the      *)
+(* when the task left its change behind and `ci unclaim` frees the         *)
 (* workspace. A repository with topic workspaces keeps its default one as *)
 (* the canonical checkout, which no task claims.                           *)
 (***************************************************************************)
@@ -87,7 +87,7 @@ Init ==
 
 (* A Codex task claims an unclaimed workspace at startup. It skips the     *)
 (* canonical checkout of a repository that uses topic workspaces, and a    *)
-(* leftover claim directory stops it until `jj-ci unclaim` clears it.     *)
+(* leftover claim directory stops it until `ci unclaim` clears it.        *)
 Claim ==
     /\ ownerState = "none" /\ ~claim
     /\ (Legacy \/ ~(workspaceKind = "default" /\ dedicated))
@@ -102,7 +102,7 @@ Claim ==
 
 (* The workspace leaves the owner's change (`jj new` or `jj edit`) without *)
 (* finish or abandon. The Codex session guard and, for a workspace that    *)
-(* `jj-ci start` created, jj-ci's topic guard then refuse every topic      *)
+(* `ci start` created, `ci`'s topic guard then refuse every topic          *)
 (* command, and context-status reports the workspace as stranded. The     *)
 (* interactive `jj` wrapper refuses the move itself; `^jj` still makes it. *)
 MoveAway ==
@@ -199,7 +199,7 @@ Publish ==
     /\ UNCHANGED worldVars
 
 (* The gate checks an exact published head (CI on every push, the local   *)
-(* gate when jj-ci land runs) and passes it by commit, so a verdict never *)
+(* gate when `ci land` runs) and passes it by commit, so a verdict never  *)
 (* carries over to a rewritten head. A failing run simply never passes.   *)
 GatePasses ==
     /\ published
@@ -231,7 +231,7 @@ TrunkAdvances ==
                    landedOnto, delivered, workspaceBase>>
     /\ UNCHANGED ownershipVars
 
-(* jj-ci land fast-forwards main to the exact head the gate passed. The    *)
+(* `ci land` fast-forwards main to the exact head the gate passed. The     *)
 (* push carries a lease on the trunk the topic is based on, so it fails if *)
 (* trunk moved, and the topic must rebase, republish, and pass again.      *)
 Land ==
@@ -249,7 +249,7 @@ Land ==
     /\ UNCHANGED ownershipVars
 
 (* Releasing a topic leaves its workspace on main (--keep, or one that    *)
-(* jj-ci start did not create) or drops it, so no workspace outlives its  *)
+(* `ci start` did not create) or drops it, so no workspace outlives its   *)
 (* owner. The record says whether the topic was delivered.               *)
 Finish ==
     /\ Owned /\ ~conflict
@@ -283,7 +283,7 @@ Abandon ==
     /\ UNCHANGED <<workspaceKind, dedicated>>
     /\ UNCHANGED worldVars
 
-(* `jj-ci unclaim` frees a workspace whose task left its change behind. It *)
+(* `ci unclaim` frees a workspace whose task left its change behind. It    *)
 (* touches only ownership: the topic keeps its revisions, branch, and      *)
 (* pipeline state, and may continue in another workspace.                 *)
 Unclaim ==
@@ -296,7 +296,7 @@ Unclaim ==
     /\ UNCHANGED topicVars
     /\ UNCHANGED worldVars
 
-(* Before `jj-ci unclaim`, a stuck workspace was freed by setting          *)
+(* Before `ci unclaim`, a stuck workspace was freed by setting             *)
 (* `finished` in its record by hand. That left the claim directory, and    *)
 (* every reader took `finished` for a completed topic.                    *)
 HandRelease ==

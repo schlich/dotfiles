@@ -98,7 +98,7 @@ deliverables that should be split, keep them in one small stack in that
 workspace and rewrite each in-scope change as needed; do not create unrelated
 follow-up revisions after publishing. A new topic needs a new task and a
 separate workspace; do not switch a working copy owned by another active task.
-Where `jj-ci` is available, create it with `jj-ci start NAME`; otherwise use
+Where `ci` is available, create it with `ci start NAME`; otherwise use
 `jj workspace add --revision main@origin --name NAME PATH` from the
 repository. Then open that directory as a local Codex project.
 The hook creates the topic revision when its task starts.
@@ -138,16 +138,16 @@ stage, branch, worktree, handoff, push, or merge actions for these tasks.
 Keep Git available as an internal transport dependency. Use `jj-dashboard`
 or the desktop Open in → JJ dashboard action for interactive revision work.
 
-Where `jj-ci` is available, keep the topic in a dedicated workspace rooted at
+Where `ci` is available, keep the topic in a dedicated workspace rooted at
 `main@origin`; rebase after trunk advances and before review or queue updates.
-`jj-ci publish` and `jj-ci stack-merge` perform a final rebase before updating
+`ci publish` and `ci stack-merge` perform a final rebase before updating
 GitHub. Enable auto-merge only when the user is finished with the topic and has
 requested delivery. Herdr or Paseo may supervise and report stale trunk or PR
 state for that one workspace, but must not silently rebase or resolve
 conflicts. Before archiving a delivered topic, run
-`jj-ci finish`: it verifies that the current head was merged to main and
-removes a workspace that `jj-ci start` created, or leaves any other one on a
-clean change on main. Use `jj-ci abandon` for a topic that will not land. Only then call the archive tool. Failed
+`ci finish`: it verifies that the current head was merged to main and
+removes a workspace that `ci start` created, or leaves any other one on a
+clean change on main. Use `ci abandon` for a topic that will not land. Only then call the archive tool. Failed
 checks, conflicts, pending delivery, or unpublished edits leave the task open.
 Do not treat app exit, idle timeout, or SessionEnd as authorization to publish
 or merge. Direct archive-button clicks do not execute this closeout workflow.

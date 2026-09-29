@@ -1,7 +1,7 @@
 # Property-based tests for the pure planning helpers in jj/ci.nu, derived from
 # the invariants in jj/JjCi.tla. Run with:
 #
-#   nu --no-config-file -c "source tests/jj-ci-properties.nu"
+#   nu --no-config-file -c "source tests/ci-properties.nu"
 #
 # Sourcing through `-c` defines ci.nu's helpers without running its `main`.
 # tests/pbt.nu holds the generators and the runner.
@@ -331,7 +331,7 @@ for-all "prune reclaims every released, delivered workspace" {|key|
 }
 
 # Topic guard: the working copy must not wander off the topic that
-# `jj-ci start` recorded, and the interactive `jj new` guard only inspects
+# `ci start` recorded, and the interactive `jj new` guard only inspects
 # invocations that would move the working copy.
 
 def gen-topic-facts [key: string] {
@@ -392,7 +392,7 @@ print $"ok jj new parents \(($JJ_NEW_CASES | length) cases)"
 
 owner-status-properties {|record| owner-status $record }
 
-# jj-ci unclaim (TLA: Unclaim, UnclaimOnlyOrphans, ClaimOnlyWhileActive).
+# `ci unclaim` (TLA: Unclaim, UnclaimOnlyOrphans, ClaimOnlyWhileActive).
 
 def gen-unclaim-facts [key: string] {
     {

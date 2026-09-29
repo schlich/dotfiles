@@ -31,9 +31,9 @@ def git-worktree-warning [cwd: path] {
     }
     let jj_workspace = (($cwd | path join ".jj") | path exists)
     if $jj_workspace {
-        $"This worktree ($branch) is behind or diverged from tangled/main. Run `jj-ci rebase` before continuing. Use `jj-ci worktree-status` to inspect the other worktrees."
+        $"This worktree ($branch) is behind or diverged from tangled/main. Run `ci rebase` before continuing. Use `ci worktree-status` to inspect the other worktrees."
     } else {
-        $"This checkout ($branch) is a Git worktree, not a JJ workspace, and is behind or diverged from tangled/main. Enter the devshell with `nix develop path:.` and inspect it with `jj-ci worktree-status`; do not assume `jj-ci rebase` can safely operate here until this checkout is converted to a JJ workspace."
+        $"This checkout ($branch) is a Git worktree, not a JJ workspace, and is behind or diverged from tangled/main. Enter the devshell with `nix develop path:.` and inspect it with `ci worktree-status`; do not assume `ci rebase` can safely operate here until this checkout is converted to a JJ workspace."
     }
 }
 
@@ -106,10 +106,10 @@ def claim-verdict [facts: record] {
     # A repository with topic workspaces keeps its default one as the
     # canonical checkout on main; claiming it strands the checkout on a topic.
     if $facts.workspace == "default" and $facts.dedicated {
-        return { action: "skip" reason: "This is the repository's canonical checkout. Start the topic in its own workspace with `jj-ci start NAME` and open that directory as the project." }
+        return { action: "skip" reason: "This is the repository's canonical checkout. Start the topic in its own workspace with `ci start NAME` and open that directory as the project." }
     }
     if $facts.claim {
-        return { action: "refuse" reason: "This workspace has a session claim that no active task holds. Inspect .jj/codex-session.json, then clear it with `jj-ci unclaim`." }
+        return { action: "refuse" reason: "This workspace has a session claim that no active task holds. Inspect .jj/codex-session.json, then clear it with `ci unclaim`." }
     }
     { action: "claim" reason: null }
 }

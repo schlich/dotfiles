@@ -4,7 +4,7 @@ The NixOS configuration enables a local webhook listener for this repository.
 It accepts only signed `workflow_run` deliveries for the successful `nix-ci`
 workflow in this repository. A successful pull request run starts a read-only,
 ephemeral Codex triage with the PR number, head SHA, and run URL. A successful
-push to `main` first runs `jj-ci sync`, then `jj-ci refresh` to restack
+push to `main` first runs `ci sync`, then `ci refresh` to restack
 stacked, retargeted, and conflicting PRs (see `README.md`), then starts the
 same triage against the updated checkout. A failed refresh, such as one that
 leaves conflicts for resolution, is logged and does not block the triage. Failed runs, unrelated events, and PR runs without an

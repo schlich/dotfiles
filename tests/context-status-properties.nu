@@ -107,7 +107,7 @@ for-all "a working copy off its recorded topic is reported" {|key|
     assert ("stranded-topic" in (audit-findings $facts | get code))
 }
 
-# context-status and the jj-ci guard must agree on when a topic is stranded.
+# context-status and the `ci` guard must agree on when a topic is stranded.
 for-all "topic-stranded matches the guard in jj/ci.nu" {|key|
     let flag = {|name| (pick $"($key)/($name)" 2) == 0 }
     let facts = { recorded: (do $flag recorded) visible: (do $flag visible) landed: (do $flag landed) ancestor: (do $flag ancestor) working_copy_empty: (do $flag wc) topic_empty: (do $flag empty) }

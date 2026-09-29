@@ -162,14 +162,16 @@
           name: input: "--override-input ${lib.escapeShellArg name} ${lib.escapeShellArg "${input}"}"
         ) inputs
       );
-      jjCiScript = pkgs.writeNuScriptBin "jj-ci" (builtins.readFile ./jj/ci.nu);
+      jjCiScript = pkgs.writeNuScriptBin "ci" (builtins.readFile ./jj/ci.nu);
       jjCi = pkgs.symlinkJoin {
-        name = "jj-ci";
+        name = "ci";
         paths = [ jjCiScript ];
         nativeBuildInputs = [ pkgs.makeWrapper ];
         postBuild = ''
-          wrapProgram "$out/bin/jj-ci" --prefix PATH : ${pkgs.git}/bin \
+          wrapProgram "$out/bin/ci" --prefix PATH : ${pkgs.git}/bin \
             --set JJ_CI_SOURCE_SHA256 ${builtins.hashFile "sha256" ./jj/ci.nu}
+          # Deprecated alias for the former `jj-ci` name.
+          ln -s ci "$out/bin/jj-ci"
         '';
       };
       xrWorkbench = pkgs.writeShellApplication {
@@ -388,7 +390,7 @@
         headless-system = denFlake.nixosConfigurations.asus-headless.config.system.build.toplevel;
         den-policy = denPolicyCheck;
         dev-shell = pkgs.runCommand "dev-shell-check" { } ''
-          test -x ${jjCi}/bin/jj-ci
+          test -x ${jjCi}/bin/ci
           test -x ${pkgs.jujutsu}/bin/jj
           test -x ${pkgs.gh}/bin/gh
           touch "$out"
@@ -424,8 +426,8 @@
               ${pkgs.nushell}/bin/nu --no-config-file ${src}/tests/agent.nu
               touch "$out"
             '';
-        jj-ci-model =
-          pkgs.runCommand "jj-ci-model-check"
+        ci-model =
+          pkgs.runCommand "ci-model-check"
             {
               nativeBuildInputs = [ pkgs.tlaplus ];
             }
@@ -449,7 +451,7 @@
               done
               touch "$out"
             '';
-        jj-ci-properties =
+        ci-properties =
           let
             src = lib.fileset.toSource {
               root = ./.;
@@ -459,20 +461,20 @@
                 ./jj/context-status.nu
                 ./jj/guard.nu
                 ./tests/pbt.nu
-                ./tests/jj-ci-properties.nu
+                ./tests/ci-properties.nu
                 ./tests/codex-session-properties.nu
                 ./tests/context-status-properties.nu
               ];
             };
           in
-          pkgs.runCommand "jj-ci-properties-check"
+          pkgs.runCommand "ci-properties-check"
             {
               nativeBuildInputs = [ pkgs.nushell ];
             }
             ''
               export HOME="$TMPDIR/home"
               mkdir -p "$HOME"
-              nu --no-config-file -c "source ${src}/tests/jj-ci-properties.nu"
+              nu --no-config-file -c "source ${src}/tests/ci-properties.nu"
               nu --no-config-file -c "source ${src}/tests/codex-session-properties.nu"
               nu --no-config-file -c "source ${src}/tests/context-status-properties.nu"
               touch "$out"

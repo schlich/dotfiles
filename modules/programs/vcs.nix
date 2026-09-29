@@ -5,14 +5,16 @@
 }:
 
 let
-  jjCiScript = pkgs.writeNuScriptBin "jj-ci" (builtins.readFile ../../jj/ci.nu);
+  jjCiScript = pkgs.writeNuScriptBin "ci" (builtins.readFile ../../jj/ci.nu);
   jjCi = pkgs.symlinkJoin {
-    name = "jj-ci";
+    name = "ci";
     paths = [ jjCiScript ];
     nativeBuildInputs = [ pkgs.makeWrapper ];
     postBuild = ''
-      wrapProgram "$out/bin/jj-ci" --prefix PATH : ${pkgs.git}/bin:${pkgs.gh}/bin \
+      wrapProgram "$out/bin/ci" --prefix PATH : ${pkgs.git}/bin:${pkgs.gh}/bin \
         --set JJ_CI_SOURCE_SHA256 ${builtins.hashFile "sha256" ../../jj/ci.nu}
+      # Deprecated alias for the former `jj-ci` name.
+      ln -s ci "$out/bin/jj-ci"
     '';
   };
 in
@@ -78,7 +80,7 @@ in
     (import ../../jj/context-status.nix { inherit pkgs; })
   ];
 
-  xdg.configFile."nushell/autoload/jj-ci.nu".source = ../../jj/completions.nu;
-  # Refuses an interactive `jj new` that would strand a jj-ci topic.
+  xdg.configFile."nushell/autoload/ci.nu".source = ../../jj/completions.nu;
+  # Refuses an interactive `jj new` that would strand a `ci` topic.
   xdg.configFile."nushell/autoload/jj-guard.nu".source = ../../jj/guard.nu;
 }

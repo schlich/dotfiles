@@ -16,8 +16,8 @@ For breaking changes, add a "## Manual steps" section after this one.
 
 ## Validation
 
-- `jj-ci validate`
+- `ci validate`
 
-<!-- Keep the trailer last: the squash commit carries it to main, where `jj-ci release` reads it. -->
+<!-- Keep the trailer last: the squash commit carries it to main, where `ci release` reads it. -->
 
 Impact: \<refactor|behavior|breaking>
