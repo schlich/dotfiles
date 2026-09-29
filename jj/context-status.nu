@@ -100,7 +100,9 @@ def ago [when: any] {
 }
 
 def ttl [ci: record] {
-    if ($ci.spindle?.state? | default "") in ["success" "failed" "timeout"] { $SETTLED_TTL } else { $PENDING_TTL }
+    # The spindle runs only when started by hand, so a head with no pipeline
+    # is not waiting for one.
+    if ($ci.spindle?.state? | default "") in ["success" "failed" "timeout" "missing"] { $SETTLED_TTL } else { $PENDING_TTL }
 }
 
 # Where the topic stands in the jj-ci lifecycle (see JjCi.tla): edited,
@@ -135,9 +137,7 @@ def next-step [facts: record] {
         } else { "run `jj-ci validate`, then `jj-ci publish`" })
         "validated" => "run `jj-ci publish`"
         "republish" => "the head moved since publication; run `jj-ci publish` to update the branch"
-        "published" => (if $facts.ci?.spindle?.state? == "timeout" {
-            "the spindle timed out, which does not gate landing; `jj-ci land` builds the checks locally when the topic is ready"
-        } else { "wait for the pipeline, or `jj-ci land` once the topic is ready" })
+        "published" => "run `jj-ci land` when the topic is ready to deliver; it builds the checks locally"
         "passed" => "run `jj-ci land` when the topic is ready to deliver"
         "failed" => "inspect the failed pipeline, fix the topic, and `jj-ci publish` again"
         _ => ""
@@ -283,13 +283,15 @@ def ci-summary [facts: record] {
     if $facts.ci == null { return $"published ($facts.published_head | str substring 0..7), pipeline not checked yet" }
     let parts = [
         (match ($facts.ci.spindle?.state? | default "unknown") {
+            "missing" => null
             "timeout" => "spindle timed out (not the landing gate)"
             $state => $"spindle ($state)"
         })
         (if $facts.ci.github? != null { $"GitHub ($facts.ci.github.state)" })
         (if $facts.ci.pull? != null { $"PR \"($facts.ci.pull)\"" })
     ] | compact
-    $"($parts | str join ', ') on ($facts.published_head | str substring 0..7) \(checked (ago $facts.ci_checked_at))"
+    let summary = if ($parts | is-empty) { "published" } else { $parts | str join ", " }
+    $"($summary) on ($facts.published_head | str substring 0..7) \(checked (ago $facts.ci_checked_at))"
 }
 
 def lint-summary [facts: record] {

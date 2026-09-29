@@ -119,13 +119,12 @@
   lands becomes a `YYYY.MM.DD.N` release; refactors cut none. See
   `jj/README.md`.
 - Use a concise JJ change description. `jj-ci publish` validates and pushes
-  the topic's stable `jj-*` branch to Tangled, which starts its pipeline; open
-  a Tangled pull request from that branch when the topic needs review.
+  the topic's stable `jj-*` branch to Tangled; open a Tangled pull request from that branch when the topic needs review.
   Ordinary publication keeps editing the same change ID. Deliver it with
   `jj-ci land` only at topic closeout.
 - For a small change that affects a single host, a user request to publish
-  also authorizes delivery: run `jj-ci publish`, then `jj-ci land` once the
-  pipeline passes, and `jj-ci finish` afterwards. Still stop after publishing
+  also authorizes delivery: run `jj-ci publish`, then `jj-ci land` right away
+  (its local gate builds the checks), and `jj-ci finish` afterwards. Still stop after publishing
   and ask before landing when the change affects several hosts, is part of a
   stack, is `Impact: breaking`, or touches boot, storage, encryption, or
   security configuration. A failed validation, pipeline, or rebase conflict
@@ -152,7 +151,8 @@
   then fast-forwards `main` and tags releases. Never push `main` any other way.
   `--gate spindle` or `--gate github` waits for that CI on the exact head
   instead.
-- The spindle runs `.tangled/workflows` on every push of a `jj-*` branch. The
+- The spindle runs `.tangled/workflows` only when started by hand; pushes do
+  not trigger it, so never wait for a spindle run before landing. The
   flake-checks workflow and the local gate run the same command: it builds
   every attribute of `checks.x86_64-linux`, including the headless and primary
   desktop system builds, and skips checks whose outputs are already cached.
@@ -227,7 +227,7 @@ Keep active work continuously integrated: start each dedicated JJ workspace at
 `main@tangled`, rebase before review updates and when a topic conflicts with
 trunk, and never share a mutable topic worktree. `jj-ci publish` performs the
 final rebase and validation before pushing; `jj-ci land` does the same and
-lands only the commit the spindle passed.
+lands only the commit the landing gate passed.
 
 Use `jj-ci conflicts` after a rebase to list conflicted revisions and files.
 A conflicted rebase has already rewritten the topic, so resolve revisions from

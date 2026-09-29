@@ -68,7 +68,7 @@ Use the narrowest workflow that matches the request:
 | Align an empty working copy with trunk | `jj-ci sync` | Fetches `tangled`, advances `main`, and rebases onto `main@tangled`. |
 | Check readiness and run repository gates | `jj-ci validate` | Describes an undescribed change, runs `jj fix -s @`, then Prek on the JJ file list. |
 | Publish the current change | `jj-ci publish` | Refuses unclassified or mixed-impact topics, then rebases, validates, and pushes a stable `jj-*` bookmark to Tangled, which starts its pipeline. Keeps editing the same change. A topic built on another published topic, or reported by `jj-ci plan` as conflicting with one, is restacked onto that topic's branch; conflicts must be resolved locally first. Open a Tangled pull request from the branch for review. |
-| Land a topic on `main` | `jj-ci land` | Requires an explicit user request. Publishes, proves a refactor is closure-neutral, builds every flake check at the exact head on this machine (skipping cached outputs), fast-forwards `main` to it on Tangled and the GitHub mirror, and tags releases. `--gate spindle` or `--gate github` waits for that CI on the exact head instead (`--timeout`, default 2hr). If `main` moves while the gate runs, it rebases, republishes, and gates the new head again (`--attempts`, default 5) instead of landing. Refuses a stacked topic until its parent lands. `jj-ci publish --land` does the same. Never merge a GitHub pull request; squash and rebase merges rewrite the tested commit. |
+| Land a topic on `main` | `jj-ci land` | Requires an explicit user request. Publishes, proves a refactor is closure-neutral, builds every flake check at the exact head on this machine (skipping cached outputs), fast-forwards `main` to it on Tangled and the GitHub mirror, and tags releases. `--gate spindle` or `--gate github` waits for that CI on the exact head instead (`--timeout`, default 2hr); the spindle runs only when started by hand. If `main` moves while the gate runs, it rebases, republishes, and gates the new head again (`--attempts`, default 5) instead of landing. Refuses a stacked topic until its parent lands. `jj-ci publish --land` does the same. Never merge a GitHub pull request; squash and rebase merges rewrite the tested commit. |
 | Decide whether a topic ships alone or stacked | `jj-ci plan` | Read-only apart from a fetch. Trial-merges in-flight topics (published `jj-*` bookmarks and workspace changes) against `main@tangled` and each other, then proposes independent topics or stacks. `--json` for structured output. |
 | Update a topic from trunk | `jj-ci rebase` | Checkpoints, fetches, and rebases the same change. |
 | Restack published topics after trunk moves | `jj-ci refresh` | Run it by hand only on request. Restacks stacked topics onto their parent's bookmark and conflicting topics onto `main@tangled`, parents first. Checked-out topics are rebased from their own workspace only when a trial merge is clean. Pushes only conflict-free stacks. `--all` also rebases topics that are merely behind; `--no-push` stops before any remote change. |
@@ -104,12 +104,13 @@ for a single deliverable, or a small stack of stable change IDs when mixed
 deliverables were intentionally split. `jj-ci publish` uses a persisted
 `jj-<title-slug>-<short-change-id>` bookmark for new topics, preserving the
 selected branch through title changes and repeated edits. Only `jj-*`
-bookmarks count as published topics and trigger the spindle. It does not start
+bookmarks count as published topics. Pushes do not trigger the spindle, so do
+not wait for a pipeline after publishing; `jj-ci land` gates locally. It does not start
 an unrelated follow-up change. Report the branch and existing change IDs.
 
 Land only at requested topic closeout. Once `jj-ci land` has fast-forwarded
 `main`, `jj-ci finish` verifies the landing and prepares a clean workspace.
-Then archive through the app tool. Leave the task open if the pipeline failed,
+Then archive through the app tool. Leave the task open if the gate failed,
 landing is pending, or there are later local edits. SessionEnd also fires on
 exit and idle timeout, so it must never trigger publication or landing. A
 direct archive button click does not run this workflow.
@@ -124,7 +125,7 @@ workspace created from `main@tangled`. Rebase before each review update and
 when the topic conflicts with `main`; a topic that merely fell behind needs
 nothing until it lands. `jj-ci publish` and `jj-ci land` perform a final rebase
 and validation before pushing, and `jj-ci land` lands only the exact commit the
-spindle passed, so a stale head cannot reach `main`.
+landing gate passed, so a stale head cannot reach `main`.
 
 Use `jj-ci conflicts` after a rebase to list conflicted revisions and files.
 A conflicted rebase has already rewritten the topic: resolve revisions from
@@ -158,8 +159,8 @@ conflict with `main` must be resolved with `jj-ci rebase` first. Never rebase a
 published topic onto unpublished work, and never rewrite another session's
 topic to build a stack; stack new work on top of it. Landing fast-forwards
 `main` to the parent's exact commits, so a stacked child is already on `main`
-once its parent lands. The plan detects textual conflicts only; the spindle run
-on each rebased head is the backstop for semantic breakage between topics.
+once its parent lands. The plan detects textual conflicts only; the landing
+gate on each rebased head is the backstop for semantic breakage between topics.
 
 Herdr and Paseo may supervise one existing JJ workspace per topic, monitor
 trunk, topic freshness, and pipelines, and notify the owner when integration

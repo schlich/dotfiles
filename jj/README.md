@@ -140,7 +140,8 @@ leaves them unchanged (every refactor, for instance) builds only the cheap
 checks. The first landing after a large input update pays for the full
 system builds. Nix's configured remote builders apply as usual.
 
-`jj-ci land --gate spindle` gates on the repository's spindle instead. It
+`jj-ci land --gate spindle` gates on the repository's spindle instead. Pushes
+do not trigger it, so start `flake-checks.yml` on the topic branch by hand. It
 polls every 30 seconds (default timeout `--timeout 2hr`) and stops at the
 first failed, timed-out, or cancelled workflow without landing anything.
 
@@ -217,8 +218,9 @@ The integration points are deliberately automatic:
 - `jj-ci land` performs the same final rebase, so the commit the landing gate
   tests is the commit `main` receives.
 
-The spindle runs `.tangled/workflows` on every push of a `jj-*` branch.
-Landing requires a fresh, passing run on the rebased head, so two topics that
+The spindle runs `.tangled/workflows` only when started by hand on `main` or a
+`jj-*` branch; pushes do not trigger it. Landing requires the gate to pass the
+rebased head, so two topics that
 break only in combination cannot both land: the second is rebased onto the
 first and tested again. A topic that merely fell behind `main` needs no
 attention until it lands.
@@ -362,8 +364,8 @@ bookmark is a stable `jj-<slug>-<change-id>` branch, and `jj-ci land`
 fast-forwards `main` to it after the landing gate passes it. `main` stays linear
 without squashing, and every revision keeps its change ID and trailer. Branches
 from older sessions may retain their descriptive names, but new topics must use
-the `jj-` prefix: the spindle runs only on `jj-*` pushes, and `jj-ci` treats
-only `jj-*` bookmarks as published topics.
+the `jj-` prefix: the spindle accepts manual runs only on `jj-*` branches and
+`main`, and `jj-ci` treats only `jj-*` bookmarks as published topics.
 
 Use a stack only when every layer is independently reviewable and the layers
 must land in dependency order. Ordinary one-branch topics are preferred because
@@ -494,6 +496,6 @@ nix run path:.#jjui
 ```
 
 Use JJ for change, bookmark, rebase, and push operations, and `jj-ci land` for
-delivery to `main`; nothing else pushes `main`. The spindle owns required
+delivery to `main`; nothing else pushes `main`. The landing gate owns required
 checks. Keep plaintext secrets and bulky generated output outside the selected
 flake source root.

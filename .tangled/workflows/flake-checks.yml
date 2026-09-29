@@ -1,12 +1,11 @@
 name: Nix flake checks
-# `jj-ci land` pushes a topic already rebased onto main and fast-forwards main
-# to it only after this passes on that exact commit, so topic pushes are the
-# gate and main never needs a second run.
+# Runs only when started by hand. `jj-ci land` gates on the same command built
+# locally by default; on every push, the homelab spindle's serial queue filled
+# with 30-minute cold-store timeouts and never passed a run. Start it manually
+# on a `jj-*` branch before `jj-ci land --gate spindle`.
 when:
-  - event: ["push"]
-    branch: ["jj-*"]
   - event: ["manual"]
-    branch: ["main"]
+    branch: ["main", "jj-*"]
 engine: microvm
 image: nixos
 dependencies:

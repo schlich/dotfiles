@@ -75,7 +75,7 @@ def git-context [] {
 }
 
 # Tangled hosts main and every topic branch. `jj-ci land` is the only path to
-# main: it fast-forwards main to a head the spindle has already passed.
+# main: it fast-forwards main to a head the landing gate has already passed.
 const TRUNK_REMOTE = "tangled"
 # GitHub mirrors main, and its Actions can gate a landing in the spindle's
 # place with `jj-ci land --gate github`. Its rules accept only fast-forwards.
@@ -231,7 +231,7 @@ def landing-gate [gate: string, repo: record] {
             {
                 name: $repo.spindle
                 probe: {|commit| pipeline-state $repo $commit }
-                hint: "If none started, check that .tangled/workflows runs on pushes to jj-* branches."
+                hint: "Pushes do not trigger the spindle; start flake-checks.yml on this branch by hand on Tangled."
             }
         }
         "github" => {
@@ -262,7 +262,7 @@ def wait-for-pipeline [gate: record, commit: string, timeout: duration] {
             error make { msg: $"($gate.name) rejected ($commit | str substring 0..11): ($failed | str join '; '). Leave the task open." }
         }
         let status = if $pipeline.state == "missing" {
-            $"waiting for ($gate.name) to start"
+            $"waiting for ($gate.name) to start. ($gate.hint)" | str trim
         } else {
             $"($pipeline.workflows | where status != 'success' | length) workflow\(s) running"
         }
