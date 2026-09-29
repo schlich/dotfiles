@@ -104,10 +104,21 @@ input {
     position x=1280 y=0
 }
 
-// No workspaces are pinned: every workspace is a session (niri/session.nu),
-// numbered in the order it was opened, and Mod+N reaches the Nth. Version
-// control, coding agents and the overview are not workspaces but stacks or
-// overlays within one: Mod+G, Mod+A and Mod+O.
+// Every workspace is a session (niri/session.nu). Workspaces 1-9 are pinned
+// Johnny Decimal areas, so Mod+N always reaches area N0-N9 at the same numpad
+// cell; the tenth is 00-09 System on Mod+0. Project sessions opened later take
+// the workspaces after them. Version control, coding agents and the overview
+// are not workspaces but stacks or overlays within one: Mod+G, Mod+A and Mod+O.
+workspace "snorkel"   // 10-19
+workspace "research"  // 20-29
+workspace "xr"        // 30-39
+workspace "nix"       // 40-49
+workspace "ai"        // 50-59
+workspace "shell"     // 60-69
+workspace "career"    // 70-79
+workspace "personal"  // 80-89
+workspace "inbox"     // 90-99
+workspace "config"    // 00-09 System
 
 // Settings that influence how windows are positioned and sized.
 // Find more information on the wiki:
@@ -261,7 +272,7 @@ layout {
 // See the binds section below for more spawn examples.
 // spawn-at-startup "noctalia-shell"
 
-// Open the preset sessions (snorkel, then config) and focus the first.
+// Build the snorkel and config session layouts, then focus snorkel.
 spawn-sh-at-startup "exec nu \"$HOME/.config/niri/session.nu\" startup"
 
 // Keep choice groups, such as the desktop coding agents, in one tabbed column.
@@ -521,54 +532,58 @@ binds {
     // Mod+TouchpadScrollDown { spawn "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "0.02+"; }
     // Mod+TouchpadScrollUp   { spawn "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "0.02-"; }
 
-    // Numbers are sessions, numbered in the order they were opened, on a 3x3
-    // grid laid out like the numpad:
+    // Numbers are Johnny Decimal areas: Mod+N holds area N0-N9, on a 3x3 grid
+    // laid out like the numpad:
     //
-    //   7 8 9
-    //   4 5 6
-    //   1 2 3
+    //   7 Career    8 Personal  9 Inbox
+    //   4 Nix       5 AI        6 Shell
+    //   1 Snorkel   2 Research  3 XR
     //
     // Niri keeps workspaces in one vertical strip, so the grid lives in the
-    // keys: Mod+KP_N (or Mod+N) focuses session N, Mod+Shift+KP_N (or
+    // keys: Mod+KP_N (or Mod+N) focuses area N, Mod+Shift+KP_N (or
     // Mod+Shift+N) moves the focused column there, and Mod+Alt+H/J/K/L or
-    // the arrows step to the neighbouring cell. Mod+O draws the grid. Past the
-    // last session, an index refers to the trailing empty workspace.
-    Mod+KP_1 hotkey-overlay-title="Session 1 (bottom left)" { focus-workspace 1; }
-    Mod+KP_2 { focus-workspace 2; }
-    Mod+KP_3 { focus-workspace 3; }
-    Mod+KP_4 { focus-workspace 4; }
-    Mod+KP_5 hotkey-overlay-title="Session 5 (centre)" { focus-workspace 5; }
-    Mod+KP_6 { focus-workspace 6; }
-    Mod+KP_7 hotkey-overlay-title="Session 7 (top left)" { focus-workspace 7; }
-    Mod+KP_8 { focus-workspace 8; }
-    Mod+KP_9 { focus-workspace 9; }
-    Mod+Shift+KP_1 { move-column-to-workspace 1; }
-    Mod+Shift+KP_2 { move-column-to-workspace 2; }
-    Mod+Shift+KP_3 { move-column-to-workspace 3; }
-    Mod+Shift+KP_4 { move-column-to-workspace 4; }
-    Mod+Shift+KP_5 { move-column-to-workspace 5; }
-    Mod+Shift+KP_6 { move-column-to-workspace 6; }
-    Mod+Shift+KP_7 { move-column-to-workspace 7; }
-    Mod+Shift+KP_8 { move-column-to-workspace 8; }
-    Mod+Shift+KP_9 { move-column-to-workspace 9; }
-    Mod+1 { focus-workspace 1; }
-    Mod+2 { focus-workspace 2; }
-    Mod+3 { focus-workspace 3; }
-    Mod+4 { focus-workspace 4; }
-    Mod+5 { focus-workspace 5; }
-    Mod+6 { focus-workspace 6; }
-    Mod+7 { focus-workspace 7; }
-    Mod+8 { focus-workspace 8; }
-    Mod+9 { focus-workspace 9; }
-    Mod+Shift+1 { move-column-to-workspace 1; }
-    Mod+Shift+2 { move-column-to-workspace 2; }
-    Mod+Shift+3 { move-column-to-workspace 3; }
-    Mod+Shift+4 { move-column-to-workspace 4; }
-    Mod+Shift+5 { move-column-to-workspace 5; }
-    Mod+Shift+6 { move-column-to-workspace 6; }
-    Mod+Shift+7 { move-column-to-workspace 7; }
-    Mod+Shift+8 { move-column-to-workspace 8; }
-    Mod+Shift+9 { move-column-to-workspace 9; }
+    // the arrows step to the neighbouring cell. Mod+0 is 00-09 System, off
+    // the grid. Mod+O draws the grid.
+    Mod+KP_1 hotkey-overlay-title="10-19 Snorkel (bottom left)" { focus-workspace "snorkel"; }
+    Mod+KP_2 hotkey-overlay-title="20-29 Research" { focus-workspace "research"; }
+    Mod+KP_3 hotkey-overlay-title="30-39 XR" { focus-workspace "xr"; }
+    Mod+KP_4 hotkey-overlay-title="40-49 Nix tooling" { focus-workspace "nix"; }
+    Mod+KP_5 hotkey-overlay-title="50-59 AI and agents (centre)" { focus-workspace "ai"; }
+    Mod+KP_6 hotkey-overlay-title="60-69 Shell tools" { focus-workspace "shell"; }
+    Mod+KP_7 hotkey-overlay-title="70-79 Career (top left)" { focus-workspace "career"; }
+    Mod+KP_8 hotkey-overlay-title="80-89 Personal" { focus-workspace "personal"; }
+    Mod+KP_9 hotkey-overlay-title="90-99 Inbox" { focus-workspace "inbox"; }
+    Mod+KP_0 hotkey-overlay-title="00-09 System" { focus-workspace "config"; }
+    Mod+Shift+KP_1 { move-column-to-workspace "snorkel"; }
+    Mod+Shift+KP_2 { move-column-to-workspace "research"; }
+    Mod+Shift+KP_3 { move-column-to-workspace "xr"; }
+    Mod+Shift+KP_4 { move-column-to-workspace "nix"; }
+    Mod+Shift+KP_5 { move-column-to-workspace "ai"; }
+    Mod+Shift+KP_6 { move-column-to-workspace "shell"; }
+    Mod+Shift+KP_7 { move-column-to-workspace "career"; }
+    Mod+Shift+KP_8 { move-column-to-workspace "personal"; }
+    Mod+Shift+KP_9 { move-column-to-workspace "inbox"; }
+    Mod+Shift+KP_0 { move-column-to-workspace "config"; }
+    Mod+1 { focus-workspace "snorkel"; }
+    Mod+2 { focus-workspace "research"; }
+    Mod+3 { focus-workspace "xr"; }
+    Mod+4 { focus-workspace "nix"; }
+    Mod+5 { focus-workspace "ai"; }
+    Mod+6 { focus-workspace "shell"; }
+    Mod+7 { focus-workspace "career"; }
+    Mod+8 { focus-workspace "personal"; }
+    Mod+9 { focus-workspace "inbox"; }
+    Mod+0 { focus-workspace "config"; }
+    Mod+Shift+1 { move-column-to-workspace "snorkel"; }
+    Mod+Shift+2 { move-column-to-workspace "research"; }
+    Mod+Shift+3 { move-column-to-workspace "xr"; }
+    Mod+Shift+4 { move-column-to-workspace "nix"; }
+    Mod+Shift+5 { move-column-to-workspace "ai"; }
+    Mod+Shift+6 { move-column-to-workspace "shell"; }
+    Mod+Shift+7 { move-column-to-workspace "career"; }
+    Mod+Shift+8 { move-column-to-workspace "personal"; }
+    Mod+Shift+9 { move-column-to-workspace "inbox"; }
+    Mod+Shift+0 { move-column-to-workspace "config"; }
     Mod+Alt+H     hotkey-overlay-title="Grid: session to the left" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid left"; }
     Mod+Alt+L     hotkey-overlay-title="Grid: session to the right" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid right"; }
     Mod+Alt+K     hotkey-overlay-title="Grid: session above" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid up"; }

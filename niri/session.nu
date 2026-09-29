@@ -20,6 +20,9 @@ const layouts = {
     { role: jjui, width: "40%", tabbed: true, command: [jjui] }
     { role: gh-dash, stack: true, command: [gh dash] }
   ]
+  area: [
+    { role: shell }
+  ]
   dotfiles: [
     { role: editor, width: "60%", command: [hx .] }
     { role: shell, width: "40%", tabbed: true }
@@ -74,15 +77,27 @@ def project-directory [] {
   }
 }
 
-# Sessions with a fixed name and layout. Nothing pins them to a workspace:
-# `startup` opens them in this order, so they usually take sessions 1 and 2,
-# the bottom-left of the numpad grid.
+# Sessions with a fixed name and layout: the Johnny Decimal areas, which
+# niri/config.kdl pins to workspaces 1-9 and System to the tenth. Areas
+# without a single repository open a plain shell in the home directory.
 def presets [] {
+  let area = { layout: area, directory: $env.HOME }
   {
     snorkel: { layout: default, directory: $"($env.HOME)/starfish-projects" }
+    research: $area
+    xr: $area
+    nix: $area
+    ai: $area
+    shell: $area
+    career: $area
+    personal: $area
+    inbox: $area
     config: { layout: dotfiles, directory: $"($env.HOME)/dotfiles" }
   }
 }
+
+# Presets whose layouts `startup` builds at login, focusing the first.
+const startup_sessions = [snorkel config]
 
 # A preset, else a session opened with `project`.
 def session-route [session: string] {
@@ -224,13 +239,12 @@ def "main restore" [session?: string] {
   restore $session
 }
 
-# Open the preset sessions in order, then focus the first.
+# Build the startup sessions' layouts in order, then focus the first.
 def "main startup" [] {
-  let names = (presets | columns)
-  for session in $names {
+  for session in $startup_sessions {
     restore $session
   }
-  niri-action focus-workspace ($names | first)
+  niri-action focus-workspace ($startup_sessions | first)
 }
 
 # Step to the neighbouring session on the numpad grid (Mod+Alt+H/J/K/L):
