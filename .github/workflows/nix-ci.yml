@@ -1,4 +1,6 @@
 name: nix-ci
+# Build every flake check and verify formatting and impact classification
+# for topic branches, pull requests, and main.
 on:
   pull_request:
   # `ci land --gate github` pushes the topic branch and waits for these

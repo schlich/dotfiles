@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import base64
 import curses
 import json
 import os
@@ -94,19 +95,67 @@ def fetch_usage() -> tuple[list[dict], str | None]:
 
 def fetch_runs() -> tuple[list[dict], str | None]:
     data, error = command_json(
-        [
-            "gh",
-            "run",
-            "list",
-            "--repo",
-            CI_REPO,
-            "--limit",
-            "40",
-            "--json",
-            "workflowName,displayTitle,status,conclusion,createdAt,headBranch",
-        ]
+        ["gh", "api", f"repos/{CI_REPO}/actions/runs?per_page=40"]
     )
-    return (data if isinstance(data, list) else []), error
+    if error:
+        return [], error
+    runs = data.get("workflow_runs", []) if isinstance(data, dict) else []
+    # GitHub stops listing a workflow once its file leaves the default branch,
+    # but keeps showing that workflow's old runs.
+    workflows, error = command_json(["gh", "api", f"repos/{CI_REPO}/actions/workflows"])
+    if error:
+        return [], error
+    active = {
+        workflow.get("path")
+        for workflow in (workflows or {}).get("workflows", [])
+        if workflow.get("state") == "active"
+    }
+    return [
+        {
+            "workflowName": run.get("name"),
+            "displayTitle": run.get("display_title"),
+            "status": run.get("status"),
+            "conclusion": run.get("conclusion"),
+            "createdAt": run.get("created_at"),
+            "headBranch": run.get("head_branch"),
+            "headSha": run.get("head_sha"),
+            "path": run.get("path"),
+            "retired": run.get("path") not in active,
+        }
+        for run in runs
+    ], None
+
+
+# Workflow path -> (commit it was read at, one-line description).
+WORKFLOW_ABOUT: dict[str, tuple[str, str]] = {}
+
+
+def workflow_about(path: str, sha: str) -> str:
+    """The first sentence of a workflow file's top-level header comment."""
+    # Dependabot and Copilot runs have no file in the repository.
+    if not path.startswith(".github/workflows/"):
+        return "managed by GitHub"
+    cached = WORKFLOW_ABOUT.get(path)
+    if cached and cached[0] == sha:
+        return cached[1]
+    data, error = command_json(
+        ["gh", "api", f"repos/{CI_REPO}/contents/{path}?ref={sha}"]
+    )
+    if error or not isinstance(data, dict):
+        return cached[1] if cached else ""
+    try:
+        text = base64.b64decode(data.get("content", "")).decode()
+    except ValueError:
+        return cached[1] if cached else ""
+    comment: list[str] = []
+    for line in text.splitlines():
+        if line.startswith("#"):
+            comment.append(line.lstrip("#").strip())
+        elif comment or line.startswith("jobs:"):
+            break
+    about = " ".join(comment).split(". ")[0].rstrip(".")
+    WORKFLOW_ABOUT[path] = (sha, about)
+    return about
 
 
 def run_state(run: dict) -> str:
@@ -139,18 +188,25 @@ def summarize_runs(runs: list[dict]) -> tuple[list[dict], list[dict]]:
             branches.setdefault((name, branch), run)
     main = []
     for name, main_runs in history.items():
-        state = run_state(main_runs[0])
+        latest = main_runs[0]
+        # A workflow removed from main never runs again, so its last verdict
+        # is history rather than something to fix.
+        state = "retired" if latest.get("retired") else run_state(latest)
         streak = 0
         for run in main_runs:
             if run_state(run) != "failed":
                 break
             streak += 1
+        path = latest.get("path") or ""
         main.append(
             {
                 "name": name,
                 "state": state,
-                "title": main_runs[0].get("displayTitle"),
-                "when": parse_time(main_runs[0].get("createdAt")),
+                "last": run_state(latest),
+                "path": path,
+                "about": workflow_about(path, latest.get("headSha") or "main"),
+                "title": latest.get("displayTitle"),
+                "when": parse_time(latest.get("createdAt")),
                 "streak": streak,
                 # Every fetched run failed, so the streak may be longer.
                 "streak_open": streak == len(main_runs),
@@ -167,7 +223,7 @@ def summarize_runs(runs: list[dict]) -> tuple[list[dict], list[dict]]:
             "when": parse_time(run.get("createdAt")),
         }
         for (name, branch), run in branches.items()
-        if run_state(run) in ("failed", "running")
+        if run_state(run) in ("failed", "running") and not run.get("retired")
     ]
     return main, others
 
@@ -480,6 +536,7 @@ def draw(
         "failed": ("✗", colors["coral"]),
         "running": ("●", colors["amber"]),
         "passed": ("✓", colors["mint"]),
+        "retired": ("○", colors["muted"]),
     }
     if ci_error:
         ci_lines.append(
@@ -490,7 +547,9 @@ def draw(
         main_runs, other_runs = ci
         for item in main_runs:
             marker, color = marks.get(item["state"], ("○", colors["muted"]))
-            if item["state"] == "failed" and item["streak"] > 1:
+            if item["state"] == "retired":
+                verdict = "retired"
+            elif item["state"] == "failed" and item["streak"] > 1:
                 more = "+" if item["streak_open"] else ""
                 verdict = f"failing ×{item['streak']}{more}"
             else:
@@ -500,12 +559,20 @@ def draw(
                     marker,
                     color,
                     f"{item['name']}  on main",
-                    colors["normal"],
+                    colors["muted" if item["state"] == "retired" else "normal"],
                     verdict,
                     color,
                 )
             )
-            ci_lines.append((" ", 0, f"↳ {item['title']}", colors["muted"], "", 0))
+            # What the workflow does and which file defines it.
+            source = os.path.basename(item["path"]) or item["path"]
+            about = f"{item['about']}  ·  {source}" if item["about"] else source
+            ci_lines.append((" ", 0, f"  {about}", colors["muted"], "", 0))
+            if item["state"] == "retired":
+                last = f"removed from main; last run {item['last']} {ago(item['when'])} ago"
+                ci_lines.append((" ", 0, f"↳ {last}", colors["muted"], "", 0))
+            else:
+                ci_lines.append((" ", 0, f"↳ {item['title']}", colors["muted"], "", 0))
         for item in other_runs:
             marker, color = marks[item["state"]]
             ci_lines.append(
