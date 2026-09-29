@@ -83,4 +83,6 @@ in
   xdg.configFile."nushell/autoload/ci.nu".source = ../../jj/completions.nu;
   # Refuses an interactive `jj new` that would strand a `ci` topic.
   xdg.configFile."nushell/autoload/jj-guard.nu".source = ../../jj/guard.nu;
+  # `jw NAME` changes to a JJ workspace's root.
+  xdg.configFile."nushell/autoload/jj-workspace.nu".source = ../../jj/workspace.nu;
 }
