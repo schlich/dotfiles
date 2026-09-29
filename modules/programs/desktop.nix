@@ -59,7 +59,8 @@ in
         system.monitor.enabled = true;
 
         bar = {
-          # Primary navigation and context, kept clear of the system controls.
+          # Navigation, this workspace's windows, media, and time. Rarely used
+          # tools fold into an accordion group that expands on hover.
           default = {
             position = "top";
             thickness = 38;
@@ -72,60 +73,69 @@ in
             shadow = true;
             capsule = true;
             capsule_fill = "surface_variant";
-            start = [
-              "launcher"
-              "wallpaper"
-              "workspaces"
-            ];
-            center = [ "active_window" ];
+            start = [ "launcher" ];
+            center = [ "taskbar" ];
             end = [
+              "privacy"
               "media"
               "tray"
-              "notifications"
-              "clipboard"
+              "group:tools"
+              "thepunkoff/pomodoro:widget"
+              "clock"
             ];
+            capsule_group = [
+              {
+                id = "tools";
+                members = [
+                  "screenshot"
+                  "wallpaper"
+                  "theme_mode"
+                  "nightlight"
+                  "caffeine"
+                  "power_profile"
+                ];
+                accordion = true;
+                accordion_direction = "start";
+              }
+            ];
+            # The bar's empty ends open the launcher and scroll through workspaces.
+            dead_zone.actions = {
+              left = "panel-toggle launcher";
+              scroll_up = "exec niri msg action focus-workspace-up";
+              scroll_down = "exec niri msg action focus-workspace-down";
+            };
           };
 
-          # A compact telemetry and session strip that does not compete with the task flow above.
+          # Named workspaces stack down the left edge, following niri's vertical
+          # workspace order.
+          workspaces = {
+            position = "left";
+            thickness = 38;
+            margin_ends = 120;
+            margin_edge = 10;
+            padding = 8;
+            widget_spacing = 8;
+            background_opacity = 0.86;
+            radius = 14;
+            shadow = true;
+            capsule = false;
+            # Unset lanes fall back to Noctalia's default widgets, so clear them.
+            start = [ ];
+            center = [ "workspaces" ];
+            end = [ ];
+            dead_zone.actions = {
+              scroll_up = "exec niri msg action focus-workspace-up";
+              scroll_down = "exec niri msg action focus-workspace-down";
+            };
+          };
+
+          # Telemetry, AI usage, and the system controls.
           status = {
             position = "bottom";
             thickness = 32;
-            margin_ends = 260;
+            margin_ends = 18;
             margin_edge = 10;
             padding = 10;
-            widget_spacing = 10;
-            background_opacity = 0.82;
-            radius = 14;
-            shadow = true;
-            capsule = true;
-            capsule_fill = "surface_variant";
-            start = [
-              "cpu"
-              "memory"
-              "network_rx"
-              "network_tx"
-            ];
-            center = [ "clock" ];
-            end = [
-              "network"
-              "bluetooth"
-              "volume"
-              "brightness"
-              "battery"
-              "codex_usage"
-              "claude_usage"
-              "elrondforwin/opencode-go-usage:bar"
-              "thepunkoff/pomodoro:widget"
-            ];
-          };
-
-          # A right-hand command rail keeps ambient toggles immediately available.
-          rail = {
-            position = "right";
-            thickness = 38;
-            margin_ends = 130;
-            margin_edge = 10;
-            padding = 8;
             widget_spacing = 8;
             background_opacity = 0.82;
             radius = 14;
@@ -133,14 +143,26 @@ in
             capsule = true;
             capsule_fill = "surface_variant";
             start = [
-              "theme_mode"
-              "nightlight"
-              "caffeine"
+              "cpu"
+              "cpu_temp"
+              "memory"
+              "disk"
+              "network_rx"
+              "network_tx"
             ];
-            center = [ "screenshot" ];
+            center = [
+              "codex_usage"
+              "claude_usage"
+              "elrondforwin/opencode-go-usage:bar"
+            ];
             end = [
-              "power_profile"
-              "control-center"
+              "notifications"
+              "clipboard"
+              "network"
+              "bluetooth"
+              "volume"
+              "brightness"
+              "battery"
               "session"
             ];
           };
@@ -177,13 +199,23 @@ in
         };
 
         widget = {
-          taskbar.show_window_title = true;
+          # Tabbed niri columns hide their windows, so list this workspace's windows.
+          taskbar = {
+            only_active_workspace = true;
+            show_window_title = true;
+            window_title_max_width = 140;
+            taskbar_max_width = 720;
+          };
+          privacy.hide_inactive = true;
           workspaces = {
-            # Keep the persistent workspace roles visible and distinguish their state.
+            # A vertical bar has no room for names, and pill_scale cannot widen
+            # the pills, so number the workspaces in niri's Mod+N order.
             style = "regular";
             show_labels = true;
-            label_source = "name";
-            max_label_chars = 12;
+            label_source = "id";
+            hide_when_empty = true;
+            labels_only_when_occupied = true;
+            max_label_chars = 13;
             pill_scale = 1.0;
             active_pill_size = 2.75;
             inactive_pill_size = 1.15;
@@ -191,9 +223,6 @@ in
             occupied_color = "secondary";
             empty_color = "outline";
             urgent_color = "error";
-          };
-          active_window = {
-            max_length = 72;
           };
           codex_usage = {
             type = "felipeartur/ai-usagebar:bar";
@@ -212,6 +241,19 @@ in
           cpu = {
             type = "sysmon";
             stat = "cpu_usage";
+            visualization = "graph";
+            show_value = true;
+          };
+          cpu_temp = {
+            type = "sysmon";
+            stat = "cpu_temp";
+            visualization = "none";
+            show_value = true;
+          };
+          disk = {
+            type = "sysmon";
+            stat = "disk_used_pct";
+            path = "/";
             visualization = "gauge";
             show_value = true;
           };
