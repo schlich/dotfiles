@@ -9,7 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@babylonjs/havok": "1.3.14",
     "@iwsdk/core": "0.5.3",
+    "@zappar/msdf-generator": "1.2.4",
     "three": "npm:super-three@0.181.0"
   },
   "devDependencies": {

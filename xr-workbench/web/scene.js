@@ -1,6 +1,7 @@
 import { World } from "@iwsdk/core";
 import projectOptions from "virtual:iwsdk-project";
 import { PanelSystem } from "./src/panels.js";
+import { createTraceSurface } from "./src/trace-surface.js";
 
 const panelIds = [
   "configuration-panel",
@@ -12,7 +13,16 @@ const panelBaseScale = 0.0017;
 
 export async function createScene(container, panels, callbacks) {
   const world = await World.create(container, projectOptions);
+  const traceControls = world.getSceneObject("mcp-controls");
+  if (traceControls) traceControls.visible = false;
+  const mainMenu = world.getSceneObject("main-menu");
+  if (mainMenu) mainMenu.visible = false;
+  const traceSurface = createTraceSurface(world);
   world.registerSystem(PanelSystem);
+  let view = "workbench";
+  let traceEvents;
+  let traceStep = 0;
+  let traceRequest = 0;
   let selectedPanel = "config";
   let currentSettings = {
     layout: "cockpit",
@@ -20,6 +30,66 @@ export async function createScene(container, panels, callbacks) {
     scale: 1,
     positions: {},
   };
+
+  function showView(next) {
+    view = next;
+    for (const id of panelIds) {
+      const panel = world.getSceneObject(id);
+      if (panel) panel.visible = !immersive || next === "workbench";
+    }
+    if (mainMenu) mainMenu.visible = immersive && next === "menu";
+    if (traceControls) traceControls.visible = immersive && next === "trace";
+    traceSurface.setVisible(immersive && next === "trace");
+  }
+
+  function menu() {
+    ++traceRequest;
+    showView("menu");
+  }
+
+  function workbench() {
+    ++traceRequest;
+    showView("workbench");
+  }
+
+  async function showTraceStep(step) {
+    if (!traceEvents || view !== "trace") return;
+    traceStep = Math.max(0, Math.min(traceEvents.length - 1, step));
+    const event = traceEvents[traceStep];
+    const request = ++traceRequest;
+    const label = traceControls?.getElementById("trace-step");
+    const detail = traceControls?.getElementById("trace-detail");
+    if (label)
+      label.textContent = `EVENT ${traceStep + 1}/${traceEvents.length} · ${event.direction.toUpperCase()}${event.requestId === null ? "" : ` #${event.requestId}`}`;
+    if (detail) detail.textContent = event.summary;
+    try {
+      const svg = await callbacks.diagram(traceStep);
+      if (request !== traceRequest || view !== "trace") return;
+      await traceSurface.show(svg);
+    } catch (error) {
+      if (request === traceRequest)
+        callbacks.notice(`MCP demo: ${error.message}`);
+    }
+  }
+
+  async function trace() {
+    const request = ++traceRequest;
+    try {
+      if (!traceEvents) traceEvents = (await callbacks.trace()).events;
+      if (request !== traceRequest || !immersive) return;
+      if (!traceEvents?.length) throw new Error("No recorded events available");
+      showView("trace");
+      await showTraceStep(traceStep);
+    } catch (error) {
+      if (request !== traceRequest) return;
+      menu();
+      callbacks.notice(`Could not open MCP demo: ${error.message}`);
+    }
+  }
+
+  function stepTrace(delta) {
+    if (view === "trace") void showTraceStep(traceStep + delta);
+  }
 
   function layout(settings) {
     currentSettings = settings;
@@ -98,6 +168,8 @@ export async function createScene(container, panels, callbacks) {
     immersive = state !== "non-immersive";
     enterButton.textContent =
       state === "non-immersive" ? "Enter XR ↗" : "Exit XR";
+    if (immersive) menu();
+    else workbench();
   });
 
   function reset() {
@@ -144,13 +216,19 @@ export async function createScene(container, panels, callbacks) {
   }
 
   reset();
+  showView("workbench");
   return {
     layout,
     reset,
     refresh,
     select,
+    menu,
+    workbench,
+    trace,
+    stepTrace,
     dispose() {
       unsubscribe();
+      traceSurface.dispose();
     },
   };
 }

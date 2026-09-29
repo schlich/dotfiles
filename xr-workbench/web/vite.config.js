@@ -1,10 +1,14 @@
 import { iwsdkDev } from "@iwsdk/vite-plugin-dev";
 import { defineConfig } from "vite";
 
+// Loopback HTTP is a secure browser context for desktop previews. Never expose
+// this mode on the LAN; Quest Browser continues to use the default HTTPS mode.
+const httpPreview = process.env.FIELDWORK_HTTP_PREVIEW === "1";
+
 export default defineConfig({
-  plugins: [iwsdkDev()],
+  plugins: [iwsdkDev({ https: !httpPreview })],
   server: {
-    host: "0.0.0.0",
+    host: httpPreview ? "127.0.0.1" : "0.0.0.0",
     port: 8081,
     open: false,
     proxy: {
@@ -30,7 +34,7 @@ export default defineConfig({
     outDir: "dist",
     sourcemap: process.env.NODE_ENV !== "production",
     target: "esnext",
-    rollupOptions: { input: "./index.html" },
+    rollupOptions: { input: ["./index.html", "./mcp.html"] },
   },
   esbuild: { target: "esnext" },
   optimizeDeps: {

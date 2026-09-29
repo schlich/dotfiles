@@ -1,0 +1,15 @@
+<style>
+  .panel { width: 850px; padding: 25px; flex-direction: column; background-color: #10242a; }
+  .title { font-size: 33px; color: #f3f4ea; }
+  .detail { font-size: 27px; color: #d2e4d4; }
+  .status { font-size: 22px; color: #b4c8e3; }
+  .row { flex-direction: row; }
+  .action { font-size: 25px; color: #102016; background-color: #c0e89c; padding: 17px; }
+</style>
+<Panel class="panel">
+  <h1 class="title">MCP / SEQUENCE TRACE</h1>
+  <p id="trace-step" class="status">Recorded example</p>
+  <p id="trace-detail" class="detail">Loading the diagram…</p>
+  <div class="row"><button class="action" id="trace-previous">← Previous</button><button class="action" id="trace-next">Next →</button></div>
+  <button class="action" id="trace-menu">Main menu</button>
+</Panel>

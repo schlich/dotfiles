@@ -11,6 +11,15 @@ const controls = [
   ["agent-panel", "replay-agent", "agent-replay"],
   ["agent-panel", "pull-command", "agent-live"],
   ["agent-panel", "inspect-jev", "jev"],
+  ["main-menu", "menu-workbench", "menu-workbench"],
+  ["main-menu", "menu-mcp", "menu-mcp"],
+  ["mcp-controls", "trace-previous", "trace-previous"],
+  ["mcp-controls", "trace-next", "trace-next"],
+  ["mcp-controls", "trace-menu", "menu-home"],
+  ["configuration-panel", "config-menu", "menu-home"],
+  ["changes-panel", "changes-menu", "menu-home"],
+  ["environment-panel", "environment-menu", "menu-home"],
+  ["agent-panel", "agent-menu", "menu-home"],
 ];
 
 export class PanelSystem extends createSystem({}) {

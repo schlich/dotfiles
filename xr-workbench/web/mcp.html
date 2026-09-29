@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>MCP sequence trace · Fieldwork</title>
+    <link rel="stylesheet" href="/mcp.css" />
+    <script type="module" src="/mcp.js"></script>
+    <script>
+      const reportMcpStartupError = (message) => {
+        const status = document.getElementById("trace-error");
+        if (status) status.textContent = message;
+        const button = document.getElementById("enter-xr");
+        if (button) {
+          button.disabled = true;
+          button.textContent = "Startup failed";
+        }
+      };
+      document
+        .querySelector('script[src="/mcp.js"]')
+        ?.addEventListener("error", () =>
+          reportMcpStartupError(
+            "The XR app module failed to load. Check the browser console and reload.",
+          ),
+        );
+      window.addEventListener("error", (event) => {
+        if (event.message)
+          reportMcpStartupError(`XR startup error: ${event.message}`);
+      });
+      setTimeout(() => {
+        const button = document.getElementById("enter-xr");
+        if (button?.textContent === "Checking XR…")
+          reportMcpStartupError(
+            "XR startup did not run. Check the browser console and reload.",
+          );
+      }, 12000);
+    </script>
+    <script type="module" src="/vendor/datastar.js"></script>
+  </head>
+  <body>
+    <header>
+      <a href="/">← Fieldwork</a><span>RECORDED / SYNTHETIC MCP TRACE</span
+      ><button id="enter-xr" disabled>Checking XR…</button>
+    </header>
+    <main data-signals:step="0" data-effect="window.renderTrace?.($step)">
+      <section class="intro">
+        <h1>MCP exchanges, within reach.</h1>
+        <p>
+          A stateless MCP 2026-07-28 exchange: discovery without a handshake,
+          cacheable lists, a subscription stream, and a multi round-trip tool
+          call. D2 draws the sequence. Datastar drives the desktop timeline. The
+          same redacted diagram is projected onto an IWSDK panel in XR.
+        </p>
+      </section>
+      <section class="console" aria-label="Recorded sequence diagram">
+        <div id="scene" aria-hidden="true"></div>
+        <figure>
+          <img
+            id="diagram"
+            alt="MCP client and server sequence diagram up to the selected event"
+          />
+          <figcaption>
+            Messages are ordered by the recorded example. Responses retain their
+            request IDs.
+          </figcaption>
+        </figure>
+      </section>
+      <section class="controls" aria-label="Trace controls">
+        <div class="transport">
+          <button
+            data-on:click="$step = Math.max(0, $step - 1)"
+            data-attr:disabled="$step === 0"
+          >
+            ← Previous
+          </button>
+          <label for="step"
+            >Event <output data-text="$step + 1"></output
+          ></label>
+          <input id="step" type="range" min="0" max="16" data-bind:step />
+          <button
+            data-on:click="$step = Math.min(16, $step + 1)"
+            data-attr:disabled="$step === 16"
+          >
+            Next →
+          </button>
+        </div>
+        <article aria-labelledby="event-title">
+          <h2 id="event-title">Selected exchange</h2>
+          <p id="event-summary">Loading recorded trace…</p>
+          <p id="event-detail"></p>
+          <small id="event-pair"></small>
+        </article>
+      </section>
+      <p id="trace-error" role="status"></p>
+    </main>
+  </body>
+</html>

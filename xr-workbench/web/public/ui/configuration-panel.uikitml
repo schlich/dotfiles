@@ -2,12 +2,12 @@
   .panel { width: 560px; padding-top: 30px; padding-right: 32px; padding-bottom: 30px; padding-left: 32px; flex-direction: column; background-color: #142019; }
   .eyebrow { font-size: 20px; color: #b8d99c; }
   .direction { font-size: 21px; color: #c0e89c; }
-  .direction.pull { color: #b4c8e3; }
+  .pull { color: #b4c8e3; }
   .title { font-size: 46px; color: #f3f4ea; }
   .body { font-size: 27px; color: #d2d8c9; }
   .status { font-size: 21px; color: #b8d99c; }
   .button-row { flex-direction: row; }
-  button { font-size: 25px; color: #102016; background-color: #c0e89c; padding-top: 18px; padding-right: 22px; padding-bottom: 18px; padding-left: 22px; }
+  .action { font-size: 25px; color: #102016; background-color: #c0e89c; padding-top: 18px; padding-right: 22px; padding-bottom: 18px; padding-left: 22px; }
 </style>
 <Panel class="panel">
   <span class="eyebrow">01 / PUSH INTO YOUR WORKTREE</span>
@@ -15,5 +15,6 @@
   <p class="body">Edit host policy and dev templates on the desktop companion. Save a source change or send an explicit evaluation.</p>
   <p id="panel-status" class="status">LIVE CONFIGURATION</p>
   <p id="flow-status" class="direction">PUSH → Source changes enter the worktree.</p>
-  <div class="button-row"><button id="inspect-source">Open configuration studio</button><button id="evaluate-flake">Evaluate flake</button></div>
+  <div class="button-row"><button class="action" id="inspect-source">Open configuration studio</button><button class="action" id="evaluate-flake">Evaluate flake</button></div>
+  <button class="action" id="config-menu">Main menu</button>
 </Panel>

@@ -7,9 +7,15 @@ overrides:
 importers:
   .:
     dependencies:
+      "@babylonjs/havok":
+        specifier: 1.3.14
+        version: 1.3.14
       "@iwsdk/core":
         specifier: 0.5.3
         version: 0.5.3(@opentelemetry/core@2.11.0(@opentelemetry/api@1.9.1))(react@19.3.0)
+      "@zappar/msdf-generator":
+        specifier: 1.2.4
+        version: 1.2.4
       three:
         specifier: npm:super-three@0.181.0
         version: super-three@0.181.0

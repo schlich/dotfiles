@@ -5,14 +5,14 @@
   .body { font-size: 25px; color: #d2d8c9; }
   .status { font-size: 22px; color: #c0e89c; }
   .direction { font-size: 22px; color: #c0e89c; }
-  .direction.pull { color: #b4c8e3; }
+  .pull { color: #b4c8e3; }
   .gauge-row { flex-direction: row; }
   .gauge { width: 280px; padding-top: 12px; padding-right: 15px; padding-bottom: 12px; padding-left: 15px; background-color: #1c3539; flex-direction: column; }
   .gauge-title { font-size: 19px; color: #9ebcb1; }
   .gauge-value { font-size: 35px; color: #f3f4ea; }
   .preview { font-size: 23px; color: #d3e1d3; }
   .button-row { flex-direction: row; }
-  button { font-size: 25px; color: #102016; background-color: #c0e89c; padding-top: 19px; padding-right: 23px; padding-bottom: 19px; padding-left: 23px; }
+  .action { font-size: 25px; color: #102016; background-color: #c0e89c; padding-top: 19px; padding-right: 23px; padding-bottom: 19px; padding-left: 23px; }
 </style>
 <Panel class="panel">
   <span class="eyebrow">FIELDWORK / AGENT CONTROL DECK</span>
@@ -26,6 +26,7 @@
   <p id="agent-preview" class="preview">Ready to inspect the exchange.</p>
   <p id="panel-status" class="status">CAPABILITIES · INPUT · OUTPUT</p>
   <p id="flow-status" class="direction">PUSH → request · ← PULL output</p>
-  <div class="button-row"><button id="open-cockpit">Open cockpit</button><button id="replay-agent">Replay sample</button></div>
-  <div class="button-row"><button id="pull-command">Pull command</button><button id="inspect-jev">Inspect Jev</button></div>
+  <div class="button-row"><button class="action" id="open-cockpit">Open cockpit</button><button class="action" id="replay-agent">Replay sample</button></div>
+  <div class="button-row"><button class="action" id="pull-command">Pull command</button><button class="action" id="inspect-jev">Inspect Jev</button></div>
+  <button class="action" id="agent-menu">Main menu</button>
 </Panel>

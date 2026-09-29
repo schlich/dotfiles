@@ -13,6 +13,8 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
+from mcp_trace import EVENTS, diagram
+
 
 FILES = {
     "den/aspects/xr.nix": True,
@@ -273,6 +275,13 @@ class Handler(BaseHTTPRequestHandler):
                         self.reply([app.public(j) for j in app.jobs.values()])
                 elif url.path == "/api/capabilities":
                     self.reply(app.capabilities())
+                elif url.path == "/api/mcp/trace":
+                    self.reply({"kind": "synthetic-recording", "events": EVENTS})
+                elif url.path == "/api/mcp/diagram":
+                    raw = parse_qs(url.query).get("step", ["0"])[0]
+                    if not raw.isdecimal():
+                        raise ValueError("Invalid trace step")
+                    self.reply(diagram(int(raw)), content_type="image/svg+xml")
                 else:
                     self.reply({"error": "Unknown endpoint"}, 404)
             else:

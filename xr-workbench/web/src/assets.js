@@ -21,4 +21,14 @@ export default defineAssets({
     type: AssetType.UIKitML,
     url: "/ui/agent-panel.uikitml",
   },
+  "mcp-controls": {
+    name: "MCP trace controls",
+    type: AssetType.UIKitML,
+    url: "/ui/mcp-controls.uikitml",
+  },
+  "main-menu": {
+    name: "Fieldwork main menu",
+    type: AssetType.UIKitML,
+    url: "/ui/main-menu.uikitml",
+  },
 });

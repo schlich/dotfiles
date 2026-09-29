@@ -30,6 +30,20 @@
       "content": { "type": "asset", "asset": "agent-panel" },
       "transform": { "position": [1.3, 1.55, -1.8], "scale": 0.0017 },
       "components": { "RayInteractable": {}, "OneHandGrabbable": {} }
+    },
+    {
+      "id": "mcp-controls",
+      "name": "MCP trace controls",
+      "content": { "type": "asset", "asset": "mcp-controls" },
+      "transform": { "position": [0, 0.85, -1.45], "scale": 0.0017 },
+      "components": { "RayInteractable": {} }
+    },
+    {
+      "id": "main-menu",
+      "name": "Fieldwork main menu",
+      "content": { "type": "asset", "asset": "main-menu" },
+      "transform": { "position": [0, 1.5, -1.55], "scale": 0.0017 },
+      "components": { "RayInteractable": {} }
     }
   ]
 }

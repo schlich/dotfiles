@@ -180,6 +180,7 @@
           pkgs.nodejs_24
           pkgs.pnpm
           pkgs.python3
+          pkgs.d2
         ];
         text = ''
           repo="$(pwd -P)"
@@ -333,6 +334,7 @@
       devShells.${system}.default = pkgs.mkShellNoCC {
         packages = with pkgs; [
           bat
+          d2
           difftastic
           fd
           gh

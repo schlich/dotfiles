@@ -447,6 +447,15 @@ try {
     select: selectPanel,
     run,
     notice,
+    trace: () => api("mcp/trace"),
+    diagram: async (step) => {
+      const response = await fetch(`/api/mcp/diagram?step=${step}`, {
+        headers: { "X-Workbench-Token": token || "" },
+        signal: AbortSignal.timeout(12000),
+      });
+      if (!response.ok) throw new Error(`Bridge returned ${response.status}`);
+      return response.blob();
+    },
   });
   updateLayout();
   scene.select(activePanel);
@@ -459,7 +468,12 @@ try {
 }
 window.addEventListener("fieldwork:action", (event) => {
   const action = event.detail?.action;
-  if (action === "config") selectPanel("config");
+  if (action === "menu-home") scene?.menu();
+  else if (action === "menu-workbench") scene?.workbench();
+  else if (action === "menu-mcp") void scene?.trace();
+  else if (action === "trace-previous") scene?.stepTrace(-1);
+  else if (action === "trace-next") scene?.stepTrace(1);
+  else if (action === "config") selectPanel("config");
   else if (action === "agent") selectPanel("agent");
   else if (action === "agent-replay") {
     selectPanel("agent");

@@ -1,0 +1,14 @@
+<style>
+  .panel { width: 690px; padding-top: 30px; padding-right: 34px; padding-bottom: 30px; padding-left: 34px; flex-direction: column; background-color: #10242a; }
+  .eyebrow { font-size: 20px; color: #b4c8e3; }
+  .title { font-size: 45px; color: #f3f4ea; }
+  .body { font-size: 25px; color: #d2d8c9; }
+  .action { font-size: 27px; color: #102016; background-color: #c0e89c; padding-top: 20px; padding-right: 24px; padding-bottom: 20px; padding-left: 24px; }
+</style>
+<Panel class="panel">
+  <span class="eyebrow">FIELDWORK / MAIN MENU</span>
+  <h1 class="title">What would you like to explore?</h1>
+  <p class="body">Choose a workspace. Switch or return here without leaving XR.</p>
+  <button class="action" id="menu-workbench">Open workbench</button>
+  <button class="action" id="menu-mcp">MCP sequence demo</button>
+</Panel>
