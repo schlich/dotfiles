@@ -37,14 +37,28 @@ def command_json(
         return None, f"{command[0]} returned invalid JSON"
 
 
+def provider_problem(error: object) -> str:
+    text = str(error or "unavailable")
+    if "credentials.json" in text or "No such file" in text:
+        return "not signed in"
+    if "no API key" in text:
+        return "no API key"
+    return text.splitlines()[0]
+
+
 def fetch_usage() -> tuple[list[dict], str | None]:
     data, error = command_json(["ai-usagebar", "usage", "--json"])
     if error:
         return [], error
     entries = data.get("entries", []) if isinstance(data, dict) else []
     rows = []
+    failures = []
     for entry in entries:
+        provider = entry.get("display_name", entry.get("id", "Provider"))
         if entry.get("status") != "ready":
+            failures.append(
+                {"provider": provider, "problem": provider_problem(entry.get("error"))}
+            )
             continue
         for metric in entry.get("metrics", []):
             percent = metric.get("percent")
@@ -52,14 +66,14 @@ def fetch_usage() -> tuple[list[dict], str | None]:
                 continue
             rows.append(
                 {
-                    "provider": entry.get("display_name", entry.get("id", "Provider")),
+                    "provider": provider,
                     "label": metric.get("label", "Usage"),
                     "value": metric.get("value", "—"),
                     "percent": max(0, min(100, int(percent))),
                     "reset": metric.get("reset_at"),
                 }
             )
-    return rows, None
+    return rows + failures, None
 
 
 def fetch_runs() -> tuple[list[dict], str | None]:
@@ -221,7 +235,25 @@ def draw(
         )
     else:
         row_y = body_y
-        for item in usage[:visible_rows]:
+        for item in usage:
+            if "problem" in item:
+                if row_y >= height - 3:
+                    break
+                put(screen, row_y, left_x + 2, "○", colors["amber"], 1)
+                put(
+                    screen,
+                    row_y,
+                    left_x + 5,
+                    shorten(
+                        f"{item['provider']}  —  {item['problem']}", left_width - 7
+                    ),
+                    colors["muted"],
+                    left_width - 7,
+                )
+                row_y += 1
+                continue
+            if row_y + 3 > height - 3:
+                break
             percent = item["percent"]
             color = (
                 colors["coral"]
@@ -313,9 +345,8 @@ def draw(
     divider_y = min(height - 2, max(body_y + 7, height - 3))
     put(screen, divider_y, 2, "─" * max(0, width - 4), colors["muted"], width - 4)
     put(screen, divider_y + 1, 2, "POLLING EVERY 30s", colors["muted"], 20)
-    put(
-        screen, divider_y + 1, 23, f"AI USAGE  {len(usage)} windows", colors["mint"], 24
-    )
+    windows = sum(1 for item in usage if "percent" in item)
+    put(screen, divider_y + 1, 23, f"AI USAGE  {windows} windows", colors["mint"], 24)
     put(screen, divider_y + 1, 48, f"CI  {len(runs)} runs", colors["mint"], 18)
     screen.refresh()
 
