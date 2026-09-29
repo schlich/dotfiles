@@ -11,7 +11,7 @@ let
   # the executable instead of letting Home Manager manage that mutable file.
   codex = pkgs.writeNuScriptBin "codex" ''
     def --wrapped main [...args] {
-      mut workspace = null
+      mut workspace = ""
       if ($args | is-empty) {
         let root_result = (^jj root | complete)
         if $root_result.exit_code == 0 {
@@ -24,12 +24,12 @@ let
               if $started.exit_code != 0 {
                 error make { msg: $"Could not start Codex workspace: ($started.stderr | str trim)" }
               }
-              $workspace = ($root | path join ".jj-workspaces" $name)
+              $workspace = ($"($root)/.jj-workspaces/($name)")
             }
           }
         }
       }
-      let directory_args = if $workspace == null { [] } else { ["-C" $workspace] }
+      let directory_args = if $workspace == "" { [] } else { ["-C" $workspace] }
       ^${pkgs.secretspec}/bin/secretspec run --file ${../../secretspec.toml} --provider keyring --reason "Codex invocation" -- ${pkgs.codex}/bin/codex ...$directory_args --config 'desktop.git-pr-watch-auto-merge=false' --config 'desktop.custom_file_handlers.jj-dashboard={label = "JJ dashboard", command = "jj-dashboard", icon = "${../../../jj/icon.svg}", input = "path", supports_ssh = false}' ...$args
     }
   '';
