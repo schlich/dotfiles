@@ -8,28 +8,29 @@ def now-iso [] {
   date now | format date "%Y-%m-%dT%H:%M:%S%:z"
 }
 
-# Task output files some process still holds open. A background task's shell
-# keeps its output file as stdout until the command exits, so an output file
-# nobody holds belongs to a finished task.
-def open-outputs [] {
+# IDs of tasks whose `tasks/<id>.output` file some process still holds open.
+# A background task's shell keeps that file as stdout until the command
+# exits, so a task nobody holds it for has finished.
+def running-ids [] {
   ls /proc
   | where name =~ '^/proc/\d+$'
   | each {|proc| try { ls -l $"($proc.name)/fd" | get target } catch { [] } }
   | flatten
   | compact
-  | where $it =~ '\.output$'
+  | where $it =~ '/tasks/[^/]+\.output$'
+  | each {|path| $path | path parse | get stem }
   | uniq
 }
 
 def main [--target: string = "homelab"] {
   let dir = ($env.XDG_STATE_HOME? | default ($env.HOME | path join .local state) | path join fieldnotes agent-tasks)
   mkdir $dir
-  let held = (open-outputs)
+  let running = (running-ids)
   let tasks = (
     glob ($dir | path join "*.json")
     | each {|file|
       mut task = (open $file)
-      if $task.finished == null and ($task.output not-in $held) {
+      if $task.finished == null and ($task.id not-in $running) {
         $task.finished = (now-iso)
         $task | to json | save -f $file
       }
