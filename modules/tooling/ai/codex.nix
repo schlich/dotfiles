@@ -11,7 +11,26 @@ let
   # the executable instead of letting Home Manager manage that mutable file.
   codex = pkgs.writeNuScriptBin "codex" ''
     def --wrapped main [...args] {
-      ^${pkgs.secretspec}/bin/secretspec run --file ${../../secretspec.toml} --provider keyring --reason "Codex invocation" -- ${pkgs.codex}/bin/codex --config 'desktop.git-pr-watch-auto-merge=false' --config 'desktop.custom_file_handlers.jj-dashboard={label = "JJ dashboard", command = "jj-dashboard", icon = "${../../../jj/icon.svg}", input = "path", supports_ssh = false}' ...$args
+      mut workspace = null
+      if ($args | is-empty) {
+        let root_result = (^jj root | complete)
+        if $root_result.exit_code == 0 {
+          let root = ($root_result.stdout | str trim)
+          if ($root | path join "jj" "ci.nu" | path exists) {
+            let listing = (^jj --repository $root workspace list -T 'name ++ "\t" ++ target.current_working_copy() ++ "\n"' | complete)
+            if $listing.exit_code == 0 and ($listing.stdout | lines | any {|line| $line == "default\ttrue" }) {
+              let name = $"codex-(date now | format date '%Y%m%d-%H%M%S')-(random int 100000..999999)"
+              let started = (do { cd $root; ^ci start $name } | complete)
+              if $started.exit_code != 0 {
+                error make { msg: $"Could not start Codex workspace: ($started.stderr | str trim)" }
+              }
+              $workspace = ($root | path join ".jj-workspaces" $name)
+            }
+          }
+        }
+      }
+      let directory_args = if $workspace == null { [] } else { ["-C" $workspace] }
+      ^${pkgs.secretspec}/bin/secretspec run --file ${../../secretspec.toml} --provider keyring --reason "Codex invocation" -- ${pkgs.codex}/bin/codex ...$directory_args --config 'desktop.git-pr-watch-auto-merge=false' --config 'desktop.custom_file_handlers.jj-dashboard={label = "JJ dashboard", command = "jj-dashboard", icon = "${../../../jj/icon.svg}", input = "path", supports_ssh = false}' ...$args
     }
   '';
 in

@@ -179,9 +179,20 @@ def prepare [cwd: string, session_id: string, path: path] {
         error make { msg: "This workspace already has a session claim. Inspect .jj/codex-session.json before recovering it; never steal another task's working copy." }
     }
     try {
-        # Independent topics start from trunk, preserving any earlier local work.
-        checked $root -- new (trunk-revset $root) -m "Codex session" | ignore
-        let change_id = (checked $root -- log -r @ --no-graph -T change_id)
+        let marker = ($root | path join ".jj" "jj-ci-workspace.json")
+        let change_id = if ($marker | path exists) {
+            # ci start created the topic change; claim that exact change.
+            let expected = (open $marker).change_id
+            let actual = (checked $root -- log -r @ --no-graph -T change_id)
+            if $actual != $expected {
+                error make { msg: $"ci start recorded change ($expected), but this workspace is on ($actual). Restore its topic before starting Codex." }
+            }
+            $actual
+        } else {
+            # Other JJ workspaces still start a fresh task from trunk.
+            checked $root -- new (trunk-revset $root) -m "Codex session" | ignore
+            checked $root -- log -r @ --no-graph -T change_id
+        }
         let state = { cwd: $root, session_id: $session_id, change_id: $change_id, described: false, state: "active", finished: false }
         mkdir ($path | path dirname)
         $state | to json | save --force $owner_path
