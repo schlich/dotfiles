@@ -407,7 +407,8 @@ unit; never squash at delivery.
 
 ## Desktop
 
-Press **Mod+2** to open or focus jjui on Niri's `vcs` workspace. From a
+Press **Mod+G** to open or focus the focused Niri workspace's VCS stack: jjui
+and gh-dash as tabs of one column, where pressing it again switches tabs. From a
 terminal, `jj-dashboard /path/to/workspace` opens a dashboard for that
 workspace. The Codex **Open in -> JJ dashboard** handler accepts a project
 directory or file.

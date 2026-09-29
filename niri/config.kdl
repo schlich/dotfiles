@@ -20,6 +20,9 @@ input {
             // options "grp:win_space_toggle,compose:ralt,ctrl:nocaps"
             options "caps:swapescape"
         }
+
+        // The numpad digits address the workspace grid (Mod+KP_1..9).
+        numlock
     }
 
     // Next sections include libinput settings.
@@ -101,15 +104,10 @@ input {
     position x=1280 y=0
 }
 
-// Keep the primary contexts available even when they have no windows.
-// Declaration order is their index, which Mod+1..Mod+6 follow; project
-// sessions opened with `session.nu project` land after them, on Mod+7..Mod+9.
-workspace "snorkel"
-workspace "vcs"
-workspace "overview"
-workspace "agents"
-workspace "scratch"
-workspace "config"
+// No workspaces are pinned: every workspace is a session (niri/session.nu),
+// numbered in the order it was opened, and Mod+N reaches the Nth. Version
+// control, coding agents and the overview are not workspaces but stacks or
+// overlays within one: Mod+G, Mod+A and Mod+O.
 
 // Settings that influence how windows are positioned and sized.
 // Find more information on the wiki:
@@ -263,8 +261,11 @@ layout {
 // See the binds section below for more spawn examples.
 // spawn-at-startup "noctalia-shell"
 
-// Build the snorkel session's Ghostty layout and focus it.
-spawn-sh-at-startup "exec nu \"$HOME/.config/niri/session.nu\" restore snorkel"
+// Open the preset sessions (snorkel, then config) and focus the first.
+spawn-sh-at-startup "exec nu \"$HOME/.config/niri/session.nu\" startup"
+
+// Keep choice groups, such as the desktop coding agents, in one tabbed column.
+spawn-sh-at-startup "exec nu \"$HOME/.config/niri/session.nu\" watch-choices"
 
 hotkey-overlay {
     skip-at-startup
@@ -308,31 +309,24 @@ window-rule {
   clip-to-geometry true
 }
 
-// Keep the startup configuration editor separate from interactive terminals.
+// The overview launcher (Mod+O) floats over whichever workspace summoned it.
 window-rule {
-  match app-id=r#"^niri-config$"#
-  open-on-workspace "config"
+  match app-id=r#"^niri\.overview$"#
+  open-floating true
+  default-column-width { proportion 0.5; }
+  default-window-height { proportion 0.6; }
 }
 
-// The JJ dashboard is always reachable with Mod+2.
-window-rule {
-  match app-id=r#"^jj-dashboard$"#
-  open-on-workspace "vcs"
-}
-
-// Keep the project and workspace overview on its own named workspace.
-window-rule {
-  match app-id=r#"^niri-overview$"#
-  open-on-workspace "overview"
-}
-
-// Desktop coding agents (OpenCode autostarts) share the agents workspace
-// instead of landing on whichever workspace has focus.
+// Desktop coding agents (OpenCode autostarts) are a choice group, so
+// `session.nu watch-choices` keeps them in one tabbed column beside the work,
+// Mod+A brings that column to the focused workspace, Mod+Shift+A floats one
+// over it instead (`session.nu peek`), and Mod+J/K or Mod+Alt+1..4 switch
+// agents.
 window-rule {
   match app-id=r#"^ai\.opencode\.desktop$"#
   match app-id=r#"^codex-desktop$"#
-  open-on-workspace "agents"
-  open-maximized true
+  default-column-width { proportion 0.4; }
+  default-column-display "tabbed"
 }
 
 // Floating Noctalia settings window.
@@ -390,6 +384,7 @@ binds {
     // shell in the session's directory, Mod+Shift+Return rebuilds its layout.
     Mod+Return hotkey-overlay-title="Terminal in this session" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" open"; }
     Mod+Shift+Return hotkey-overlay-title="Restore session layout" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" restore"; }
+    Mod+Alt+Return hotkey-overlay-title="Terminal stacked in this column" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" open --stack"; }
     Mod+Space { spawn-sh "noctalia msg panel-toggle launcher"; }
     Mod+S { spawn-sh "noctalia msg panel-toggle control-center"; }
     Mod+Shift+S { spawn-sh "noctalia msg settings-toggle"; }
@@ -526,32 +521,77 @@ binds {
     // Mod+TouchpadScrollDown { spawn "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "0.02+"; }
     // Mod+TouchpadScrollUp   { spawn "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "0.02-"; }
 
-    // The primary named workspaces have stable direct shortcuts.
-    Mod+1 { focus-workspace "snorkel"; }
-    Mod+2 hotkey-overlay-title="JJ dashboard" { spawn "jj-dashboard"; }
-    Mod+3 hotkey-overlay-title="Project overview" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" restore overview"; }
-    Mod+Shift+3 hotkey-overlay-title="Focus project overview" { focus-workspace "overview"; }
-    Mod+4 hotkey-overlay-title="Coding agents" { focus-workspace "agents"; }
-    Mod+5 hotkey-overlay-title="Scratch" { focus-workspace "scratch"; }
-    Mod+6 hotkey-overlay-title="Dotfiles config" { focus-workspace "config"; }
-    Mod+0 { focus-workspace "config"; }
-    Mod+Shift+1 { move-column-to-workspace "snorkel"; }
-    Mod+Shift+2 { move-column-to-workspace "vcs"; }
-    Mod+Shift+4 { move-column-to-workspace "agents"; }
-    Mod+Shift+5 { move-column-to-workspace "scratch"; }
-    Mod+Shift+6 { move-column-to-workspace "config"; }
-    Mod+Shift+0 { move-column-to-workspace "config"; }
-    Super+Ctrl+0 { move-window-to-workspace "scratch"; }
-
-    // Project sessions sit after the six named workspaces, in the order they
-    // were opened. Indices are best effort: past the last workspace they
-    // refer to the trailing empty one.
-    Mod+7 hotkey-overlay-title="Project session 1" { focus-workspace 7; }
-    Mod+8 hotkey-overlay-title="Project session 2" { focus-workspace 8; }
-    Mod+9 hotkey-overlay-title="Project session 3" { focus-workspace 9; }
+    // Numbers are sessions, numbered in the order they were opened, on a 3x3
+    // grid laid out like the numpad:
+    //
+    //   7 8 9
+    //   4 5 6
+    //   1 2 3
+    //
+    // Niri keeps workspaces in one vertical strip, so the grid lives in the
+    // keys: Mod+KP_N (or Mod+N) focuses session N, Mod+Shift+KP_N (or
+    // Mod+Shift+N) moves the focused column there, and Mod+Alt+H/J/K/L or
+    // the arrows step to the neighbouring cell. Mod+O draws the grid. Past the
+    // last session, an index refers to the trailing empty workspace.
+    Mod+KP_1 hotkey-overlay-title="Session 1 (bottom left)" { focus-workspace 1; }
+    Mod+KP_2 { focus-workspace 2; }
+    Mod+KP_3 { focus-workspace 3; }
+    Mod+KP_4 { focus-workspace 4; }
+    Mod+KP_5 hotkey-overlay-title="Session 5 (centre)" { focus-workspace 5; }
+    Mod+KP_6 { focus-workspace 6; }
+    Mod+KP_7 hotkey-overlay-title="Session 7 (top left)" { focus-workspace 7; }
+    Mod+KP_8 { focus-workspace 8; }
+    Mod+KP_9 { focus-workspace 9; }
+    Mod+Shift+KP_1 { move-column-to-workspace 1; }
+    Mod+Shift+KP_2 { move-column-to-workspace 2; }
+    Mod+Shift+KP_3 { move-column-to-workspace 3; }
+    Mod+Shift+KP_4 { move-column-to-workspace 4; }
+    Mod+Shift+KP_5 { move-column-to-workspace 5; }
+    Mod+Shift+KP_6 { move-column-to-workspace 6; }
+    Mod+Shift+KP_7 { move-column-to-workspace 7; }
+    Mod+Shift+KP_8 { move-column-to-workspace 8; }
+    Mod+Shift+KP_9 { move-column-to-workspace 9; }
+    Mod+1 { focus-workspace 1; }
+    Mod+2 { focus-workspace 2; }
+    Mod+3 { focus-workspace 3; }
+    Mod+4 { focus-workspace 4; }
+    Mod+5 { focus-workspace 5; }
+    Mod+6 { focus-workspace 6; }
+    Mod+7 { focus-workspace 7; }
+    Mod+8 { focus-workspace 8; }
+    Mod+9 { focus-workspace 9; }
+    Mod+Shift+1 { move-column-to-workspace 1; }
+    Mod+Shift+2 { move-column-to-workspace 2; }
+    Mod+Shift+3 { move-column-to-workspace 3; }
+    Mod+Shift+4 { move-column-to-workspace 4; }
+    Mod+Shift+5 { move-column-to-workspace 5; }
+    Mod+Shift+6 { move-column-to-workspace 6; }
     Mod+Shift+7 { move-column-to-workspace 7; }
     Mod+Shift+8 { move-column-to-workspace 8; }
     Mod+Shift+9 { move-column-to-workspace 9; }
+    Mod+Alt+H     hotkey-overlay-title="Grid: session to the left" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid left"; }
+    Mod+Alt+L     hotkey-overlay-title="Grid: session to the right" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid right"; }
+    Mod+Alt+K     hotkey-overlay-title="Grid: session above" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid up"; }
+    Mod+Alt+J     hotkey-overlay-title="Grid: session below" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid down"; }
+    Mod+Alt+Left  { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid left"; }
+    Mod+Alt+Right { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid right"; }
+    Mod+Alt+Up    { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid up"; }
+    Mod+Alt+Down  { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid down"; }
+
+    // The overview launcher floats over this workspace: the session grid, the
+    // projects in ~/code, and a shell where `project DIR` opens one.
+    Mod+O hotkey-overlay-title="Overview: sessions and projects" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" overview"; }
+
+    // Letters are stacks within the focused workspace, named for what they
+    // hold. Mod+G focuses this workspace's VCS stack (Git/GitHub), opening it
+    // if needed; again switches between its JJ and GitHub tabs.
+    Mod+G hotkey-overlay-title="VCS stack: JJ / GitHub" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" vcs"; }
+    // Mod+A brings the coding agents' stack here, starting OpenCode if none is
+    // open; again switches between agents. Mod+Shift+A peeks instead: it
+    // floats the last used agent over this workspace without reflowing its
+    // columns, and again docks it back. While peeking, Mod+A swaps agents.
+    Mod+A hotkey-overlay-title="Agents stack: OpenCode / Codex" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" agents"; }
+    Mod+Shift+A hotkey-overlay-title="Peek at an agent" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" peek agents"; }
 
     // Alternatively, there are commands to move just a single window:
     // Mod+Ctrl+1 { move-window-to-workspace 1; }
@@ -605,6 +645,20 @@ binds {
     // Windows in this column will appear as vertical tabs,
     // rather than stacked on top of each other.
     Mod+W { toggle-column-tabbed-display; }
+
+    // Alternatives for the same job (same app, or a choice group in
+    // session.nu) belong in one tabbed column; gather them into this one.
+    Mod+Alt+W hotkey-overlay-title="Tab this window's choices together" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" stack-choices"; }
+
+    // Jump straight to a window, or tab, of the focused column by position.
+    Mod+Alt+1 hotkey-overlay-title="Window 1 of this column" { focus-window-in-column 1; }
+    Mod+Alt+2 hotkey-overlay-title="Window 2 of this column" { focus-window-in-column 2; }
+    Mod+Alt+3 hotkey-overlay-title="Window 3 of this column" { focus-window-in-column 3; }
+    Mod+Alt+4 hotkey-overlay-title="Window 4 of this column" { focus-window-in-column 4; }
+
+    // Cycle the windows, or tabs, of the focused column with the wheel.
+    Mod+Alt+WheelScrollDown cooldown-ms=150 { focus-window-down; }
+    Mod+Alt+WheelScrollUp   cooldown-ms=150 { focus-window-up; }
 
     // Actions to switch layouts.
     // Note: if you uncomment these, make sure you do NOT have
