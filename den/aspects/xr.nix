@@ -12,6 +12,8 @@
           autoStart = true;
           openFirewall = true;
         };
+        hardware.uinput.enable = true;
+        users.users.schlich.extraGroups = [ "uinput" ];
         environment.systemPackages = [ pkgs.wayvr ];
       };
   };
