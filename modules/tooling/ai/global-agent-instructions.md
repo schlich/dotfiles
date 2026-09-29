@@ -14,12 +14,17 @@ script, use valid Nushell syntax.
 - Use Nushell (`nu`) for shell pipelines and text processing instead of tools
   such as `jq`, `awk`, `sed`, `grep`, or `rg`; prefer structured Nushell
   commands and pipelines for searching, filtering, and transforming data.
-- Make the Nushell evaluate tool your default shell for inspection, queries,
-  and text processing, including quick external programs such as `jj`, `nix`,
-  and `git` (wrap them in `| complete`). It preserves the Nushell session and
-  structured results, and keeps every result in `$history` for later slicing;
-  do not invoke `nu -c` through a shell just to evaluate Nushell. Expect hooks
-  to deny Bash text processing.
+- Use the Nushell evaluate tool for shell commands, repository-local file
+  inspection, and text processing, including quick external programs such as
+  `jj`, `nix`, and `git` (wrap them in `| complete`). It preserves the Nushell
+  session and structured results, and keeps every result in `$history` for
+  later slicing; do not invoke `nu -c` through a shell just to evaluate
+  Nushell. Expect hooks to deny Bash text processing.
+- Use the Nix MCP server for Nix ecosystem knowledge: nixpkgs packages, NixOS
+  and Home Manager options, channels, flakes and their inputs, and Nix
+  documentation. Do not use Nushell or local Nix commands to answer those
+  indexed knowledge queries. Use Nushell to inspect or evaluate this
+  repository's own Nix files and flake.
 - The evaluate tool returns only when a command finishes, so the user sees
   nothing while it runs. Run long external commands whose progress matters,
   such as `jj-ci publish`, `jj-ci land`, and `nix build`, with the Bash tool in
