@@ -106,9 +106,11 @@ input {
 
 // Every workspace is a session (niri/session.nu). Workspaces 1-9 are pinned
 // Johnny Decimal areas, so Mod+N always reaches area N0-N9 at the same numpad
-// cell; the tenth is 00-09 System on Mod+0. Project sessions opened later take
-// the workspaces after them. Version control, coding agents and the overview
-// are not workspaces but stacks or overlays within one: Mod+G, Mod+A and Mod+O.
+// cell. 00-09 System is not a workspace but the overview of the grid (Mod+0),
+// and the dotfiles live in 40-49 Nix tooling. Project sessions opened later
+// take the workspaces after them. Version control, coding agents and the
+// overview are not workspaces but stacks or overlays within one: Mod+G, Mod+A
+// and Mod+0 or Mod+O.
 workspace "snorkel"   // 10-19
 workspace "research"  // 20-29
 workspace "xr"        // 30-39
@@ -118,7 +120,6 @@ workspace "shell"     // 60-69
 workspace "career"    // 70-79
 workspace "personal"  // 80-89
 workspace "inbox"     // 90-99
-workspace "config"    // 00-09 System
 
 // Settings that influence how windows are positioned and sized.
 // Find more information on the wiki:
@@ -272,7 +273,7 @@ layout {
 // See the binds section below for more spawn examples.
 // spawn-at-startup "noctalia-shell"
 
-// Build the snorkel and config session layouts, then focus snorkel.
+// Build the snorkel and nix session layouts, then focus snorkel.
 spawn-sh-at-startup "exec nu \"$HOME/.config/niri/session.nu\" startup"
 
 // Keep choice groups, such as the desktop coding agents, in one tabbed column.
@@ -542,8 +543,8 @@ binds {
     // Niri keeps workspaces in one vertical strip, so the grid lives in the
     // keys: Mod+KP_N (or Mod+N) focuses area N, Mod+Shift+KP_N (or
     // Mod+Shift+N) moves the focused column there, and Mod+Alt+H/J/K/L or
-    // the arrows step to the neighbouring cell. Mod+0 is 00-09 System, off
-    // the grid. Mod+O draws the grid.
+    // the arrows step to the neighbouring cell. Mod+0, the key under the grid,
+    // is 00-09 System: the index, so it draws the grid (as does Mod+O).
     Mod+KP_1 hotkey-overlay-title="10-19 Snorkel (bottom left)" { focus-workspace "snorkel"; }
     Mod+KP_2 hotkey-overlay-title="20-29 Research" { focus-workspace "research"; }
     Mod+KP_3 hotkey-overlay-title="30-39 XR" { focus-workspace "xr"; }
@@ -553,7 +554,7 @@ binds {
     Mod+KP_7 hotkey-overlay-title="70-79 Career (top left)" { focus-workspace "career"; }
     Mod+KP_8 hotkey-overlay-title="80-89 Personal" { focus-workspace "personal"; }
     Mod+KP_9 hotkey-overlay-title="90-99 Inbox" { focus-workspace "inbox"; }
-    Mod+KP_0 hotkey-overlay-title="00-09 System" { focus-workspace "config"; }
+    Mod+KP_0 hotkey-overlay-title="00-09 System: overview of the grid" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" overview"; }
     Mod+Shift+KP_1 { move-column-to-workspace "snorkel"; }
     Mod+Shift+KP_2 { move-column-to-workspace "research"; }
     Mod+Shift+KP_3 { move-column-to-workspace "xr"; }
@@ -563,7 +564,6 @@ binds {
     Mod+Shift+KP_7 { move-column-to-workspace "career"; }
     Mod+Shift+KP_8 { move-column-to-workspace "personal"; }
     Mod+Shift+KP_9 { move-column-to-workspace "inbox"; }
-    Mod+Shift+KP_0 { move-column-to-workspace "config"; }
     Mod+1 { focus-workspace "snorkel"; }
     Mod+2 { focus-workspace "research"; }
     Mod+3 { focus-workspace "xr"; }
@@ -573,7 +573,7 @@ binds {
     Mod+7 { focus-workspace "career"; }
     Mod+8 { focus-workspace "personal"; }
     Mod+9 { focus-workspace "inbox"; }
-    Mod+0 { focus-workspace "config"; }
+    Mod+0 { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" overview"; }
     Mod+Shift+1 { move-column-to-workspace "snorkel"; }
     Mod+Shift+2 { move-column-to-workspace "research"; }
     Mod+Shift+3 { move-column-to-workspace "xr"; }
@@ -583,7 +583,6 @@ binds {
     Mod+Shift+7 { move-column-to-workspace "career"; }
     Mod+Shift+8 { move-column-to-workspace "personal"; }
     Mod+Shift+9 { move-column-to-workspace "inbox"; }
-    Mod+Shift+0 { move-column-to-workspace "config"; }
     Mod+Alt+H     hotkey-overlay-title="Grid: session to the left" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid left"; }
     Mod+Alt+L     hotkey-overlay-title="Grid: session to the right" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid right"; }
     Mod+Alt+K     hotkey-overlay-title="Grid: session above" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid up"; }

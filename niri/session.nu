@@ -78,26 +78,26 @@ def project-directory [] {
 }
 
 # Sessions with a fixed name and layout: the Johnny Decimal areas, which
-# niri/config.kdl pins to workspaces 1-9 and System to the tenth. Areas
-# without a single repository open a plain shell in the home directory.
+# niri/config.kdl pins to workspaces 1-9. 00-09 System is the overview, not a
+# session. Areas without a single repository open a plain shell in the home
+# directory.
 def presets [] {
   let area = { layout: area, directory: $env.HOME }
   {
     snorkel: { layout: default, directory: $"($env.HOME)/starfish-projects" }
     research: $area
     xr: $area
-    nix: $area
+    nix: { layout: dotfiles, directory: $"($env.HOME)/dotfiles" }
     ai: $area
     shell: $area
     career: $area
     personal: $area
     inbox: $area
-    config: { layout: dotfiles, directory: $"($env.HOME)/dotfiles" }
   }
 }
 
 # Presets whose layouts `startup` builds at login, focusing the first.
-const startup_sessions = [snorkel config]
+const startup_sessions = [snorkel nix]
 
 # A preset, else a session opened with `project`.
 def session-route [session: string] {
@@ -269,7 +269,7 @@ def "main grid" [direction: string] {
   }
 }
 
-# Toggle the overview launcher (Mod+O): a floating shell over the focused
+# Toggle the overview launcher (Mod+0 or Mod+O): a floating shell over the focused
 # workspace that lists sessions by number and projects, where `project DIR`
 # opens one. It closes when dismissed and is rebuilt fresh each time.
 def "main overview" [] {
