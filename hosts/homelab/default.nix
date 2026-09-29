@@ -1,6 +1,8 @@
 { lib, ... }:
 
 {
+  system.nixos.tags = [ "homelab" ];
+
   # Add the generated file from the target machine at this path. The optional
   # import keeps the flake inspectable before that hardware-specific step is
   # complete, while the warning makes the deployment prerequisite explicit.
@@ -17,7 +19,7 @@
     efiSupport = true;
     biosSupport = false;
     efiInstallAsRemovable = true;
-    maxGenerations = 10;
+    maxGenerations = 3;
   };
 
   system.stateVersion = "26.05";

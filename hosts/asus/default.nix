@@ -1,6 +1,8 @@
 { ... }:
 
 {
+  system.nixos.tags = [ "asus" ];
+
   boot.loader = {
     efi.canTouchEfiVariables = true;
     limine = {

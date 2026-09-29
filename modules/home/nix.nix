@@ -90,9 +90,33 @@
       }
     '')
     (pkgs.writeNuScriptBin "nixos-activate" ''
-      # Rebuild and activate the NixOS configuration for this machine.
+      # Give each distinct system closure a stable, recognizable boot label.
       def --wrapped main [...args] {
-        ^sudo nixos-rebuild switch --flake "path:/home/schlich/dotfiles#asus" ...$args
+        let flake = "path:/home/schlich/dotfiles"
+        let toplevel = $"($flake)#nixosConfigurations.asus.config.system.build.toplevel.outPath"
+        let label_option = $"($flake)#nixosConfigurations.asus.config.system.nixos.label"
+        let base_path = (
+          ^env -u NIXOS_LABEL nix eval --raw --impure $toplevel
+          | str trim
+        )
+        let base_label = (
+          ^env -u NIXOS_LABEL nix eval --raw --impure $label_option
+          | str trim
+        )
+        let fingerprint = ($base_path | path basename | split row "-" | first)
+        let label = $"($base_label)-($fingerprint)"
+        let candidate = (
+          ^env $"NIXOS_LABEL=($label)" nix eval --raw --impure $toplevel
+          | str trim
+        )
+        let active = (^readlink --canonicalize /run/current-system | str trim)
+
+        if $candidate == $active {
+          print "The candidate NixOS toplevel is already active; no generation created."
+          return
+        }
+
+        ^sudo env $"NIXOS_LABEL=($label)" nixos-rebuild switch --flake "path:/home/schlich/dotfiles#asus" ...$args
       }
     '')
     (pkgs.writeNuScriptBin "home-activate" ''
