@@ -429,8 +429,14 @@ ci start topic-name
 It creates `.jj-workspaces/topic-name` at `main@tangled` and refuses a name
 that is already in use. `ci finish` or `ci abandon` removes it.
 
-Use that directory as a local Codex project. The session hook starts an
-independent topic at `main@tangled`, records ownership in
+Use that directory as a **Local** Codex project. Do not start the chat in
+Codex's **Worktree** mode or hand it off to a worktree: [Codex worktrees](https://developers.openai.com/codex/app/worktrees)
+are Git checkouts, and the handoff flow performs Git operations between them.
+That would add a second workspace and lifecycle beside `ci`'s JJ topic. Codex's
+worktree documentation does not describe a project setting that redirects its
+worktree operations through JJ or `ci`.
+
+The session hook starts an independent topic at `main@tangled`, records ownership in
 `.jj/codex-session.json`, and guards prompts and tool calls against change-ID
 drift. It never automatically switches another task's working copy.
 
