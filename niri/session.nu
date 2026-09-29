@@ -134,6 +134,30 @@ def focused-workspace [] {
   $focused
 }
 
+# Move between occupied workspaces on the focused output, skipping empty named
+# workspaces and Niri's trailing empty workspace.
+def "main workspace" [direction: string] {
+  let focused = (focused-workspace)
+  let workspaces = (niri-json workspaces | where output == $focused.output)
+  let candidates = match $direction {
+    "down" => {
+      $workspaces
+      | where {|workspace| $workspace.idx > $focused.idx and $workspace.active_window_id != null }
+      | sort-by idx
+    }
+    "up" => {
+      $workspaces
+      | where {|workspace| $workspace.idx < $focused.idx and $workspace.active_window_id != null }
+      | sort-by idx --reverse
+    }
+    _ => { error make { msg: $"unknown workspace direction '($direction)'" } }
+  }
+  let destination = ($candidates | get 0?)
+  if $destination != null {
+    niri-action focus-workspace $destination.idx
+  }
+}
+
 # Spawn a Ghostty window and wait until Niri maps it, so the next column
 # opens to its right.
 def open-window [app_id: string, directory: path, command: list] {
@@ -646,5 +670,5 @@ def "main vcs" [] {
 }
 
 def main [] {
-  print "Usage: session.nu (startup | restore [SESSION] | overview | grid DIRECTION | open [--stack] | project [DIR] | forget [SESSION] | vcs | agents | peek [GROUP] [--next] | stack-choices | watch-choices)"
+  print "Usage: session.nu (startup | restore [SESSION] | overview | grid DIRECTION | open [--stack] | project [DIR] | forget [SESSION] | vcs | agents | peek [GROUP] [--next] | stack-choices | watch-choices | workspace (up | down))"
 }

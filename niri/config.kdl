@@ -468,11 +468,11 @@ binds {
     // Mod+Shift+Ctrl+Left  { move-workspace-to-monitor-left; }
     // ...
 
-    // Page keys provide discoverable workspace navigation; U/I remain handy on the home row.
+    // Page keys use Niri's native navigation; U/I skip empty workspaces.
     Mod+Page_Down { focus-workspace-down; }
     Mod+Page_Up   { focus-workspace-up; }
-    Mod+U         { focus-workspace-down; }
-    Mod+I         { focus-workspace-up; }
+    Mod+U         { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" workspace down"; }
+    Mod+I         { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" workspace up"; }
     Mod+Ctrl+U { move-column-to-workspace-down; }
     Mod+Ctrl+I { move-column-to-workspace-up; }
 
