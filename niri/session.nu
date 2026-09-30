@@ -29,7 +29,7 @@ const layouts = {
     { role: shell, stack: true }
   ]
   dotfiles: [
-    { role: editor, width: "60%", command: [hx .] }
+    { role: files, width: "60%", command: [yazi] }
     { role: shell, width: "40%", tabbed: true }
     { role: status, stack: true, command: [nu -c $status_loop] }
     { role: jjui, stack: true, command: [jjui] }
