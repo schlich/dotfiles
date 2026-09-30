@@ -19,16 +19,21 @@ export def "kb find" [...terms: string, --limit (-l): int = 20] {
     ^iwe find --fuzzy $query --lexical $query --limit $limit -f json | from json
 }
 
-# Open today's journal entry, creating it on first use.
+# Open today's daily note, the capture inbox (Mod+Shift+N), creating it on
+# first use.
 export def "kb today" [] {
-    let date = (date now | format date "%Y-%m-%d")
-    let file = (kb-root | path join journal $"($date).md")
-    if not ($file | path exists) {
-        mkdir ($file | path dirname)
-        $"# ($date)\n" | save $file
-    }
+    let now = (date now)
+    let key = $"daily/($now | format date '%Y-%m-%d')"
     cd (kb-root)
-    ^hx $file
+    # The same typed hub `iwe attach --to daily` appends to, so captures and
+    # recorded memories share one page per day.
+    if not ($"($key).md" | path exists) {
+        let created = ($"---\ntype: daily\n---\n\n# ($now | format date '%b %d, %Y')\n" | ^iwe create $key --content - | complete)
+        if $created.exit_code != 0 {
+            error make { msg: ($created.stderr | str trim) }
+        }
+    }
+    ^hx $"($key).md"
 }
 
 # Validate schemas and report broken links, orphans, and near-duplicates.

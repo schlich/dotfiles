@@ -23,6 +23,11 @@ const layouts = {
   area: [
     { role: shell }
   ]
+  kb: [
+    { role: editor, width: "60%", command: [hx index.md] }
+    { role: files, width: "40%", tabbed: true, command: [yazi] }
+    { role: shell, stack: true }
+  ]
   dotfiles: [
     { role: editor, width: "60%", command: [hx .] }
     { role: shell, width: "40%", tabbed: true }
@@ -77,15 +82,21 @@ def project-directory [] {
   }
 }
 
+# The knowledge base: an IWE workspace whose `<range>-<session>.md` notes are
+# the hubs of the Johnny Decimal areas below, and whose index is 00-09 System.
+def kb-root [] {
+  $env.KB_ROOT? | default $"($env.HOME)/kb"
+}
+
 # Sessions with a fixed name and layout: the Johnny Decimal areas, which
 # niri/config.kdl pins to workspaces 1-9. 00-09 System is the overview, not a
-# session. Areas without a single repository open a plain shell in the home
-# directory.
+# session. Research maintains the knowledge base; other areas without a single
+# repository open a plain shell in the home directory.
 def presets [] {
   let area = { layout: area, directory: $env.HOME }
   {
     snorkel: { layout: default, directory: $"($env.HOME)/starfish-projects" }
-    research: $area
+    research: { layout: kb, directory: (kb-root) }
     xr: $area
     nix: { layout: dotfiles, directory: $"($env.HOME)/dotfiles" }
     ai: $area
@@ -683,6 +694,46 @@ def "main vcs" [] {
   niri-action set-window-width --id $jj.id "40%"
 }
 
+# A session's area hub in the knowledge base, `<range>-<session>.md` (e.g.
+# 80-89-personal.md for `personal`); other workspaces get the index.
+def area-hub [session: any] {
+  let root = (kb-root)
+  let hubs = if $session == null { [] } else { glob $"($root)/[0-9][0-9]-[0-9][0-9]-($session).md" }
+  $hubs | get 0? | default ($root | path join index.md)
+}
+
+# Focus the focused workspace's notes (Mod+N): its area's hub in Helix,
+# started in the knowledge base so IWE's language server follows its links.
+def "main notes" [] {
+  let workspace = (focused-workspace)
+  let app_id = if $workspace.name == null { "niri.notes" } else { $"niri.ws-($workspace.name).notes" }
+  let existing = (niri-json windows | where {|window| $window.workspace_id == $workspace.id and $window.app_id? == $app_id } | get 0?)
+  if $existing != null {
+    niri-action focus-window --id $existing.id
+    return
+  }
+  let opened = (open-window $app_id (kb-root) [hx (area-hub $workspace.name)])
+  niri-action set-window-width --id $opened.id "40%"
+}
+
+# Capture a new note into today's daily note, the 90-99 Inbox of the
+# knowledge base, floating over the focused workspace (Mod+Shift+N). An open
+# capture moves here instead of closing, so unsaved text is never lost; quit
+# Helix to dismiss it.
+def "main capture" [] {
+  let workspace = (focused-workspace)
+  let open = (niri-json windows | where app_id == "niri.capture" | get 0?)
+  if $open != null {
+    if $open.workspace_id != $workspace.id {
+      niri-action move-window-to-workspace --window-id $open.id --focus false (workspace-ref $workspace)
+    }
+    niri-action focus-window --id $open.id
+    return
+  }
+  let opened = (open-window niri.capture (kb-root) [nu -e "kb today; exit"])
+  niri-action center-window --id $opened.id
+}
+
 def main [] {
-  print "Usage: session.nu (startup | restore [SESSION] | overview | grid DIRECTION | open [--stack] | project [DIR] | forget [SESSION] | vcs | agents | peek [GROUP] [--next] | stack-choices | watch-choices | workspace (up | down))"
+  print "Usage: session.nu (startup | restore [SESSION] | overview | grid DIRECTION | open [--stack] | project [DIR] | forget [SESSION] | vcs | agents | peek [GROUP] [--next] | notes | capture | stack-choices | watch-choices | workspace (up | down))"
 }

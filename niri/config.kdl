@@ -105,8 +105,9 @@ input {
 }
 
 // Every workspace is a session (niri/session.nu). Workspaces 1-9 are pinned
-// Johnny Decimal areas, so Mod+N always reaches area N0-N9 at the same numpad
-// cell. 00-09 System is not a workspace but the overview of the grid (Mod+0),
+// Johnny Decimal areas, so Mod+<digit> always reaches that area at the same
+// numpad cell (Mod+8 is 80-89). 00-09 System is not a workspace but the
+// overview of the grid (Mod+0),
 // and the dotfiles live in 40-49 Nix tooling. Project sessions opened later
 // take the workspaces after them. Version control, coding agents and the
 // overview are not workspaces but stacks or overlays within one: Mod+G, Mod+A
@@ -329,6 +330,15 @@ window-rule {
   default-window-height { proportion 0.6; }
 }
 
+// Capture (Mod+Shift+N) floats today's daily note over whichever workspace
+// summoned it.
+window-rule {
+  match app-id=r#"^niri\.capture$"#
+  open-floating true
+  default-column-width { proportion 0.5; }
+  default-window-height { proportion 0.6; }
+}
+
 // Desktop coding agents (OpenCode autostarts) are a choice group, so
 // `session.nu watch-choices` keeps them in one tabbed column beside the work,
 // Mod+A brings that column to the focused workspace, Mod+Shift+A floats one
@@ -533,7 +543,8 @@ binds {
     // Mod+TouchpadScrollDown { spawn "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "0.02+"; }
     // Mod+TouchpadScrollUp   { spawn "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "0.02-"; }
 
-    // Numbers are Johnny Decimal areas: Mod+N holds area N0-N9, on a 3x3 grid
+    // Numbers are Johnny Decimal areas: Mod+<digit> holds that area (Mod+8 is
+    // 80-89), on a 3x3 grid
     // laid out like the numpad:
     //
     //   7 Career    8 Personal  9 Inbox
@@ -541,8 +552,8 @@ binds {
     //   1 Snorkel   2 Research  3 XR
     //
     // Niri keeps workspaces in one vertical strip, so the grid lives in the
-    // keys: Mod+KP_N (or Mod+N) focuses area N, Mod+Shift+KP_N (or
-    // Mod+Shift+N) moves the focused column there, and Mod+Alt+H/J/K/L or
+    // keys: Mod+KP_<digit> (or Mod+<digit>) focuses that area,
+    // Mod+Shift+KP_<digit> (or Mod+Shift+<digit>) moves the focused column there, and Mod+Alt+H/J/K/L or
     // the arrows step to the neighbouring cell. Mod+0, the key under the grid,
     // is 00-09 System: the index, so it draws the grid (as does Mod+O).
     Mod+KP_1 hotkey-overlay-title="10-19 Snorkel (bottom left)" { focus-workspace "snorkel"; }
@@ -606,6 +617,11 @@ binds {
     // columns, and again docks it back. While peeking, Mod+A swaps agents.
     Mod+A hotkey-overlay-title="Agents stack: OpenCode / Codex" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" agents"; }
     Mod+Shift+A hotkey-overlay-title="Peek at an agent" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" peek agents"; }
+    // Mod+N opens this area's notes: its Johnny Decimal hub in ~/kb, or the
+    // index outside an area. Mod+Shift+N captures a new note into today's
+    // daily note, floating over this workspace; again brings it back here.
+    Mod+N hotkey-overlay-title="Notes: this area's hub" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" notes"; }
+    Mod+Shift+N hotkey-overlay-title="New note: capture to today" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" capture"; }
 
     // Alternatively, there are commands to move just a single window:
     // Mod+Ctrl+1 { move-window-to-workspace 1; }

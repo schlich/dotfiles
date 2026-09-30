@@ -1,5 +1,6 @@
 # The overview launcher (Mod+O; see `session.nu overview`): lists sessions by
-# the Mod+N that reaches them and the projects in ~/code, then leaves a shell
+# the Mod+<digit> that reaches them, the Johnny Decimal areas and categories from
+# the knowledge base's hubs, and the projects in ~/code, then leaves a shell
 # where `project DIR` opens one. Run `overview` to list again.
 
 def workspace_snapshot [] {
@@ -30,6 +31,25 @@ def workspace_snapshot [] {
     }
 }
 
+# The Johnny Decimal system: each area's hub in the knowledge base, by the
+# Mod+<digit> that reaches it, with the categories its list names ("- 83 Money" or
+# "- [83 Money](83-money.md)").
+def system_snapshot [] {
+    let root = ($env.KB_ROOT? | default ($env.HOME | path join kb))
+    let hubs = (glob $"($root)/[0-9][0-9]-[0-9][0-9]-*.md" | sort)
+    if ($hubs | is-empty) {
+        return
+    }
+    print "\nSystem (Mod+N: this area's notes, Mod+Shift+N: capture to today)"
+    for hub in $hubs {
+        let lines = (open --raw $hub | lines)
+        let title = ($lines | where ($it | str starts-with "# ") | get 0? | default ($hub | path basename) | str replace "# " "")
+        let categories = ($lines | parse --regex '^- \[?(?P<id>\d\d) (?P<name>[^\]]+)' | each {|category| $"($category.id) ($category.name)" })
+        let listed = if ($categories | is-empty) { "" } else { $": ($categories | str join ' · ')" }
+        print $"  ($title | str substring 0..0) ($title)($listed)"
+    }
+}
+
 def project_snapshot [] {
     print "\nProjects"
     let code = $"($env.HOME)/code"
@@ -48,6 +68,7 @@ def project_snapshot [] {
 def overview [] {
     clear
     workspace_snapshot
+    system_snapshot
     project_snapshot
 }
 

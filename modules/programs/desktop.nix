@@ -209,7 +209,7 @@ in
           privacy.hide_inactive = true;
           workspaces = {
             # A vertical bar has no room for names, and pill_scale cannot widen
-            # the pills, so number the workspaces in niri's Mod+N order.
+            # the pills, so number the workspaces in niri's Mod+<digit> order.
             style = "regular";
             show_labels = true;
             label_source = "id";
