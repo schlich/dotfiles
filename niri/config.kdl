@@ -107,11 +107,11 @@ input {
 // Every workspace is a session (niri/session.nu). Workspaces 1-9 are pinned
 // Johnny Decimal areas, so Mod+<digit> always reaches that area at the same
 // numpad cell (Mod+8 is 80-89). 00-09 System is not a workspace but the
-// overview of the grid (Mod+0),
+// session launcher over the grid (Mod+0),
 // and the dotfiles live in 40-49 Nix tooling. Project sessions opened later
 // take the workspaces after them. Version control, coding agents and the
-// overview are not workspaces but stacks or overlays within one: Mod+G, Mod+A
-// and Mod+0 or Mod+O.
+// session launcher are not workspaces but stacks or overlays within one: Mod+G,
+// Mod+A and Mod+0. Mod+O is Niri's own overview of every workspace.
 workspace "snorkel"   // 10-19
 workspace "research"  // 20-29
 workspace "xr"        // 30-39
@@ -322,7 +322,7 @@ window-rule {
   clip-to-geometry true
 }
 
-// The overview launcher (Mod+O) floats over whichever workspace summoned it.
+// The session launcher (Mod+0) floats over whichever workspace summoned it.
 window-rule {
   match app-id=r#"^niri\.overview$"#
   open-floating true
@@ -566,7 +566,7 @@ binds {
     // keys: Mod+KP_<digit> (or Mod+<digit>) focuses that area,
     // Mod+Shift+KP_<digit> (or Mod+Shift+<digit>) moves the focused column there, and Mod+Alt+H/J/K/L or
     // the arrows step to the neighbouring cell. Mod+0, the key under the grid,
-    // is 00-09 System: the index, so it draws the grid (as does Mod+O).
+    // is 00-09 System: the index, so it opens the session launcher over the grid.
     Mod+KP_1 hotkey-overlay-title="10-19 Snorkel (bottom left)" { focus-workspace "snorkel"; }
     Mod+KP_2 hotkey-overlay-title="20-29 Research" { focus-workspace "research"; }
     Mod+KP_3 hotkey-overlay-title="30-39 XR" { focus-workspace "xr"; }
@@ -576,7 +576,7 @@ binds {
     Mod+KP_7 hotkey-overlay-title="70-79 Career (top left)" { focus-workspace "career"; }
     Mod+KP_8 hotkey-overlay-title="80-89 Personal" { focus-workspace "personal"; }
     Mod+KP_9 hotkey-overlay-title="90-99 Inbox" { focus-workspace "inbox"; }
-    Mod+KP_0 hotkey-overlay-title="00-09 System: overview of the grid" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" overview"; }
+    Mod+KP_0 hotkey-overlay-title="00-09 System: session launcher" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" overview"; }
     Mod+Shift+KP_1 { move-column-to-workspace "snorkel"; }
     Mod+Shift+KP_2 { move-column-to-workspace "research"; }
     Mod+Shift+KP_3 { move-column-to-workspace "xr"; }
@@ -595,7 +595,7 @@ binds {
     Mod+7 { focus-workspace "career"; }
     Mod+8 { focus-workspace "personal"; }
     Mod+9 { focus-workspace "inbox"; }
-    Mod+0 { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" overview"; }
+    Mod+0 hotkey-overlay-title="00-09 System: session launcher" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" overview"; }
     Mod+Shift+1 { move-column-to-workspace "snorkel"; }
     Mod+Shift+2 { move-column-to-workspace "research"; }
     Mod+Shift+3 { move-column-to-workspace "xr"; }
@@ -614,9 +614,9 @@ binds {
     Mod+Alt+Up    { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid up"; }
     Mod+Alt+Down  { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid down"; }
 
-    // The overview launcher floats over this workspace: the session grid, the
-    // projects in ~/code, and a shell where `project DIR` opens one.
-    Mod+O hotkey-overlay-title="Overview: sessions and projects" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" overview"; }
+    // Niri's overview: every workspace zoomed out. The session launcher (the
+    // grid, projects in ~/code, and `project DIR`) is Mod+0.
+    Mod+O repeat=false hotkey-overlay-title="Overview: all workspaces" { toggle-overview; }
 
     // Letters are stacks within the focused workspace, named for what they
     // hold. Mod+G focuses this workspace's VCS stack (Git/GitHub), opening it

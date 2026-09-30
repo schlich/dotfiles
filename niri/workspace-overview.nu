@@ -1,4 +1,4 @@
-# The overview launcher (Mod+O; see `session.nu overview`): lists sessions by
+# The session launcher (Mod+0; see `session.nu overview`): lists sessions by
 # the Mod+<digit> that reaches them, the Johnny Decimal areas and categories from
 # the knowledge base's hubs, and the projects in ~/code, then leaves a shell
 # where `project DIR` opens one. Run `overview` to list again.
@@ -62,7 +62,7 @@ def project_snapshot [] {
     } else {
         $projects | each {|project| print $"  ($project | path basename)  ($project)" } | ignore
     }
-    print "\n`project DIR` opens a project session. Mod+O closes this."
+    print "\n`project DIR` opens a project session. Mod+0 closes this."
 }
 
 def overview [] {

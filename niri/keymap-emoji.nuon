@@ -39,6 +39,7 @@
   { action: 'panel-toggle control-center', emoji: '🧰' }
   { action: 'settings-toggle', emoji: '🔩' }
   { action: 'window-switcher', emoji: '🪟' }
+  { action: '^toggle-overview', emoji: '🦅' }
   { action: '^run google-chrome', emoji: '🌐' }
   { action: '^run swaylock', emoji: '🔒' }
   { action: '^run missioncenter', emoji: '📈' }

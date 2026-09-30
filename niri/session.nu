@@ -280,7 +280,7 @@ def "main grid" [direction: string] {
   }
 }
 
-# Toggle the overview launcher (Mod+0 or Mod+O): a floating shell over the focused
+# Toggle the session launcher (Mod+0): a floating shell over the focused
 # workspace that lists sessions by number and projects, where `project DIR`
 # opens one. It closes when dismissed and is rebuilt fresh each time.
 def "main overview" [] {
