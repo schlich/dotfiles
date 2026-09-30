@@ -17,5 +17,17 @@
         max_height = 1000;
       };
     };
+    # `g n` goes to the notes, beside the built-in `g h` (home) and `g d`
+    # (downloads), matching niri's Mod+N for this area's notes.
+    keymap.mgr.prepend_keymap = [
+      {
+        on = [
+          "g"
+          "n"
+        ];
+        run = "cd ~/kb";
+        desc = "Go to the knowledge base";
+      }
+    ];
   };
 }
