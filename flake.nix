@@ -66,7 +66,6 @@
     };
     agent-skills = {
       url = "github:Kyure-A/agent-skills-nix";
-      inputs.home-manager.follows = "home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     codex-desktop-linux = {
