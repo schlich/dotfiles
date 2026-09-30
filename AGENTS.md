@@ -25,9 +25,11 @@
 - Preserve the existing modular flake structure. Do not introduce the
   Dendritic Pattern as part of an unrelated change; adopting it requires a
   deliberate architecture migration.
-- The active outputs are
-  `homeConfigurations.schlich.activationPackage` and
-  `nixosConfigurations.asus.config.system.build.toplevel`.
+- The active output is
+  `nixosConfigurations.asus.config.system.build.toplevel`. Home Manager is
+  embedded in it; there is no standalone `homeConfigurations` output. Its
+  activation package is
+  `nixosConfigurations.asus.config.home-manager.users.schlich.home.activationPackage`.
 - Add user packages in `modules/home/packages.nix`, version-control wrappers in
   `modules/programs/vcs.nix`, and AI client configuration in
   `modules/programs/ai.nix`.
@@ -45,8 +47,9 @@
 - Format Nix changes with `nix fmt`. Do not run Nix builds or other build/test
   validation during agent responses unless the user explicitly requests it.
   When explicitly requested, use the smallest relevant build:
-  `nix build .#homeConfigurations.schlich.activationPackage` for Home Manager
-  changes and `nix build .#nixosConfigurations.asus.config.system.build.toplevel`
+  `nix build path:.#nixosConfigurations.asus.config.home-manager.users.schlich.home.activationPackage`
+  for Home Manager changes and
+  `nix build path:.#nixosConfigurations.asus.config.system.build.toplevel`
   for system changes.
 
 ## Applying configuration
