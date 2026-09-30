@@ -48,6 +48,7 @@ over one-off requests.
 | Denied, but Bash is really needed, such as a TTY, sudo, or a harness-only feature | Add a narrow `allow` rule with a `why` to `bash-policy.nuon`. Anchor the regex and never allow a whole interpreter such as `bash -c`. |
 | `text_tools` denial repeated inside background runs | Tell agents to write the log to the scratchpad and read it from Nushell. |
 | Allowed, then ran, and Nushell would have worked | Consider tightening: remove or narrow the allow rule. |
+| Long workflow command (build, publish, land) run in the background | Add its program to `long_jobs` in `bash-policy.nuon`, so it runs as a Nushell `job spawn` with a scratchpad log. |
 | Denied or not run because the evaluate tool lacked a capability | Report the tooling gap to the user instead of loosening the policy. |
 
 Keep instruction edits short and general. Describe the use case, not the

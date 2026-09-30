@@ -184,12 +184,34 @@ const cases = [
     name: "denies a foreground nix build",
     stdin: claudePayload("nix build .#foo"),
     decision: "deny",
-    reason: /Foreground Bash is disabled/,
+    reason: /Nushell job/,
   },
   {
     hook: "prefer-nushell",
-    name: "defers a background nix build",
+    name: "denies a background nix build",
     stdin: claudePayload("nix build .#foo", "Bash", { background: true }),
+    decision: "deny",
+    reason: /job spawn/,
+  },
+  {
+    hook: "prefer-nushell",
+    name: "denies a background ci land after cd",
+    stdin: claudePayload("cd ws && ci land > land.log 2>&1", "Bash", {
+      background: true,
+    }),
+    decision: "deny",
+    reason: /job spawn/,
+  },
+  {
+    hook: "prefer-nushell",
+    name: "defers another background command",
+    stdin: claudePayload("cargo build --release", "Bash", { background: true }),
+    decision: null,
+  },
+  {
+    hook: "prefer-nushell",
+    name: "defers sudo nix",
+    stdin: claudePayload("sudo nix store gc", "Bash", { background: true }),
     decision: null,
   },
   {
@@ -426,7 +448,7 @@ const stopCases = [
   {
     name: "raises new use cases",
     stdin: stopPayload("test"),
-    block: /default · nix[\s\S]*bash-feedback skill/,
+    block: /long_jobs · nix[\s\S]*bash-feedback skill/,
   },
   {
     name: "raises each use case once",

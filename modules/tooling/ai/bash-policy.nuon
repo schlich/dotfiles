@@ -2,7 +2,8 @@
 #
 # Foreground Bash is denied unless a rule below allows it; the agent is sent
 # to the Nushell MCP tool instead. Background runs (`run_in_background`) are
-# allowed because the evaluate tool shows no progress for long commands.
+# allowed, except for the long_jobs programs, which run as Nushell jobs in
+# the evaluate tool with a log in the scratchpad.
 # Allowed calls still pass through Jev and the normal permission prompt.
 #
 # Every request is logged; review the log with `claude-bash-audit report`
@@ -12,6 +13,10 @@
   text_tools: [
     awk cat cut egrep fd fgrep find grep head jq less ls more rg sed sort tail tr uniq wc yq
   ]
+
+  # Stage programs denied even in the background, with a Nushell job hint:
+  # long workflow commands such as `ci land` and `nix build`.
+  long_jobs: [ci nix]
 
   # Regexes matched against the whole command. `why` records the use case;
   # `skip_text_tools` also exempts the command from the text_tools check.

@@ -6,14 +6,18 @@ script, use valid Nushell syntax.
 
 - Use `;` to run commands sequentially. Do not use Bash operators such
   as `&&` or `||` unless deliberately invoking a POSIX shell.
+
 - When a subsequent command must depend on an external command's exit
   status, use Nushell control flow and `complete`; do not emulate it
   with Bash chaining.
+
 - A tool invocation may use its own execution shell, but never copy that
   shell's syntax into a command intended for the user's Nushell prompt.
+
 - Use Nushell (`nu`) for shell pipelines and text processing instead of tools
   such as `jq`, `awk`, `sed`, `grep`, or `rg`; prefer structured Nushell
   commands and pipelines for searching, filtering, and transforming data.
+
 - Prefer a dedicated tool when one covers the operation: the jj MCP server
   for Jujutsu log, diff, status, describe, bookmark, abandon, and push; the
   GitHub MCP server for GitHub pull requests, issues, Actions runs, and
@@ -22,31 +26,51 @@ script, use valid Nushell syntax.
   Nushell evaluate tool only when no dedicated tool fits, such as repository
   workflows (`ci`), Tangled, flake evaluation, multi-step pipelines, or
   combining several results into one structured record.
+
 - When a shell is needed, use the Nushell evaluate tool rather than invoking
   `nu -c` through Bash. It preserves the session and structured results and
   keeps every result in `$history` for later slicing. Wrap external programs
   in `| complete`.
+
 - In Claude Code, a hook denies every foreground Bash call except a short
   allowlist, such as `sudo`, and logs each Bash request for review. Do not
   retry a denied command in Bash, and do not rephrase it to slip past the
   hook: run it in the Nushell evaluate tool. If Bash is truly required, tell
   the user why instead. The bash-feedback skill reviews the log.
+
 - Use the Nix MCP server for Nix ecosystem knowledge: nixpkgs packages, NixOS
   and Home Manager options, channels, flakes and their inputs, and Nix
   documentation. Do not use Nushell or local Nix commands to answer those
   indexed knowledge queries. Use Nushell to inspect or evaluate this
   repository's own Nix files and flake.
+
 - The evaluate tool returns only when a command finishes, so the user sees
   nothing while it runs. Run long external commands whose progress matters,
-  such as `ci publish`, `ci land`, and `nix build`, with the Bash tool in
-  the background (`run_in_background`, the only unlisted Bash use the hook
-  allows), writing to a log in the scratchpad, and check that log as it
-  runs. Do not pipe that output through text-processing tools in Bash;
-  read or filter the log with Nushell.
+  such as `ci publish`, `ci land`, and `nix build`, as a Nushell job from
+  the evaluate tool, not with Bash. Change directory inside the job, write
+  both streams to a log in the scratchpad, and save a done marker, since a
+  job's errors are otherwise lost:
+
+  ```nu
+  job spawn {
+    let result = try {
+      cd $workspace
+      ci land o+e> $log
+      { exit_code: 0 }
+    } catch {|err| { exit_code: $env.LAST_EXIT_CODE?, error: $err.msg } }
+    $result | save --force $"($log).done.nuon"
+  }
+  ```
+
+  Read the log with Nushell as it runs. A job sends no completion notice,
+  so wait for the done marker with the Monitor tool when the harness
+  provides it, or check it again before reporting.
+
 - When a file, log, diff, or command output is too large to read comfortably,
   keep it in a Nushell variable and follow the `rlm` skill (`rlm load`,
   `rlm find`, `rlm peek`, `rlm chunk`, `rlm map`) instead of printing it or
   capping it with `head` or `tail`.
+
 - Before saving a multi-command IntelliShell template, validate it with the
   Nushell evaluate tool when available. Use `nu -c` only when that tool is
   unavailable or when validation specifically requires a fresh Nushell process.

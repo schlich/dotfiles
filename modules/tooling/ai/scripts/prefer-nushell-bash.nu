@@ -13,6 +13,8 @@ const text_hint = "Rewrite the text tools as structured Nushell (open, ls, glob,
 
 const default_hint = "Foreground Bash is disabled. Long commands whose progress matters may use Bash with run_in_background, logging to the scratchpad. If this command truly needs Bash (a TTY, or a harness feature the evaluate tool lacks), stop and tell the user why; every Bash request is logged for review."
 
+const job_hint = "Run it as a Nushell job from the evaluate tool instead: `job spawn { try { cd $workspace; ci land o+e> $log } ... }`, logging both streams to the scratchpad and saving a done marker, as the Shell conventions describe. Read the log with Nushell."
+
 # Hook runners spawn this script with a socket for stdin, and Linux cannot
 # reopen a socket through /dev/stdin, so read the payload from `$in`. That
 # requires running under `nu --stdin`.
@@ -122,6 +124,15 @@ def classify [command: string, background: bool, policy: record] {
 
   if $allowed != null {
     return { decision: "defer", rule: $"allow: ($allowed.why)" }
+  }
+  let jobs = ($programs | where {|program| $program in ($policy.long_jobs? | default []) } | uniq)
+  if ($jobs | is-not-empty) {
+    return {
+      decision: "deny"
+      rule: "long_jobs"
+      matched: $jobs
+      reason: $"Bash call runs ($jobs | str join ', '). ($job_hint)"
+    }
   }
   if $background {
     return { decision: "defer", rule: "background" }
