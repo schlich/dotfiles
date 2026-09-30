@@ -539,6 +539,258 @@ for (const testCase of stopCases) {
   }
 }
 
-const total = results.length + 2 + stopCases.length;
+// agent-trust: the PermissionRequest hook with a stub Jev and a seeded
+// ledger, then the outcome hook that records an approved dialog.
+function trustCommand(event) {
+  const dir = plugins["agent-trust"];
+  const hooks = JSON.parse(
+    readFileSync(join(dir, "hooks", "hooks.json"), "utf8"),
+  ).hooks;
+  const command = hooks[event]?.[0]?.hooks?.[0]?.command;
+  if (!command) throw new Error(`agent-trust declares no ${event} command`);
+  return command;
+}
+function stubJev(name, intent) {
+  const path = join(scratch, `jev-${name}`);
+  const response = JSON.stringify({
+    answers: {
+      action_class: { choice: "read_only", confidence: 0.95 },
+      needs_user_intent: { noul: intent },
+    },
+    model: "stub",
+  });
+  writeFileSync(
+    path,
+    `#!/bin/sh\ncat > /dev/null\nprintf '%s' '${response}'\n`,
+    {
+      mode: 0o755,
+    },
+  );
+  return path;
+}
+const routineJev = stubJev("routine", 0.05);
+const personalJev = stubJev("personal", 0.9);
+// Nushell reads JSON as NUON, so the test policy is written as JSON.
+function trustPolicy(mode) {
+  const path = join(scratch, `trust-policy-${mode}.nuon`);
+  writeFileSync(
+    path,
+    JSON.stringify({
+      mode,
+      enforce_classes: ["read_only"],
+      pending_minutes: 10,
+      half_life_days: 30,
+      min_samples: 8,
+      z: 1.645,
+      tiers: { low: 0.8, medium: 0.9, high: 0.97 },
+      classes: { read_only: "low", system_change: "floor" },
+      max_user_intent: 0.4,
+      floors: [{ tool: "^Bash$", input: "\\bsudo\\b", why: "Privileged" }],
+    }),
+  );
+  return path;
+}
+// `approvals` dialogs answered an hour ago, each followed by its run.
+function seededLog(name, approvals) {
+  const path = join(scratch, `trust-${name}.jsonl`);
+  const ts = new Date(Date.now() - 3600_000).toISOString();
+  const lines = [];
+  for (let i = 0; i < approvals; i++) {
+    const id = `seed${i}`;
+    lines.push({
+      ts,
+      event: "request",
+      tool_use_id: id,
+      tool_name: "Read",
+      class: "read_only",
+      decision: "ask",
+      enforced: false,
+    });
+    lines.push({ ts, event: "ran", tool_use_id: id });
+  }
+  writeFileSync(
+    path,
+    lines.map((line) => `${JSON.stringify(line)}\n`).join(""),
+  );
+  return path;
+}
+const readLog = (path) =>
+  existsSync(path)
+    ? readFileSync(path, "utf8")
+        .trim()
+        .split("\n")
+        .filter(Boolean)
+        .map(JSON.parse)
+    : [];
+const permissionPayload = (tool, input) =>
+  JSON.stringify({
+    session_id: "test",
+    hook_event_name: "PermissionRequest",
+    tool_name: tool,
+    tool_input: input,
+    tool_use_id: "toolu_trust",
+    cwd: "/tmp",
+    permission_mode: "default",
+  });
+const readPayload = permissionPayload("Read", { file_path: "/tmp/x" });
+const trustState = join(scratch, "trust-state");
+const trustEnv = (log, mode, jev) => ({
+  ...process.env,
+  AGENT_TRUST_LOG: log,
+  AGENT_TRUST_POLICY: trustPolicy(mode),
+  AGENT_TRUST_JEV: jev,
+  XDG_STATE_HOME: trustState,
+});
+// `allow`: the hook answers the dialog; `logged`: the reason it records.
+const trustCases = [
+  {
+    name: "leaves a malformed payload to the user",
+    stdin: "[",
+    env: trustEnv(seededLog("malformed", 15), "enforce", routineJev),
+    allow: false,
+    stderr: "agent-trust: ",
+  },
+  {
+    name: "applies floors before Jev",
+    stdin: permissionPayload("Bash", { command: "sudo ls" }),
+    env: trustEnv(seededLog("floor", 15), "enforce", routineJev),
+    allow: false,
+    logged: /^floor: Privileged/,
+  },
+  {
+    name: "asks during a cold start",
+    stdin: readPayload,
+    env: trustEnv(seededLog("cold", 3), "enforce", routineJev),
+    allow: false,
+    logged: /^cold start/,
+  },
+  {
+    name: "asks when evidence is too thin for the tier",
+    stdin: readPayload,
+    env: trustEnv(seededLog("thin", 9), "enforce", routineJev),
+    allow: false,
+    logged: /below low tier/,
+  },
+  {
+    name: "approves a trusted class",
+    stdin: readPayload,
+    env: trustEnv(seededLog("trusted", 15), "enforce", routineJev),
+    allow: true,
+    logged: /clears low tier/,
+  },
+  {
+    name: "leaves a matter of intent to the user",
+    stdin: readPayload,
+    env: trustEnv(seededLog("intent", 15), "enforce", personalJev),
+    allow: false,
+    logged: /needs your intent/,
+  },
+  {
+    name: "only records in shadow mode",
+    stdin: readPayload,
+    env: trustEnv(seededLog("shadow", 15), "shadow", routineJev),
+    allow: false,
+    logged: /clears low tier/,
+  },
+];
+let trustTotal = 0;
+function report(label, problems, result) {
+  trustTotal += 1;
+  if (problems.length === 0) {
+    console.log(`ok   ${label}`);
+  } else {
+    failures += 1;
+    console.log(`FAIL ${label}: ${problems.join("; ")}`);
+    if (result) {
+      console.log(`     stdout: ${JSON.stringify(result.stdout)}`);
+      console.log(`     stderr: ${JSON.stringify(result.stderr)}`);
+    }
+  }
+}
+for (const testCase of trustCases) {
+  const result = await run("agent-trust", testCase.stdin, "socket", 0, {
+    command: trustCommand("PermissionRequest"),
+    env: testCase.env,
+  });
+  const problems = [];
+  if (result.code !== 0) problems.push(`exit ${result.code}`);
+  if (/nu::shell::/.test(result.stderr))
+    problems.push("stderr contains a Nushell error trace");
+  if (testCase.stderr) {
+    if (!result.stderr.startsWith(testCase.stderr))
+      problems.push(
+        `stderr should start with ${JSON.stringify(testCase.stderr)}`,
+      );
+  } else if (result.stderr !== "") {
+    problems.push("stderr should be empty");
+  }
+  const stdout = result.stdout.trim();
+  if (testCase.allow) {
+    let output = null;
+    try {
+      output = JSON.parse(stdout);
+    } catch {
+      problems.push("stdout is not JSON");
+    }
+    const specific = output?.hookSpecificOutput;
+    if (specific?.hookEventName !== "PermissionRequest")
+      problems.push("missing hookSpecificOutput.hookEventName");
+    if (specific?.decision?.behavior !== "allow")
+      problems.push("expected behavior allow");
+  } else if (stdout !== "") {
+    problems.push("expected no output");
+  }
+  if (testCase.logged) {
+    const request = readLog(testCase.env.AGENT_TRUST_LOG)
+      .filter((entry) => entry.event === "request")
+      .at(-1);
+    if (request?.tool_use_id !== "toolu_trust")
+      problems.push("the dialog was not logged");
+    else if (!testCase.logged.test(request.reason ?? ""))
+      problems.push(
+        `logged reason ${JSON.stringify(request.reason)} should match ${testCase.logged}`,
+      );
+  }
+  report(`agent-trust: ${testCase.name}`, problems, result);
+}
+
+// The cold-start case left a dialog marker; its run is an approval, and a
+// run without a dialog is not logged.
+const outcomeLog = trustCases[2].env.AGENT_TRUST_LOG;
+for (const [name, id, expected] of [
+  ["records the run that answers a dialog", "toolu_trust", "ran"],
+  ["ignores a run without a dialog", "toolu_other", null],
+]) {
+  const before = readLog(outcomeLog).length;
+  const result = await run(
+    "agent-trust",
+    JSON.stringify({
+      session_id: "test",
+      hook_event_name: "PostToolUse",
+      tool_name: "Read",
+      tool_input: { file_path: "/tmp/x" },
+      tool_use_id: id,
+    }),
+    "socket",
+    0,
+    { command: trustCommand("PostToolUse"), env: trustCases[2].env },
+  );
+  const problems = [];
+  if (result.code !== 0) problems.push(`exit ${result.code}`);
+  if (result.stderr !== "") problems.push("stderr should be empty");
+  const added = readLog(outcomeLog).slice(before);
+  if (expected === null) {
+    if (added.length !== 0) problems.push("expected no log line");
+  } else if (
+    added.length !== 1 ||
+    added[0].event !== expected ||
+    added[0].tool_use_id !== id
+  ) {
+    problems.push(`expected one ${expected} line for ${id}`);
+  }
+  report(`agent-trust: ${name}`, problems, result);
+}
+
+const total = results.length + 2 + stopCases.length + trustTotal;
 console.log(`${total - failures}/${total} hook cases passed`);
 process.exit(failures === 0 ? 0 : 1);

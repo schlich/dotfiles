@@ -1,0 +1,94 @@
+# Claude Code permission-trust policy, read by scripts/agent-trust.nu.
+#
+# The PermissionRequest hook runs whenever Claude Code would show you a
+# permission dialog. It classifies the call with Jev (jev/questions.nuon,
+# `route`), estimates from the ledger of your past answers how likely you are
+# to approve that class, and logs what it would decide. Review the log with
+# `agent-trust report`.
+#
+# In `shadow` mode the hook never answers a dialog. In `enforce` mode it
+# approves a call only when its class is listed in `enforce_classes`, no
+# floor matches, Jev says your intent is not needed, and the trust bound
+# clears the class's tier threshold. It never denies; you still decide
+# everything else.
+{
+  mode: shadow
+
+  # Promote a class here only after `agent-trust report` shows shadow mode
+  # would have been right for it.
+  enforce_classes: []
+
+  # Only your own answers train the ledger: a dialog followed by the tool
+  # running counts as an approval, and one with no run after
+  # `pending_minutes` counts as a denial. Calls the hook approved itself are
+  # not evidence, so an enforced class re-asks once its evidence decays.
+  pending_minutes: 10
+  half_life_days: 30
+  min_samples: 8
+
+  # One-sided Wilson lower bound on the approval rate, at this z (95%).
+  z: 1.645
+
+  # The trust bound a class needs before it would be approved. `floor`
+  # classes are never approved automatically.
+  tiers: {
+    low: 0.8
+    medium: 0.9
+    high: 0.97
+  }
+
+  # Every `action_class` answer in jev/questions.nuon needs a tier here;
+  # an unknown class is treated as `floor`.
+  classes: {
+    read_only: low
+    local_edit: low
+    local_vcs: low
+    validation: low
+    publish: medium
+    deliver: high
+    other: medium
+    system_change: floor
+    external_message: floor
+    destructive: floor
+  }
+
+  # Jev's probability that the call needs a decision only you can make.
+  # At or above this, the dialog is always yours.
+  max_user_intent: 0.4
+
+  # Deterministic floors: matched without Jev, so a misleading tool call
+  # cannot talk its way past them. `tool` matches the tool name, `input`
+  # the summary sent to Jev (a command line, file path, or JSON arguments).
+  floors: [
+    {
+      tool: '^(Bash|mcp__.*nushell__evaluate)$'
+      input: '(^|[\s;&|({])(sudo|doas|nixos-rebuild|home-activate|systemctl|shutdown|reboot)\b'
+      why: "Privileged or system-activation command"
+    }
+    {
+      tool: '^(Bash|mcp__.*nushell__evaluate)$'
+      input: '\bci\s+(land|finish|abandon)\b|\b(git|jj\s+git)\s+push\b|--force\b'
+      why: "Delivers to main, closes a topic, or pushes"
+    }
+    {
+      tool: '^(Bash|mcp__.*nushell__evaluate)$'
+      input: '\brm\s+(-\w*\s+)*-\w*[rR]|\bmkfs|\bdd\s|\bcryptsetup\b|\bwipefs\b'
+      why: "Deletes data or touches block devices"
+    }
+    {
+      tool: '^mcp__.*jj__jj_git_push$'
+      input: '.*'
+      why: "Pushes to a remote"
+    }
+    {
+      tool: '^mcp__claude_ai_'
+      input: '.*'
+      why: "Acts on a connected external account (mail, calendar, drive)"
+    }
+    {
+      tool: '^(Edit|Write|MultiEdit|NotebookEdit)$'
+      input: '(^/etc/|/\.ssh/|hardware-configuration|/boot|luks|disko|secrets?[./]|\.age$|secretspec)'
+      why: "Boot, storage, encryption, or secret configuration"
+    }
+  ]
+}

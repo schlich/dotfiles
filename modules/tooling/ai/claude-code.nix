@@ -111,6 +111,56 @@ let
       }
     } $out/hooks/hooks.json
   '';
+  # Learn from your permission-dialog answers which kinds of tool call you
+  # approve, and answer the dialog for classes promoted in trust-policy.nuon.
+  agentTrustSource =
+    builtins.replaceStrings
+      [ "@policy@" "@questions@" "@jev@" ]
+      [ "${./trust-policy.nuon}" "${../../../jev/questions.nuon}" "${jev}/bin/jev" ]
+      (builtins.readFile ./scripts/agent-trust.nu);
+  agentTrustScript = pkgs.writeText "agent-trust.nu" agentTrustSource;
+  agentTrust =
+    let
+      outcome = {
+        hooks = [
+          {
+            type = "command";
+            command = "${pkgs.nushell}/bin/nu --stdin ${agentTrustScript} outcome";
+            async = true;
+            timeout = 10;
+          }
+        ];
+      };
+    in
+    pkgs.runCommand "claude-code-agent-trust" { } ''
+      install -Dm644 ${
+        pkgs.writers.writeJSON "plugin.json" {
+          name = "agent-trust";
+          description = "Learn which permission dialogs you approve and answer promoted ones.";
+        }
+      } $out/.claude-plugin/plugin.json
+      install -Dm644 ${
+        pkgs.writers.writeJSON "hooks.json" {
+          hooks = {
+            PermissionRequest = [
+              {
+                matcher = "*";
+                hooks = [
+                  {
+                    type = "command";
+                    command = "${pkgs.nushell}/bin/nu --stdin ${agentTrustScript} permission-request";
+                    timeout = 30;
+                  }
+                ];
+              }
+            ];
+            PostToolUse = [ outcome ];
+            PostToolUseFailure = [ outcome ];
+          };
+        }
+      } $out/hooks/hooks.json
+    '';
+  agentTrustBin = pkgs.writeNuScriptBin "agent-trust" agentTrustSource;
   # Fetch the token per connection so it never enters Claude Code's
   # environment, where every shell command could read it.
   githubMcpHeaders = pkgs.writeNuScriptBin "claude-github-mcp-headers" ''
@@ -266,7 +316,10 @@ in
 {
   imports = [ ./common.nix ];
 
-  home.packages = [ bashAudit ];
+  home.packages = [
+    bashAudit
+    agentTrustBin
+  ];
 
   programs.claude-code = {
     enable = true;
@@ -295,6 +348,7 @@ in
     plugins.jj-guard = jjGuard;
     plugins.jev-bash-guard = jevBashGuard;
     plugins.prefer-nushell = preferNushellGuard;
+    plugins.agent-trust = agentTrust;
     plugins.nushell-display = nushellDisplay;
     plugins.context-status = contextStatusHandoff;
     plugins.background-tasks = backgroundTasks;
@@ -373,6 +427,7 @@ in
             jj-guard=${jjGuard} \
             prefer-nushell=${preferNushellGuard} \
             jev-bash-guard=${jevBashGuard} \
+            agent-trust=${agentTrust} \
             copilot-guard=${../../../copilot/plugins/jj-flake-vigilance}
           touch "$out"
         '';

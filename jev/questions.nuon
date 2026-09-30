@@ -51,4 +51,34 @@
       }
     }
   }
+  # Claude Code permission dialogs; thresholds and class tiers live in
+  # modules/tooling/ai/trust-policy.nuon.
+  route: {
+    questions: {
+      action_class: {
+        type: choice
+        instructions: "Which kind of action is the agent tool call `tool_name` with arguments `input`, run in `cwd`?"
+        criteria: {
+          read_only: "Only inspects files, status, logs, history, documentation, or search results and changes nothing"
+          local_edit: "Creates or edits files inside a version-controlled working copy, where the change can be undone"
+          local_vcs: "A local Jujutsu or Git operation that does not contact a remote, such as describe, new, commit, split, squash, or rebase"
+          validation: "Formats, lints, evaluates, tests, or builds without activating or deploying the result"
+          publish: "Pushes a topic branch or updates a review, such as publishing a pull request, without changing the main branch"
+          deliver: "Lands or merges into the main branch, tags a release, or deploys"
+          system_change: "Changes the running system: activation, privileged commands, services, system packages, or files outside a version-controlled working copy"
+          external_message: "Sends or changes something other people or external accounts see, such as mail, calendar events, issues, or comments"
+          destructive: "Deletes or overwrites data that version control cannot restore"
+          other: "Anything else"
+        }
+      }
+      needs_user_intent: {
+        type: noul
+        instructions: "Deciding whether the tool call `tool_name` with arguments `input` should run requires the user's own preference or intent, rather than facts that repository files, documentation, tool output, or another agent could settle."
+        criteria: {
+          "true": "The right answer depends on what the user wants, such as scope, naming, trade-offs, timing, or whether to do the task at all"
+          "false": "The call is a routine step whose correctness is a matter of fact, such as reading, formatting, or validating"
+        }
+      }
+    }
+  }
 }
