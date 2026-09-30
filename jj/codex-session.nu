@@ -214,6 +214,9 @@ def main [event: string] {
 
     let root_result = (^jj --repository $cwd root | complete)
     if $root_result.exit_code != 0 {
+        # Outside any repository (for example the home directory) there is no
+        # topic to own, so leave the session unguarded.
+        if (git-backend-root $cwd) == null { return }
         if $event != "session-start" {
             if $event == "guard" or $event == "first-prompt" {
                 block "This checkout is not a JJ workspace. Restart the Codex session so its startup hook can initialize the Git worktree, or start work in a JJ workspace."
