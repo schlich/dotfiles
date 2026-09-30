@@ -57,7 +57,7 @@ script, use valid Nushell syntax.
   (default: the session's directory), using that workspace's own
   `jj/ci.nu` when it has one. A tool returns once the command finishes or
   its `wait_seconds` elapse; poll a `running` result with its `job` tool,
-  which also serves `ci publish` and `ci land`.
+  which also serves `ci dispatch` and `ci land`.
 
 - When a shell is needed, use the Nushell evaluate tool rather than invoking
   `nu -c` through Bash. It preserves the session and structured results and
@@ -168,7 +168,7 @@ interactive revision work in a terminal.
 For JJ projects, use one coherent topic and one stable change ID for a single
 deliverable. When a task contains multiple deliverables that should be split,
 keep them in one small stack and rewrite each in-scope change as needed; do not
-create unrelated follow-up revisions after publishing.
+create unrelated follow-up revisions after dispatching.
 
 A topic is a revision; a workspace is a working copy for one actor. Start a
 topic as a new change on trunk in the current workspace (`ci new -m MESSAGE`
@@ -181,7 +181,7 @@ active task. Where `ci` is available, create that workspace with
 `ci start NAME`; otherwise use
 `jj workspace add --revision main@origin --name NAME PATH` from the
 repository. Then open that directory as a local Codex project. Reuse a small
-pool of such workspaces with `ci finish --keep` instead of creating one for
+pool of such workspaces with `ci park --keep` instead of creating one for
 every topic; the hook creates the next task's topic revision when it starts.
 If Codex supplied the project as a linked Git worktree, the session hook
 initializes a non-colocated JJ workspace in that directory first, using the
@@ -189,7 +189,7 @@ shared Git repository as its backend. It never automatically switches another
 task's working copy.
 
 When the working-copy diff contains multiple coherent deliverables, split it
-into separate JJ changes before publishing or treating the work as complete.
+into separate JJ changes before dispatching or treating the work as complete.
 Choose the topology from the dependency, not from file proximity: make a
 parent/child chain only when the later change needs the earlier one to build,
 test, or make sense; make siblings when both changes are independently
@@ -208,16 +208,16 @@ or the desktop Open in → JJ dashboard action for interactive revision work.
 
 Where `ci` is available, root each topic at `main@origin`; rebase after trunk
 advances and before review or queue updates.
-`ci publish` and `ci stack-merge` perform a final rebase before updating
+`ci dispatch` and `ci land` perform a final rebase before updating
 GitHub. Enable auto-merge only when the user is finished with the topic and has
 requested delivery. Herdr or Paseo may supervise and report stale trunk or PR
 state for that one workspace, but must not silently rebase or resolve
 conflicts. Before archiving a delivered topic, run
-`ci finish`: it verifies that the current head was merged to main and
+`ci park`: it verifies that the current head was merged to main and
 removes a workspace that `ci start` created, or leaves any other one on a
-clean change on main. Use `ci abandon` for a topic that will not land. Only then call the archive tool. Failed
-checks, conflicts, pending delivery, or unpublished edits leave the task open.
-Do not treat app exit, idle timeout, or SessionEnd as authorization to publish
+clean change on main. Use `ci cancel` for a topic that will not land. Only then call the archive tool. Failed
+checks, conflicts, pending delivery, or undispatched edits leave the task open.
+Do not treat app exit, idle timeout, or SessionEnd as authorization to dispatch
 or merge. Direct archive-button clicks do not execute this closeout workflow.
 
 For local Nix flake operations, use an explicit `path:` reference when new

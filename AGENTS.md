@@ -89,15 +89,15 @@
   `jj split`, or `jj op restore`), create a checkpoint with
   `.agents/skills/jj/scripts/jj-checkpoint`.
 - Tangled (`tangled` remote) hosts `main` and every topic branch. GitHub
-  (`origin`) mirrors `main` and can gate a landing with
-  `ci land --gate github`. Never merge a GitHub pull request: squash and
+  (`origin`) mirrors `main` and can clear a landing with
+  `ci land --clearance github`. Never merge a GitHub pull request: squash and
   rebase merges rewrite the tested commit and lose change IDs and trailers.
 - Use `ci sync` only from an empty working copy without an active task owner.
   It fetches `tangled`,
   advances the local `main` bookmark to `main@tangled`, and rebases the working
   copy onto it.
 - Use `ci` for all trunk work, including lock-file-only updates.
-- Before implementing or publishing, inspect the working-copy diff for mixed
+- Before implementing or dispatching, inspect the working-copy diff for mixed
   deliverables. Split unrelated work into separate JJ changes instead of
   carrying it in one change. Choose the graph shape by semantic dependency:
   use a parent/child chain only when the child needs the parent's code, schema,
@@ -112,10 +112,10 @@
   surgery. If more than two coherent changes are present, repeat the split
   and re-evaluate the dependency graph after each operation.
 
-## Local gates and landing
+## Preflight and landing
 
 - `prek` is installed declaratively. Run `prek run --all-files` or
-  `ci validate` before publication; JJ changes do not invoke Git hooks.
+  `ci preflight` before dispatch; JJ changes do not invoke Git hooks.
 - End every JJ change description with an `Impact:` trailer. Use `refactor`
   when no NixOS closure changes (refactors, docs, CI, and tooling;
   `ci land` verifies it), `behavior` for a user-facing change, and
@@ -124,13 +124,13 @@
   separate topics or stack layers. Each behavior or breaking revision that
   lands becomes a `YYYY.MM.DD.N` release; refactors cut none. See
   `jj/README.md`.
-- Use a concise JJ change description. `ci publish` validates and pushes
+- Use a concise JJ change description. `ci dispatch` validates and pushes
   the topic's stable `jj-*` branch to Tangled; open a Tangled pull request from that branch when the topic needs review.
-  Ordinary publication keeps editing the same change ID. Deliver it with
+  Ordinary dispatch keeps editing the same change ID. Deliver it with
   `ci land` only at topic closeout.
-- For a small change that affects a single host, a user request to publish
-  also authorizes delivery: run `ci publish`, then `ci land` right away
-  (its local gate builds the checks), and `ci finish` afterwards. Still stop after publishing
+- For a small change that affects a single host, a user request to dispatch (or to publish)
+  also authorizes delivery: run `ci dispatch`, then `ci land` right away
+  (its local clearance builds the checks), and `ci park` afterwards. Still stop after dispatching
   and ask before landing when the change affects several hosts, is part of a
   stack, is `Impact: breaking`, or touches boot, storage, encryption, or
   security configuration. A failed validation, pipeline, or rebase conflict
@@ -138,34 +138,34 @@
 - Keep one coherent topic per Codex task. Use one stable JJ change for a single
   deliverable, but allow a small stack of changes when the task contains
   multiple deliverables that should be split. Do not create unrelated
-  follow-up changes after publication. A topic is a revision; a workspace is
+  follow-up changes after dispatch. A topic is a revision; a workspace is
   a working copy for one actor. Start a topic with `ci new -m MESSAGE` in the
   current workspace, which leaves earlier topics as siblings (`jj edit`
   returns to one). Create a workspace with `ci start NAME` only for an actor
   that runs concurrently with the current working copy: another active agent
   task, or a build, dev server, or editor whose files must not change under
-  it. Reuse such workspaces with `ci finish --keep` rather than creating one
+  it. Reuse such workspaces with `ci park --keep` rather than creating one
   per topic. Use `ci rebase` to update a topic in place. A conflict-free
-  topic does not need to catch up with `main` before landing; `ci land` rebases it. `ci refresh` restacks only stacked or
+  topic does not need to catch up with `main` before landing; `ci land` rebases it. `ci sequence --apply` restacks only stacked or
   conflicting topics, pushes only conflict-free rebases, and leaves conflicted
-  topics local for resolution. Run `ci refresh --all` only when the user
-  asks to rebase every published topic.
-- Before archiving a delivered topic, run `ci finish` and confirm success.
+  topics local for resolution. Run `ci sequence --apply --all` only when the user
+  asks to rebase every dispatched topic.
+- Before archiving a delivered topic, run `ci park` and confirm success.
   It verifies that the current head landed and removes a workspace that
   `ci start` created (`--keep` leaves it on an empty change on main, ready
   for the pool's next task).
-  Use `ci abandon` for a topic that will not land.
-  A failed pipeline, conflicts, or unpublished edits keep the task open. Native
+  Use `ci cancel` for a topic that will not land.
+  A failed pipeline, conflicts, or undispatched edits keep the task open. Native
   archive-button clicks are not a closeout hook.
 - `ci land` owns delivery to `main`. It rebases the topic onto
   `main@tangled`, proves a declared refactor leaves every closure unchanged,
   builds every flake check at that exact commit on the local machine, and only
   then fast-forwards `main` and tags releases. Never push `main` any other way.
-  `--gate spindle` or `--gate github` waits for that CI on the exact head
+  `--clearance spindle` or `--clearance github` waits for that CI on the exact head
   instead.
 - The spindle runs `.tangled/workflows` only when started by hand; pushes do
   not trigger it, so never wait for a spindle run before landing. The
-  flake-checks workflow and the local gate run the same command: it builds
+  flake-checks workflow and the local clearance run the same command: it builds
   every attribute of `checks.x86_64-linux`, including the headless and primary
   desktop system builds, and skips checks whose outputs are already cached.
   Add a check by adding a flake check; neither needs a change.
@@ -173,18 +173,18 @@
 ## Stacked topics
 
 - Use a stack only for a preplanned chain of dependent, independently
-  reviewable JJ changes, or when `ci plan` reports that a topic conflicts
-  with a published one. Put a refactor below the user-facing change it
+  reviewable JJ changes, or when `ci sequence` reports that a topic conflicts
+  with a dispatched one. Put a refactor below the user-facing change it
   enables, never above it. In that case, stack the later topic on the earlier
   one and resolve its conflicts locally before pushing. Keep unrelated,
   conflict-free work in separate branches.
 - JJ creates, describes, rebases, and pushes every layer. The stack lives in
-  the commit graph: `ci publish` stacks a topic on the published topic it is
-  built on or conflicts with, and `ci refresh` restacks children after a
+  the commit graph: `ci dispatch` stacks a topic on the dispatched topic it is
+  built on or conflicts with, and `ci sequence --apply` restacks children after a
   parent changes.
 - Land parents first. `ci land` refuses a topic whose parent has not
   landed; once it has, the child is already on `main` and lands next.
-- For stacked review on Tangled, `ci tangled stack-publish` pushes each
+- For stacked review on Tangled, `ci dispatch --stack` pushes each
   revision as its own branch for `Submit as stacked PRs`. Pull requests are
   for review only; `ci land` still delivers.
 
@@ -237,23 +237,23 @@ only when explicitly requested because they are expensive; `nix-fast-build --ski
 
 Keep active work continuously integrated: start each topic at
 `main@tangled`, rebase before review updates and when a topic conflicts with
-trunk, and never let two concurrent actors share one working copy. `ci publish` performs the
+trunk, and never let two concurrent actors share one working copy. `ci dispatch` performs the
 final rebase and validation before pushing; `ci land` does the same and
-lands only the commit the landing gate passed.
+lands only the commit the landing clearance passed.
 
 Use `ci conflicts` after a rebase to list conflicted revisions and files.
 A conflicted rebase has already rewritten the topic, so resolve revisions from
 oldest to newest and validate only after the conflict report is clear. The only
-unattended rebase is `ci refresh`, and only when it is conflict-free: it
+unattended rebase is `ci sequence --apply`, and only when it is conflict-free: it
 rebases a checked-out topic from that topic's own workspace, and only after a
 trial merge predicts no conflict. Never resolve conflicts automatically.
 
 Herdr or Paseo may monitor an existing JJ workspace and notify its
 owner about stale trunk, topic, or pipeline state. They must not take
-ownership of the workspace or silently rebase, resolve conflicts, publish,
+ownership of the workspace or silently rebase, resolve conflicts, dispatch,
 land, or advance a stack.
 
 Prefer one ordinary branch for a coherent topic. Use a stack only for independently
 reviewable changes with real dependency order, including conflict order
-reported by `ci plan`; keep children based on their
+reported by `ci sequence`; keep children based on their
 immediate parent and rebase the remaining stack after each parent lands.

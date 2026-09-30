@@ -52,7 +52,7 @@ mcp = FastMCP(
         "Tangled; the `ci` skill describes when to use each command. Every "
         "tool runs in `workspace` (default: the server's working directory) "
         "and returns a job record. When `state` is `running`, poll it with "
-        "`job`. Run `land`, `publish` with `land`, and `abandon` only when "
+        "`job`. Run `land`, `dispatch` with `land`, and `cancel_topic` only when "
         "the user explicitly asks to deliver or drop the topic."
     ),
 )
@@ -264,11 +264,11 @@ async def state(workspace: Workspace = None, wait_seconds: Wait = None) -> dict:
 
 
 @mcp.tool(annotations=READ_ONLY)
-async def plan(workspace: Workspace = None, wait_seconds: Wait = None) -> dict:
-    """`ci plan --json`: trial-merge in-flight topics against main@tangled
+async def sequence(workspace: Workspace = None, wait_seconds: Wait = None) -> dict:
+    """`ci sequence --json`: trial-merge in-flight topics against main@tangled
     and each other, and propose independent topics or stacks (in `data`).
     Fetches, but moves no working copy."""
-    result = await run(["plan", "--json"], workspace, wait_seconds, mutating=False)
+    result = await run(["sequence", "--json"], workspace, wait_seconds, mutating=False)
     return parse_json_output(result)
 
 
@@ -426,22 +426,22 @@ async def unclaim(workspace: Workspace = None, wait_seconds: Wait = None) -> dic
 
 
 @mcp.tool(annotations=LOCAL)
-async def validate(workspace: Workspace = None, wait_seconds: Wait = None) -> dict:
-    """`ci validate`: run formatting and Prek gates on the current change.
+async def preflight(workspace: Workspace = None, wait_seconds: Wait = None) -> dict:
+    """`ci preflight`: run formatting and Prek gates on the current change.
     Usually outlasts the default wait; poll the job."""
-    return await run(["validate"], workspace, wait_seconds, default_wait=20)
+    return await run(["preflight"], workspace, wait_seconds, default_wait=20)
 
 
 @mcp.tool(annotations=REMOTE)
-async def publish(
+async def dispatch(
     land: Annotated[
         bool,
         Field(
-            description="Also land once the gate passes. Only on an "
+            description="Also land once the topic has clearance. Only on an "
             "explicit user request to deliver."
         ),
     ] = False,
-    gate: Literal["local", "spindle", "github"] = "local",
+    clearance: Literal["local", "spindle", "github"] = "local",
     timeout: Annotated[
         str, Field(description="Nushell duration --land waits, e.g. 2hr.")
     ] = "2hr",
@@ -449,18 +449,18 @@ async def publish(
     workspace: Workspace = None,
     wait_seconds: Wait = None,
 ) -> dict:
-    """`ci publish`: rebase, validate, and push the topic's stable jj-*
+    """`ci dispatch`: rebase, validate, and push the topic's stable jj-*
     branch to Tangled, keeping the same change."""
-    args = ["publish"]
+    args = ["dispatch"]
     if land:
-        args += ["--land", "--gate", gate, "--timeout", timeout]
+        args += ["--land", "--clearance", clearance, "--timeout", timeout]
         args += ["--attempts", str(attempts)]
     return await run(args, workspace, wait_seconds, default_wait=20)
 
 
 @mcp.tool(annotations=DESTRUCTIVE)
 async def land(
-    gate: Literal["local", "spindle", "github"] = "local",
+    clearance: Literal["local", "spindle", "github"] = "local",
     timeout: Annotated[
         str, Field(description="Nushell duration to wait, e.g. 2hr.")
     ] = "2hr",
@@ -468,17 +468,17 @@ async def land(
     workspace: Workspace = None,
     wait_seconds: Wait = None,
 ) -> dict:
-    """`ci land`: publish, gate the exact head (every flake check by
+    """`ci land`: dispatch, clear the exact head (every flake check by
     default), fast-forward main on Tangled and GitHub, and tag releases.
     Only on an explicit user request to deliver the topic. Takes minutes to
     hours; poll the job."""
-    args = ["land", "--gate", gate, "--timeout", timeout]
+    args = ["land", "--clearance", clearance, "--timeout", timeout]
     args += ["--attempts", str(attempts)]
     return await run(args, workspace, wait_seconds, default_wait=20)
 
 
 @mcp.tool(annotations=REMOTE)
-async def refresh(
+async def sequence_apply(
     no_push: bool = False,
     all_topics: Annotated[
         bool,
@@ -487,25 +487,25 @@ async def refresh(
     workspace: Workspace = None,
     wait_seconds: Wait = None,
 ) -> dict:
-    """`ci refresh`: restack stacked or conflicting published topics and push
-    only conflict-free ones. Run only when the user asks."""
-    args = ["refresh"]
+    """`ci sequence --apply`: restack stacked or conflicting dispatched
+    topics and push only conflict-free ones. Run only when the user asks."""
+    args = ["sequence", "--apply"]
     args += ["--no-push"] if no_push else []
     args += ["--all"] if all_topics else []
     return await run(args, workspace, wait_seconds, default_wait=20)
 
 
 @mcp.tool(annotations=REMOTE)
-async def tangled_stack_publish(
+async def dispatch_stack(
     workspace: Workspace = None, wait_seconds: Wait = None
 ) -> dict:
-    """`ci tangled stack-publish`: push each revision of the series as its
-    own branch for stacked Tangled review. Review only; `land` delivers."""
-    return await run(["tangled", "stack-publish"], workspace, wait_seconds)
+    """`ci dispatch --stack`: push each revision of the series as its own
+    branch for stacked Tangled review. Review only; `land` delivers."""
+    return await run(["dispatch", "--stack"], workspace, wait_seconds)
 
 
 @mcp.tool(annotations=REMOTE)
-async def finish(
+async def park(
     keep: Annotated[
         bool,
         Field(description="Keep a `ci start` workspace for the next task."),
@@ -513,14 +513,14 @@ async def finish(
     workspace: Workspace = None,
     wait_seconds: Wait = None,
 ) -> dict:
-    """`ci finish`: verify the topic landed, delete its branch, and release
+    """`ci park`: verify the topic landed, delete its branch, and free
     the workspace (removing one `ci start` created unless `keep`)."""
-    args = ["finish"] + (["--keep"] if keep else [])
+    args = ["park"] + (["--keep"] if keep else [])
     return await run(args, workspace, wait_seconds)
 
 
 @mcp.tool(annotations=DESTRUCTIVE)
-async def abandon(
+async def cancel_topic(
     keep: Annotated[
         bool,
         Field(description="Keep a `ci start` workspace for the next task."),
@@ -528,9 +528,9 @@ async def abandon(
     workspace: Workspace = None,
     wait_seconds: Wait = None,
 ) -> dict:
-    """`ci abandon`: delete the topic branch, abandon its revisions, and
+    """`ci cancel`: delete the topic branch, abandon its revisions, and
     release the workspace. Only on an explicit user request."""
-    args = ["abandon"] + (["--keep"] if keep else [])
+    args = ["cancel"] + (["--keep"] if keep else [])
     return await run(args, workspace, wait_seconds)
 
 

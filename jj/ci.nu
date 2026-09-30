@@ -78,7 +78,7 @@ def git-context [] {
 # main: it fast-forwards main to a head the landing gate has already passed.
 const TRUNK_REMOTE = "tangled"
 # GitHub mirrors main, and its Actions can gate a landing in the spindle's
-# place with `ci land --gate github`. Its rules accept only fast-forwards.
+# place with `ci land --clearance github`. Its rules accept only fast-forwards.
 const GITHUB_REMOTE = "origin"
 const GITHUB_REQUIRED_CHECKS = ["impact classification" "nix flake checks"]
 const TANGLED_INDEX = "https://api.tangled.org"
@@ -242,7 +242,7 @@ def landing-gate [gate: string, repo: record] {
                 hint: "If none started, check that .github/workflows/nix-ci.yml runs on pushes to jj-* branches."
             }
         }
-        _ => { error make { msg: $"Unknown gate ($gate); use local, spindle, or github." } }
+        _ => { error make { msg: $"Unknown clearance ($gate); use local, spindle, or github." } }
     }
 }
 
@@ -888,7 +888,7 @@ def refresh-topics [push: bool, all: bool] {
     let results = (refresh-outcomes (stack-order (topic-bookmarks)) {|topic| refresh-topic $topic $push $all })
     print ($results | table)
     if ($results | where state == "conflicted" | is-not-empty) {
-        error make { msg: "Some topics have conflicts. Resolve them locally, then run `ci refresh` again." }
+        error make { msg: "Some topics have conflicts. Resolve them locally, then run `ci sequence --apply` again." }
     }
 }
 
@@ -1069,7 +1069,7 @@ def build-plan [published: list] {
 
 def sync-main [] {
     if (owner-status (session-owner)) == "active" {
-        error make { msg: "An active Codex topic owns this workspace. Use `ci rebase`, finish the topic, or `ci unclaim` a claim its task left behind before syncing." }
+        error make { msg: "An active Codex topic owns this workspace. Use `ci rebase`, park the topic, or `ci unclaim` a claim its task left behind before syncing." }
     }
     if (current-change "empty") != "true" {
         error make { msg: "Sync needs an empty change. Use `ci rebase` to update this topic in place." }
@@ -1149,8 +1149,18 @@ def probe-state [probe: closure] {
     } catch {|err| { state: "unknown" error: $err.msg } }
 }
 
+# A topic's trip to main uses flight words: `new`, `sequence`, `preflight`
+# and `sim`, `dispatch`, `land --clearance`, then `park` (or `cancel`), and
+# `verify` once the release runs. Preflight is everything before activation;
+# inflight is everything on a running machine. Tools keep plain VCS words.
 def main [] {
-    print "Use `ci start`, `ci status`, `ci sync`, `ci plan`, `ci preview`, `ci rebase`, `ci refresh`, `ci conflicts`, `ci review snapshot`, `ci interdiff`, `ci validate`, `ci publish`, `ci land`, `ci finish`, `ci abandon`, `ci unclaim`, `ci prune`, `ci tangled stack-publish`, `ci impact check`, `ci release`, or `ci version`."
+    print "A topic's trip: `ci new` → `ci sequence` → `ci preflight` / `ci sim` → `ci dispatch` → `ci land` → `ci park` (or `ci cancel`), then `ci verify` once the release runs."
+    print "Also: `ci start`, `ci status`, `ci sync`, `ci rebase`, `ci conflicts`, `ci review snapshot`, `ci interdiff`, `ci unclaim`, `ci prune`, `ci impact check`, `ci release`, `ci version`."
+}
+
+# Old command names keep working for a while and point at the new ones.
+def renamed [old: string, new: string] {
+    print --stderr $"`ci ($old)` is now `ci ($new)`."
 }
 
 def "main status" [] {
@@ -1224,9 +1234,15 @@ def "main worktree-status" [] {
     }
 }
 
-def "main validate" [] {
+# Every check that runs before activation, on the current change.
+def "main preflight" [] {
     require-ready-change
     validate-change
+}
+
+def "main validate" [] {
+    renamed "validate" "preflight"
+    main preflight
 }
 
 def "main review snapshot" [label: string] {
@@ -1276,9 +1292,18 @@ def "main rebase" [] {
     rebase-topic
 }
 
-def "main plan" [
-    --json # Print the plan as JSON
+# Like air traffic control ordering arrivals: show how in-flight topics stack
+# on the ones they conflict with, or with --apply, restack them.
+def "main sequence" [
+    --json # Print the sequence as JSON
+    --apply # Restack stacked or conflicting topics, pushing conflict-free rebases
+    --no-push # With --apply, rebase and report conflicts without pushing
+    --all # With --apply, also rebase conflict-free topics merely behind main
 ] {
+    if $apply {
+        refresh-topics (not $no_push) $all
+        return
+    }
     fetch-trunk
     let plan = (build-plan (topic-bookmarks | where parent == null))
     if $json {
@@ -1303,6 +1328,13 @@ def "main plan" [
             print $"  note: this refactor stacks on user-facing ($parent.topic) only because that topic is already published."
         }
     }
+}
+
+def "main plan" [
+    --json # Print the sequence as JSON
+] {
+    renamed "plan" "sequence"
+    main sequence --json=$json
 }
 
 # Home Manager is embedded in this host; there is no standalone homeConfigurations output.
@@ -1365,8 +1397,19 @@ def preview-changed-files [current: string, preview: string] {
 def "main preview" [
     ...topics: string # Topic branches to include (default: every published behavior or breaking topic)
     --all # Include refactor topics when no branches are given
-    --shell # Open Nushell with the preview's programs first on PATH
-    --config # With --shell, also read configuration from the preview (read-only)
+    --shell # Open Nushell with the simulation's programs first on PATH
+    --config # With --shell, also read configuration from the simulation (read-only)
+    --active # Compare against the active generation instead of trunk's
+] {
+    renamed "preview" "sim"
+    main sim ...$topics --all=$all --shell=$shell --config=$config --active=$active
+}
+
+def "main sim" [
+    ...topics: string # Topic branches to include (default: every published behavior or breaking topic)
+    --all # Include refactor topics when no branches are given
+    --shell # Open Nushell with the simulation's programs first on PATH
+    --config # With --shell, also read configuration from the simulation (read-only)
     --active # Compare against the active generation instead of trunk's
 ] {
     fetch-trunk
@@ -1391,7 +1434,7 @@ def "main preview" [
         do $discard
         print "The selected topics conflict when merged:"
         print ($files | lines | each {|line| $"  ($line)" } | str join "\n")
-        error make { msg: "Preview a subset with `ci preview BRANCH ...`, or see `ci plan` for how to stack them." }
+        error make { msg: "Preview a subset with `ci sim BRANCH ...`, or see `ci sequence` for how to stack them." }
     }
 
     let name = ($marker | str substring 0..21)
@@ -1447,6 +1490,7 @@ def "main refresh" [
     --no-push # Rebase and report conflicts without pushing
     --all # Also rebase conflict-free topics that are merely behind main
 ] {
+    renamed "refresh" "sequence --apply"
     refresh-topics (not $no_push) $all
 }
 
@@ -1459,7 +1503,7 @@ def "main conflicts" [] {
 
 # Choose the branch a topic should stack on. A topic built on top of another
 # published topic depends on it and stacks on the nearest one; otherwise
-# `ci plan` decides. Returns null when the topic can go straight to main.
+# `ci sequence` decides. Returns null when the topic can go straight to main.
 def plan-parent-for-current-topic [branch: string] {
     let published = (topic-bookmarks | where name != $branch)
     let below = ($published | where {|topic|
@@ -1508,7 +1552,7 @@ def restack-topic [parent: string] {
     if ($conflicts | is-not-empty) {
         print $"Restacked onto ($parent) with ($conflicts | length) conflicted revision\(s):"
         print-conflicted-files $conflicts "  "
-        error make { msg: "Resolve these conflicts locally, oldest first, then run `ci publish` again." }
+        error make { msg: "Resolve these conflicts locally, oldest first, then run `ci dispatch` again." }
     }
 }
 
@@ -1540,7 +1584,7 @@ def publish-topic [] {
     let branch = (publication-bookmark)
     fetch-trunk
     if (topic-landed $branch) {
-        error make { msg: "This topic already landed on main. Finish it before starting new work." }
+        error make { msg: "This topic already landed on main. Park it with `ci park` before starting new work." }
     }
     let parent = (plan-parent-for-current-topic $branch)
     let base = if $parent == null { "main@tangled" } else { bookmark-revset $parent }
@@ -1589,7 +1633,7 @@ def land-published [published: record, repo: record, timeout: duration, gate: st
     }
     mirror-main
     cut-releases $"($base)..($published.head)" false
-    print $"Landed ($published.branch) on main. `ci finish` releases the workspace."
+    print $"Landed ($published.branch) on main. `ci park` frees the workspace."
     true
 }
 
@@ -1620,12 +1664,21 @@ def mirror-main [] {
     }
 }
 
-def "main publish" [
-    --land # Land the topic once the gate passes it
-    --gate: string = "local" # What must pass the head before --land: local, spindle, or github
+# Clear the topic for departure: rebase, run preflight, and push its branch,
+# where it waits to land. --stack pushes each layer as its own branch for
+# stacked review on Tangled instead.
+def "main dispatch" [
+    --land # Land the topic once it has clearance
+    --clearance: string = "local" # What must pass the head before --land: local, spindle, or github
     --timeout: duration = 2hr # How long --land waits for the pipeline
     --attempts: int = 5 # How many times --land starts over when main moves
+    --stack # Push one branch per revision for Tangled's stacked pull requests
 ] {
+    if $stack {
+        if $land { error make { msg: "--stack is for review only; land the topic with `ci land`." } }
+        dispatch-stack
+        return
+    }
     let published = (publish-topic)
     let repo = (tangled-repo)
     let pull = (open-pulls $repo | where branch == $published.branch | get --optional 0)
@@ -1640,19 +1693,34 @@ def "main publish" [
     }
     print $"Impact: ($published.impact)"
     if $land {
-        land-with-retries $published $repo $timeout $gate $attempts
+        land-with-retries $published $repo $timeout $clearance $attempts
     } else {
-        print "Published this topic in place. Further edits update the same JJ series and branch; `ci land` delivers it."
+        print "Dispatched this topic in place. Further edits update the same JJ series and branch; `ci land` delivers it."
     }
 }
 
+def "main publish" [
+    --land # Land the topic once it has clearance
+    --gate: string = "local" # What must pass the head before --land: local, spindle, or github
+    --timeout: duration = 2hr # How long --land waits for the pipeline
+    --attempts: int = 5 # How many times --land starts over when main moves
+] {
+    renamed "publish" "dispatch"
+    main dispatch --land=$land --clearance $gate --timeout $timeout --attempts $attempts
+}
+
 def "main land" [
-    --gate: string = "local" # What must pass the head: local, spindle, or github
+    --clearance: string = "local" # What must pass the head: local, spindle, or github
+    --gate: string # Renamed to --clearance
     --timeout: duration = 2hr # How long to wait for the pipeline
     --attempts: int = 5 # How many times to start over when main moves
 ] {
+    let cleared_by = if $gate == null { $clearance } else {
+        print --stderr "`ci land --gate` is now `ci land --clearance`."
+        $gate
+    }
     let published = (publish-topic)
-    land-with-retries $published (tangled-repo) $timeout $gate $attempts
+    land-with-retries $published (tangled-repo) $timeout $cleared_by $attempts
 }
 
 # Export each revision in `revisions` (a record of name to commit) into its own
@@ -1918,12 +1986,17 @@ def "main verify list" [
     }
 }
 
-def "main tangled stack-publish" [] {
+def dispatch-stack [] {
     require-ready-change
     rebase-topic
     require-ready-change
     validate-change
     push-tangled-stack
+}
+
+def "main tangled stack-publish" [] {
+    renamed "tangled stack-publish" "dispatch --stack"
+    dispatch-stack
 }
 
 def list-workspaces [] {
@@ -2020,7 +2093,7 @@ def unclaim-verdict [facts: record] {
             $nothing | upsert refuse "No Codex task owns this workspace."
         })
         "active" => (if $facts.at_owner_change {
-            $nothing | upsert refuse "The owning task's change is checked out here. Use `ci finish` or `ci abandon` to end the topic."
+            $nothing | upsert refuse "The owning task's change is checked out here. Use `ci park` or `ci cancel` to end the topic."
         } else {
             { release: true clear_claim: true normalize: false refuse: null }
         })
@@ -2045,7 +2118,7 @@ def "main start" [
         error make { msg: "Use a lowercase name of letters, digits, and hyphens." }
     }
     if $name in (list-workspaces | get name) {
-        error make { msg: $"Workspace ($name) already exists. Finish or abandon its topic first, or start a topic there with `ci new`." }
+        error make { msg: $"Workspace ($name) already exists. Park or cancel its topic first, or start a topic there with `ci new`." }
     }
     let root = (workspace-root "default" | path join ".jj-workspaces" $name)
     if ($root | path exists) {
@@ -2060,7 +2133,7 @@ def "main start" [
     let topic = (^jj --repository $root log -r @ --no-graph -T change_id | complete)
     if $topic.exit_code != 0 { error make { msg: ($topic.stderr | str trim) } }
     { name: $name created: (date now | format date "%+") change_id: ($topic.stdout | str trim) } | to json | save (owned-workspace-marker $root)
-    print $"Created ($root) on main@tangled. `ci finish` or `ci abandon` removes it when the topic ends."
+    print $"Created ($root) on main@tangled. `ci park` or `ci cancel` removes it when the topic ends."
 }
 
 # Why `ci new` may not start another topic in this workspace, or null. A
@@ -2126,21 +2199,22 @@ def finish-topic-id [] {
     }
 }
 
-def --env "main finish" [
+# Taxi in and shut down: confirm the topic landed, then free its workspace.
+def --env "main park" [
     --keep # Keep a workspace that `ci start` created
 ] {
     let change = (finish-topic-id)
     require-owned-change $change
     let branch = (publication-bookmark $change)
     let empty = (current-change "empty") == "true"
-    checkpoint "finish"
+    checkpoint "park"
     fetch-trunk
     # An empty working copy is either an unpublished topic or one parked on top
     # of its landed work; a published branch must be on main either way.
     let published = (revset-change-ids (remote-bookmark-revset $branch) | is-not-empty)
     if $empty {
         if $published and not (topic-landed $branch) {
-            error make { msg: $"($branch) is published but not on main. Land or abandon it explicitly before releasing the workspace." }
+            error make { msg: $"($branch) is dispatched but not on main. Land it or cancel it explicitly before parking." }
         }
     } else if (revset-change-ids "@ & ::main@tangled" | is-empty) {
         error make { msg: "The current revision is not on main. Land it with `ci land`, and leave the task open until it has." }
@@ -2148,12 +2222,27 @@ def --env "main finish" [
     delete-topic-bookmark $branch
     forget-publication-bookmark $change
     run-command "advancing main" { ^jj bookmark move main --to main@tangled } | ignore
-    let summary = if $published { $"Finished ($branch)." } else { "Finished an unpublished topic." }
+    let summary = if $published { $"Parked ($branch)." } else { "Parked an undispatched topic." }
     # Past the checks above, a published or non-empty topic is on main.
     release-workspace $summary $change $keep (if $published or not $empty { "delivered" } else { "discarded" })
 }
 
+def --env "main finish" [
+    --keep # Keep a workspace that `ci start` created
+] {
+    renamed "finish" "park"
+    main park --keep=$keep
+}
+
 def --env "main abandon" [
+    --keep # Keep a workspace that `ci start` created
+] {
+    renamed "abandon" "cancel"
+    main cancel --keep=$keep
+}
+
+# Scrub the flight: abandon the topic's revisions and free its workspace.
+def --env "main cancel" [
     --keep # Keep a workspace that `ci start` created
 ] {
     require-owned-change
@@ -2161,16 +2250,16 @@ def --env "main abandon" [
     let branch = (publication-bookmark)
     let open = (open-pulls (tangled-repo) | where branch == $branch)
     if ($open | is-not-empty) {
-        error make { msg: $"The pull request \"($open | first | get title)\" is still open. Close it deliberately before abandoning the topic." }
+        error make { msg: $"The pull request \"($open | first | get title)\" is still open. Close it deliberately before cancelling the topic." }
     }
     let revisions = (topic-revisions)
-    checkpoint "abandon"
+    checkpoint "cancel"
     forget-publication-bookmark
     delete-topic-bookmark $branch
     if ($revisions | is-not-empty) {
         run-command "abandoning the topic" { ^jj abandon ...($revisions | get change_id) } | ignore
     }
-    release-workspace $"Abandoned ($revisions | length) revision\(s)." $change $keep "discarded"
+    release-workspace $"Cancelled the topic and abandoned ($revisions | length) revision\(s)." $change $keep "discarded"
 }
 
 # Release a Codex task's claim on this workspace when the task left its change
@@ -2191,18 +2280,18 @@ def "main unclaim" [] {
     if $verdict.normalize {
         # end-ownership also removes the claim.
         end-ownership $root "released"
-        print $"Marked the pre-`state` record for change ($owner.change_id? | default 'unknown' | str substring 0..7) as released; it no longer reads as finished."
+        print $"Marked the pre-`state` record for change ($owner.change_id? | default 'unknown' | str substring 0..7) as vacated; it no longer reads as parked."
     } else if $verdict.release {
         end-ownership $root "released"
         # This workspace no longer holds the topic, so its publication entry
         # would only mislead a later task here.
         forget-publication-bookmark $owner.change_id
-        print $"Released change ($owner.change_id | str substring 0..7) from Codex task ($owner.session_id? | default 'unknown'). Its revisions and branch are unchanged."
+        print $"Vacated change ($owner.change_id | str substring 0..7) from Codex task ($owner.session_id? | default 'unknown'). Its revisions and branch are unchanged."
     } else if $verdict.clear_claim {
         rm --recursive $claim
         print "Removed a session claim that no active task holds."
     } else {
-        print "Nothing to release."
+        print "Nothing to vacate."
     }
 }
 

@@ -125,21 +125,21 @@ def lifecycle [facts: record] {
 
 def next-step [facts: record] {
     if ($facts.conflicts | is-not-empty) {
-        return "resolve the conflicts oldest first (`ci conflicts` lists them), then `ci validate`"
+        return "resolve the conflicts oldest first (`ci conflicts` lists them), then `ci preflight`"
     }
     match $facts.stage {
         "stranded" => $"the working copy left this workspace's topic ($facts.stranded.short) \"($facts.stranded.title)\"; return with `jj edit ($facts.stranded.short)` and `jj abandon ($facts.stranded.stray)`"
         "finished" => "archive this task; start a new task for further work"
-        "landed" => "run `ci finish` to verify delivery and release the workspace"
-        "idle" => "edit files to start the topic, or `ci finish` if it was delivered"
+        "landed" => "run `ci park` to confirm delivery and free the workspace"
+        "idle" => "edit files to start the topic, or `ci park` if it was delivered"
         "editing" => (if not $facts.head.described {
-            "describe the change with an `Impact:` trailer, then `ci validate`"
-        } else { "run `ci validate`, then `ci publish`" })
-        "validated" => "run `ci publish`"
-        "republish" => "the head moved since publication; run `ci publish` to update the branch"
+            "describe the change with an `Impact:` trailer, then `ci preflight`"
+        } else { "run `ci preflight`, then `ci dispatch`" })
+        "validated" => "run `ci dispatch`"
+        "republish" => "the head moved since dispatch; run `ci dispatch` to update the branch"
         "published" => "run `ci land` when the topic is ready to deliver; it builds the checks locally"
         "passed" => "run `ci land` when the topic is ready to deliver"
-        "failed" => "inspect the failed pipeline, fix the topic, and `ci publish` again"
+        "failed" => "inspect the failed pipeline, fix the topic, and `ci dispatch` again"
         _ => ""
     }
 }
@@ -445,14 +445,14 @@ def audit-findings [facts: record] {
         })
         # TLA: DeliveredRecordIsTrue.
         (if $facts.legacy {
-            do $finding "warning" "legacy-record" $"The ownership record for change ($change) predates `state`; it cannot say whether the topic was delivered." "check the topic's branch; `ci finish` or `ci unclaim` rewrites the record"
+            do $finding "warning" "legacy-record" $"The ownership record for change ($change) predates `state`; it cannot say whether the topic was delivered." "check the topic's branch; `ci park` or `ci unclaim` rewrites the record"
         })
         (if ($facts.conflicts | is-not-empty) {
             do $finding "warning" "conflicts" $"Conflicted revisions: ($facts.conflicts | str join ', ')." "resolve oldest first; `ci conflicts` lists them"
         })
         (if $facts.stack > 0 and not $facts.published {
             let behind = if $facts.behind > 0 { $", based ($facts.behind) trunk commits back" } else { "" }
-            do $finding "warning" "unpublished-work" $"The head of ($facts.stack) change\(s) above trunk is unpublished($behind); `ci status` does not list it." "`ci publish` it, or `ci abandon` it"
+            do $finding "warning" "unpublished-work" $"The head of ($facts.stack) change\(s) above trunk is unpublished($behind); `ci status` does not list it." "`ci dispatch` it, or `ci cancel` it"
         })
         (if ($facts.stale_entries | is-not-empty) {
             do $finding "info" "stale-publication-entries" $"($facts.stale_entries | length) publication entries name changes not checked out here: ($facts.stale_entries | str join ', ')." "harmless; they are reused only if those changes return here"

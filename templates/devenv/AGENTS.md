@@ -28,20 +28,20 @@
 - Keep one coherent topic per Codex task. Use one stable JJ change ID for a
   single deliverable, but use a small stack when the task contains multiple
   deliverables that should be split. Rewrite each in-scope change throughout
-  the task; publication does not create unrelated follow-up changes.
+  the task; dispatch does not create unrelated follow-up changes.
 - Use a dedicated JJ workspace per concurrent task and open it as a local
   project. Do not use the desktop Git worktree or commit actions.
 - Start each workspace from `main@origin`, rebase after trunk advances and
   before review or queue updates, and never share a mutable topic worktree.
-- Where available, use `ci rebase`, `ci publish`, and `ci finish` for
-  updating, publishing, and closing out the topic. Archive only after verified
+- Where available, use `ci rebase`, `ci dispatch`, and `ci park` for
+  updating, dispatching, and closing out the topic. Archive only after verified
   delivery of the current head to main.
-- Before implementation or publication, inspect for mixed deliverables and
+- Before implementation or dispatch, inspect for mixed deliverables and
   split them into separate JJ changes. Use a parent/child chain only when a
   later change depends on the earlier change to build, test, or make sense;
   use sibling changes when the parts are independently reviewable and can land
   independently. `jj split` creates parent/child changes by default, and
   `jj split --parallel` creates siblings. Check the resulting graph with
   `jj log`, and checkpoint before splitting or other history surgery.
-- Do not push directly to `main`; publish a change bookmark and merge it through
+- Do not push directly to `main`; dispatch a change bookmark and merge it through
   a pull request.

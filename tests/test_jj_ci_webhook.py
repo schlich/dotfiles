@@ -24,7 +24,7 @@ os.environ.update(
         "JJ_CI_WEBHOOK_PATH": "/github/webhook",
         "JJ_CI_WEBHOOK_SECRET": "test-secret",
         "JJ_CI_WEBHOOK_SYNC_COMMAND": "ci sync",
-        "JJ_CI_WEBHOOK_REFRESH_COMMAND": "ci refresh",
+        "JJ_CI_WEBHOOK_REFRESH_COMMAND": "ci sequence --apply",
         "JJ_CI_WEBHOOK_AGENT_COMMAND": "codex exec",
     }
 )

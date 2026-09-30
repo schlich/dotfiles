@@ -18,7 +18,7 @@ def "nu-complete ci topics" [] {
     }
 }
 
-def "nu-complete ci gates" [] {
+def "nu-complete ci clearances" [] {
     [
         { value: "local", description: "The flake checks built on this machine" }
         { value: "spindle", description: "The Tangled repository's spindle" }
@@ -32,7 +32,7 @@ def "nu-complete ci revisions" [] {
     $bookmarks.stdout | lines | uniq
 }
 
-# Inspect, synchronize, validate, publish, and reconcile JJ changes
+# Carry JJ topics to main: sequence, preflight, dispatch, land, park, verify
 export extern "ci" []
 
 # Show the working copy and each published topic with its pipeline and pull request
@@ -47,8 +47,8 @@ export extern "ci sync" []
 # Report Git worktrees and how far they are from tangled/main
 export extern "ci worktree-status" []
 
-# Validate the current change
-export extern "ci validate" []
+# Run every pre-activation check on the current change
+export extern "ci preflight" []
 
 # Record the current change as a named review version
 export extern "ci review snapshot" [
@@ -64,40 +64,38 @@ export extern "ci interdiff" [
 # Rebase the current topic onto main
 export extern "ci rebase" []
 
-# Plan how published topics should be ordered or stacked
-export extern "ci plan" [
-    --json # Print the plan as JSON
+# Show how in-flight topics stack on the ones they conflict with, or restack them
+export extern "ci sequence" [
+    --json # Print the sequence as JSON
+    --apply # Restack stacked or conflicting topics, pushing conflict-free rebases
+    --no-push # With --apply, rebase and report conflicts without pushing
+    --all # With --apply, also rebase conflict-free topics merely behind main
 ]
 
 # Build the Home Manager generation of trunk plus published topics without activating it
-export extern "ci preview" [
+export extern "ci sim" [
     ...topics: string@"nu-complete ci topics" # Topic branches to include (default: every published behavior or breaking topic)
     --all # Include refactor topics when no branches are given
-    --shell # Open Nushell with the preview's programs first on PATH
-    --config # With --shell, also read configuration from the preview (read-only)
+    --shell # Open Nushell with the simulation's programs first on PATH
+    --config # With --shell, also read configuration from the simulation (read-only)
     --active # Compare against the active generation instead of trunk's
-]
-
-# Restack stacked or conflicting published topics
-export extern "ci refresh" [
-    --no-push # Rebase and report conflicts without pushing
-    --all # Also rebase conflict-free topics that are merely behind main
 ]
 
 # List conflicted revisions and files in the current topic
 export extern "ci conflicts" []
 
-# Rebase, validate, and push the current topic to Tangled
-export extern "ci publish" [
-    --land # Land the topic once the gate passes it
-    --gate: string@"nu-complete ci gates" # What must pass the head before --land (default local)
+# Rebase, run preflight, and push the current topic to Tangled to await landing
+export extern "ci dispatch" [
+    --land # Land the topic once it has clearance
+    --clearance: string@"nu-complete ci clearances" # What must pass the head before --land (default local)
     --timeout: duration # How long --land waits for the pipeline (default 2hr)
     --attempts: int # How many times --land starts over when main moves (default 5)
+    --stack # Push one branch per revision for Tangled's stacked pull requests
 ]
 
-# Publish the current topic, wait for its gate to pass it, and fast-forward main
+# Dispatch the current topic, wait for clearance, and fast-forward main
 export extern "ci land" [
-    --gate: string@"nu-complete ci gates" # What must pass the head (default local)
+    --clearance: string@"nu-complete ci clearances" # What must pass the head (default local)
     --timeout: duration # How long to wait for the pipeline (default 2hr)
     --attempts: int # How many times to start over when main moves (default 5)
 ]
@@ -116,8 +114,19 @@ export extern "ci release" [
 # Describe the current revision against release tags
 export extern "ci version" []
 
-# Publish the current stack to Tangled
-export extern "ci tangled stack-publish" []
+# Record that this host runs a release and how you tested it, and send it to homelab
+export extern "ci verify" [
+    release?: string # CalVer release (default: the newest one this host runs)
+    --message (-m): string # How you tested it
+]
+
+# Recent releases and whether this host has verified them
+export extern "ci verify list" [
+    --count: int # How many releases to show (default 10)
+]
+
+# Resend verifications that have not reached homelab yet
+export extern "ci verify flush" []
 
 # Create a workspace at main@tangled for a concurrent actor's topic
 export extern "ci start" [
@@ -129,12 +138,17 @@ export extern "ci new" [
     --message (-m): string # Description for the new topic
 ]
 
-# Verify the current head landed on main and leave a clean working copy
-export extern "ci finish" [
+# Confirm the current head landed on main and free the workspace
+export extern "ci park" [
     --keep # Keep a workspace that `ci start` created
 ]
 
-# Release a Codex task's claim that its task left behind, without touching the topic
+# Abandon the current topic's revisions and free the workspace
+export extern "ci cancel" [
+    --keep # Keep a workspace that `ci start` created
+]
+
+# Vacate a Codex task's claim that its task left behind, without touching the topic
 export extern "ci unclaim" []
 
 # List stale workspaces and checkpoints
