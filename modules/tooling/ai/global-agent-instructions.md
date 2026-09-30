@@ -1,3 +1,28 @@
+# Keybinding discoverability and modes
+
+This rule takes priority over other interface preferences. It applies to every
+tool, application, and configuration the user runs, including terminals,
+multiplexers, editors, file managers, window managers, launchers, TUIs, and
+web or desktop apps built for the user.
+
+- Whenever keybindings are active in the current context and state, show the
+  shortcuts available there on screen. Follow Zellij's model: a persistent
+  hint bar or status line lists the keys that work in the current mode and
+  changes as the mode or focus changes. A help overlay the user has to open
+  does not meet this rule.
+- Always show the current mode, for example as a labeled indicator in the
+  status bar or hint line, so the user never has to guess which keymap is
+  active.
+- Toggle modes the same way everywhere. Use one consistent key or chord to
+  enter each kind of mode. Make pressing that key again, or `Esc`, return to
+  the base mode, and give the base mode the same name in every tool. Do not
+  bind the same key to different mode transitions in different tools. Resolve
+  conflicts in favor of the shared convention over a tool's default.
+- When configuring or building something with keybindings, include the
+  on-screen hints and mode indicator. If a tool cannot display them, say so
+  and propose the closest alternative, such as a which-key popup that appears
+  automatically after a leader key or a status-bar module.
+
 # Shell conventions
 
 The user's interactive and configured automation shell is Nushell. When
