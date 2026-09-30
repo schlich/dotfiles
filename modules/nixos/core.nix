@@ -45,6 +45,17 @@
     LC_TIME = "en_US.UTF-8";
   };
 
+  # One JSON line per activation, so `ci verify` can say when the running
+  # toplevel was switched to and from which system profile generation. It
+  # never leaves the host; only verifications are sent to homelab.
+  system.activationScripts.record-activation.text = ''
+    ${pkgs.coreutils}/bin/printf '{"time":"%s","toplevel":"%s","profile":"%s"}\n' \
+      "$(${pkgs.coreutils}/bin/date --iso-8601=seconds)" \
+      "$systemConfig" \
+      "$(${pkgs.coreutils}/bin/readlink /nix/var/nix/profiles/system || true)" \
+      >> /var/log/nixos-activations.jsonl
+  '';
+
   services.dbus.implementation = "broker";
   hardware.enableAllFirmware = true;
   programs.nix-ld.enable = true;

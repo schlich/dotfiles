@@ -371,6 +371,35 @@ A NixOS generation cannot carry the tag: the tag is created after merge, and
 local `path:` builds have no Git revision. Compare a generation with a release
 by the checkout it was built from.
 
+## Verifying releases
+
+The landing gate proves that every closure builds, not that the machine
+behaves as the release describes. After activating a release and trying it,
+record that on the host:
+
+```nu
+ci verify -m "Codex runs in ~ without the JJ guard"
+ci verify 2026.09.30.11 -m "..."   # name the release explicitly
+ci verify list                     # recent releases and this host's verifications
+ci verify flush                    # resend any queued verifications
+```
+
+`ci verify` refuses unless the release evaluates to exactly the running
+`/run/current-system` for this host; without a release it checks the five
+newest and takes the first that matches. It appends the record to
+`~/.local/state/config-verifications/verified.jsonl` and sends that one line
+to homelab, where the `config-verifications` account can only append it to
+`/var/lib/config-verifications/<host>.jsonl`. It connects on port 2222
+because Tailscale SSH owns port 22 on the tailnet address and ignores the
+account's forced command. When homelab is unreachable the record stays in
+`outbox.jsonl` until the next `ci verify` or `ci verify flush`.
+
+Every host also appends one line per activation to
+`/var/log/nixos-activations.jsonl` (time, toplevel, and system profile), which
+`ci verify` uses to record when the verified toplevel was switched to. That
+log stays on the host; only verifications go to homelab. Nothing is kept on
+Tangled, which holds code.
+
 ## Merge strategy
 
 The permanent default is one branch per ordinary JJ topic. The publication

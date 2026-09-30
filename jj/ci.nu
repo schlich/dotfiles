@@ -1769,6 +1769,155 @@ def "main version" [] {
     }
 }
 
+# A verification records that a person tried a release on a real machine. The
+# landing gate proves only that each closure builds, so this is the evidence
+# that the running configuration behaves as the release describes. Each host
+# keeps its own under the state directory and sends a copy to homelab, whose
+# SSH account for it can only append one record.
+const VERIFICATION_REMOTE = "config-verifications@homelab"
+# OpenSSH's second port on homelab; Tailscale SSH owns port 22 there and
+# would ignore the account's forced command.
+const VERIFICATION_PORT = "2222"
+# Written by the activation script in modules/nixos/core.nix.
+const ACTIVATION_LOG = "/var/log/nixos-activations.jsonl"
+
+def verification-dir [] {
+    $env.XDG_STATE_HOME? | default ($env.HOME | path join ".local" "state") | path join "config-verifications"
+}
+
+def read-jsonl [path: string] {
+    if not ($path | path exists) { return [] }
+    open --raw $path | lines | where {|line| $line | str trim | is-not-empty } | each {|line| $line | from json }
+}
+
+# Release tags, newest first, with their commits and titles.
+def releases [] {
+    let tags = (git-command "listing releases" {
+        ^jj tag list -T 'name ++ "\t" ++ normal_target.commit_id() ++ "\t" ++ normal_target.description().first_line() ++ "\n"' $"glob:'($RELEASE_TAG_GLOB)'"
+    } | lines | where {|line| $line | is-not-empty } | parse "{release}\t{commit}\t{title}")
+    $tags | insert order {|tag| $tag.release | split row "." | into int } | sort-by order --reverse | reject order
+}
+
+# The toplevel store path `host` would run at `commit`. Evaluates; builds nothing.
+def release-toplevel [commit: string, host: string] {
+    with-commit-trees { release: $commit } {|trees|
+        git-command $"evaluating ($host) at ($commit | str substring 0..11)" {
+            ^nix eval --raw --no-update-lock-file $"path:($trees.release)#nixosConfigurations.($host).config.system.build.toplevel.outPath"
+        }
+    }
+}
+
+# Send queued verifications to homelab in order, stopping at the first
+# failure so an unreachable homelab keeps the rest queued.
+def flush-verifications [] {
+    let outbox = (verification-dir | path join "outbox.jsonl")
+    if not ($outbox | path exists) { return }
+    let pending = (open --raw $outbox | lines | where {|line| $line | str trim | is-not-empty })
+    mut sent = 0
+    mut failure = ""
+    for line in $pending {
+        let result = ($line | ^ssh -T -p $VERIFICATION_PORT -o BatchMode=yes -o ConnectTimeout=10 $VERIFICATION_REMOTE | complete)
+        if $result.exit_code != 0 {
+            $failure = ($result.stderr | str trim)
+            break
+        }
+        $sent += 1
+    }
+    let remaining = ($pending | skip $sent)
+    if ($remaining | is-empty) {
+        rm $outbox
+    } else {
+        $remaining | each {|line| $"($line)\n" } | str join | save --force $outbox
+    }
+    if $sent > 0 { print $"Sent ($sent) verification\(s) to homelab." }
+    if ($remaining | is-not-empty) {
+        print --stderr $"Could not reach homelab \(($failure)); ($remaining | length) verification\(s) stay queued. Retry with `ci verify flush`."
+    }
+}
+
+# Record that this host runs RELEASE and that you tested it, then send the
+# record to homelab. Refuses unless the running system is exactly that
+# release's toplevel for this host.
+def "main verify" [
+    release?: string # The CalVer release to verify; defaults to the newest
+    --message (-m): string # How you tested it
+] {
+    if ($message | default "" | str trim | is-empty) {
+        error make { msg: "Say how you tested the release with --message." }
+    }
+    let host = (sys host | get hostname)
+    let running = ("/run/current-system" | path expand)
+    let target = if $release == null {
+        # A newer release may not be activated yet, so take the newest recent
+        # one that this host is running. Each candidate costs an evaluation.
+        mut found = []
+        for tag in (releases | first 5) {
+            print --stderr $"Checking ($tag.release)…"
+            if (release-toplevel $tag.commit $host) == $running {
+                $found = [$tag]
+                break
+            }
+        }
+        if ($found | is-empty) {
+            error make { msg: $"None of the 5 newest releases builds the running system ($running) for ($host). Name the release with `ci verify RELEASE`." }
+        }
+        $found | first
+    } else {
+        let tag = (releases | where release == $release | get --optional 0)
+        if $tag == null { error make { msg: $"No release named ($release)." } }
+        let expected = (release-toplevel $tag.commit $host)
+        if $expected != $running {
+            error make { msg: $"This host is not running ($release): it runs ($running), but ($release) builds ($expected) for ($host). Activate the release first." }
+        }
+        $tag
+    }
+    # The latest switch to this toplevel, if the activation hook saw one.
+    let activation = (read-jsonl $ACTIVATION_LOG | where toplevel == $running | reverse | get --optional 0)
+    let record = {
+        host: $host
+        release: $target.release
+        commit: $target.commit
+        title: $target.title
+        toplevel: $running
+        profile: ($activation.profile? | default null)
+        activated_at: ($activation.time? | default null)
+        verified_at: (date now | format date "%+")
+        note: ($message | str trim)
+    }
+    let dir = (verification-dir)
+    mkdir $dir
+    let line = $"($record | to json --raw)\n"
+    $line | save --append ($dir | path join "verified.jsonl")
+    $line | save --append ($dir | path join "outbox.jsonl")
+    print $"Verified ($target.release) on ($host): ($record.note)"
+    flush-verifications
+}
+
+# Resend verifications that have not reached homelab yet.
+def "main verify flush" [] {
+    flush-verifications
+}
+
+# Recent releases and whether this host has verified them.
+def "main verify list" [
+    --count: int = 10 # How many releases to show
+] {
+    let host = (sys host | get hostname)
+    let dir = (verification-dir)
+    let verified = (read-jsonl ($dir | path join "verified.jsonl") | where host == $host)
+    let queued = (read-jsonl ($dir | path join "outbox.jsonl") | length)
+    if $queued > 0 { print --stderr $"($queued) verification\(s) not yet sent to homelab; run `ci verify flush`." }
+    releases | first $count | each {|tag|
+        let latest = ($verified | where release == $tag.release | reverse | get --optional 0)
+        {
+            release: $tag.release
+            title: $tag.title
+            verified: ($latest.verified_at? | default null)
+            note: ($latest.note? | default null)
+        }
+    }
+}
+
 def "main tangled stack-publish" [] {
     require-ready-change
     rebase-topic

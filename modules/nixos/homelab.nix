@@ -20,6 +20,11 @@ let
     '';
   };
 
+  # Servers lack the nushellWith overlay behind writeNuScriptBin.
+  verificationReceiver = pkgs.writers.writeNuBin "receive-verification" (
+    builtins.readFile ../../jj/receive-verification.nu
+  );
+
   # Niri's own default config, minus its waybar autostart: homelab has no
   # waybar, and the desktop session instead starts the monitor wallpaper.
   niriConfig = pkgs.runCommand "niri-homelab-config.kdl" { } ''
@@ -52,6 +57,33 @@ in
     text = ''
       ${adminKey}
     '';
+  };
+
+  # `ci verify` on each host sends one record per verified release here. The
+  # account can only run the receiver, which appends to
+  # /var/lib/config-verifications/<host>.jsonl; `restrict` also denies a
+  # shell, forwarding, and a terminal.
+  users.users.config-verifications = {
+    isSystemUser = true;
+    group = "config-verifications";
+    home = "/var/lib/config-verifications";
+    createHome = true;
+    # sshd runs the forced command through the login shell.
+    shell = pkgs.bashInteractive;
+    openssh.authorizedKeys.keys = [
+      ''restrict,command="${verificationReceiver}/bin/receive-verification" ${adminKey}''
+    ];
+  };
+  users.groups.config-verifications = { };
+  # Tailscale SSH answers port 22 on the tailnet address and never reads
+  # authorized_keys, so the forced command above would not apply there.
+  # OpenSSH also listens on this port, which Tailscale leaves alone.
+  services.openssh = {
+    ports = [
+      22
+      2222
+    ];
+    settings.AllowUsers = [ "config-verifications" ];
   };
 
   # Keep the machine running when its broken lid is closed or a power key is
