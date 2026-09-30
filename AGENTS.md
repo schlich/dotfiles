@@ -138,16 +138,22 @@
 - Keep one coherent topic per Codex task. Use one stable JJ change for a single
   deliverable, but allow a small stack of changes when the task contains
   multiple deliverables that should be split. Do not create unrelated
-  follow-up changes after publication. Create each concurrent task's
-  workspace with `ci start NAME`, and `ci rebase` to update a topic in
-  place. A conflict-free topic does not need to catch up with `main` before
-  landing; `ci land` rebases it. `ci refresh` restacks only stacked or
+  follow-up changes after publication. A topic is a revision; a workspace is
+  a working copy for one actor. Start a topic with `ci new -m MESSAGE` in the
+  current workspace, which leaves earlier topics as siblings (`jj edit`
+  returns to one). Create a workspace with `ci start NAME` only for an actor
+  that runs concurrently with the current working copy: another active agent
+  task, or a build, dev server, or editor whose files must not change under
+  it. Reuse such workspaces with `ci finish --keep` rather than creating one
+  per topic. Use `ci rebase` to update a topic in place. A conflict-free
+  topic does not need to catch up with `main` before landing; `ci land` rebases it. `ci refresh` restacks only stacked or
   conflicting topics, pushes only conflict-free rebases, and leaves conflicted
   topics local for resolution. Run `ci refresh --all` only when the user
   asks to rebase every published topic.
 - Before archiving a delivered topic, run `ci finish` and confirm success.
   It verifies that the current head landed and removes a workspace that
-  `ci start` created (`--keep` leaves it on an empty change on main).
+  `ci start` created (`--keep` leaves it on an empty change on main, ready
+  for the pool's next task).
   Use `ci abandon` for a topic that will not land.
   A failed pipeline, conflicts, or unpublished edits keep the task open. Native
   archive-button clicks are not a closeout hook.
@@ -229,9 +235,9 @@ only when explicitly requested because they are expensive; `nix-fast-build --ski
 
 ## Continuous integration and merge-conflict policy
 
-Keep active work continuously integrated: start each dedicated JJ workspace at
+Keep active work continuously integrated: start each topic at
 `main@tangled`, rebase before review updates and when a topic conflicts with
-trunk, and never share a mutable topic worktree. `ci publish` performs the
+trunk, and never let two concurrent actors share one working copy. `ci publish` performs the
 final rebase and validation before pushing; `ci land` does the same and
 lands only the commit the landing gate passed.
 
@@ -242,7 +248,7 @@ unattended rebase is `ci refresh`, and only when it is conflict-free: it
 rebases a checked-out topic from that topic's own workspace, and only after a
 trial merge predicts no conflict. Never resolve conflicts automatically.
 
-Herdr or Paseo may monitor one existing JJ workspace per topic and notify its
+Herdr or Paseo may monitor an existing JJ workspace and notify its
 owner about stale trunk, topic, or pipeline state. They must not take
 ownership of the workspace or silently rebase, resolve conflicts, publish,
 land, or advance a stack.

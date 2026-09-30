@@ -50,8 +50,9 @@ equivalent low-level commands:
   retaining the same working-copy change;
 - `ci land` for delivery to `main`;
 - `ci rebase` for updating that topic in place;
-- `ci start` to create a topic's workspace, and `ci finish` or
-  `ci abandon` to release it.
+- `ci new` to start a topic as a revision in the current workspace, `ci start`
+  to create a workspace for a concurrent actor, and `ci finish` or
+  `ci abandon` to release a topic.
 
 Do not use low-level MCP mutation tools such as restore, abandon, direct push,
 or rebase unless the user explicitly requests that specific operation and the
@@ -72,8 +73,9 @@ Use the narrowest workflow that matches the request:
 | Decide whether a topic ships alone or stacked | `ci plan` | Read-only apart from a fetch. Trial-merges in-flight topics (published `jj-*` bookmarks and workspace changes) against `main@tangled` and each other, then proposes independent topics or stacks. `--json` for structured output. |
 | Update a topic from trunk | `ci rebase` | Checkpoints, fetches, and rebases the same change. |
 | Restack published topics after trunk moves | `ci refresh` | Run it by hand only on request. Restacks stacked topics onto their parent's bookmark and conflicting topics onto `main@tangled`, parents first. Checked-out topics are rebased from their own workspace only when a trial merge is clean. Pushes only conflict-free stacks. `--all` also rebases topics that are merely behind; `--no-push` stops before any remote change. |
-| Start a topic | `ci start <name>` | Creates `.jj-workspaces/<name>` at `main@tangled` for exactly one topic; refuses a name already in use. |
-| Finish a landed topic | `ci finish` | Verifies the current revision is on `main@tangled`, deletes the topic bookmark locally and on Tangled, and removes a workspace that `ci start` created (`--keep`, or any other workspace, stays on an empty change on main) before archiving. An empty working copy passes when its published branch, if any, landed. |
+| Start a topic | `ci new [-m <message>]` | Fetches and starts a new change on `main@tangled` in the current workspace; the previous topic stays as a sibling (`jj edit` returns to it). Refuses while an active Codex task owns the workspace or an unfinished `ci start` topic is checked out. |
+| Start concurrent work | `ci start <name>` | Creates `.jj-workspaces/<name>` at `main@tangled` for an actor that runs alongside the current working copy (another agent task, a build, a dev server); refuses a name already in use. |
+| Finish a landed topic | `ci finish` | Verifies the current revision is on `main@tangled`, deletes the topic bookmark locally and on Tangled, and removes a workspace that `ci start` created before archiving. `--keep` returns it to the pool instead: it stays on an empty change on main and drops its `ci start` marker, so the next task starts a fresh topic there. Any other workspace also stays. An empty working copy passes when its published branch, if any, landed. |
 | Drop a topic that will not land | `ci abandon` | Refuses while a Tangled pull request from its branch is open. Checkpoints, deletes the topic bookmark, abandons the revisions above `main@tangled`, and releases the workspace like `finish`. Requires an explicit user request. |
 | Reclaim leaked workspaces | `ci prune` | Dry run by default. Lists missing workspaces and unowned ones whose work is delivered (only an empty undescribed working copy remains above `main@tangled`), plus checkpoints older than `--keep-days`. Reports stale workspaces untouched. `--apply` updates stale ones, decides again, then forgets and deletes the listed ones, which requires an explicit user request. |
 | Capture a review version | `ci review snapshot <label>` | Records the exact base and series tip for a later interdiff. |
@@ -99,7 +101,8 @@ Use the narrowest workflow that matches the request:
 
 ## Publication expectations
 
-Keep one coherent topic in a dedicated workspace. Use one stable JJ change ID
+Keep one coherent topic per revision; give it its own workspace only when
+another actor uses the current working copy concurrently. Use one stable JJ change ID
 for a single deliverable, or a small stack of stable change IDs when mixed
 deliverables were intentionally split. `ci publish` uses a persisted
 `jj-<title-slug>-<short-change-id>` bookmark for new topics, preserving the

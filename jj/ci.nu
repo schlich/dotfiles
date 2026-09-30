@@ -1841,11 +1841,15 @@ def end-ownership [root: string, outcome: string] {
 def --env release-workspace [summary: string, change: string, keep: bool, outcome: string] {
     let workspace = (current-workspace)
     run-command "leaving a clean workspace on main" { ^jj new main@tangled } | ignore
-    if not $keep and $workspace.name != "default" and (owned-workspace-marker $workspace.root | path exists) {
+    let marker = (owned-workspace-marker $workspace.root)
+    if not $keep and $workspace.name != "default" and ($marker | path exists) {
         drop-workspace $workspace
         print $"($summary) Removed workspace ($workspace.name); continue from ($env.PWD)."
         return
     }
+    # A kept workspace joins the pool: its next task starts a fresh topic, so
+    # the finished topic's marker must not pin the next session to it.
+    if ($marker | path exists) { rm $marker }
     let owner_path = ($workspace.root | path join ".jj" "codex-session.json")
     if ($owner_path | path exists) and (open $owner_path).change_id? == $change {
         end-ownership $workspace.root $outcome
@@ -1892,7 +1896,7 @@ def "main start" [
         error make { msg: "Use a lowercase name of letters, digits, and hyphens." }
     }
     if $name in (list-workspaces | get name) {
-        error make { msg: $"Workspace ($name) already exists. One topic owns one workspace; finish or abandon it first." }
+        error make { msg: $"Workspace ($name) already exists. Finish or abandon its topic first, or start a topic there with `ci new`." }
     }
     let root = (workspace-root "default" | path join ".jj-workspaces" $name)
     if ($root | path exists) {
@@ -1908,6 +1912,51 @@ def "main start" [
     if $topic.exit_code != 0 { error make { msg: ($topic.stderr | str trim) } }
     { name: $name created: (date now | format date "%+") change_id: ($topic.stdout | str trim) } | to json | save (owned-workspace-marker $root)
     print $"Created ($root) on main@tangled. `ci finish` or `ci abandon` removes it when the topic ends."
+}
+
+# Why `ci new` may not start another topic in this workspace, or null. A
+# workspace that an active task or `ci start` dedicated to one topic keeps it
+# until `finish` or `abandon`; any other one holds sibling topics.
+def new-topic-refusal [facts: record] {
+    if $facts.owner == "active" {
+        return "An active Codex task owns this workspace's change. Start concurrent work in its own workspace with `ci start NAME`."
+    }
+    if $facts.dedicated and not $facts.topic_done {
+        return "This workspace belongs to one unfinished topic from `ci start`. Finish or abandon it, or start concurrent work with `ci start NAME`."
+    }
+    null
+}
+
+# Start a topic as a new change on main@tangled in this workspace. The current
+# topic stays where it is, as a sibling; return to it with `jj edit`.
+def "main new" [
+    --message (-m): string # Description for the new topic
+] {
+    let root = (git-command "locating the workspace" { ^jj root })
+    let marker = (owned-workspace-marker $root)
+    let facts = (topic-facts)
+    let refusal = (new-topic-refusal {
+        owner: (owner-status (session-owner))
+        dedicated: ($marker | path exists)
+        topic_done: ($facts.landed or not $facts.visible or $facts.topic_empty)
+    })
+    if $refusal != null { error make { msg: $refusal } }
+    let previous = if (current-change 'empty && description == ""') == "true" {
+        null
+    } else {
+        { id: (current-change "change_id.short()") title: (current-change "description.first_line()") }
+    }
+    fetch-trunk
+    let args = if $message == null { [] } else { [--message $message] }
+    run-command "starting a topic on main@tangled" { ^jj new main@tangled ...$args } | ignore
+    # A pool workspace's marker named the landed topic; the new one is not it.
+    if ($marker | path exists) { rm $marker }
+    let created = (current-change "change_id.short()")
+    if $previous == null {
+        print $"Started topic ($created) on main@tangled."
+    } else {
+        print $"Started topic ($created) on main@tangled. ($previous.id) \"($previous.title)\" stays as a sibling; return with `jj edit ($previous.id)`."
+    }
 }
 
 # The topic that `finish` closes. Landing fast-forwards main onto the topic

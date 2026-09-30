@@ -16,13 +16,18 @@ blocking on an editor or pager while leaving the normal interactive shell
 unchanged. Explicitly supply messages, filesets, revsets, and any available
 non-interactive flags for commands that prompt for other input.
 
-One task owns one topic, one JJ workspace, and one stable change ID. A topic
-may contain a series of logically separate JJ changes. Review fixes should be
-absorbed into the appropriate change instead of appended as "address review"
-commits.
+One task owns one topic and one stable change ID. A topic is a revision; a
+workspace is a working copy for one actor. Topics worked one at a time are
+sibling changes in the same workspace, and `jj edit` switches between them. A
+separate workspace is only for an actor that runs concurrently with the
+current working copy: another agent task, or a build, dev server, or editor
+whose files must not change underneath it. A topic may contain a series of
+logically separate JJ changes. Review fixes should be absorbed into the
+appropriate change instead of appended as "address review" commits.
 
 ```nu
-ci start topic-name        # Create the topic's workspace from main@tangled.
+ci new -m "Topic title"    # Start a topic on main@tangled in this workspace.
+ci start topic-name        # Or: create a workspace for concurrent work.
 ci status
 ci rebase                  # Fetch trunk and rebase the whole topic stack.
 ci conflicts               # Show conflicted revisions and files after a rebase.
@@ -43,8 +48,13 @@ ci prune                   # List leaked workspaces; --apply removes them.
 ci preview --shell         # Try trunk plus published user-facing topics, unactivated.
 ```
 
-A workspace stays on its topic until `finish` or `abandon` releases it.
-`ci start` records the topic's change ID in `.jj/jj-ci-workspace.json`, and
+`ci new` fetches trunk and runs `jj new main@tangled`, leaving the previous
+topic untouched as a sibling. It refuses while an active Codex task owns the
+workspace, or while the unfinished topic of a `ci start` workspace is checked
+out; start concurrent work with `ci start` instead.
+
+A workspace from `ci start` stays on its topic until `finish` or `abandon`
+releases it. `ci start` records the topic's change ID in `.jj/jj-ci-workspace.json`, and
 every command that checks ownership refuses to run when the working copy is an
 empty change beside that unlanded topic, as after a manual `jj new main`; the
 error names the `jj edit` that returns to it. In an interactive Nushell, the
@@ -161,7 +171,10 @@ deletes the topic bookmark locally and on Tangled, advances local main, and
 releases the workspace. A workspace that `ci start` created is forgotten
 and its directory deleted; continue from the default checkout. `--keep`, or
 any other workspace, is left on an empty change on main with its Codex
-ownership finished. Archive the task only after it succeeds.
+ownership finished. `--keep` also deletes the `ci start` marker, so the
+workspace joins a reusable pool: the next Codex task there starts a fresh
+topic instead of being refused for the landed one. Archive the task only after
+it succeeds.
 
 `ci abandon` drops a topic that will not land. It refuses while a Tangled
 pull request from the topic's branch is open, records a checkpoint, deletes
@@ -170,8 +183,8 @@ the workspace like `finish`. `jj op restore` with the printed operation
 recovers it.
 
 Workspace lifetime follows ownership rather than garbage collection:
-`ci start` creates a workspace for exactly one topic, and `finish` or
-`abandon` frees it. `ci prune` is the backstop for owners that never
+`ci start` creates a workspace for one concurrent actor's topic, and `finish`
+or `abandon` frees it, or returns it to the pool with `--keep`. `ci prune` is the backstop for owners that never
 released theirs, such as a crashed task or a workspace created by hand. It
 lists workspaces that are missing, or that no active task owns and whose
 revisions above `main@tangled` are all delivered: nothing but an empty,
@@ -310,7 +323,8 @@ preview a subset or use `ci plan` to decide how to stack them.
 Herdr or Paseo may supervise the terminals and agents used for this workflow,
 but they do not replace JJ workspace ownership. Create the JJ workspace from
 `main@tangled` first, then attach one Herdr or Paseo coordination lane to that
-directory. Keep the mapping one coordinator : one JJ workspace : one topic.
+directory. Keep the mapping one coordinator : one JJ workspace : one active
+topic.
 
 A supervisor may monitor `main@tangled`, topic freshness, and pipelines, and
 notify the owner when integration is needed. Conflict resolution, publication,
@@ -421,14 +435,17 @@ GitHub discovery.
 
 ## Concurrent tasks
 
-Create a separate JJ workspace before opening a new local project task:
+Give each concurrently running task its own JJ workspace before opening it as
+a local project:
 
 ```nu
-ci start topic-name
+ci start agent-1
 ```
 
-It creates `.jj-workspaces/topic-name` at `main@tangled` and refuses a name
-that is already in use. `ci finish` or `ci abandon` removes it.
+It creates `.jj-workspaces/agent-1` at `main@tangled` and refuses a name
+that is already in use. `ci finish` or `ci abandon` removes it; with `--keep`
+it stays for the next task. A small pool of such workspaces, one per agent
+that runs at the same time, avoids creating and deleting one per topic.
 
 Use that directory as a **Local** Codex project. Do not start the chat in
 Codex's **Worktree** mode or hand it off to a worktree: [Codex worktrees](https://developers.openai.com/codex/app/worktrees)

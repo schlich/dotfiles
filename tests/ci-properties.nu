@@ -361,6 +361,31 @@ for-all "an empty working copy beside unlanded topic work is stranded" {|key|
     assert (topic-stranded $facts) "`jj new main` beside the topic went unnoticed"
 }
 
+# `ci new`: a workspace holds sibling topics unless an active task or an
+# unfinished `ci start` topic owns it.
+
+def gen-new-topic-facts [key: string] {
+    {
+        owner: (pick-from $"($key)/owner" ["none" "active" "delivered" "discarded" "released"])
+        dedicated: (flag $"($key)/dedicated")
+        topic_done: (flag $"($key)/done")
+    }
+}
+
+for-all "ci new never moves an owned or dedicated working copy" {|key|
+    let facts = (gen-new-topic-facts $key)
+    if (new-topic-refusal $facts) == null {
+        assert ($facts.owner != "active") "started a topic over an active task's change"
+        assert ((not $facts.dedicated) or $facts.topic_done) "stranded a `ci start` topic"
+    }
+}
+
+for-all "ci new starts a sibling in every unowned shared workspace" {|key|
+    let facts = (gen-new-topic-facts $key | merge { dedicated: false })
+    let owner = (pick-from $"($key)/ended" ["none" "delivered" "discarded" "released"])
+    assert equal (new-topic-refusal ($facts | upsert owner $owner)) null
+}
+
 const JJ_NEW_CASES = [
     [args expected];
     [["log"] null]

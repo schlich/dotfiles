@@ -133,33 +133,28 @@ interactive revision work in a terminal.
 
 ## Project task discipline
 
-For JJ projects, use one coherent topic, one dedicated JJ workspace, and one
-stable change ID for a single deliverable. When a task contains multiple
-deliverables that should be split, keep them in one small stack in that
-workspace and rewrite each in-scope change as needed; do not create unrelated
-follow-up revisions after publishing. A new topic needs a new task and a
-separate workspace; do not switch a working copy owned by another active task.
-Where `ci` is available, create it with `ci start NAME`; otherwise use
+For JJ projects, use one coherent topic and one stable change ID for a single
+deliverable. When a task contains multiple deliverables that should be split,
+keep them in one small stack and rewrite each in-scope change as needed; do not
+create unrelated follow-up revisions after publishing.
+
+A topic is a revision; a workspace is a working copy for one actor. Start a
+topic as a new change on trunk in the current workspace (`ci new -m MESSAGE`
+where `ci` is available, otherwise `jj new main@origin -m MESSAGE`); earlier
+topics stay as sibling changes, and `jj edit` returns to one. Create a separate
+workspace only when another actor uses the current working copy at the same
+time: another active agent task, or a long build, dev server, or editor whose
+files must not change underneath it. Never move a working copy owned by another
+active task. Where `ci` is available, create that workspace with
+`ci start NAME`; otherwise use
 `jj workspace add --revision main@origin --name NAME PATH` from the
-repository. Then open that directory as a local Codex project.
-The hook creates the topic revision when its task starts.
+repository. Then open that directory as a local Codex project. Reuse a small
+pool of such workspaces with `ci finish --keep` instead of creating one for
+every topic; the hook creates the next task's topic revision when it starts.
 If Codex supplied the project as a linked Git worktree, the session hook
 initializes a non-colocated JJ workspace in that directory first, using the
 shared Git repository as its backend. It never automatically switches another
 task's working copy.
-
-When the working-copy diff contains multiple coherent deliverables, split it
-into separate JJ changes before publishing or treating the work as complete.
-Choose the topology from the dependency, not from file proximity: make a
-parent/child chain only when the later change needs the earlier one to build,
-test, or make sense; make siblings when both changes are independently
-reviewable and can land independently. JJ provides this directly: `jj split`
-creates a parent/child pair by default, and `jj split --parallel` creates two
-sibling changes. After every split, set explicit descriptions, inspect `jj log`,
-and repeat the classification if more than two changes remain. Create a
-checkpoint before splitting, as for other history surgery. Do not use the
-default parent/child shape just because it is convenient, and do not combine
-changes merely because they touch related files.
 
 When the working-copy diff contains multiple coherent deliverables, split it
 into separate JJ changes before publishing or treating the work as complete.
@@ -179,8 +174,8 @@ stage, branch, worktree, handoff, push, or merge actions for these tasks.
 Keep Git available as an internal transport dependency. Use `jj-dashboard`
 or the desktop Open in → JJ dashboard action for interactive revision work.
 
-Where `ci` is available, keep the topic in a dedicated workspace rooted at
-`main@origin`; rebase after trunk advances and before review or queue updates.
+Where `ci` is available, root each topic at `main@origin`; rebase after trunk
+advances and before review or queue updates.
 `ci publish` and `ci stack-merge` perform a final rebase before updating
 GitHub. Enable auto-merge only when the user is finished with the topic and has
 requested delivery. Herdr or Paseo may supervise and report stale trunk or PR

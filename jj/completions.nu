@@ -119,6 +119,16 @@ export extern "ci version" []
 # Publish the current stack to Tangled
 export extern "ci tangled stack-publish" []
 
+# Create a workspace at main@tangled for a concurrent actor's topic
+export extern "ci start" [
+    name: string # Workspace and topic name
+]
+
+# Start a topic as a new change on main@tangled in this workspace
+export extern "ci new" [
+    --message (-m): string # Description for the new topic
+]
+
 # Verify the current head landed on main and leave a clean working copy
 export extern "ci finish" [
     --keep # Keep a workspace that `ci start` created
