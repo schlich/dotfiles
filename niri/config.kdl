@@ -112,7 +112,7 @@ input {
 // take the workspaces after them. Version control, coding agents and the
 // session launcher are not workspaces but stacks or overlays within one: Mod+G,
 // Mod+A and Mod+0. Mod+O is Niri's own overview of every workspace.
-workspace "snorkel"   // 10-19
+workspace "work"      // 10-19
 workspace "research"  // 20-29
 workspace "xr"        // 30-39
 workspace "nix"       // 40-49
@@ -274,7 +274,7 @@ layout {
 // See the binds section below for more spawn examples.
 // spawn-at-startup "noctalia-shell"
 
-// Build the snorkel and nix session layouts, then focus snorkel.
+// Build the work and nix session layouts, then focus work.
 spawn-sh-at-startup "exec nu \"$HOME/.config/niri/session.nu\" startup"
 
 // Keep choice groups, such as the desktop coding agents, in one tabbed column.
@@ -560,14 +560,14 @@ binds {
     //
     //   7 Career    8 Personal  9 Inbox
     //   4 Nix       5 AI        6 Shell
-    //   1 Snorkel   2 Research  3 XR
+    //   1 Work      2 Research  3 XR
     //
     // Niri keeps workspaces in one vertical strip, so the grid lives in the
     // keys: Mod+KP_<digit> (or Mod+<digit>) focuses that area,
     // Mod+Shift+KP_<digit> (or Mod+Shift+<digit>) moves the focused column there, and Mod+Alt+H/J/K/L or
     // the arrows step to the neighbouring cell. Mod+0, the key under the grid,
     // is 00-09 System: the index, so it opens the session launcher over the grid.
-    Mod+KP_1 hotkey-overlay-title="10-19 Snorkel (bottom left)" { focus-workspace "snorkel"; }
+    Mod+KP_1 hotkey-overlay-title="10-19 Work (bottom left)" { focus-workspace "work"; }
     Mod+KP_2 hotkey-overlay-title="20-29 Research" { focus-workspace "research"; }
     Mod+KP_3 hotkey-overlay-title="30-39 XR" { focus-workspace "xr"; }
     Mod+KP_4 hotkey-overlay-title="40-49 Nix tooling" { focus-workspace "nix"; }
@@ -577,7 +577,7 @@ binds {
     Mod+KP_8 hotkey-overlay-title="80-89 Personal" { focus-workspace "personal"; }
     Mod+KP_9 hotkey-overlay-title="90-99 Inbox" { focus-workspace "inbox"; }
     Mod+KP_0 hotkey-overlay-title="00-09 System: session launcher" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" overview"; }
-    Mod+Shift+KP_1 { move-column-to-workspace "snorkel"; }
+    Mod+Shift+KP_1 { move-column-to-workspace "work"; }
     Mod+Shift+KP_2 { move-column-to-workspace "research"; }
     Mod+Shift+KP_3 { move-column-to-workspace "xr"; }
     Mod+Shift+KP_4 { move-column-to-workspace "nix"; }
@@ -586,7 +586,7 @@ binds {
     Mod+Shift+KP_7 { move-column-to-workspace "career"; }
     Mod+Shift+KP_8 { move-column-to-workspace "personal"; }
     Mod+Shift+KP_9 { move-column-to-workspace "inbox"; }
-    Mod+1 { focus-workspace "snorkel"; }
+    Mod+1 { focus-workspace "work"; }
     Mod+2 { focus-workspace "research"; }
     Mod+3 { focus-workspace "xr"; }
     Mod+4 { focus-workspace "nix"; }
@@ -596,7 +596,7 @@ binds {
     Mod+8 { focus-workspace "personal"; }
     Mod+9 { focus-workspace "inbox"; }
     Mod+0 hotkey-overlay-title="00-09 System: session launcher" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" overview"; }
-    Mod+Shift+1 { move-column-to-workspace "snorkel"; }
+    Mod+Shift+1 { move-column-to-workspace "work"; }
     Mod+Shift+2 { move-column-to-workspace "research"; }
     Mod+Shift+3 { move-column-to-workspace "xr"; }
     Mod+Shift+4 { move-column-to-workspace "nix"; }

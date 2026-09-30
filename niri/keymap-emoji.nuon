@@ -8,7 +8,7 @@
 # two columns wide.
 [
   # Johnny Decimal areas: focusing and moving share an emoji; the layer says which.
-  { action: '(workspace|run session restore) snorkel$', emoji: '🤿' }
+  { action: '(workspace|run session restore) work$', emoji: '🏢' }
   { action: '(workspace|run session restore) research$', emoji: '🔬' }
   { action: '(workspace|run session restore) xr$', emoji: '🥽' }
   { action: '(workspace|run session restore) nix$', emoji: '🧊' }

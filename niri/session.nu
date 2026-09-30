@@ -95,7 +95,7 @@ def kb-root [] {
 def presets [] {
   let area = { layout: area, directory: $env.HOME }
   {
-    snorkel: { layout: default, directory: $"($env.HOME)/starfish-projects" }
+    work: { layout: default, directory: $"($env.HOME)/starfish-projects" }
     research: { layout: kb, directory: (kb-root) }
     xr: $area
     nix: { layout: dotfiles, directory: $"($env.HOME)/dotfiles" }
@@ -108,7 +108,7 @@ def presets [] {
 }
 
 # Presets whose layouts `startup` builds at login, focusing the first.
-const startup_sessions = [snorkel nix]
+const startup_sessions = [work nix]
 
 # A preset, else a session opened with `project`.
 def session-route [session: string] {
