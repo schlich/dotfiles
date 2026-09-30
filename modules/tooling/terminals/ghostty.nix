@@ -31,9 +31,11 @@
     };
   };
 
+  # A command runs as given: Ghostty's shell integration rewrites a `nu -e ...`
+  # command through /bin/sh, and the window exits at once.
   dotfiles.tooling.terminals.ghostty.launcher = ''
     let class_args = if ($class | is-empty) { [] } else { [$"--class=($class)"] }
-    let command_args = if ($args | is-empty) { [] } else { ["-e"] ++ $args }
+    let command_args = if ($args | is-empty) { [] } else { ["--shell-integration=none" "-e"] ++ $args }
     ^${lib.getExe config.programs.ghostty.package} ...$class_args $"--working-directory=($directory)" ...$command_args
   '';
 }
