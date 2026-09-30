@@ -43,8 +43,19 @@ function hookCommand(name) {
 
 const scratch = mkdtempSync(join(tmpdir(), "pretooluse-hooks-"));
 
-function run(name, stdin, mode, delay) {
-  const { command, env } = hookCommand(name);
+// The Stop hook that raises never-reviewed Bash use cases.
+function stopCommand() {
+  const dir = plugins["prefer-nushell"];
+  const hooks = JSON.parse(
+    readFileSync(join(dir, "hooks", "hooks.json"), "utf8"),
+  ).hooks;
+  const command = hooks.Stop?.[0]?.hooks?.[0]?.command;
+  if (!command) throw new Error("prefer-nushell declares no Stop command");
+  return { command, env: process.env };
+}
+
+function run(name, stdin, mode, delay, hook = hookCommand(name)) {
+  const { command, env } = hook;
   return new Promise((resolve, reject) => {
     let input = "pipe";
     if (mode === "file") {
@@ -73,12 +84,17 @@ function run(name, stdin, mode, delay) {
   });
 }
 
-const claudePayload = (command, tool = "Bash") =>
+const claudePayload = (
+  command,
+  tool = "Bash",
+  { background = false, event = "PreToolUse" } = {},
+) =>
   JSON.stringify({
     session_id: "test",
-    hook_event_name: "PreToolUse",
+    hook_event_name: event,
     tool_name: tool,
-    tool_input: { command },
+    tool_use_id: "toolu_test",
+    tool_input: { command, run_in_background: background },
     cwd: "/tmp",
   });
 const copilotPayload = (command) =>
@@ -165,14 +181,47 @@ const cases = [
   },
   {
     hook: "prefer-nushell",
-    name: "defers nix build",
+    name: "denies a foreground nix build",
     stdin: claudePayload("nix build .#foo"),
+    decision: "deny",
+    reason: /Foreground Bash is disabled/,
+  },
+  {
+    hook: "prefer-nushell",
+    name: "defers a background nix build",
+    stdin: claudePayload("nix build .#foo", "Bash", { background: true }),
     decision: null,
   },
   {
     hook: "prefer-nushell",
-    name: "defers jj log",
+    name: "denies text tools in the background",
+    stdin: claudePayload("tail -f build.log", "Bash", { background: true }),
+    decision: "deny",
+    reason: /tail/,
+  },
+  {
+    hook: "prefer-nushell",
+    name: "denies a foreground jj log",
     stdin: claudePayload("jj log -r @"),
+    decision: "deny",
+  },
+  {
+    hook: "prefer-nushell",
+    name: "defers sudo",
+    stdin: claudePayload("sudo nixos-rebuild switch --flake .#asus"),
+    decision: null,
+  },
+  {
+    hook: "prefer-nushell",
+    name: "denies a text tool under sudo",
+    stdin: claudePayload("sudo cat /etc/shadow"),
+    decision: "deny",
+    reason: /cat/,
+  },
+  {
+    hook: "prefer-nushell",
+    name: "logs PostToolUse silently",
+    stdin: claudePayload("nix build .#foo", "Bash", { event: "PostToolUse" }),
     decision: null,
   },
   {
@@ -321,5 +370,104 @@ for (const { testCase, transport, result } of results) {
     console.log(`     stderr: ${JSON.stringify(result.stderr)}`);
   }
 }
-console.log(`${results.length - failures}/${results.length} hook cases passed`);
+// Every well-formed prefer-nushell payload appends one log line.
+const logPath = join(
+  process.env.HOME,
+  ".local",
+  "state",
+  "claude-code",
+  "bash-requests.jsonl",
+);
+const expectedLines = results.filter(
+  ({ testCase }) =>
+    testCase.hook === "prefer-nushell" && testCase.decision !== "ask",
+).length;
+const logged = existsSync(logPath)
+  ? readFileSync(logPath, "utf8").trim().split("\n").map(JSON.parse)
+  : [];
+if (logged.length === expectedLines) {
+  console.log(`ok   prefer-nushell: logs ${expectedLines} requests`);
+} else {
+  failures += 1;
+  console.log(
+    `FAIL prefer-nushell: expected ${expectedLines} log lines, got ${logged.length}`,
+  );
+}
+if (!logged.some((entry) => entry.event === "ran")) {
+  failures += 1;
+  console.log("FAIL prefer-nushell: PostToolUse was not logged as ran");
+}
+
+// The Stop hook reads the log written above, so these run in order: the
+// silent cases first, then the first raise, then the repeat it suppresses.
+const stopPayload = (session, active = false) =>
+  JSON.stringify({
+    session_id: session,
+    hook_event_name: "Stop",
+    stop_hook_active: active,
+  });
+const stopCases = [
+  {
+    name: "stays silent when switched off",
+    stdin: stopPayload("test"),
+    env: { CLAUDE_BASH_FEEDBACK: "off" },
+    block: null,
+  },
+  {
+    name: "stays silent when a Stop hook is already active",
+    stdin: stopPayload("test", true),
+    block: null,
+  },
+  {
+    name: "stays silent for a session without Bash requests",
+    stdin: stopPayload("other"),
+    block: null,
+  },
+  {
+    name: "raises new use cases",
+    stdin: stopPayload("test"),
+    block: /default · nix[\s\S]*bash-feedback skill/,
+  },
+  {
+    name: "raises each use case once",
+    stdin: stopPayload("test"),
+    block: null,
+  },
+];
+for (const testCase of stopCases) {
+  const hook = stopCommand();
+  const result = await run("stop-hook", testCase.stdin, "socket", 0, {
+    command: hook.command,
+    env: { ...hook.env, ...testCase.env },
+  });
+  const problems = [];
+  if (result.code !== 0) problems.push(`exit ${result.code}`);
+  if (result.stderr !== "") problems.push("stderr should be empty");
+  const stdout = result.stdout.trim();
+  if (testCase.block === null) {
+    if (stdout !== "") problems.push("expected no output");
+  } else {
+    let output = null;
+    try {
+      output = JSON.parse(stdout);
+    } catch {
+      problems.push("stdout is not JSON");
+    }
+    if (output?.decision !== "block") problems.push("expected decision block");
+    if (!testCase.block.test(output?.reason ?? ""))
+      problems.push(`reason should match ${testCase.block}`);
+  }
+  const label = `stop-hook: ${testCase.name}`;
+  if (problems.length === 0) {
+    console.log(`ok   ${label}`);
+  } else {
+    failures += 1;
+    console.log(`FAIL ${label}: ${problems.join("; ")}`);
+    console.log(`     stdout: ${JSON.stringify(result.stdout)}`);
+    console.log(`     stderr: ${JSON.stringify(result.stderr)}`);
+  }
+}
+
+const total = results.length + 2 + stopCases.length;
+console.log(`${total - failures}/${total} hook cases passed`);
 process.exit(failures === 0 ? 0 : 1);

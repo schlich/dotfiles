@@ -25,7 +25,12 @@ script, use valid Nushell syntax.
 - When a shell is needed, use the Nushell evaluate tool rather than invoking
   `nu -c` through Bash. It preserves the session and structured results and
   keeps every result in `$history` for later slicing. Wrap external programs
-  in `| complete`. Expect hooks to deny Bash text processing.
+  in `| complete`.
+- In Claude Code, a hook denies every foreground Bash call except a short
+  allowlist, such as `sudo`, and logs each Bash request for review. Do not
+  retry a denied command in Bash, and do not rephrase it to slip past the
+  hook: run it in the Nushell evaluate tool. If Bash is truly required, tell
+  the user why instead. The bash-feedback skill reviews the log.
 - Use the Nix MCP server for Nix ecosystem knowledge: nixpkgs packages, NixOS
   and Home Manager options, channels, flakes and their inputs, and Nix
   documentation. Do not use Nushell or local Nix commands to answer those
@@ -33,9 +38,10 @@ script, use valid Nushell syntax.
   repository's own Nix files and flake.
 - The evaluate tool returns only when a command finishes, so the user sees
   nothing while it runs. Run long external commands whose progress matters,
-  such as `jj-ci publish`, `jj-ci land`, and `nix build`, with the Bash tool in
-  the background, writing to a log in the scratchpad, and check that log as
-  it runs. Do not pipe that output through text-processing tools in Bash;
+  such as `ci publish`, `ci land`, and `nix build`, with the Bash tool in
+  the background (`run_in_background`, the only unlisted Bash use the hook
+  allows), writing to a log in the scratchpad, and check that log as it
+  runs. Do not pipe that output through text-processing tools in Bash;
   read or filter the log with Nushell.
 - When a file, log, diff, or command output is too large to read comfortably,
   keep it in a Nushell variable and follow the `rlm` skill (`rlm load`,

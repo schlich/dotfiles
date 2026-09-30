@@ -3,6 +3,7 @@
 {
   archify = "${inputs.archify}/archify";
   autoresearch = "${inputs.autoresearch}/.agents/skills/autoresearch";
+  bash-feedback = ../../../.agents/skills/bash-feedback;
   ci = ../../../.agents/skills/ci;
   datastar = ../../../.agents/skills/datastar;
   rlm = ../../../.agents/skills/rlm;

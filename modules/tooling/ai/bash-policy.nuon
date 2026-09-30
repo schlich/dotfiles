@@ -1,0 +1,35 @@
+# Claude Code Bash policy, read by scripts/prefer-nushell-bash.nu.
+#
+# Foreground Bash is denied unless a rule below allows it; the agent is sent
+# to the Nushell MCP tool instead. Background runs (`run_in_background`) are
+# allowed because the evaluate tool shows no progress for long commands.
+# Allowed calls still pass through Jev and the normal permission prompt.
+#
+# Every request is logged; review the log with `claude-bash-audit report`
+# and the bash-feedback skill, then tune this file or the agent instructions.
+{
+  # Stage programs denied even in the background, with a Nushell hint.
+  text_tools: [
+    awk cat cut egrep fd fgrep find grep head jq less ls more rg sed sort tail tr uniq wc yq
+  ]
+
+  # Regexes matched against the whole command. `why` records the use case;
+  # `skip_text_tools` also exempts the command from the text_tools check.
+  allow: [
+    {
+      pattern: '(^|[;&|][&|]?|\n)\s*(jev\b|nu\s+(/home/schlich/dotfiles-jev|~/dotfiles-jev)/jev/jev\.nu\b)'
+      why: "Personal Jev automation, not a raw shell pipeline"
+      skip_text_tools: true
+    }
+    {
+      # The heredoc's prose lines would otherwise read as pipeline stages.
+      pattern: '^\s*iwe\s'
+      why: "IWE memory writes pass a note to `iwe create --content -` as a heredoc"
+      skip_text_tools: true
+    }
+    {
+      pattern: '^\s*sudo\s'
+      why: "Privileged commands need Claude Code's approval prompt; the evaluate tool has no TTY for sudo"
+    }
+  ]
+}

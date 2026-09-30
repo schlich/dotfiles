@@ -1,21 +1,17 @@
 #!/usr/bin/env -S nu --stdin
 
-# Commands that already run through personal automation (not raw shell
-# pipelines) and shouldn't be asked about again here.
-const exempt_pattern = '(^|[;&|][&|]?|\n)\s*(jev\b|nu\s+(/home/schlich/dotfiles-jev|~/dotfiles-jev)/jev/jev\.nu\b)'
+# Deny Claude Code Bash calls that belong in the Nushell MCP tool, and log
+# every Bash request and outcome so denials can be reviewed with
+# `claude-bash-audit report` and turned into instruction or policy changes.
 
-# IWE memory writes pass a note to `iwe create --content -` as a heredoc; its
-# prose lines would otherwise read as pipeline stages.
-const iwe_pattern = '^\s*iwe\s'
+# Mirrors jev's credential filter: such command lines are not logged verbatim.
+const credential_pattern = '(KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)[A-Z0-9_]*\s*='
 
-# Read-only file and text tools with a direct structured Nushell equivalent.
-# Any command stage that starts with one of these is denied without a model
-# call; Jev classifies everything else.
-const text_tools = [
-  awk cat cut egrep fd fgrep find grep head jq less ls more rg sed sort tail tr uniq wc yq
-]
+const nushell_hint = "Run it in the Nushell MCP tool (mcp__plugin_hm_nushell__evaluate) instead, wrapping external programs in `| complete`."
 
-const deny_reason = "Run this in the Nushell MCP tool (mcp__plugin_hm_nushell__evaluate) instead of Bash, rewriting the text tools as structured Nushell (open, ls, glob, lines, where, parse, from json; slice $history afterwards instead of capping output). For large files, logs, or command output, keep the data in a Nushell variable and follow the rlm skill (rlm load, rlm find, rlm peek, rlm map) rather than printing it."
+const text_hint = "Rewrite the text tools as structured Nushell (open, ls, glob, lines, where, parse, from json; slice $history afterwards instead of capping output). For large files, logs, or command output, keep the data in a Nushell variable and follow the rlm skill (rlm load, rlm find, rlm peek, rlm map) rather than printing it."
+
+const default_hint = "Foreground Bash is disabled. Long commands whose progress matters may use Bash with run_in_background, logging to the scratchpad. If this command truly needs Bash (a TTY, or a harness feature the evaluate tool lacks), stop and tell the user why; every Bash request is logged for review."
 
 # Hook runners spawn this script with a socket for stdin, and Linux cannot
 # reopen a socket through /dev/stdin, so read the payload from `$in`. That
@@ -32,20 +28,14 @@ def parse-payload [input: any] {
   $payload
 }
 
-def extract-command [payload: any] {
+def tool-input [payload: record] {
   let tool_args = ($payload | get -o tool_input | default null)
+  if ($tool_args | describe | str starts-with "record") { $tool_args } else { {} }
+}
 
-  if (($tool_args | describe | str starts-with "record")) {
-    let command = ($tool_args | get -o command | default null)
-
-    if (($command | describe) == "string") {
-      $command
-    } else {
-      ""
-    }
-  } else {
-    ""
-  }
+def extract-command [payload: record] {
+  let command = ((tool-input $payload) | get -o command | default null)
+  if ($command | describe) == "string" { $command } else { "" }
 }
 
 # First program of each pipeline stage or sequenced command, skipping leading
@@ -77,10 +67,105 @@ def decide [decision: string, reason: string] {
   )
 }
 
-def main [] {
+def log-path [] {
+  if ($env.CLAUDE_BASH_LOG? | is-not-empty) {
+    return $env.CLAUDE_BASH_LOG
+  }
+  let state = ($env.XDG_STATE_HOME? | default ($env.HOME | path join ".local" "state"))
+  $state | path join "claude-code" "bash-requests.jsonl"
+}
+
+# Logging must never change a decision, so failures go to stderr only.
+def append-log [entry: record] {
+  try {
+    let path = (log-path)
+    mkdir ($path | path dirname)
+    $"($entry | to json --raw)\n" | save --append $path
+  } catch {|err|
+    print --stderr $"prefer-nushell: could not write the Bash log: ($err.msg)"
+  }
+}
+
+def base-entry [payload: record, event: string] {
+  let command = (extract-command $payload)
+  {
+    ts: (date now | format date "%+")
+    event: $event
+    session_id: ($payload.session_id? | default null)
+    tool_use_id: ($payload.tool_use_id? | default null)
+    agent_type: ($payload.agent_type? | default null)
+    cwd: ($payload.cwd? | default null)
+    command: (if $command =~ $credential_pattern { "[redacted: credential assignment]" } else { $command })
+  }
+}
+
+# Classify a Bash request against the policy. `decision` is "deny", or
+# "defer" to leave it to Jev and the normal permission flow.
+def classify [command: string, background: bool, policy: record] {
+  let permissive = ($env.CLAUDE_BASH_GUARD? | default "") == "permissive"
+  let allowed = ($policy.allow | where {|rule| $command =~ $rule.pattern } | get -o 0)
+
+  if ($allowed != null) and ($allowed.skip_text_tools? | default false) {
+    return { decision: "defer", rule: $"allow: ($allowed.why)" }
+  }
+
+  let programs = (stage-programs $command)
+  let matched = ($programs | where {|program| $program in $policy.text_tools } | uniq)
+  if ($matched | is-not-empty) {
+    return {
+      decision: "deny"
+      rule: "text_tools"
+      matched: $matched
+      reason: $"Bash call uses ($matched | str join ', '). ($nushell_hint) ($text_hint)"
+    }
+  }
+
+  if $allowed != null {
+    return { decision: "defer", rule: $"allow: ($allowed.why)" }
+  }
+  if $background {
+    return { decision: "defer", rule: "background" }
+  }
+  if $permissive {
+    return { decision: "defer", rule: "permissive" }
+  }
+  {
+    decision: "deny"
+    rule: "default"
+    reason: $"($default_hint) ($nushell_hint)"
+  }
+}
+
+def pre-tool-use [payload: record, policy: record] {
+  let command = (extract-command $payload)
+  let background = ((tool-input $payload) | get -o run_in_background | default false) == true
+  let verdict = (classify $command $background $policy)
+
+  append-log (
+    (base-entry $payload "request")
+    | merge {
+      description: ((tool-input $payload) | get -o description | default null)
+      background: $background
+      programs: (stage-programs $command | uniq)
+      decision: $verdict.decision
+      rule: $verdict.rule
+    }
+  )
+
+  # Stay silent on "defer" so Jev and the normal permission flow decide.
+  if $verdict.decision == "deny" {
+    decide "deny" $verdict.reason
+  }
+}
+
+def main [
+  --policy: path # bash-policy.nuon; defaults to the file beside this script's source
+] {
   let input = $in
   let parsed = (try {
-    { command: (extract-command (parse-payload $input)) }
+    let payload = (parse-payload $input)
+    let policy = (open ($policy | default ($env.FILE_PWD | path join ".." "bash-policy.nuon")))
+    { payload: $payload, policy: $policy }
   } catch { |err|
     { error: $err.msg }
   })
@@ -91,14 +176,9 @@ def main [] {
     return
   }
 
-  if ($parsed.command =~ $exempt_pattern) or ($parsed.command =~ $iwe_pattern) {
-    return
-  }
-
-  let matched = (stage-programs $parsed.command | where {|program| $program in $text_tools } | uniq)
-
-  # Stay silent otherwise so Jev and the normal permission flow decide.
-  if ($matched | is-not-empty) {
-    decide "deny" $"Bash call uses ($matched | str join ', '). ($deny_reason)"
+  match ($parsed.payload.hook_event_name? | default "PreToolUse") {
+    "PostToolUse" => { append-log (base-entry $parsed.payload "ran") }
+    "PostToolUseFailure" => { append-log (base-entry $parsed.payload "failed") }
+    _ => { pre-tool-use $parsed.payload $parsed.policy }
   }
 }

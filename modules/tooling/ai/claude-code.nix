@@ -108,29 +108,54 @@ let
         { Authorization: $"Bearer ($token)" } | to json --raw | print
     }
   '';
-  preferNushellGuard = pkgs.runCommand "claude-code-prefer-nushell" { } ''
-    install -Dm644 ${
-      pkgs.writers.writeJSON "plugin.json" {
-        name = "prefer-nushell";
-        description = "Deny Bash text-processing pipelines so shell work defaults to the nushell MCP tool.";
-      }
-    } $out/.claude-plugin/plugin.json
-    install -Dm644 ${
-      pkgs.writers.writeJSON "hooks.json" {
-        hooks.PreToolUse = [
+  # Deny foreground Bash outside bash-policy.nuon and log every request and
+  # outcome; the bash-feedback skill reviews the log with claude-bash-audit,
+  # and a Stop hook starts it when a session logs a new use case.
+  preferNushellGuard =
+    let
+      hook = {
+        matcher = "Bash";
+        hooks = [
           {
-            matcher = "Bash";
-            hooks = [
-              {
-                type = "command";
-                command = "${pkgs.nushell}/bin/nu --stdin ${./scripts/prefer-nushell-bash.nu}";
-              }
-            ];
+            type = "command";
+            command = "${pkgs.nushell}/bin/nu --stdin ${./scripts/prefer-nushell-bash.nu} --policy ${./bash-policy.nuon}";
           }
         ];
-      }
-    } $out/hooks/hooks.json
-  '';
+      };
+    in
+    pkgs.runCommand "claude-code-prefer-nushell" { } ''
+      install -Dm644 ${
+        pkgs.writers.writeJSON "plugin.json" {
+          name = "prefer-nushell";
+          description = "Deny foreground Bash so shell work defaults to the nushell MCP tool, and log every Bash request.";
+        }
+      } $out/.claude-plugin/plugin.json
+      install -Dm644 ${
+        pkgs.writers.writeJSON "hooks.json" {
+          hooks = {
+            PreToolUse = [ hook ];
+            PostToolUse = [ hook ];
+            PostToolUseFailure = [ hook ];
+            # Raise each never-reviewed Bash use case once, at the end of the
+            # turn that logged it, so the agent runs bash-feedback with the user.
+            Stop = [
+              {
+                hooks = [
+                  {
+                    type = "command";
+                    command = "${pkgs.nushell}/bin/nu --stdin ${./scripts/claude-bash-audit.nu} stop-hook";
+                    timeout = 10;
+                  }
+                ];
+              }
+            ];
+          };
+        }
+      } $out/hooks/hooks.json
+    '';
+  bashAudit = pkgs.writeNuScriptBin "claude-bash-audit" (
+    builtins.readFile ./scripts/claude-bash-audit.nu
+  );
   # Record background Bash tasks for the homelab Fieldnotes wallpaper;
   # agent-tasks-push marks them finished and copies the list there.
   backgroundTasks = pkgs.runCommand "claude-code-background-tasks" { } ''
@@ -196,6 +221,8 @@ in
 {
   imports = [ ./common.nix ];
 
+  home.packages = [ bashAudit ];
+
   programs.claude-code = {
     enable = true;
     enableMcpIntegration = true;
@@ -216,7 +243,8 @@ in
       adaptAgent {
         name = "name: trunk-triage";
         model = "model: haiku";
-        tools = "tools: Read, Glob, Grep, Bash";
+        # Foreground Bash is denied; shell work goes through Nushell.
+        tools = "tools: Read, Glob, Grep, Bash, mcp__plugin_hm_nushell__evaluate";
       } "${agentSource}/trunk-triage.agent.md"
     );
     plugins.jj-guard = jjGuard;
@@ -255,8 +283,9 @@ in
   dotfiles.tooling = {
     ai.claude-code = {
       command = "${pkgs.claude-code}/bin/claude";
+      # Nobody is present to answer the bash-feedback Stop hook.
       automation = ''
-        ^${pkgs.claude-code}/bin/claude --print --dangerously-skip-permissions $prompt
+        with-env { CLAUDE_BASH_FEEDBACK: off } { ^${pkgs.claude-code}/bin/claude --print --dangerously-skip-permissions $prompt }
       '';
     };
     # Run the generated hook commands from Node, as the agent CLIs do.
