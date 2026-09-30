@@ -339,6 +339,14 @@ window-rule {
   default-window-height { proportion 0.6; }
 }
 
+// The keymap (Mod+Slash) is wide enough for a full keyboard with numpad.
+window-rule {
+  match app-id=r#"^niri\.keymap$"#
+  open-floating true
+  default-column-width { proportion 0.8; }
+  default-window-height { proportion 0.8; }
+}
+
 // Desktop coding agents (OpenCode autostarts) are a choice group, so
 // `session.nu watch-choices` keeps them in one tabbed column beside the work,
 // Mod+A brings that column to the focused workspace, Mod+Shift+A floats one
@@ -400,6 +408,9 @@ binds {
     // shortcut reference. Labels identify the object each shortcut affects so
     // the overlay remains useful in the current window/workspace context.
     Mod+Shift+Slash { show-hotkey-overlay; }
+    // Mod-/ draws the same binds as an emoji keyboard, one modifier layer at a
+    // time (niri/keymap.nu; emoji in niri/keymap-emoji.nuon).
+    Mod+Slash hotkey-overlay-title="Keymap: emoji keyboard of these binds" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" keymap"; }
 
     // Applications and session controls.
     // Workspaces are terminal sessions (niri/session.nu): Mod+Return opens a

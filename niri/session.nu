@@ -734,6 +734,22 @@ def "main capture" [] {
   niri-action center-window --id $opened.id
 }
 
+# Toggle the emoji keyboard of the niri binds (Mod+Slash), floating over the
+# focused workspace like the overview; keymap.nu draws it and q closes it.
+def "main keymap" [] {
+  let workspace = (focused-workspace)
+  let open = (niri-json windows | where app_id == "niri.keymap" | get 0?)
+  if $open != null {
+    niri-action close-window --id $open.id
+    if $open.workspace_id == $workspace.id {
+      return
+    }
+  }
+  let script = ($env.XDG_CONFIG_HOME? | default $"($env.HOME)/.config" | path join niri keymap.nu)
+  let opened = (open-window niri.keymap $env.HOME [nu $script])
+  niri-action center-window --id $opened.id
+}
+
 def main [] {
-  print "Usage: session.nu (startup | restore [SESSION] | overview | grid DIRECTION | open [--stack] | project [DIR] | forget [SESSION] | vcs | agents | peek [GROUP] [--next] | notes | capture | stack-choices | watch-choices | workspace (up | down))"
+  print "Usage: session.nu (startup | restore [SESSION] | overview | keymap | grid DIRECTION | open [--stack] | project [DIR] | forget [SESSION] | vcs | agents | peek [GROUP] [--next] | notes | capture | stack-choices | watch-choices | workspace (up | down))"
 }

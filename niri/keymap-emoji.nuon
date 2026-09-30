@@ -1,0 +1,94 @@
+# Emoji for the keymap view (Mod+Slash, `session.nu keymap`).
+#
+# Each bind's action is normalised before matching: quotes are dropped,
+# `spawn`/`spawn-sh` become `run`, and the session script becomes `session`,
+# so `spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid left"` reads
+# `run session grid left`. The first `action` regex that matches wins. Prefer
+# emoji that render as emoji without a variation selector, so every keycap is
+# two columns wide.
+[
+  # Johnny Decimal areas: focusing and moving share an emoji; the layer says which.
+  { action: '(workspace|run session restore) snorkel$', emoji: '🤿' }
+  { action: '(workspace|run session restore) research$', emoji: '🔬' }
+  { action: '(workspace|run session restore) xr$', emoji: '🥽' }
+  { action: '(workspace|run session restore) nix$', emoji: '🧊' }
+  { action: '(workspace|run session restore) ai$', emoji: '🧠' }
+  { action: '(workspace|run session restore) shell$', emoji: '🐚' }
+  { action: '(workspace|run session restore) career$', emoji: '💼' }
+  { action: '(workspace|run session restore) personal$', emoji: '🏡' }
+  { action: '(workspace|run session restore) inbox$', emoji: '📥' }
+
+  # Session script.
+  { action: '^run session keymap', emoji: '🎹' }
+  { action: '^run session overview', emoji: '🧭' }
+  { action: '^run session grid ', emoji: '🧩' }
+  { action: '^run session open --stack', emoji: '🥞' }
+  { action: '^run session open', emoji: '💻' }
+  { action: '^run session restore', emoji: '🔄' }
+  { action: '^run session vcs', emoji: '🌳' }
+  { action: '^run session peek', emoji: '👀' }
+  { action: '^run session agents', emoji: '🤖' }
+  { action: '^run session notes', emoji: '📓' }
+  { action: '^run session capture', emoji: '📝' }
+  { action: '^run session stack-choices', emoji: '🧺' }
+  { action: '^run session workspace up', emoji: '🔼' }
+  { action: '^run session workspace down', emoji: '🔽' }
+
+  # Applications and shell.
+  { action: 'panel-toggle launcher', emoji: '🚀' }
+  { action: 'panel-toggle control-center', emoji: '🧰' }
+  { action: 'settings-toggle', emoji: '🔩' }
+  { action: 'window-switcher', emoji: '🪟' }
+  { action: '^run google-chrome', emoji: '🌐' }
+  { action: '^run swaylock', emoji: '🔒' }
+  { action: '^run missioncenter', emoji: '📈' }
+  { action: 'volume-up', emoji: '🔊' }
+  { action: 'volume-down', emoji: '🔉' }
+  { action: 'volume-mute', emoji: '🔇' }
+  { action: 'brightness-up', emoji: '🔆' }
+  { action: 'brightness-down', emoji: '🔅' }
+
+  # Focus and movement: hands point, fast-forwards move.
+  { action: '^focus-column-left', emoji: '👈' }
+  { action: '^focus-column-right', emoji: '👉' }
+  { action: '^focus-window-up', emoji: '👆' }
+  { action: '^focus-window-down', emoji: '👇' }
+  { action: '^move-column-left', emoji: '⏪' }
+  { action: '^move-column-right', emoji: '⏩' }
+  { action: '^move-window-up', emoji: '⏫' }
+  { action: '^move-window-down', emoji: '⏬' }
+  { action: '^(focus|move)-column-(to-)?first', emoji: '🔝' }
+  { action: '^(focus|move)-column-(to-)?last', emoji: '🔚' }
+  { action: '^focus-monitor-', emoji: '📺' }
+  { action: '^move-column-to-monitor-', emoji: '🚚' }
+  { action: '^focus-workspace-up', emoji: '🔼' }
+  { action: '^focus-workspace-down', emoji: '🔽' }
+  { action: '^focus-workspace-previous', emoji: '🔁' }
+  { action: '^move-column-to-workspace-(up|down)', emoji: '🛗' }
+  { action: '^move-workspace-', emoji: '📚' }
+  { action: '^focus-window-in-column', emoji: '🔢' }
+
+  # Columns and windows.
+  { action: '^close-window', emoji: '❌' }
+  { action: '^consume', emoji: '🧲' }
+  { action: '^expel', emoji: '💨' }
+  { action: '^switch-preset-column-width', emoji: '📏' }
+  { action: '^switch-preset-window-height', emoji: '📐' }
+  { action: '^reset-window-height', emoji: '🧽' }
+  { action: '^maximize-column', emoji: '🔲' }
+  { action: '^fullscreen-window', emoji: '🎦' }
+  { action: '^expand-column-to-available-width', emoji: '🪗' }
+  { action: '^center-column', emoji: '🎯' }
+  { action: '^set-(column-width|window-height) -', emoji: '➖' }
+  { action: '^set-(column-width|window-height) \+', emoji: '➕' }
+  { action: '^toggle-window-floating', emoji: '🎈' }
+  { action: '^switch-focus-between-floating-and-tiling', emoji: '🪂' }
+  { action: '^toggle-column-tabbed-display', emoji: '📑' }
+
+  # System.
+  { action: '^show-hotkey-overlay', emoji: '❓' }
+  { action: '^screenshot', emoji: '📷' }
+  { action: '^toggle-keyboard-shortcuts-inhibit', emoji: '🛑' }
+  { action: '^quit', emoji: '🚪' }
+  { action: '^power-off-monitors', emoji: '🌙' }
+]
