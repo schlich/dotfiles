@@ -20,6 +20,26 @@ let
       exec ${iwe}/bin/iwec --transport stdio
     }
   '';
+  # Runs the target workspace's own jj/ci.nu, so it needs what the `ci`
+  # wrapper in modules/programs/vcs.nix provides. The ruff flake check lints
+  # the source; writers.writePython3 would run flake8 instead.
+  ciMcp =
+    pkgs.runCommand "ci-mcp"
+      {
+        nativeBuildInputs = [ pkgs.makeWrapper ];
+        meta.mainProgram = "ci-mcp";
+      }
+      ''
+        makeWrapper ${pkgs.python3.withPackages (ps: [ ps.mcp ])}/bin/python "$out/bin/ci-mcp" \
+          --add-flags ${../../../jj/mcp.py} \
+          --prefix PATH : ${
+            lib.makeBinPath [
+              pkgs.git
+              pkgs.gh
+            ]
+          } \
+          --set CI_MCP_NU ${lib.getExe config.programs.nushell.package}
+      '';
 in
 {
   programs.mcp = {
@@ -62,6 +82,8 @@ in
       };
       # The personal knowledge base, for agents working in other repositories.
       kb.command = "${kbMcp}/bin/kb-mcp";
+      # The `ci` trunk workflow as tools, in the client's working directory.
+      ci.command = "${ciMcp}/bin/ci-mcp";
     }
     // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
       # metavr ships binaries only for macOS and Windows, not Linux.

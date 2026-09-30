@@ -46,11 +46,18 @@ script, use valid Nushell syntax.
 - Prefer a dedicated tool when one covers the operation: the jj MCP server
   for Jujutsu log, diff, status, describe, bookmark, abandon, and push; the
   GitHub MCP server for GitHub pull requests, issues, Actions runs, and
-  releases; the Nix MCP server for Nix ecosystem knowledge; and the harness's
-  own file-reading and editing tools for single files. Fall back to the
-  Nushell evaluate tool only when no dedicated tool fits, such as repository
-  workflows (`ci`), Tangled, flake evaluation, multi-step pipelines, or
-  combining several results into one structured record.
+  releases; the Nix MCP server for Nix ecosystem knowledge; the ci MCP
+  server for the repository's `ci` workflow; and the harness's own
+  file-reading and editing tools for single files. Fall back to the Nushell
+  evaluate tool only when no dedicated tool fits, such as Tangled, flake
+  evaluation, multi-step pipelines, or combining several results into one
+  structured record.
+
+- The ci MCP server runs each command as a job in the given `workspace`
+  (default: the session's directory), using that workspace's own
+  `jj/ci.nu` when it has one. A tool returns once the command finishes or
+  its `wait_seconds` elapse; poll a `running` result with its `job` tool,
+  which also serves `ci publish` and `ci land`.
 
 - When a shell is needed, use the Nushell evaluate tool rather than invoking
   `nu -c` through Bash. It preserves the session and structured results and
@@ -71,10 +78,10 @@ script, use valid Nushell syntax.
 
 - The evaluate tool returns only when a command finishes, so the user sees
   nothing while it runs. Run long external commands whose progress matters,
-  such as `ci publish`, `ci land`, and `nix build`, as a Nushell job from
-  the evaluate tool, not with Bash. Change directory inside the job, write
-  both streams to a log in the scratchpad, and save a done marker, since a
-  job's errors are otherwise lost:
+  such as `nix build`, or `ci land` without the ci MCP server, as a Nushell
+  job from the evaluate tool, not with Bash. Change directory inside the
+  job, write both streams to a log in the scratchpad, and save a done
+  marker, since a job's errors are otherwise lost:
 
   ```nu
   job spawn {

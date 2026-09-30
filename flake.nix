@@ -486,6 +486,16 @@
               nu --no-config-file -c "source ${src}/tests/context-status-properties.nu"
               touch "$out"
             '';
+        ruff =
+          pkgs.runCommand "ruff-check"
+            {
+              nativeBuildInputs = [ pkgs.ruff ];
+            }
+            ''
+              ruff check --no-cache ${./jj/mcp.py}
+              ruff format --no-cache --check ${./jj/mcp.py}
+              touch "$out"
+            '';
         whitespace =
           pkgs.runCommand "whitespace-check"
             {

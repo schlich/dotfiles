@@ -54,6 +54,12 @@ equivalent low-level commands:
   to create a workspace for a concurrent actor, and `ci finish` or
   `ci abandon` to release a topic.
 
+When the `ci` MCP server is available, call its tools (`status`, `plan`,
+`validate`, `publish`, `land`, `finish`, and so on) instead of running `ci`
+in a shell. Each takes the same flags as the command below, runs in its
+`workspace` argument, and returns a job; poll a `running` job with `job`.
+The same safety rules apply.
+
 Do not use low-level MCP mutation tools such as restore, abandon, direct push,
 or rebase unless the user explicitly requests that specific operation and the
 repository workflow does not provide the appropriate policy command. Never
