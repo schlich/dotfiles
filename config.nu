@@ -2,6 +2,10 @@ use std/util "path add"
 
 $env.config.show_banner = false
 $env.config.edit_mode = "helix"
+# Show the Helix mode in the cursor until Nushell has per-mode indicators.
+$env.config.cursor_shape.helix_normal = "block"
+$env.config.cursor_shape.helix_insert = "line"
+$env.config.cursor_shape.helix_select = "underscore"
 
 
 alias lg = lazygit
