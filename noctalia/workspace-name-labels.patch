@@ -1,0 +1,71 @@
+diff -ru a/docs/user/bar/widgets/workspaces.mdx b/docs/user/bar/widgets/workspaces.mdx
+--- a/docs/user/bar/widgets/workspaces.mdx	2026-09-30 01:22:54.878447839 -0500
++++ b/docs/user/bar/widgets/workspaces.mdx	2026-09-30 01:23:16.373255397 -0500
+@@ -24,6 +24,7 @@
+ | `show_icons` | bool | `true` | Draw the focused app icon on the active pill. Focus Hint only; the other styles never draw app icons. |
+ | `label_source` | string | `"id"` | What labels show: `"id"` (workspace number, falling back to its name when no numeric identity exists) or `"name"` (workspace name). |
+ | `max_label_chars` | int | `1` | Maximum characters for non-numeric workspace labels, including names used as the `"id"` fallback. Numeric labels such as `10` and `11` are never truncated. |
++| `name_labels` | table | `{}` | Labels keyed by workspace name, such as `{ web = "🌐" }`. A matching workspace shows its label whatever `label_source` says, never truncated, and keeps its full name in the tooltip. |
+ | `show_tooltip` | bool | `true` | Show a named workspace's full name in a hover tooltip when its pill does not already display it. |
+ | `pill_scale` | float | `1.0` | Scale workspace pill thickness (cross-axis size; regular style only). |
+ | `active_pill_size` | float | `2.2` | Minimum active pill length along the bar, as a multiple of pill thickness. Labels may expand beyond this. |
+diff -ru a/src/shell/bar/widgets/workspaces_widget.cpp b/src/shell/bar/widgets/workspaces_widget.cpp
+--- a/src/shell/bar/widgets/workspaces_widget.cpp	2026-09-30 01:22:54.867447938 -0500
++++ b/src/shell/bar/widgets/workspaces_widget.cpp	2026-09-30 01:23:12.105293551 -0500
+@@ -73,7 +73,7 @@
+ )
+     : m_platform(platform), m_configService(config), m_output(output), m_labelSource(options.labelSource),
+       m_showLabels(options.showLabels), m_maxLabelChars(options.maxLabelChars),
+-      m_labelsOnlyWhenOccupied(options.labelsOnlyWhenOccupied), m_showIcons(options.showIcons),
++      m_nameLabels(std::move(options.nameLabels)), m_labelsOnlyWhenOccupied(options.labelsOnlyWhenOccupied), m_showIcons(options.showIcons),
+       m_showTooltip(options.showTooltip), m_hideWhenEmpty(options.hideWhenEmpty),
+       m_showAllOutputs(options.showAllOutputs), m_pillScale(options.pillScale),
+       m_activePillSize(std::clamp(options.activePillSize, 0.25F, 8.0F)),
+@@ -1411,6 +1411,14 @@
+ }
+ 
+ std::string WorkspacesWidget::workspaceLabel(const Workspace& workspace, std::size_t displayIndex) const {
++  // A configured label replaces the workspace's own and is never truncated, so
++  // an emoji made of several code points stays whole.
++  if (!workspace.name.empty()) {
++    if (const auto it = m_nameLabels.find(workspace.name); it != m_nameLabels.end()) {
++      return it->second;
++    }
++  }
++
+   std::string label;
+   if (m_labelSource == WorkspacesLabelSource::Id) {
+     if (workspace.index > 0) {
+diff -ru a/src/shell/bar/widgets/workspaces_widget_definition.cpp b/src/shell/bar/widgets/workspaces_widget_definition.cpp
+--- a/src/shell/bar/widgets/workspaces_widget_definition.cpp	2026-09-30 01:22:54.873447884 -0500
++++ b/src/shell/bar/widgets/workspaces_widget_definition.cpp	2026-09-30 01:23:14.353273452 -0500
+@@ -108,6 +108,10 @@
+                           .visibleWhen = labelsShown(),
+                       },
+               }),
++              // Config-only: the settings panel has no translated strings for it.
++              field<&Options::nameLabels>({
++                  .key = "name_labels",
++              }),
+               field<&Options::showTooltip>({
+                   .key = "show_tooltip",
+                   .presentation =
+diff -ru a/src/shell/bar/widgets/workspaces_widget.h b/src/shell/bar/widgets/workspaces_widget.h
+--- a/src/shell/bar/widgets/workspaces_widget.h	2026-09-30 01:22:54.860448001 -0500
++++ b/src/shell/bar/widgets/workspaces_widget.h	2026-09-30 01:23:07.126338097 -0500
+@@ -46,6 +46,7 @@
+     ColorSpec urgentColor = colorSpecFromRole(ColorRole::Error);
+     bool changeColorOnHover = true;
+     std::size_t maxLabelChars = 1;
++    std::unordered_map<std::string, std::string> nameLabels;
+     bool labelsOnlyWhenOccupied = false;
+     bool hideWhenEmpty = false;
+     bool showAllOutputs = false;
+@@ -171,6 +172,7 @@
+   WorkspacesLabelSource m_labelSource = WorkspacesLabelSource::Id;
+   bool m_showLabels = true;
+   std::size_t m_maxLabelChars = 1;
++  std::unordered_map<std::string, std::string> m_nameLabels;
+   bool m_labelsOnlyWhenOccupied = false;
+   bool m_showIcons = true;
+   bool m_showTooltip = true;
