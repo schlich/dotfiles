@@ -123,12 +123,16 @@ bypass the workflow with direct branch pushes or merges.
 
 ## Continuous integration and conflict handling
 
-The canonical checkout tracks `main`; active work belongs in a dedicated JJ
-workspace created from `main@tangled`. Rebase before each review update and
-when the topic conflicts with `main`; a topic that merely fell behind needs
-nothing until it lands. `ci publish` and `ci land` perform a final rebase
-and validation before pushing, and `ci land` lands only the exact commit the
-landing gate passed, so a stale head cannot reach `main`.
+The canonical checkout tracks `main`; start a topic there with `ci new` and
+continue in the current workspace. A separate JJ workspace created with
+`ci start` is only for concurrent work that needs the current working copy to
+stay put, such as another active task, a build, a dev server, or an editor.
+Do not require a dedicated workspace just because the checkout is canonical.
+Rebase before each review update and when the topic conflicts with `main`; a
+topic that merely fell behind needs nothing until it lands. `ci publish` and
+`ci land` perform a final rebase and validation before pushing, and `ci land`
+lands only the exact commit the landing gate passed, so a stale head cannot
+reach `main`.
 
 Use `ci conflicts` after a rebase to list conflicted revisions and files.
 A conflicted rebase has already rewritten the topic: resolve revisions from
