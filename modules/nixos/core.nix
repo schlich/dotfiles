@@ -28,6 +28,15 @@
       trusted-users = [ "schlich" ];
     };
   };
+  # Builds run in the daemon's cgroup. Cap it so a large build is killed
+  # instead of thrashing the whole machine; zram swap is backed by RAM, so
+  # bound swap too. `continue` fails only the killed build, not the daemon.
+  systemd.services.nix-daemon.serviceConfig = {
+    MemoryHigh = "60%";
+    MemoryMax = "75%";
+    MemorySwapMax = "4G";
+    OOMPolicy = "continue";
+  };
   nixpkgs.config.allowUnfree = true;
   environment.systemPackages = [ pkgs.git ];
 
