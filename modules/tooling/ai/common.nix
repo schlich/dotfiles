@@ -64,9 +64,9 @@ in
         args = [ "mcp-nixos" ];
       };
       nushell = {
-        # Pin the configured Nushell: environments such as dev shells can put an
-        # older nu first on PATH, which rejects commands config.nu relies on.
-        command = lib.getExe config.programs.nushell.package;
+        # Pin a Nushell by store path: environments such as dev shells can put
+        # an older nu first on PATH, which rejects commands config.nu relies on.
+        command = lib.getExe (pkgs.callPackage ./nushell-mcp.nix { });
         # The limit must be a filesize on the session stack; nu --mcp ignores
         # it as a process environment string. Past the ~10kb default, a result
         # is replaced by a bare "output truncated" note.
