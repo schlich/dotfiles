@@ -8,15 +8,15 @@
 let
   adminKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINJRdPuDm1hX5iOgHNl63aUVPIUvkMhAFlBaoxOiSPEA schlich@tangled";
 
-  wallpaperMonitor = pkgs.writeShellApplication {
-    name = "agent-wallpaper";
+  agentMonitor = pkgs.writeShellApplication {
+    name = "agent-monitor";
     runtimeInputs = [
-      pkgs.python3
+      (pkgs.python3.withPackages (python: [ python.textual ]))
       pkgs.gh
       inputs.ai-usagebar.packages.${pkgs.stdenv.hostPlatform.system}.default
     ];
     text = ''
-      exec python3 ${../../agent-monitor/wallpaper.py}
+      exec python3 ${../../agent-monitor/tui.py} "$@"
     '';
   };
 
@@ -26,10 +26,10 @@ let
   );
 
   # Niri's own default config, minus its waybar autostart: homelab has no
-  # waybar, and the desktop session instead starts the monitor wallpaper.
+  # waybar, and the desktop session instead starts the monitor terminal.
   niriConfig = pkgs.runCommand "niri-homelab-config.kdl" { } ''
     substitute ${config.programs.niri.package.src}/resources/default-config.kdl $out \
-      --replace-fail 'spawn-at-startup "waybar"' '// The monitor wallpaper starts as a systemd user service.'
+      --replace-fail 'spawn-at-startup "waybar"' '// The monitor terminal starts as a systemd user service.'
   '';
 in
 {
@@ -102,6 +102,7 @@ in
   services.tailscale.enable = true;
 
   environment.systemPackages = with pkgs; [
+    agentMonitor
     btop
     helix
     smartmontools
@@ -115,15 +116,14 @@ in
   # homelab has no Home Manager, so Niri reads this system-wide config.
   environment.etc."niri/config.kdl".source = niriConfig;
 
-  # Render live agent usage and CI status on the background layer. Windows tile
-  # above it, and it takes no keyboard focus.
+  # An interactive terminal dashboard, also available as agent-monitor over SSH.
   systemd.user.services.desktop-monitor = {
-    description = "Live agent usage and CI wallpaper";
+    description = "Live agent usage and CI terminal dashboard";
     wantedBy = [ "graphical-session.target" ];
     partOf = [ "graphical-session.target" ];
     after = [ "graphical-session.target" ];
     serviceConfig = {
-      ExecStart = "${pkgs.kitty}/bin/kitten panel --edge=background ${wallpaperMonitor}/bin/agent-wallpaper";
+      ExecStart = "${pkgs.alacritty}/bin/alacritty --title 'Agent Monitor' -e ${agentMonitor}/bin/agent-monitor";
       Environment = [ "FIELDNOTES_CI_REPO=schlich/dotfiles" ];
       Restart = "on-failure";
       RestartSec = 2;
