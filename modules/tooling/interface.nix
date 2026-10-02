@@ -70,6 +70,7 @@ in
       };
       desktopAgent = mkOption {
         type = types.enum [
+          "claude"
           "codex"
           "opencode"
         ];

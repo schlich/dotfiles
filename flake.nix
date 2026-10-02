@@ -72,6 +72,11 @@
       url = "github:ilysenko/codex-desktop-linux";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # Anthropic's official Linux build of Claude Desktop, which nixpkgs lacks.
+    llm-agents = {
+      url = "github:numtide/llm-agents.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     # Upstream packages OpenCode 2; nixpkgs still ships 1.x.
     opencode = {
       url = "github:anomalyco/opencode/v2.0.16";

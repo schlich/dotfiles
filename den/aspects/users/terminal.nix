@@ -12,6 +12,7 @@
     ../../../modules/tooling/ai/opencode-desktop.nix
     ../../../modules/tooling/ai/opencode.nix
     ../../../modules/tooling/ai/claude-code.nix
+    ../../../modules/tooling/ai/claude-desktop.nix
     ../../../modules/tooling/ai/codex.nix
     ../../../modules/tooling/ai/copilot.nix
     ../../../modules/home
