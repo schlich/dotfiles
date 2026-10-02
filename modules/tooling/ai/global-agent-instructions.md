@@ -75,6 +75,11 @@ script, use valid Nushell syntax.
   hook: run it in the Nushell evaluate tool. If Bash is truly required, tell
   the user why instead. The bash-feedback skill reviews the log.
 
+- To search or list repository files, use the harness's own search and
+  file-reading tools first; they need no shell. If the Nushell evaluate tool
+  is unavailable in a session, keep using those tools and report the missing
+  tool to the user instead of retrying the work in Bash.
+
 - Use the Nix MCP server for Nix ecosystem knowledge: nixpkgs packages, NixOS
   and Home Manager options, channels, flakes and their inputs, and Nix
   documentation. Do not use Nushell or local Nix commands to answer those
