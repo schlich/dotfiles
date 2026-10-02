@@ -43,6 +43,11 @@ script, use valid Nushell syntax.
   such as `jq`, `awk`, `sed`, `grep`, or `rg`; prefer structured Nushell
   commands and pipelines for searching, filtering, and transforming data.
 
+- To search a tree, glob the files and filter their lines in the evaluate
+  tool instead of `grep -r` or `git ls-files`:
+  `glob **/*.{nix,kdl,json} | each {|f| open --raw $f | lines | enumerate | where item =~ '(?i)pattern' | insert file $f } | flatten`.
+  Use `jj file list PATH` for tracked files only.
+
 - Prefer a dedicated tool when one covers the operation: the jj MCP server
   for Jujutsu log, diff, status, describe, bookmark, abandon, and push; the
   GitHub MCP server for GitHub pull requests, issues, Actions runs, and
