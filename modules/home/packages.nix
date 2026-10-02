@@ -94,7 +94,6 @@ in
     super-productivity
     element-desktop
     discord
-    zotero
     marimo
     nodejs
     ty
@@ -129,7 +128,6 @@ in
     dhall
     skills
     gcr_4
-    clipboard-jh
     diffedit3
     dust
     font-awesome
