@@ -10,6 +10,15 @@ was based on, so `main` never holds a commit no gate ran on. The model
 intentionally abstracts command failures and detailed multi-revision stack
 topology; the operational rules below remain authoritative.
 
+`lifecycle/` implements the same protocol as an executable hierarchical state
+machine with [statig](https://crates.io/crates/statig): the control facts
+(editing, validated, conflicted, delivered, released) are states, and the data
+facts (heads, trunk, publication, gate verdict) are shared storage. Its tests
+walk every state of the bounded model in `JjCi.cfg`, require the machine to
+accept exactly the events whose TLA+ action is enabled and to reach the same
+variables, and check every invariant, so `checks.x86_64-linux.ci-lifecycle`
+keeps the Rust machine and the specification in step. Change both together.
+
 Codex shell commands and OpenCode server shell execution receive a no-op
 `JJ_EDITOR` and an unpaginated `PAGER`. This keeps agent-run JJ commands from
 blocking on an editor or pager while leaving the normal interactive shell
