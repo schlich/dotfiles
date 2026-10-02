@@ -35,6 +35,7 @@ TASKS_DIR = os.path.expanduser(
 )
 # A host that has not pushed for this long is shown as stale.
 TASKS_STALE_SECONDS = 90
+PACE_TOLERANCE_POINTS = 10
 
 
 def command_json(
@@ -93,6 +94,7 @@ def fetch_usage() -> tuple[list[dict], str | None]:
                     "value": metric.get("value", "—"),
                     "percent": max(0, min(100, int(percent))),
                     "reset": metric.get("reset_at"),
+                    "window_secs": metric.get("window_secs"),
                 }
             )
     return rows + failures, None
@@ -378,7 +380,21 @@ def usage_text(rows: list[dict]) -> Text:
             text.append(f"○ {item['provider']} — {item['problem']}\n", "yellow")
             continue
         percent = item["percent"]
-        style = "red" if percent >= 90 else "yellow" if percent >= 75 else "cyan"
+        window_secs = item.get("window_secs")
+        reset = parse_time(item.get("reset"))
+        if isinstance(window_secs, (int, float)) and window_secs > 0 and reset:
+            seconds_left = (reset - datetime.now().astimezone()).total_seconds()
+            elapsed_percent = 100 * (window_secs - seconds_left) / window_secs
+            pace_delta = percent - max(0, min(100, elapsed_percent))
+            style = (
+                "red"
+                if pace_delta >= PACE_TOLERANCE_POINTS
+                else "blue"
+                if pace_delta <= -PACE_TOLERANCE_POINTS
+                else "yellow"
+            )
+        else:
+            style = "cyan"
         filled = round(percent / 5)
         text.append(f"{item['provider']} / {item['label']}\n", "bold")
         text.append(f"{'█' * filled}{'░' * (20 - filled)} {percent}%\n", style)
