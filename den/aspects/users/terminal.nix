@@ -1,7 +1,6 @@
 { inputs, ... }:
 {
   den.aspects.user-terminal.homeManager.imports = [
-    inputs.noctalia.homeModules.default
     inputs.codex-desktop-linux.homeManagerModules.default
     ../../../modules/tooling/interface.nix
     ../../../modules/tooling/terminals/kitty.nix
