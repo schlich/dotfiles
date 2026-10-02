@@ -182,6 +182,7 @@
           ln -s ci "$out/bin/jj-ci"
         '';
       };
+      jjCiLifecycle = pkgs.callPackage ./jj/lifecycle/package.nix { };
       xrWorkbench = pkgs.writeShellApplication {
         name = "xr-workbench";
         runtimeInputs = [
@@ -360,6 +361,7 @@
         desktop-primary = denAsusPrimary.config.system.build.toplevel;
         jj = pkgs.jujutsu;
         jjui = pkgs.jjui;
+        jj-ci-lifecycle = jjCiLifecycle;
         xr-workbench = xrWorkbench;
         quota-advisor = quotaAdvisor;
         inherit marimohub;
@@ -551,6 +553,9 @@
               tlc -metadir "$TMPDIR/tlc" -config JjCi.cfg JjCi.tla
               touch "$out"
             '';
+        # Its tests check the state machine against every action and
+        # invariant of the same bounded model.
+        ci-lifecycle = jjCiLifecycle;
         ci-properties =
           let
             src = lib.fileset.toSource {
