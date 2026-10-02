@@ -1,8 +1,9 @@
-# Nushell for the MCP server only. 0.115.1 ships rmcp 3.1.0, whose tools/list
-# omits the ttlMs and cacheScope that MCP 2026-07-28 requires, so Claude Code
-# rejects every tool; 0.116.0 ships rmcp 3.4.0, which sends them. Drop this
-# once nixpkgs' nushell reaches 0.116.0. The interactive shell stays on
-# nixpkgs' release because 0.116.0 starts more slowly (nushell#19105).
+# Nushell for the MCP server only. 0.115.1 ships rmcp 3.1.0, which accepts MCP
+# 2026-07-28 but omits the ttlMs and cacheScope its tools/list requires, so
+# Claude Code rejects every tool. 0.116.0 ships rmcp 3.4.0, which answers with
+# 2025-11-25, where those fields are not required. Drop this once nixpkgs'
+# nushell reaches 0.116.0. The interactive shell stays on nixpkgs' release
+# because 0.116.0 starts more slowly (nushell#19105).
 {
   nushell,
   fetchFromGitHub,
