@@ -257,6 +257,19 @@ in
     plugins.iwe = "${inputs.iwe-skills}";
   };
 
+  # Claude Code only reads keybindings.json, so it can be managed. The
+  # terminal takes Ctrl+Enter for fullscreen, so Alt+Enter also sends now.
+  home.file.".claude/keybindings.json".text = builtins.toJSON {
+    "$schema" = "https://www.schemastore.org/claude-code-keybindings.json";
+    "$docs" = "https://code.claude.com/docs/en/keybindings";
+    bindings = [
+      {
+        context = "Chat";
+        bindings."alt+enter" = "chat:sendNow";
+      }
+    ];
+  };
+
   # The hook also starts this unit, so a new task appears within seconds;
   # the timer notices finished tasks and keeps homelab's copy fresh.
   systemd.user.services.agent-tasks-push = {
