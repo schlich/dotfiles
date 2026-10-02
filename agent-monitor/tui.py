@@ -10,6 +10,7 @@ import os
 import subprocess
 import urllib.parse
 import urllib.request
+from collections.abc import Iterable
 from datetime import datetime
 
 from rich.text import Text
@@ -36,14 +37,16 @@ TASKS_DIR = os.path.expanduser(
 # A host that has not pushed for this long is shown as stale.
 TASKS_STALE_SECONDS = 90
 PACE_TOLERANCE_POINTS = 10
+IWE_ROOT = os.path.expanduser(os.environ.get("FIELDNOTES_IWE_ROOT", "~/kb"))
+IWE_POLL_SECONDS = 300
 
 
 def command_json(
-    command: list[str], timeout: int = 12
+    command: list[str], timeout: int = 12, cwd: str | None = None
 ) -> tuple[object | None, str | None]:
     try:
         result = subprocess.run(
-            command, capture_output=True, text=True, timeout=timeout
+            command, capture_output=True, text=True, timeout=timeout, cwd=cwd
         )
     except FileNotFoundError:
         return None, f"{command[0]} is not installed"
@@ -283,6 +286,66 @@ def fetch_topics() -> tuple[list[dict], str | None]:
     return topics, None
 
 
+def fetch_iwe() -> tuple[list[dict], str | None]:
+    """Read decisions and recent notes using the knowledge base's IWE policy."""
+    if not os.path.isdir(IWE_ROOT):
+        return [], f"Knowledge base not found at {IWE_ROOT}"
+    common = [
+        "--project",
+        # Bare names are frontmatter fields; `$` selects the document's own.
+        "key=$key,title=$title,type,content=$content",
+        "--max-document-tokens",
+        "36",
+        "--limit",
+        "5",
+        "--format",
+        "json",
+    ]
+    queries = (
+        ("DECISION", "{ type: decision }"),
+        ("RECENT", "{ created: { $exists: true } }"),
+    )
+    items = []
+    seen = set()
+    for kind, query in queries:
+        entries, error = command_json(
+            ["iwe", "find", "--filter", query, "--sort", "created:-1", *common],
+            timeout=8,
+            cwd=IWE_ROOT,
+        )
+        if error:
+            return [], f"IWE unavailable: {error}"
+        if not isinstance(entries, list):
+            return [], "IWE returned an unexpected result"
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            key = entry.get("key")
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            items.append(
+                {
+                    "kind": kind,
+                    "title": entry.get("title") or key,
+                    "content": entry.get("content") or "",
+                }
+            )
+    return items, None
+
+
+def iwe_summary(item: dict) -> str:
+    """The first line of body text in a note, skipping headings."""
+    for line in str(item.get("content") or "").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        line = line.lstrip("- *• ").strip()
+        if line:
+            return line
+    return "No summary text in this note."
+
+
 def waiting_too_long(topic: dict) -> bool:
     updated = topic["updated"]
     return (
@@ -442,6 +505,15 @@ def topics_text(topics: list[dict]) -> Text:
     return text if topics else Text("Every published topic has landed.", "green")
 
 
+def iwe_text(items: list[dict]) -> Text:
+    text = Text()
+    for item in items:
+        style = "bold green" if item["kind"] == "DECISION" else "bold"
+        text.append(f"{item['kind']} / {item['title']}\n", style)
+        text.append(f"{iwe_summary(item)}\n\n", "dim")
+    return text if items else Text("No decisions or recent notes found.", "dim")
+
+
 def tasks_text(tasks: list[dict]) -> Text:
     text = Text()
     for task in tasks:
@@ -489,17 +561,27 @@ class AgentMonitor(App, inherit_bindings=False):
 
     def __init__(self) -> None:
         super().__init__()
-        self.data = {"usage": [], "ci": ([], []), "topics": []}
+        self.data = {"usage": [], "ci": ([], []), "topics": [], "iwe": []}
         self.errors: dict[str, str | None] = {}
         self.updated: dict[str, datetime] = {}
         self.pending: set[str] = set()
-        self.loaders = {"usage": fetch_usage, "ci": fetch_ci, "topics": fetch_topics}
-        self.renderers = {"usage": usage_text, "ci": ci_text, "topics": topics_text}
+        self.loaders = {
+            "usage": fetch_usage,
+            "ci": fetch_ci,
+            "topics": fetch_topics,
+            "iwe": fetch_iwe,
+        }
+        self.renderers = {
+            "usage": usage_text,
+            "ci": ci_text,
+            "topics": topics_text,
+            "iwe": iwe_text,
+        }
 
     def compose(self) -> ComposeResult:
         yield Static(self.TITLE, id="title")
         with DashboardBody(id="body"):
-            for name in ("usage", "ci", "topics", "tasks"):
+            for name in ("usage", "ci", "topics", "iwe", "tasks"):
                 yield Static("Loading…", id=name, classes="panel", markup=False)
         yield Static("Mode: Normal · Starting…", id="status", markup=False)
         hints = "  ·  ".join(
@@ -512,12 +594,16 @@ class AgentMonitor(App, inherit_bindings=False):
             "usage": "Provider windows",
             "ci": f"CI / {CI_REPO}",
             "topics": "Waiting to land",
+            "iwe": "Librarian / IWE",
             "tasks": "Claude background tasks",
         }
         for name, title in titles.items():
             self.query_one(f"#{name}", Static).border_title = title
         self.action_poll()
-        self.set_interval(POLL_SECONDS, self.action_poll)
+        # The knowledge base changes slowly, so it polls on its own schedule.
+        fast = [name for name in self.loaders if name != "iwe"]
+        self.set_interval(POLL_SECONDS, lambda: self.poll(fast))
+        self.set_interval(IWE_POLL_SECONDS, lambda: self.poll(["iwe"]))
         self.set_interval(1, self.render_data)
 
     def action_scroll(self, direction: str) -> None:
@@ -525,7 +611,10 @@ class AgentMonitor(App, inherit_bindings=False):
         getattr(body, f"action_scroll_{direction}")()
 
     def action_poll(self) -> None:
-        for name in self.loaders:
+        self.poll(self.loaders)
+
+    def poll(self, names: Iterable[str]) -> None:
+        for name in names:
             if name not in self.pending:
                 self.pending.add(name)
                 self.run_worker(self.poll_source(name), group=name)

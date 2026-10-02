@@ -1,11 +1,15 @@
 {
   config,
   inputs,
+  lib,
   pkgs,
   ...
 }:
 
 let
+  iwe = import ../tooling/knowledge/iwe-package.nix {
+    inherit inputs lib pkgs;
+  };
   adminKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINJRdPuDm1hX5iOgHNl63aUVPIUvkMhAFlBaoxOiSPEA schlich@tangled";
 
   agentMonitor = pkgs.writeShellApplication {
@@ -14,6 +18,7 @@ let
       (pkgs.python3.withPackages (python: [ python.textual ]))
       pkgs.gh
       inputs.ai-usagebar.packages.${pkgs.stdenv.hostPlatform.system}.default
+      iwe
     ];
     text = ''
       exec python3 ${../../agent-monitor/tui.py} "$@"
