@@ -105,43 +105,23 @@ def ttl [ci: record] {
     if ($ci.spindle?.state? | default "") in ["success" "failed" "timeout" "missing"] { $SETTLED_TTL } else { $PENDING_TTL }
 }
 
-# Where the topic stands in the `ci` lifecycle (see JjCi.tla): edited,
-# validated at its head, published, passed by the pipeline, landed.
-def lifecycle [facts: record] {
-    if $facts.owner in ["delivered" "discarded"] { return "finished" }
-    if $facts.stranded != null { return "stranded" }
-    if $facts.ci?.landed? == true { return "landed" }
-    if ($facts.stack | is-empty) { return "idle" }
-    if $facts.published_head != null {
-        if $facts.published_head != $facts.head.commit_id { return "republish" }
-        return (match ($facts.ci?.spindle?.state? | default "unchecked") {
-            "success" => "passed"
-            "failed" => "failed"
-            _ => "published"
-        })
-    }
-    if $facts.lint == "passed" { "validated" } else { "editing" }
-}
-
-def next-step [facts: record] {
-    if ($facts.conflicts | is-not-empty) {
-        return "resolve the conflicts oldest first (`ci conflicts` lists them), then `ci preflight`"
-    }
-    match $facts.stage {
-        "stranded" => $"the working copy left this workspace's topic ($facts.stranded.short) \"($facts.stranded.title)\"; return with `jj edit ($facts.stranded.short)` and `jj abandon ($facts.stranded.stray)`"
-        "finished" => "archive this task; start a new task for further work"
-        "landed" => "run `ci park` to confirm delivery and free the workspace"
-        "idle" => "edit files to start the topic, or `ci park` if it was delivered"
-        "editing" => (if not $facts.head.described {
-            "describe the change with an `Impact:` trailer, then `ci preflight`"
-        } else { "run `ci preflight`, then `ci dispatch`" })
-        "validated" => "run `ci dispatch`"
-        "republish" => "the head moved since dispatch; run `ci dispatch` to update the branch"
-        "published" => "run `ci land` when the topic is ready to deliver; it builds the checks locally"
-        "passed" => "run `ci land` when the topic is ready to deliver"
-        "failed" => "inspect the failed pipeline, fix the topic, and `ci dispatch` again"
-        _ => ""
-    }
+# Where the topic stands in the `ci` lifecycle, its next step, and the
+# protocol steps allowed from there, from the statig state machine in
+# jj/lifecycle that implements JjCi.tla.
+def classify [facts: record] {
+    {
+        owner: $facts.owner
+        stranded: $facts.stranded
+        landed: ($facts.ci?.landed? == true)
+        idle: ($facts.stack | is-empty)
+        head: $facts.head.commit_id
+        described: $facts.head.described
+        behind: $facts.behind
+        published_head: $facts.published_head
+        spindle: ($facts.ci?.spindle?.state? | default null)
+        lint_passed: ($facts.lint == "passed")
+        conflicts: $facts.conflicts
+    } | to json | ^jj-ci-lifecycle classify | from json
 }
 
 # Whether the working copy has wandered off the topic that `ci start`
@@ -221,8 +201,7 @@ def collect [root: path] {
         refresh_due: ($published_head != null and ($ci == null or ((date now) - ($cache.checked_at | into datetime)) > (ttl $ci)))
         stranded: $stranded
     }
-    let facts = ($facts | insert stage (lifecycle $facts))
-    $facts | insert next (next-step $facts)
+    $facts | merge (classify $facts)
 }
 
 def locked [root: path] {

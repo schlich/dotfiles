@@ -319,6 +319,11 @@ the pipeline verdict and pull request for the dispatched head.
   and Codex session records for workspaces that no longer exist. It only
   reads; `--json` prints the findings.
 
+The stage and next step come from `jj-ci-lifecycle classify`, which restores
+the state machine from the observed facts; `context-status json` also lists
+the protocol steps the machine `allowed` from there. A conflicted topic is
+never validated, as in the model.
+
 Local facts are read on each call. Pipeline and pull request state is cached in
 `.jj/context-status.json` and refreshed in a detached process, so the prompt
 never waits on the network. An owner record in `.jj/codex-session.json` counts
