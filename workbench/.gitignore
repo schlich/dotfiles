@@ -1,0 +1,5 @@
+__marimo__/
+__pycache__/
+*.egg-info/
+# Rendered views are derived; the Markdown is the source.
+knowledge/**/*.html

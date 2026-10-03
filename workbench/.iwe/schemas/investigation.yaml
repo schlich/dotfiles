@@ -1,0 +1,24 @@
+$schema: https://document-schema.org/draft/2026-06/schema
+description: >-
+  An investigation may be executable. `environment` names a Nix environment in
+  workbench/environments; the workbench-corpus check resolves it.
+frontmatter:
+  type: object
+  required: [type, status, project, environment]
+  properties:
+    type: { const: investigation }
+    status: { enum: [proposed, active, concluded, abandoned] }
+    project: { type: string, pattern: "^[a-z0-9-]+$" }
+    environment: { type: string, pattern: "^[a-z0-9-]+$" }
+    # Written by marimo on every save.
+    title: { type: string }
+    marimo-version: { type: string }
+sections:
+  - header: { pattern: "." }
+    maxContains: 1
+    sections:
+      - header: { const: Question }
+        maxContains: 1
+      - header: { const: Interpretation }
+        maxContains: 1
+        description: every investigation ends with durable prose conclusions

@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "iwe-bridge"
+version = "0.1.0"
+description = "Thin, read-only Python access to an IWE knowledge graph through the iwe CLI"
+requires-python = ">=3.11"
+
+[tool.setuptools]
+packages = ["iwe_bridge"]

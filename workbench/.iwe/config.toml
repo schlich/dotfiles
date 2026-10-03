@@ -1,0 +1,56 @@
+version = 3
+# IWE workspace for the executable-knowledge proof of concept. Pinned to the
+# IWE 0.24 format (`[library]`); IWE 0.25 renames it to `[workspace]` and
+# rewrites this file in place on first read.
+[markdown]
+refs_extension = ".md"
+
+[library]
+path = "knowledge"
+frontmatter_document_title = "title"
+
+[completion]
+link_format = "markdown"
+
+# Schemas bind by key glob, not by the frontmatter `type` field; the schemas
+# themselves pin `type` so the two cannot drift apart.
+[schemas.concept]
+match = "concepts/**"
+
+[schemas.investigation]
+match = "investigations/**"
+
+[schemas.project]
+match = "projects/**"
+
+[actions]
+
+[actions.extract]
+type = "extract"
+title = "Extract"
+link_type = "markdown"
+key_template = "{{id}}"
+
+[actions.extract_all]
+type = "extract_all"
+title = "Extract all subsections"
+link_type = "markdown"
+key_template = "{{id}}"
+
+[actions.inline_section]
+type = "inline"
+title = "Inline section"
+inline_type = "section"
+keep_target = false
+
+[actions.inline_quote]
+type = "inline"
+title = "Inline quote"
+inline_type = "quote"
+keep_target = false
+
+[actions.link]
+type = "link"
+title = "Link word"
+link_type = "markdown"
+key_template = "{{id}}"

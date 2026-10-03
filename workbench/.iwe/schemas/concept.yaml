@@ -1,0 +1,8 @@
+$schema: https://document-schema.org/draft/2026-06/schema
+description: A concept is a short, durable definition other documents link to.
+frontmatter:
+  type: object
+  required: [type]
+  properties:
+    type: { const: concept }
+maxTokens: 800
