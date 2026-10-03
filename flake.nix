@@ -436,6 +436,16 @@
           PYTHONPATH=src python3 -m unittest discover -s tests -v
           touch "$out"
         '';
+        # The test loads the listener from ../scripts, so stage both files
+        # in the same relative layout.
+        jj-ci-webhook = pkgs.runCommand "jj-ci-webhook-check" { nativeBuildInputs = [ pkgs.python3 ]; } ''
+          mkdir -p src/scripts src/tests
+          cp ${./scripts/jj-ci-webhook.py} src/scripts/jj-ci-webhook.py
+          cp ${./tests/test_jj_ci_webhook.py} src/tests/test_jj_ci_webhook.py
+          cd src/tests
+          python3 -m unittest -v test_jj_ci_webhook
+          touch "$out"
+        '';
         den-host-evaluation = denHostEvaluationCheck;
         marimohub = marimohub;
         marimohub-homelab-evaluation = marimohubHomelabEvaluationCheck;
