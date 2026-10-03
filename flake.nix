@@ -216,6 +216,18 @@
         meta.description = "Explainable Codex and Claude subscription pacing advisor";
       };
       lib = nixpkgs.lib;
+      iwe = import ./modules/tooling/knowledge/iwe-package.nix { inherit inputs lib pkgs; };
+      workbench = import ./workbench { inherit pkgs lib iwe; };
+      workbenchImages = lib.mapAttrs' (
+        name: environment: lib.nameValuePair "workbench-image-${name}" environment.image
+      ) workbench.environments;
+      # The workbench corpus, tests, and environments without the rest of the
+      # repository, so unrelated edits do not rebuild the checks.
+      workbenchSource = lib.fileset.toSource {
+        root = ./workbench;
+        fileset = ./workbench;
+      };
+      workbenchDemo = workbench.environments.visualization;
       denEval = lib.evalModules {
         modules = [
           inputs.den.flakeModule
@@ -337,32 +349,51 @@
         jjui = pkgs.jjui;
         xr-workbench = xrWorkbench;
         quota-advisor = quotaAdvisor;
-      };
+        workbench = workbench.cli;
+      }
+      // workbenchImages;
 
-      devShells.${system}.default = pkgs.mkShellNoCC {
-        packages = with pkgs; [
-          bat
-          d2
-          difftastic
-          fd
-          gh
-          git
-          jq
-          jjCi
-          jujutsu
-          jjui
-          nil
-          nix-fast-build
-          nixd
-          nixfmt-tree
-          nodejs_24
-          pnpm
-          python3
-          nushell
-          prek
-          ripgrep
-          tlaplus
-        ];
+      devShells.${system} = {
+        default = pkgs.mkShellNoCC {
+          packages = with pkgs; [
+            bat
+            d2
+            difftastic
+            fd
+            gh
+            git
+            jq
+            jjCi
+            jujutsu
+            jjui
+            nil
+            nix-fast-build
+            nixd
+            nixfmt-tree
+            nodejs_24
+            pnpm
+            python3
+            nushell
+            prek
+            ripgrep
+            tlaplus
+          ];
+        };
+
+        # Author executable knowledge: the demo environment's Python, marimo,
+        # and IWE, plus the workbench CLI.
+        workbench = pkgs.mkShellNoCC {
+          packages = [
+            workbenchDemo.runtime
+            workbench.cli
+            pkgs.nushell
+            pkgs.jujutsu
+          ];
+          WORKBENCH_ENVIRONMENT = workbenchDemo.name;
+          shellHook = ''
+            export IWE_WORKSPACE="$PWD/workbench"
+          '';
+        };
       };
 
       apps.${system} = {
@@ -382,6 +413,10 @@
           type = "app";
           program = "${quotaAdvisor}/bin/quota-advisor";
         };
+        workbench = {
+          type = "app";
+          program = "${workbench.cli}/bin/workbench";
+        };
       };
 
       formatter.${system} = pkgs.nixfmt-tree;
@@ -395,6 +430,39 @@
           touch "$out"
         '';
         den-host-evaluation = denHostEvaluationCheck;
+        # One Markdown file as an IWE node and a marimo notebook: IWE
+        # validates the corpus, marimo executes the demo in the Nix
+        # environment its frontmatter names, an editor save keeps the IWE
+        # metadata, and JJ sees only the edited line.
+        workbench =
+          pkgs.runCommand "workbench-check"
+            {
+              nativeBuildInputs = [
+                workbench.cli
+                workbenchDemo.runtime
+                pkgs.jujutsu
+              ];
+            }
+            ''
+              export HOME="$TMPDIR/home"
+              mkdir -p "$HOME"
+              cp -r ${workbenchSource} workspace
+              chmod -R u+w workspace
+              cd workspace
+
+              export JJ_USER=check JJ_EMAIL=check@localhost
+              jj git init --quiet
+              jj commit --quiet -m baseline
+              # roundtrip.py reads `jj diff` itself when .jj exists.
+              python tests/roundtrip.py "$PWD"
+              test "$(jj diff --name-only)" = knowledge/investigations/executable-knowledge-demo.md
+              jj restore --quiet
+
+              workbench check .
+              workbench export knowledge/investigations/executable-knowledge-demo.md -o "$TMPDIR/demo.html"
+              python tests/rendered.py "$TMPDIR/demo.html" ${workbenchDemo.name}
+              touch "$out"
+            '';
         nixbot-homelab-evaluation = nixbotHomelabEvaluationCheck;
         den-inventory-tests =
           pkgs.runCommand "den-inventory-tests"
@@ -503,6 +571,8 @@
             ''
               ruff check --no-cache ${./jj/mcp.py}
               ruff format --no-cache --check ${./jj/mcp.py}
+              ruff check --no-cache --config ${./workbench/ruff.toml} ${./workbench/python} ${./workbench/tests}
+              ruff format --no-cache --config ${./workbench/ruff.toml} --check ${./workbench/python} ${./workbench/tests}
               touch "$out"
             '';
         whitespace =

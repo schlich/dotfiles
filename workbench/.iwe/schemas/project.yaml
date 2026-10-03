@@ -1,0 +1,7 @@
+$schema: https://document-schema.org/draft/2026-06/schema
+frontmatter:
+  type: object
+  required: [type, status]
+  properties:
+    type: {const: project}
+    status: {enum: [active, paused, done]}

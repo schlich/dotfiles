@@ -1,7 +1,7 @@
 [[repos]]
 repo = "local"
 hooks = [
-  { id = "checkmate-format", name = "format repository with Checkmate", language = "system", entry = "nix run --no-update-lock-file github:denful/checkmate#fmt --override-input target path:. -- --on-unmatched warn --excludes '.agents/**' --excludes '.codex/**'", files = "\\.nix$", pass_filenames = false },
+  { id = "checkmate-format", name = "format repository with Checkmate", language = "system", entry = "nix run --no-update-lock-file github:denful/checkmate#fmt --override-input target path:. -- --on-unmatched warn --excludes '.agents/**' --excludes '.codex/**' --excludes 'workbench/knowledge/**'", files = "\\.nix$", pass_filenames = false },
   { id = "whitespace", name = "check whitespace", language = "system", entry = "nix build --no-update-lock-file path:.#checks.x86_64-linux.whitespace", pass_filenames = false },
   { id = "flake-eval", name = "evaluate Home Manager", language = "system", entry = "nix eval --no-update-lock-file --raw path:.#nixosConfigurations.asus.config.home-manager.users.schlich.home.activationPackage.drvPath", files = "^(flake\\.nix|flake\\.lock|home\\.nix|modules/.*\\.nix)$", pass_filenames = false },
 ]
