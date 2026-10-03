@@ -86,6 +86,11 @@
 - Use Jujutsu for all repository mutations: changes, descriptions, bookmarks,
   rebases, conflict resolution, commits, and pushes. Git is allowed only for
   read-only inspection and JJ's Git backend interoperability.
+- In a checkout without JJ, such as a cloud session's plain Git clone, commit
+  with Git on the assigned branch instead: one deliverable per commit, each
+  description ending with an `Impact:` trailer. Do not dispatch or land from
+  there; the user turns the branch into JJ topics with `ci adopt BRANCH`
+  (`--each` for one topic per commit).
 - Start work with `jj status`, `jj diff`, and `jj log`. Preserve unrelated
   working-copy changes.
 - Before risky history operations (`jj rebase`, `jj squash`, `jj abandon`,

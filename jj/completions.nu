@@ -138,6 +138,13 @@ export extern "ci new" [
     --message (-m): string # Description for the new topic
 ]
 
+# Adopt a Git branch from a session without JJ as a topic on main@tangled
+export extern "ci adopt" [
+    branch: string # Branch to adopt
+    --remote: string # Remote that holds the branch (default origin)
+    --each # Adopt each commit as its own topic instead of one series
+]
+
 # Confirm the current head landed on main and free the workspace
 export extern "ci park" [
     --keep # Keep a workspace that `ci start` created

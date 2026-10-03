@@ -1155,7 +1155,7 @@ def probe-state [probe: closure] {
 # inflight is everything on a running machine. Tools keep plain VCS words.
 def main [] {
     print "A topic's trip: `ci new` → `ci sequence` → `ci preflight` / `ci sim` → `ci dispatch` → `ci land` → `ci park` (or `ci cancel`), then `ci verify` once the release runs."
-    print "Also: `ci start`, `ci status`, `ci sync`, `ci rebase`, `ci conflicts`, `ci review snapshot`, `ci interdiff`, `ci unclaim`, `ci prune`, `ci impact check`, `ci release`, `ci version`."
+    print "Also: `ci start`, `ci adopt`, `ci status`, `ci sync`, `ci rebase`, `ci conflicts`, `ci review snapshot`, `ci interdiff`, `ci unclaim`, `ci prune`, `ci impact check`, `ci release`, `ci version`."
 }
 
 # Old command names keep working for a while and point at the new ones.
@@ -2179,6 +2179,98 @@ def "main new" [
     } else {
         print $"Started topic ($created) on main@tangled. ($previous.id) \"($previous.title)\" stays as a sibling; return with `jj edit ($previous.id)`."
     }
+}
+
+# Full change IDs of the revisions in `revset`.
+def change-ids-in [revset: string] {
+    git-command "reading change IDs" {
+        ^jj log -r $revset --no-graph -T 'change_id ++ "\n"'
+    } | lines | where {|line| $line | is-not-empty }
+}
+
+# Duplicate `revset` onto main@tangled, keeping its internal parentage, and
+# return the change ID of the duplicate's head. jj prints the new IDs only as
+# prose, so they are found as the revisions on top of the trunk that were not
+# there before.
+def duplicate-onto-trunk [revset: string] {
+    let before = (change-ids-in "main@tangled..")
+    run-command "duplicating onto main@tangled" { ^jj duplicate --onto main@tangled $revset } | ignore
+    let created = (change-ids-in "main@tangled.." | where {|id| $id not-in $before })
+    let union = ($created | each {|id| $"change_id\(($id))" } | str join " | ")
+    change-ids-in $"heads\(($union))" | first
+}
+
+# Adopt a Git branch pushed by a session without JJ, such as a cloud agent, as
+# a topic on main@tangled. Its commits are duplicated onto the trunk with their
+# descriptions, so they get fresh change IDs and the remote branch is left as
+# it is; dispatch and land then proceed as for any other topic. --each makes
+# every commit its own sibling topic, for a branch that carries independent
+# deliverables, such as a refactor next to a user-facing change.
+def "main adopt" [
+    branch: string # Branch to adopt
+    --remote: string = "origin" # Remote that holds the branch
+    --each # Adopt each commit as its own topic instead of one series
+] {
+    let root = (git-command "locating the workspace" { ^jj root })
+    let marker = (owned-workspace-marker $root)
+    let facts = (topic-facts)
+    let refusal = (new-topic-refusal {
+        owner: (owner-status (session-owner))
+        dedicated: ($marker | path exists)
+        topic_done: ($facts.landed or not $facts.visible or $facts.topic_empty)
+    })
+    if $refusal != null { error make { msg: $refusal } }
+    run-command $"fetching ($branch) from ($remote)" {
+        ^jj git fetch --remote $remote --branch $branch
+    } | ignore
+    fetch-trunk
+
+    let head = $"remote_bookmarks\(exact:($branch | to json), exact:($remote | to json))"
+    if (change-ids-in $head | is-empty) {
+        error make { msg: $"($remote) has no branch named ($branch)." }
+    }
+    let range = $"main@tangled..($head)"
+    let revisions = (revisions-in $range)
+    if ($revisions | is-empty) {
+        error make { msg: $"($branch)@($remote) has no commits that are not already on main@tangled." }
+    }
+    if (change-ids-in $"merges\() & \(($range))" | is-not-empty) {
+        error make { msg: $"($branch)@($remote) contains merge commits. Adopt a linear branch." }
+    }
+    # Classify before duplicating anything, as dispatch would.
+    if $each {
+        for revision in $revisions { require-impact [$revision] | ignore }
+    } else {
+        try { require-impact $revisions | ignore } catch {|err|
+            error make { msg: $"($err.msg) To adopt each commit as its own topic, rerun with --each." }
+        }
+    }
+
+    checkpoint "adopt"
+    let commits = (git-command "reading the branch commits" {
+        ^jj log -r $range --reversed --no-graph -T 'commit_id ++ "\n"'
+    } | lines | where {|line| $line | is-not-empty })
+    let topics = if $each {
+        $commits | each {|commit| duplicate-onto-trunk $commit }
+    } else {
+        [(duplicate-onto-trunk $range)]
+    }
+    run-command "checking out the adopted topic" { ^jj edit ($topics | first) } | ignore
+    # A pool workspace's marker named the landed topic; the adopted one is not it.
+    if ($marker | path exists) { rm $marker }
+
+    print $"Adopted ($branch)@($remote) as ($topics | length) topic\(s) on main@tangled:"
+    for topic in $topics {
+        let short = (revision-field $"change_id\(($topic))" "change_id.short()")
+        let title = (revision-field $"change_id\(($topic))" "description.first_line()")
+        let conflicted = (conflicted-revisions $"main@tangled..change_id\(($topic))" | is-not-empty)
+        let note = if $conflicted { " (conflicted; see `ci conflicts`)" } else { "" }
+        print $"  ($short) \"($title)\"($note)"
+    }
+    if ($topics | length) > 1 {
+        print "The first one is checked out; switch with `jj edit CHANGE_ID`, and dispatch each topic on its own."
+    }
+    print $"($branch)@($remote) is left as it is; delete it on the remote once its work lands."
 }
 
 # The topic that `finish` closes. Landing fast-forwards main onto the topic

@@ -37,6 +37,7 @@ appropriate change instead of appended as "address review" commits.
 ```nu
 ci new -m "Topic title"     # Start a topic on main@tangled in this workspace.
 ci start topic-name         # Or: create a workspace for concurrent work.
+ci adopt BRANCH             # Or: take over a branch pushed without JJ.
 ci status
 ci sequence                 # See whether the topic stacks on another in flight.
 ci rebase                   # Fetch trunk and rebase the whole topic stack.
@@ -77,6 +78,16 @@ and `land --gate`) still work and print their replacement.
 topic untouched as a sibling. It refuses while an active Codex task owns the
 workspace, or while the unfinished topic of a `ci start` workspace is checked
 out; start concurrent work with `ci start` instead.
+
+`ci adopt BRANCH` takes over work committed with plain Git, such as a cloud
+agent's branch on `origin` (`--remote` picks another). It fetches the branch
+and duplicates its commits, descriptions included, onto `main@tangled`, so
+they get fresh change IDs and the remote branch stays as it is; delete it once
+the work lands. The branch must be linear, and every commit needs an `Impact:`
+trailer. A branch that mixes refactor and user-facing commits is refused as
+one topic; `--each` adopts every commit as its own sibling topic instead. It
+refuses in the same workspaces as `ci new`, records a recovery point first, and
+reports, but never resolves, conflicts with the current trunk.
 
 A workspace from `ci start` stays on its topic until `park` or `cancel`
 frees it. `ci start` records the topic's change ID in `.jj/jj-ci-workspace.json`, and
