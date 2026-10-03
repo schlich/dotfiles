@@ -97,7 +97,6 @@ in
     marimo
     nodejs
     ty
-    git
     wget
     nixfmt
     nh
@@ -116,7 +115,6 @@ in
     pixi
     uv
     glow
-    bat
     gcc
     nil
     nixd
