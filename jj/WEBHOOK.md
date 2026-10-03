@@ -35,14 +35,23 @@ If Tailscale requests Funnel approval, approve it. Find the public URL with:
 tailscale funnel status
 ```
 
-Then create or update the repository webhook using the local helper:
+Then create or update the repository webhook:
 
 ```nu
-nu /home/schlich/dotfiles/jj/webhook-setup.nu https://asus.<tailnet>.ts.net
+jj-ci-webhook-setup
 ```
 
-The helper resolves the secret through SecretSpec and configures only the
-`workflow_run` event. The receiver checks GitHub's HMAC-SHA256 signature before
+The command derives the Funnel URL from this machine's tailnet name (pass a
+base URL to override it), resolves the secret through SecretSpec, and
+configures only the `workflow_run` event. Rerun it after rotating the secret.
+
+A user timer runs `jj-ci-webhook-setup check` five minutes after login and
+daily afterwards. It sends a desktop notification when Tailscale is logged
+out, GitHub has no webhook for this machine's Funnel URL, or GitHub reports
+that the last delivery failed. Network or `gh` authentication errors are only
+logged to the journal (`journalctl --user --unit jj-ci-webhook-check`).
+
+The receiver checks GitHub's HMAC-SHA256 signature before
 parsing any payload, deduplicates completed workflow runs, and acknowledges
 deliveries before local work starts. It rejects new work with HTTP 503 when its
 bounded queue is full so GitHub can retry. The Codex process runs in read-only

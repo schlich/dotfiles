@@ -15,6 +15,25 @@ let
       exec python3 ${../../scripts/jj-ci-webhook.py}
     '';
   };
+  # Registers the GitHub webhook (`jj-ci-webhook-setup`) and, with `check`,
+  # reports whether registration is missing or deliveries are failing.
+  setup = pkgs.writeShellApplication {
+    name = "jj-ci-webhook-setup";
+    runtimeInputs = [
+      pkgs.gh
+      pkgs.libnotify
+      pkgs.nushell
+      pkgs.secretspec
+      pkgs.tailscale
+    ];
+    text = ''
+      if [ "''${1:-}" = check ]; then
+        shift
+        exec nu ${../../jj/webhook-setup.nu} check --repository ${lib.escapeShellArg cfg.repository} "$@"
+      fi
+      exec nu ${../../jj/webhook-setup.nu} --repository ${lib.escapeShellArg cfg.repository} "$@"
+    '';
+  };
 in
 {
   options.services.jj-ci-webhook = {
@@ -129,6 +148,29 @@ in
       # Funnel requires one-time interactive Tailscale authentication and
       # approval. Start this unit manually after `tailscale up` so a logged
       # out client cannot make an otherwise successful system activation fail.
+    };
+
+    environment.systemPackages = [ setup ];
+
+    # Setup is manual (Tailscale login, Funnel approval, webhook
+    # registration), so remind the desktop session when it is incomplete
+    # or GitHub reports failing deliveries.
+    home-manager.users.schlich = lib.mkIf cfg.funnel.enable {
+      systemd.user.services.jj-ci-webhook-check = {
+        Unit.Description = "Check the GitHub CI webhook registration";
+        Service = {
+          Type = "oneshot";
+          ExecStart = "${setup}/bin/jj-ci-webhook-setup check";
+        };
+      };
+      systemd.user.timers.jj-ci-webhook-check = {
+        Unit.Description = "Daily GitHub CI webhook registration check";
+        Timer = {
+          OnStartupSec = "5min";
+          OnUnitActiveSec = "1d";
+        };
+        Install.WantedBy = [ "timers.target" ];
+      };
     };
   };
 }
