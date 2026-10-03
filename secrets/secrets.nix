@@ -7,9 +7,4 @@ in
     user
     host
   ];
-  "flakehub.age".publicKeys = [
-    user
-    host
-  ];
-
 }

@@ -1,5 +1,0 @@
-.env
-*.log
-logs/
-*.backup
-node_modules/

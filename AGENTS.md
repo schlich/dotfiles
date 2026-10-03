@@ -32,7 +32,7 @@
   `nixosConfigurations.asus.config.home-manager.users.schlich.home.activationPackage`.
 - Add user packages in `modules/home/packages.nix`, version-control wrappers in
   `modules/programs/vcs.nix`, and AI client configuration in
-  `modules/programs/ai.nix`.
+  `modules/tooling/ai/`.
 - Treat application-owned, self-mutating configuration as runtime state. Do
   not manage such files with `home.file`, `xdg.configFile`, or a Home Manager
   `programs.*.settings` option. When the application supports it, couple
