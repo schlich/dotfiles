@@ -7,7 +7,7 @@
 # Mirrors jev's credential filter: such command lines are not logged verbatim.
 const credential_pattern = '(KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)[A-Z0-9_]*\s*='
 
-const nushell_hint = "Run it in the Nushell MCP tool (mcp__plugin_hm_nushell__evaluate) instead, wrapping external programs in `| complete`."
+const nushell_hint = "Run it in the Nushell MCP tool (mcp__plugin_hm_nushell__evaluate) instead, wrapping external programs in `| complete`. If you lack that tool, as some subagents do, read and search files, including saved tool results, with the built-in Read, Grep, and Glob tools; never route around this guard through `nu -c`, `python3`, or another interpreter in Bash."
 
 const text_hint = "Rewrite the text tools as structured Nushell (open, ls, glob, lines, where, parse, from json; slice $history afterwards instead of capping output). For large files, logs, or command output, keep the data in a Nushell variable and follow the rlm skill (rlm load, rlm find, rlm peek, rlm map) rather than printing it."
 

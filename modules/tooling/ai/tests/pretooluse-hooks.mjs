@@ -169,6 +169,15 @@ const cases = [
   },
   {
     hook: "prefer-nushell",
+    name: "points an interpreter read at the Read tool",
+    stdin: claudePayload(
+      "python3 << 'EOF'\nprint(open('result.txt').read())\nEOF",
+    ),
+    decision: "deny",
+    reason: /built-in Read, Grep, and Glob tools/,
+  },
+  {
+    hook: "prefer-nushell",
     name: "denies prefixed rg",
     stdin: claudePayload("FOO=1 sudo rg x src"),
     decision: "deny",

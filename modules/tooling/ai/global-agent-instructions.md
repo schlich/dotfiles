@@ -119,6 +119,12 @@ script, use valid Nushell syntax.
   `rlm find`, `rlm peek`, `rlm chunk`, `rlm map`) instead of printing it or
   capping it with `head` or `tail`.
 
+- When the harness saves a large tool result to a file instead of showing
+  it inline, load it in the Nushell evaluate tool and slice or query it
+  there. Use the Read tool, in parts with `offset` and `limit`, when the
+  evaluate tool is unavailable or you will edit the file next. Never open
+  it through Bash, `nu -c`, or `python3`.
+
 - Before saving a multi-command IntelliShell template, validate it with the
   Nushell evaluate tool when available. Use `nu -c` only when that tool is
   unavailable or when validation specifically requires a fresh Nushell process.
