@@ -319,6 +319,11 @@
 - Keep provider-neutral agent skills under `.agents/skills/`. Keep Copilot
   plugins, hooks, and plugin-bundled agent definitions under `copilot/`, and
   wire client exposure through `modules/tooling/ai/`.
+- Run sessions for this repository locally, through Remote Control, or over
+  SSH on a host with the same agent configuration. Do not start or hand off
+  a cloud session for it: cloud sessions cannot reach Tangled topics, run
+  `ci`, or activate a host. See `docs/claude-session-environments.md`, which
+  also covers SSH failures inside a sandboxed local session.
 
 ## Project memory
 
