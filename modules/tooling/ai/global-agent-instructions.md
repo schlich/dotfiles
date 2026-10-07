@@ -110,28 +110,45 @@ script, use valid Nushell syntax.
   commands there; give the user the command to run in their own terminal.
 
 - The evaluate tool returns only when a command finishes, so the user sees
-  nothing while it runs. Run long external commands whose progress matters,
-  such as `nix build`, or `ci land` without the ci MCP server, as a Nushell
-  job from the evaluate tool, not with Bash. Change directory inside the
-  job, write both streams to a log in the scratchpad, and save a done
-  marker, since a job's errors are otherwise lost:
+  nothing while it runs, and a call that outlasts about two minutes is
+  silently promoted to a bare Nushell job you must collect with `job recv`.
+  Run anything that may take that long, such as `nix build`, a test suite,
+  or `ci land` without the ci MCP server, with the session's `job-log`
+  command instead, not with Bash:
 
   ```nu
-  job spawn {
-    let result = try {
-      cd $workspace
-      ci land o+e> $log
-      { exit_code: 0 }
-    } catch {|err| { exit_code: $env.LAST_EXIT_CODE?, error: $err.msg } }
-    $result | save --force $"($log).done.nuon"
-  }
+  job-log $"($S)/build.log" --cwd $workspace { nix build path:.#foo }
   ```
 
-  Read the log with Nushell as it runs. A job sends no completion notice,
-  so when the harness provides the Monitor tool, follow the job with
-  `watch-job $log`: it prints matching log lines as they arrive and exits
-  with a `DONE` line once the done marker appears. Otherwise check the
-  marker again before reporting.
+  It runs the closure as a Nushell job, appends both streams of its
+  external commands to the log, saves the outcome in `LOG.done.nuon`, and
+  points `PST_FILE` at `LOG.status.jsonl`, so OSC 7501 reports from the
+  `pst` module reach the watcher. Do not redirect inside the closure.
+
+- A Nushell job is invisible to the harness: no task-panel entry and no
+  completion notice. When the harness provides the Monitor tool, start one
+  for every job as soon as it is spawned, running `watch-job LOG` with
+  `timeout_ms` at its maximum. The Monitor is the job's task in the panel
+  and on the Fieldnotes wallpaper. It emits matching log lines, a `STATUS`
+  line for each OSC 7501 report, and a final `DONE` line with the outcome,
+  or `DONE: {state: lost}` when the Nushell that ran the job has exited. If
+  the Monitor expires before `DONE`, start the same command again; it
+  resumes where the last one stopped. Without Monitor, check the done
+  marker before reporting.
+
+- When a ci MCP tool returns `state: running`, follow it the same way
+  instead of polling `job` in a loop: start a Monitor running `watch-job`
+  on the result's `log_path`, and read the final record with `job` once
+  `DONE` arrives.
+
+- A `STATUS blocked` event or a `DONE` with a nonzero `exit_code` or
+  `state: lost` needs the user: tell them, and send a push notification
+  when the harness offers one.
+
+- Edit files with the harness's own editing tools, not with Nushell `save`
+  or `str replace` pipelines. Claude Code's checkpoints and rewind track
+  only its own edits, so a file written from the evaluate tool cannot be
+  restored with them.
 
 - When a file, log, diff, or command output is too large to read comfortably,
   keep it in a Nushell variable and follow the `rlm` skill (`rlm load`,
@@ -171,7 +188,8 @@ The Monitor tool's card shows its command the same way. Start that command
 with a `# comment` title line too, and keep the logic out of it: call
 `watch-job LOG`, adding `--pattern` only when the default milestones and
 errors do not fit, rather than writing a poll loop, `tail -f`, or a `grep`
-filter inline.
+filter inline. Its `description`, such as `ci land for desktop-ssh`, labels
+the task panel entry and every notification, so name the job and its target.
 
 Before a group of shell calls, give the user a short commentary readout
 naming the operation and its target, such as checking JJ status in the

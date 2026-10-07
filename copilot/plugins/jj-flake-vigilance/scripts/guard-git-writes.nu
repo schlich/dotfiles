@@ -1,6 +1,7 @@
 #!/usr/bin/env -S nu --stdin
 
-const mutating_git_pattern = '(^|[;&|][&|]?|\n)\s*git\s+(add|am|apply|bisect|branch|checkout|cherry-pick|clean|commit|merge|mv|pull|push|rebase|reset|restore|revert|rm|stash|switch|tag|worktree)\b'
+# Nushell spells an external call `^git` and nests one as `(git ...)`.
+const mutating_git_pattern = '(^|[;&|(][&|]?|\n)\s*\^?git\s+(add|am|apply|bisect|branch|checkout|cherry-pick|clean|commit|merge|mv|pull|push|rebase|reset|restore|revert|rm|stash|switch|tag|worktree)\b'
 const jj_write_reason = "This repository uses jj for write operations. Use the jj equivalent instead of mutating history or the working copy with git."
 
 # Hook runners spawn this script with a socket for stdin, and Linux cannot
@@ -18,7 +19,8 @@ def parse-payload [input: any] {
   $payload
 }
 
-# Copilot sends `toolArgs`; Claude Code sends `tool_input`.
+# Copilot sends `toolArgs`; Claude Code sends `tool_input`. A shell tool names
+# its script `command`; the Nushell MCP tool names it `input`.
 def extract-command [payload: any] {
   let tool_args = if (($payload | describe | str starts-with "record")) {
     $payload | get -o toolArgs | default ($payload | get -o tool_input) | default null
@@ -27,7 +29,7 @@ def extract-command [payload: any] {
   }
 
   if (($tool_args | describe | str starts-with "record")) {
-    let command = ($tool_args | get -o command | default null)
+    let command = ($tool_args | get -o command | default ($tool_args | get -o input) | default null)
 
     if (($command | describe) == "string") {
       $command

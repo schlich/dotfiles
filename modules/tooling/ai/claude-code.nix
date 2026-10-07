@@ -30,9 +30,10 @@ let
     } $out/.claude-plugin/plugin.json
     install -Dm644 ${
       pkgs.writers.writeJSON "hooks.json" {
+        # Foreground Bash is denied, so most shell work arrives as Nushell.
         hooks.PreToolUse = [
           {
-            matcher = "Bash";
+            matcher = "Bash|mcp__.*nushell__evaluate";
             hooks = [
               {
                 type = "command";
@@ -156,20 +157,21 @@ let
   bashAudit = pkgs.writeNuScriptBin "claude-bash-audit" (
     builtins.readFile ./scripts/claude-bash-audit.nu
   );
-  # Record background Bash tasks for the homelab Fieldnotes wallpaper;
-  # agent-tasks-push marks them finished and copies the list there.
+  # Record background Bash tasks and Monitors (which follow Nushell jobs) for
+  # the homelab Fieldnotes wallpaper; agent-tasks-push marks them finished and
+  # copies the list there.
   backgroundTasks = pkgs.runCommand "claude-code-background-tasks" { } ''
     install -Dm644 ${
       pkgs.writers.writeJSON "plugin.json" {
         name = "background-tasks";
-        description = "Record background Bash tasks for the Fieldnotes wallpaper.";
+        description = "Record background Bash tasks and Monitors for the Fieldnotes wallpaper.";
       }
     } $out/.claude-plugin/plugin.json
     install -Dm644 ${
       pkgs.writers.writeJSON "hooks.json" {
         hooks.PostToolUse = [
           {
-            matcher = "Bash";
+            matcher = "Bash|Monitor";
             hooks = [
               {
                 type = "command";

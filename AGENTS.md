@@ -217,6 +217,11 @@
   source from an exact pinned flake input. Read those through the Nix MCP
   server's `flake-inputs` and `store` actions rather than shell or file
   tools.
+- Foreground Bash is denied in Claude Code, so shell work arrives as Nushell
+  MCP evaluations. A hook that guards or records shell commands must match
+  `Bash|mcp__.*nushell__evaluate` and read `tool_input.input` as well as
+  `tool_input.command`; one that tracks background work must also match
+  `Monitor`, whose result carries `taskId`.
 - Keep provider-neutral agent skills under `.agents/skills/`. Keep Copilot
   plugins, hooks, and plugin-bundled agent definitions under `copilot/`, and
   wire client exposure through `modules/tooling/ai/`.

@@ -31,8 +31,10 @@ function hookCommand(name) {
     : join(dir, "hooks.json");
   const hooks = JSON.parse(readFileSync(file, "utf8")).hooks;
   // Claude Code uses PreToolUse with nested hooks; Copilot uses preToolUse.
-  const claude = hooks.PreToolUse?.find((entry) => entry.matcher === "Bash")
-    ?.hooks?.[0]?.command;
+  // Claude Code reads a matcher as a regex over the whole tool name.
+  const claude = hooks.PreToolUse?.find((entry) =>
+    new RegExp(`^(?:${entry.matcher})$`).test("Bash"),
+  )?.hooks?.[0]?.command;
   const copilot = hooks.preToolUse?.find(
     (entry) => entry.matcher === "bash",
   )?.command;
@@ -97,6 +99,15 @@ const claudePayload = (
     tool_input: { command, run_in_background: background },
     cwd: "/tmp",
   });
+const nushellPayload = (input) =>
+  JSON.stringify({
+    session_id: "test",
+    hook_event_name: "PreToolUse",
+    tool_name: "mcp__plugin_hm_nushell__evaluate",
+    tool_use_id: "toolu_test",
+    tool_input: { input },
+    cwd: "/tmp",
+  });
 const copilotPayload = (command) =>
   JSON.stringify({ toolName: "bash", toolArgs: { command } });
 
@@ -119,6 +130,24 @@ const cases = [
     hook: "jj-guard",
     name: "allows read-only git",
     stdin: claudePayload("git log --oneline"),
+    decision: null,
+  },
+  {
+    hook: "jj-guard",
+    name: "denies git push from Nushell",
+    stdin: nushellPayload("# Push\n^git push origin main | complete"),
+    decision: "deny",
+  },
+  {
+    hook: "jj-guard",
+    name: "denies nested git commit from Nushell",
+    stdin: nushellPayload("let r = (git commit -m x | complete)"),
+    decision: "deny",
+  },
+  {
+    hook: "jj-guard",
+    name: "allows read-only git from Nushell",
+    stdin: nushellPayload("^git log --oneline | complete"),
     decision: null,
   },
   {
@@ -206,7 +235,7 @@ const cases = [
     name: "denies a background nix build",
     stdin: claudePayload("nix build .#foo", "Bash", { background: true }),
     decision: "deny",
-    reason: /job spawn/,
+    reason: /job-log/,
   },
   {
     hook: "prefer-nushell",
@@ -215,7 +244,7 @@ const cases = [
       background: true,
     }),
     decision: "deny",
-    reason: /job spawn/,
+    reason: /job-log/,
   },
   {
     hook: "prefer-nushell",

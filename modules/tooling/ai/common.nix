@@ -67,12 +67,10 @@ in
         # Pin a Nushell by store path: environments such as dev shells can put
         # an older nu first on PATH, which rejects commands config.nu relies on.
         command = lib.getExe (pkgs.callPackage ./nushell-mcp.nix { });
-        # The limit must be a filesize on the session stack; nu --mcp ignores
-        # it as a process environment string. Past the ~10kb default, a result
-        # is replaced by a bare "output truncated" note.
+        # The output limit and the `job-log` command for background jobs.
         args = [
           "--config"
-          "${pkgs.writeText "nu-mcp-config.nu" "$env.NU_MCP_OUTPUT_LIMIT = 50kb\n"}"
+          "${./scripts/nu-mcp-config.nu}"
           "--mcp"
         ];
       };

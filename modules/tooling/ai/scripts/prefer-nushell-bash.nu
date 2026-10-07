@@ -13,7 +13,7 @@ const text_hint = "Rewrite the text tools as structured Nushell (open, ls, glob,
 
 const default_hint = "Foreground Bash is disabled. Long commands whose progress matters may use Bash with run_in_background, logging to the scratchpad. If this command truly needs Bash (a TTY, or a harness feature the evaluate tool lacks), stop and tell the user why; every Bash request is logged for review."
 
-const job_hint = "Run it as a Nushell job from the evaluate tool instead: `job spawn { try { cd $workspace; ci land o+e> $log } ... }`, logging both streams to the scratchpad and saving a done marker, as the Shell conventions describe. Read the log with Nushell."
+const job_hint = "Run it as a Nushell job from the evaluate tool instead: `job-log $log --cwd $workspace { ci land }`, with the log in the scratchpad, then follow it with a Monitor running `watch-job $log`, as the Shell conventions describe."
 
 # Hook runners spawn this script with a socket for stdin, and Linux cannot
 # reopen a socket through /dev/stdin, so read the payload from `$in`. That
