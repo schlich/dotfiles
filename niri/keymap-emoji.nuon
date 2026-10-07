@@ -34,6 +34,10 @@
   { action: '^run session workspace up', emoji: '🔼' }
   { action: '^run session workspace down', emoji: '🔽' }
 
+  # dicta, the tape recorder for spoken review notes.
+  { action: '^run dicta toggle', emoji: '📼' }
+  { action: '^run dicta cancel', emoji: '❌' }
+
   # Applications and shell.
   { action: 'panel-toggle launcher', emoji: '🚀' }
   { action: 'panel-toggle control-center', emoji: '🧰' }

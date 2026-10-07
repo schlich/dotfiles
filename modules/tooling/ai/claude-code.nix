@@ -182,6 +182,32 @@ let
       }
     } $out/hooks/hooks.json
   '';
+  # Attach the spoken notes recorded with dicta (Mod+M) to the next prompt
+  # sent from the window they were recorded in; see dicta/dicta.nu.
+  dicta = import ../../../dicta/package.nix { inherit pkgs; };
+  dictaNotes = pkgs.runCommand "claude-code-dicta" { } ''
+    install -Dm644 ${
+      pkgs.writers.writeJSON "plugin.json" {
+        name = "dicta";
+        description = "Attach spoken review notes recorded with dicta to the next prompt.";
+      }
+    } $out/.claude-plugin/plugin.json
+    install -Dm644 ${
+      pkgs.writers.writeJSON "hooks.json" {
+        hooks.UserPromptSubmit = [
+          {
+            hooks = [
+              {
+                type = "command";
+                command = "${dicta}/bin/dicta hook";
+                timeout = 10;
+              }
+            ];
+          }
+        ];
+      }
+    } $out/hooks/hooks.json
+  '';
   pushBackgroundTasks = pkgs.writeNuScriptBin "push-background-tasks" (
     builtins.readFile ../../../agent-monitor/push-background-tasks.nu
   );
@@ -254,6 +280,7 @@ in
     plugins.nushell-display = nushellDisplay;
     plugins.context-status = contextStatusHandoff;
     plugins.background-tasks = backgroundTasks;
+    plugins.dicta = dictaNotes;
     # IWE memory: inert outside a workspace whose root has a MEMORY.md policy.
     plugins.iwe = "${inputs.iwe-skills}";
   };
