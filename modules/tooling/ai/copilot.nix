@@ -12,7 +12,6 @@ in
 {
   imports = [
     ./common.nix
-    inputs.agent-skills.homeManagerModules.default
   ];
 
   programs.github-copilot-cli = {

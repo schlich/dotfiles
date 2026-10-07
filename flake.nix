@@ -3,9 +3,6 @@
 
   inputs = {
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
-    determinate = {
-      url = "https://flakehub.com/f/DeterminateSystems/determinate/*";
-    };
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -64,10 +61,6 @@
       url = "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    agent-skills = {
-      url = "github:Kyure-A/agent-skills-nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     codex-desktop-linux = {
       url = "github:ilysenko/codex-desktop-linux";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -84,10 +77,6 @@
     paseo = {
       url = "github:getpaseo/paseo/main";
       inputs.nixpkgs.follows = "nixpkgs";
-    };
-    anthropic-skills = {
-      url = "github:anthropics/skills";
-      flake = false;
     };
     modern-web-guidance = {
       url = "github:GoogleChrome/modern-web-guidance";
