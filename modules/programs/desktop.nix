@@ -10,7 +10,6 @@ let
   usageResetAlert = pkgs.writeNuScriptBin "usage-reset-alert" (
     builtins.readFile ../../noctalia/usage-reset-alert.nu
   );
-  dicta = import ../../dicta/package.nix { inherit pkgs; };
 in
 
 {
@@ -82,7 +81,8 @@ in
             capsule_fill = "surface_variant";
             start = [ "launcher" ];
             center = [ "taskbar" ];
-            # dicta's recorder light leads, so REC and its keys sit in view.
+            # dicta's recorder light (programs/dicta.nix) leads, so REC and
+            # its keys sit in view.
             end = [
               "schlich/dicta:rec"
               "privacy"
@@ -182,15 +182,8 @@ in
             "felipeartur/ai-usagebar"
             "elrondforwin/opencode-go-usage"
             "thepunkoff/pomodoro"
-            "schlich/dicta"
           ];
           source = [
-            {
-              name = "dicta";
-              kind = "path";
-              location = "${dicta.noctaliaPlugins}";
-              enabled = true;
-            }
             {
               name = "opencode-go-usage";
               kind = "git";

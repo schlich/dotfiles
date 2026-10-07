@@ -66,7 +66,6 @@ let
       };
     };
   jev = import ../../jev/package.nix { inherit pkgs; };
-  dicta = import ../../dicta/package.nix { inherit pkgs; };
   # Opens a URL in Quest Browser over ADB. A localhost URL is reverse-forwarded
   # so the headset reaches this machine's port without an IP address.
   questOpen = pkgs.writeNuScriptBin "quest-open" ''
@@ -146,7 +145,6 @@ in
     (lib.hiPrio secretspec)
     devenv
     jev
-    dicta
     questOpen
     inputs.xs.packages.${pkgs.stdenv.hostPlatform.system}.default
     inputs.ai-usagebar.packages.${pkgs.stdenv.hostPlatform.system}.default

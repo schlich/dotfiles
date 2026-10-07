@@ -309,6 +309,26 @@
         "url": "https://install.determinate.systems/determinate-nixd/tag/v3.23.0/x86_64-linux"
       }
     },
+    "dicta": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1791357186,
+        "narHash": "sha256-Q7Gjlke7kMjCAFg+DAR3nk7Rpmw2TmwTAObrF7cmw4k=",
+        "owner": "schlich",
+        "repo": "dicta",
+        "rev": "e51fadadbcca0c89090d8fb90c3c8e953cbb58ab",
+        "type": "github"
+      },
+      "original": {
+        "owner": "schlich",
+        "repo": "dicta",
+        "type": "github"
+      }
+    },
     "fenix": {
       "inputs": {
         "nixpkgs": [
@@ -1704,6 +1724,7 @@
         "codex-desktop-linux": "codex-desktop-linux",
         "den": "den",
         "determinate": "determinate",
+        "dicta": "dicta",
         "fh": "fh",
         "gen-inspect": "gen-inspect",
         "gh-stack": "gh-stack",
