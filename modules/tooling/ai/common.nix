@@ -21,10 +21,9 @@ let
       exec ${iwe}/bin/iwec --transport stdio
     }
   '';
-  # Runs the target workspace's own jj/ci.nu, so it needs what the `ci`
-  # wrapper in modules/programs/vcs.nix provides, and xs to announce its
-  # jobs on cross.stream. The ruff flake check lints the source;
-  # writers.writePython3 would run flake8 instead.
+  # Starts the same `ci` launcher as the shell, which picks the jj/ci.nu to
+  # run, and needs xs to announce its jobs on cross.stream. The ruff flake
+  # check lints the source; writers.writePython3 would run flake8 instead.
   ciMcp =
     pkgs.runCommand "ci-mcp"
       {
@@ -41,8 +40,14 @@ let
               xs
             ]
           } \
-          --prefix NU_LIB_DIRS : ${inputs.osc7501-nu} \
-          --set CI_MCP_NU ${lib.getExe config.programs.nushell.package}
+          --set CI_MCP_CI ${
+            lib.getExe (
+              import ../../../jj/ci-package.nix {
+                inherit pkgs;
+                inherit (inputs) osc7501-nu;
+              }
+            )
+          }
       '';
 in
 {

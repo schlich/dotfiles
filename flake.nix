@@ -176,18 +176,9 @@
           name: input: "--override-input ${lib.escapeShellArg name} ${lib.escapeShellArg "${input}"}"
         ) inputs
       );
-      jjCiScript = pkgs.writeNuScriptBin "ci" (builtins.readFile ./jj/ci.nu);
-      jjCi = pkgs.symlinkJoin {
-        name = "ci";
-        paths = [ jjCiScript ];
-        nativeBuildInputs = [ pkgs.makeWrapper ];
-        postBuild = ''
-          wrapProgram "$out/bin/ci" --prefix PATH : ${pkgs.git}/bin \
-            --prefix NU_LIB_DIRS : ${inputs.osc7501-nu} \
-            --set JJ_CI_SOURCE_SHA256 ${builtins.hashFile "sha256" ./jj/ci.nu}
-          # Deprecated alias for the former `jj-ci` name.
-          ln -s ci "$out/bin/jj-ci"
-        '';
+      jjCi = import ./jj/ci-package.nix {
+        inherit pkgs;
+        inherit (inputs) osc7501-nu;
       };
       jjCiLifecycle = pkgs.callPackage ./jj/lifecycle/package.nix { };
       xrWorkbench = pkgs.writeShellApplication {
@@ -570,11 +561,13 @@
               root = ./.;
               fileset = lib.fileset.unions [
                 ./jj/ci.nu
+                ./jj/ci-launch.nu
                 ./jj/codex-session.nu
                 ./jj/context-status.nu
                 ./jj/guard.nu
                 ./tests/pbt.nu
                 ./tests/ci-properties.nu
+                ./tests/ci-launch-properties.nu
                 ./tests/codex-session-properties.nu
                 ./tests/context-status-properties.nu
               ];
@@ -593,6 +586,7 @@
               export NU_LIB_DIRS=${inputs.osc7501-nu}
               mkdir -p "$HOME"
               nu --no-config-file -c "source ${src}/tests/ci-properties.nu"
+              nu --no-config-file -c "source ${src}/tests/ci-launch-properties.nu"
               nu --no-config-file -c "source ${src}/tests/codex-session-properties.nu"
               nu --no-config-file -c "source ${src}/tests/context-status-properties.nu"
               touch "$out"

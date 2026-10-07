@@ -5,9 +5,9 @@ Every tool starts `ci` as a background job in a JJ workspace, waits up to
 keeps running; poll it with `job`. Jobs record their log and exit code
 under $XDG_STATE_HOME/ci-mcp/jobs, so a result survives the server.
 
-The server runs the target workspace's own jj/ci.nu when it has one, so an
-agent session never publishes with a `ci` built from an older checkout. In
-other repositories it falls back to the `ci` on PATH.
+The server starts the `ci` launcher (jj/ci-launch.nu), which runs a topic's
+own jj/ci.nu when the topic edits it and main@tangled's otherwise, so an
+older workspace never runs an older workflow.
 
 Each job also announces its start and end on the local cross.stream store,
 under the topic its meta.json names, so `watch-job` wakes the moment it ends.
@@ -29,7 +29,7 @@ from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-NU = os.environ.get("CI_MCP_NU", "nu")
+CI = os.environ.get("CI_MCP_CI", "ci")
 STATE = (
     Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local" / "state")
     / "ci-mcp"
@@ -88,17 +88,6 @@ def workspace_root(workspace: str | None) -> Path:
     if result.returncode != 0:
         raise ValueError(f"{start} is not in a JJ workspace: {result.stderr.strip()}")
     return Path(result.stdout.strip())
-
-
-def ci_command(root: Path) -> tuple[list[str], dict[str, str]]:
-    env = dict(os.environ, NO_COLOR="1", TERM="dumb", COLUMNS="100")
-    script = root / "jj" / "ci.nu"
-    if script.exists():
-        # An unwrapped run skips ci's own build-hash check, which exists to
-        # catch exactly the stale binary this avoids.
-        env.pop("JJ_CI_SOURCE_SHA256", None)
-        return [NU, "--no-config-file", str(script)], env
-    return ["ci"], env
 
 
 def job_dir(job_id: str) -> Path:
@@ -194,7 +183,7 @@ def start_job(args: list[str], workspace: str | None, mutating: bool) -> str:
     job_id = f"{stamp}-{slug}-{secrets.token_hex(3)}"
     path = STATE / job_id
     path.mkdir(parents=True)
-    command, env = ci_command(root)
+    env = dict(os.environ, NO_COLOR="1", TERM="dumb", COLUMNS="100")
     topic = f"job.{job_id}"
     env["CI_MCP_XS"] = XS_STORE
     env["CI_MCP_DONE"] = f"{topic}.done"
@@ -217,7 +206,7 @@ def start_job(args: list[str], workspace: str | None, mutating: bool) -> str:
                 '--meta "{\\"outcome\\": {\\"exit_code\\": $code}}" >/dev/null 2>&1'
             ),
             "ci-mcp-job",
-            *command,
+            CI,
             *args,
         ],
         cwd=root,

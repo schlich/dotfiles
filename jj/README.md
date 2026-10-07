@@ -144,12 +144,13 @@ clearance still stops it. A stacked
 topic lands after its parent. `ci dispatch --land` dispatches and lands in one
 step.
 
-A process keeps the `ci` on its PATH from launch, so a long-lived agent
-session can outlive the script it started with. The wrapper records the hash of
-the `jj/ci.nu` it was built from, and `dispatch` and `land` refuse to run unless
-that matches this workspace's copy or `main@tangled`'s. Rerun a refused command
-as `direnv exec . ci ...`, or activate the configuration and start a new
-session.
+The installed `ci`, the dev shell's, and the ci MCP server's are one launcher
+(`jj/ci-launch.nu`) that picks the `jj/ci.nu` to run each time it starts. A
+topic that edits `jj/ci.nu` runs its own copy, so a workflow change is tried
+before it lands; any other workspace runs `main@tangled`'s, so an older
+workspace or a long-lived session never runs an older workflow. Outside this
+repository `ci` runs the copy bundled with the package. A rebuild is needed
+only when the launcher itself changes.
 
 To dispatch a multi-change topic to Tangled as stacked PRs, run:
 
