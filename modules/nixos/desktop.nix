@@ -28,12 +28,23 @@ let
     exec ${pkgs.niri}/bin/niri --session
   '';
 
-  niriPackage = pkgs.niri.overrideAttrs (old: {
-    postInstall = (old.postInstall or "") + ''
+  # Swap the script in a symlink farm: overriding niri's own build would
+  # recompile it instead of using the binary cache.
+  niriPackage = pkgs.symlinkJoin {
+    name = "niri-${pkgs.niri.version}";
+    paths = [ pkgs.niri ];
+    # providedSessions is read by the display manager, niri-flake's module
+    # reads the cargo feature attributes to decide on the GNOME portal, and the
+    # homelab config reads src for niri's default config.
+    passthru = pkgs.niri.passthru // {
+      inherit (pkgs.niri) cargoBuildNoDefaultFeatures cargoBuildFeatures src;
+    };
+    inherit (pkgs.niri) meta;
+    postBuild = ''
       rm "$out/bin/niri-session"
       cp ${niriSessionWait}/bin/niri-session "$out/bin/niri-session"
     '';
-  });
+  };
 in
 
 {
