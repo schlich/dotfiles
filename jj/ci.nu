@@ -1101,6 +1101,44 @@ def review-versions-path [] {
     $root | path join ".jj" "jj-ci-review-versions.json"
 }
 
+# What one Prek run reported: the hooks that failed, and whether any hook
+# rewrote files, which Prek marks under the hook's status line.
+def prek-outcome [exit_code: int, output: string] {
+    let lines = ($output | ansi strip | lines)
+    {
+        exit_code: $exit_code
+        failed: ($lines | parse --regex '^\s*(?P<hook>\S.*?)\.{3,}Failed\s*$' | get hook)
+        modified: ($lines | any {|line| $line =~ 'files were modified by this hook' })
+    }
+}
+
+# Whether preflight runs Prek again, and the error it ends with (null when it
+# passes). A formatter's rewrite is the fix itself, so a first run that failed
+# after rewriting files earns one more run on the formatted tree, and that run
+# decides.
+def prek-verdict [runs: list] {
+    let last = ($runs | last)
+    if $last.exit_code == 0 { return { rerun: false error: null } }
+    if $last.modified and ($runs | length) == 1 { return { rerun: true error: null } }
+    let hooks = if ($last.failed | is-empty) { "" } else { $": ($last.failed | str join ', ')" }
+    let cause = if $last.modified {
+        " Formatters rewrote files on both runs, so one of them is not idempotent or something else is editing this workspace."
+    } else { "" }
+    { rerun: false error: $"Prek failed($hooks).($cause) Its output is above." }
+}
+
+def run-prek [context: record, paths: list<string>] {
+    let result = (do {
+        with-env $context {
+            cd $context.GIT_WORK_TREE
+            ^prek run --files ...$paths
+        }
+    } | complete)
+    if ($result.stdout | is-not-empty) { print --no-newline $result.stdout }
+    if ($result.stderr | is-not-empty) { print --stderr --no-newline $result.stderr }
+    prek-outcome $result.exit_code $"($result.stdout)\n($result.stderr)"
+}
+
 def validate-change [] {
     run-command "fixing the current JJ change" { ^jj fix -s @ } | ignore
     let context = (git-context)
@@ -1110,12 +1148,13 @@ def validate-change [] {
     } | complete)
     if $files.exit_code != 0 { error make { msg: ($files.stderr | str trim) } }
     let paths = ($files.stdout | lines | where {|p| $p != "" })
-    run-command "running Prek on JJ-tracked files" {
-        with-env $context {
-            cd $context.GIT_WORK_TREE
-            ^prek run --files ...$paths
-        }
-    } | ignore
+    mut runs = [(run-prek $context $paths)]
+    if (prek-verdict $runs).rerun {
+        print "Prek's formatters rewrote files; checking the formatted tree once more."
+        $runs = ($runs | append (run-prek $context $paths))
+    }
+    let verdict = (prek-verdict $runs)
+    if $verdict.error != null { error make { msg: $verdict.error } }
     record-validation
 }
 

@@ -461,6 +461,53 @@ for-all "unclaim only ever changes an active record" {|key|
     if $verdict.release { assert equal $facts.status "active" }
 }
 
+# `ci preflight` reruns Prek once when its formatters rewrote files.
+
+def gen-prek-run [key: string] {
+    let hooks = (0..<(pick $"($key)/count" 4) | each {|i|
+        let failed = (flag $"($key)/failed/($i)")
+        {
+            name: (pick-from $"($key)/name/($i)" ["format repository" "check whitespace" "nix fmt" "evaluate Home Manager"])
+            failed: $failed
+            modified: ($failed and (flag $"($key)/modified/($i)"))
+        }
+    })
+    let output = ($hooks | each {|hook|
+        let status = if $hook.failed { "Failed" } else { "Passed" }
+        let rewrite = if $hook.modified { "\n  - files were modified by this hook" } else { "" }
+        let dots = ("" | fill --character "." --width (3 + (pick $"($key)/pad/($hook.name)" 40)))
+        $"(ansi red)  ($hook.name)($dots)($status)(ansi reset)\n  - hook id: x($rewrite)\n    formatted 2 files \(1 changed\)"
+    } | str join "\n")
+    let exit_code = if ($hooks | any {|hook| $hook.failed }) { 1 } else { 0 }
+    { hooks: $hooks outcome: (prek-outcome $exit_code $output) }
+}
+
+for-all "prek-outcome reads every failed hook and any rewrite" {|key|
+    let run = (gen-prek-run $key)
+    assert equal $run.outcome.failed ($run.hooks | where failed | get name)
+    assert equal $run.outcome.modified ($run.hooks | any {|hook| $hook.modified })
+}
+
+for-all "preflight passes exactly when its last Prek run passes" {|key|
+    let runs = [(gen-prek-run $"($key)/1").outcome (gen-prek-run $"($key)/2").outcome]
+    let verdict = (prek-verdict $runs)
+    assert (not $verdict.rerun) "ran Prek a third time"
+    assert equal ($verdict.error == null) (($runs | last).exit_code == 0)
+}
+
+for-all "preflight reruns Prek only after a failed run rewrote files" {|key|
+    let first = (gen-prek-run $key).outcome
+    let verdict = (prek-verdict [$first])
+    assert equal $verdict.rerun ($first.exit_code != 0 and $first.modified)
+    if $verdict.rerun { assert equal $verdict.error null }
+}
+
+for-all "a Prek failure names every failed hook" {|key|
+    let run = (gen-prek-run $key).outcome
+    let verdict = (prek-verdict [$run $run])
+    for hook in $run.failed { assert ($verdict.error | default "" | str contains $hook) $"did not name ($hook)" }
+}
+
 for-all "unclaim leaves no claim without an active owner" {|key|
     let facts = (gen-unclaim-facts $key)
     let verdict = (unclaim-verdict $facts)
