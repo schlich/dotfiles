@@ -323,8 +323,18 @@ in
     Service = {
       Type = "oneshot";
       ExecStart = "${pushBackgroundTasks}/bin/push-background-tasks --target homelab";
+      # A oneshot has no start timeout by default, and the timer schedules
+      # the next run only after this one ends, so one hung run would stop
+      # every later update. A run takes about 10s to scan /proc and gives up
+      # on homelab within 25s.
+      TimeoutStartSec = "2min";
       Environment = [
-        "PATH=${lib.makeBinPath [ pkgs.openssh ]}"
+        "PATH=${
+          lib.makeBinPath [
+            pkgs.coreutils
+            pkgs.openssh
+          ]
+        }"
         "SSH_AUTH_SOCK=%t/gcr/ssh"
       ];
     };

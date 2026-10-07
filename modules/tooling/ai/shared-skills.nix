@@ -3,6 +3,7 @@
 {
   archify = "${inputs.archify}/archify";
   autoresearch = "${inputs.autoresearch}/.agents/skills/autoresearch";
+  marimo-pair = "${inputs.marimo-pair}/skills/marimo-pair";
   bash-feedback = ../../../.agents/skills/bash-feedback;
   ci = ../../../.agents/skills/ci;
   datastar = ../../../.agents/skills/datastar;
