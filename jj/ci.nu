@@ -1,3 +1,44 @@
+use pst
+
+# Report this run's progress as OSC 7501 program status: to the terminal when
+# stdout is one, and as a JSON line to $env.PST_FILE when it is set, which
+# `watch-job` follows. A plain run writes nothing, and a report that cannot be
+# written never fails the run.
+def report-status [state: string, msg?: string, --id: string, --kind: string] {
+    let text = if $msg == null { null } else {
+        $msg | str replace --all --regex '[\x00-\x1f\x7f-\x9f]+' ' ' | str trim | str substring 0..<500
+    }
+    try {
+        pst report $state --app ci --id=$id --msg=$text --kind=$kind
+    } catch {|err|
+        print --stderr $"ci: could not report status: ($err.msg)"
+    }
+}
+
+# Run one phase under `id`, reporting it working, then done or error. The
+# phase's own error propagates unchanged.
+def phase [id: string, msg: string, body: closure] {
+    report-status working $msg --id $id
+    let result = try { do $body } catch {|err|
+        report-status error $"($msg) failed" --id $id
+        $err.raw
+    }
+    report-status done $msg --id $id
+    $result
+}
+
+# Run a whole dispatch or landing: report done or error for the run, then
+# clear its records so terminals and watchers drop them.
+def report-run [msg: string, body: closure] {
+    try { do $body } catch {|err|
+        report-status error ($err.msg | lines | get --optional 0 | default $"($msg) failed")
+        report-status clear
+        $err.raw
+    }
+    report-status done $msg
+    report-status clear
+}
+
 def run-command [label: string, command: closure] {
     report-command $label (do $command | complete)
 }
@@ -317,11 +358,15 @@ def with-local-checks-lock [commit: string, body: closure, --unit: string] {
         let holder = (claim-local-checks-lock $lock $claim)
         if $holder == null { break }
         if $holder != $announced {
-            print $"Waiting for local checks of ($holder.topic? | default 'another topic') \(pid ($holder.pid? | default '?')) to finish."
+            let waiting = $"Waiting for local checks of ($holder.topic? | default 'another topic') \(pid ($holder.pid? | default '?')) to finish."
+            print $waiting
+            # Blocked on another session, not a person, so no --kind.
+            report-status blocked $waiting --id local-checks
             $announced = $holder
         }
         sleep 5sec
     }
+    if $announced != {} { report-status clear --id local-checks }
     let outcome = try { { value: (do $body) error: null } } catch {|err| { value: null error: $err.msg } }
     swap-local-checks-lock $lock ($claim | hash sha256) "" | ignore
     if $outcome.error != null { error make { msg: $outcome.error } }
@@ -421,6 +466,7 @@ def landing-gate [gate: string, repo: record] {
                 name: $"local flake checks on (sys host | get hostname)"
                 probe: {|commit| local-checks-state $commit }
                 hint: ""
+                started_by_hand: false
             }
         }
         "spindle" => {
@@ -431,6 +477,7 @@ def landing-gate [gate: string, repo: record] {
                 name: $repo.spindle
                 probe: {|commit| pipeline-state $repo $commit }
                 hint: "Pushes do not trigger the spindle; start flake-checks.yml on this branch by hand on Tangled."
+                started_by_hand: true
             }
         }
         "github" => {
@@ -439,6 +486,7 @@ def landing-gate [gate: string, repo: record] {
                 name: $"GitHub Actions on ($github)"
                 probe: {|commit| github-checks-state $github $commit }
                 hint: "If none started, check that .github/workflows/nix-ci.yml runs on pushes to jj-* branches."
+                started_by_hand: false
             }
         }
         _ => { error make { msg: $"Unknown clearance ($gate); use local, spindle, or github." } }
@@ -446,18 +494,24 @@ def landing-gate [gate: string, repo: record] {
 }
 
 # Poll the gate until it passes `commit`. Stop at the first failure; never
-# rebase or push.
+# rebase or push. A gate that must be started by hand reports blocked on a
+# person while it has not started.
 def wait-for-pipeline [gate: record, commit: string, timeout: duration] {
     let deadline = (date now) + $timeout
     mut last = ""
+    report-status working $"Waiting for ($gate.name)" --id clearance
     loop {
         let pipeline = (do $gate.probe $commit)
-        if $pipeline.state == "success" { return }
+        if $pipeline.state == "success" {
+            report-status done $"($gate.name) passed" --id clearance
+            return
+        }
         if $pipeline.state == "failed" {
             let failed = ($pipeline.workflows | where status != "success" | each {|workflow|
                 let detail = if ($workflow.error? | is-empty) { "" } else { $" \(($workflow.error | lines | last))" }
                 $"($workflow.name): ($workflow.status)($detail)"
             })
+            report-status error $"($gate.name) rejected the head" --id clearance
             error make { msg: $"($gate.name) rejected ($commit | str substring 0..11): ($failed | str join '; '). Leave the task open." }
         }
         let status = if $pipeline.state == "missing" {
@@ -467,9 +521,15 @@ def wait-for-pipeline [gate: record, commit: string, timeout: duration] {
         }
         if $status != $last {
             print $"(date now | format date '%H:%M:%S') ($status)"
+            if $pipeline.state == "missing" and $gate.started_by_hand {
+                report-status blocked $gate.hint --id clearance --kind permission
+            } else {
+                report-status working $"($gate.name): ($status)" --id clearance
+            }
             $last = $status
         }
         if (date now) > $deadline {
+            report-status error $"No passing pipeline after ($timeout)" --id clearance
             error make { msg: $"No passing pipeline for ($commit | str substring 0..11) after ($timeout). ($gate.hint)" }
         }
         sleep 30sec
@@ -1828,12 +1888,15 @@ def publish-topic [] {
     let base = if $parent == null { "main@tangled" } else { bookmark-revset $parent }
     # Classify before rewriting anything so an unclassified topic fails fast.
     let impact = (require-impact (layer-revisions $base))
-    if $parent == null { rebase-topic } else { restack-topic $parent }
+    let onto = if $parent == null { "main@tangled" } else { $parent }
+    phase rebase $"Rebasing onto ($onto)" {
+        if $parent == null { rebase-topic } else { restack-topic $parent }
+    }
     require-ready-change
-    validate-change
+    phase preflight "Running preflight" { validate-change }
     run-command "setting the publication bookmark" { ^jj bookmark set $branch -r @ } | ignore
     remember-publication-bookmark $branch
-    push-topic-bookmark $branch
+    phase push $"Pushing ($branch)" { push-topic-bookmark $branch }
     { branch: $branch parent: $parent impact: $impact head: (current-change "commit_id") }
 }
 
@@ -1850,7 +1913,9 @@ def land-published [published: record, repo: record, timeout: duration, gate: st
     }
     let checker = (landing-gate $gate $repo)
     let base = (revision-id "main@tangled")
-    if $published.impact == "refactor" { require-closure-neutral $base $published.head }
+    if $published.impact == "refactor" {
+        phase closures "Proving every NixOS closure unchanged" { require-closure-neutral $base $published.head }
+    }
     if $gate == "github" { push-bookmark $GITHUB_REMOTE $published.branch }
     print $"Waiting for ($checker.name) to pass ($published.head | str substring 0..11)."
     wait-for-pipeline $checker $published.head $timeout
@@ -1917,23 +1982,25 @@ def "main dispatch" [
         dispatch-stack
         return
     }
-    let published = (publish-topic)
-    let repo = (tangled-repo)
-    let pull = (open-pulls $repo | where branch == $published.branch | get --optional 0)
-    if $pull == null {
-        let form = ({ source: "branch" sourceBranch: $published.branch targetBranch: "main" } | url build-query)
-        print $"Pushed ($published.branch). Open a pull request to review it on Tangled: ($repo.web)/pulls/new?($form)"
-    } else {
-        print $"Pushed ($published.branch), which updates the pull request \"($pull.title)\"."
-    }
-    if $published.parent != null {
-        print $"Stacked on ($published.parent); it lands after that topic."
-    }
-    print $"Impact: ($published.impact)"
-    if $land {
-        land-with-retries $published $repo $timeout $clearance $attempts
-    } else {
-        print "Dispatched this topic in place. Further edits update the same JJ series and branch; `ci land` delivers it."
+    report-run (if $land { "Landed the topic" } else { "Dispatched the topic" }) {
+        let published = (publish-topic)
+        let repo = (tangled-repo)
+        let pull = (open-pulls $repo | where branch == $published.branch | get --optional 0)
+        if $pull == null {
+            let form = ({ source: "branch" sourceBranch: $published.branch targetBranch: "main" } | url build-query)
+            print $"Pushed ($published.branch). Open a pull request to review it on Tangled: ($repo.web)/pulls/new?($form)"
+        } else {
+            print $"Pushed ($published.branch), which updates the pull request \"($pull.title)\"."
+        }
+        if $published.parent != null {
+            print $"Stacked on ($published.parent); it lands after that topic."
+        }
+        print $"Impact: ($published.impact)"
+        if $land {
+            land-with-retries $published $repo $timeout $clearance $attempts
+        } else {
+            print "Dispatched this topic in place. Further edits update the same JJ series and branch; `ci land` delivers it."
+        }
     }
 }
 
@@ -1957,8 +2024,10 @@ def "main land" [
         print --stderr "`ci land --gate` is now `ci land --clearance`."
         $gate
     }
-    let published = (publish-topic)
-    land-with-retries $published (tangled-repo) $timeout $cleared_by $attempts
+    report-run "Landed the topic" {
+        let published = (publish-topic)
+        land-with-retries $published (tangled-repo) $timeout $cleared_by $attempts
+    }
 }
 
 # Export each revision in `revisions` (a record of name to commit) into its own

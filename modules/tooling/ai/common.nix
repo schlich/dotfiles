@@ -41,6 +41,7 @@ let
               xs
             ]
           } \
+          --prefix NU_LIB_DIRS : ${inputs.osc7501-nu} \
           --set CI_MCP_NU ${lib.getExe config.programs.nushell.package}
       '';
 in

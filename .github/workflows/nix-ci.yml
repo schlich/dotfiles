@@ -37,7 +37,7 @@ jobs:
           HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           BASE="${PR_BASE:-$(git merge-base origin/main "$HEAD")}"
-          nix run --inputs-from . nixpkgs#nushell -- jj/ci.nu impact check "$BASE" "$HEAD"
+          nix run .#ci -- impact check "$BASE" "$HEAD"
   checkmate:
     name: Checkmate formatting and unit-test skeleton
     runs-on: ubuntu-latest

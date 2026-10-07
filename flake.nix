@@ -146,6 +146,12 @@
       url = "github:Mic92/nixbot";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # The `pst` Nushell module (OSC 7501 program status) that jj/ci.nu uses;
+    # every runner of ci.nu puts this source on NU_LIB_DIRS.
+    osc7501-nu = {
+      url = "github:schlich/osc7501.nu";
+      flake = false;
+    };
   };
 
   outputs =
@@ -177,6 +183,7 @@
         nativeBuildInputs = [ pkgs.makeWrapper ];
         postBuild = ''
           wrapProgram "$out/bin/ci" --prefix PATH : ${pkgs.git}/bin \
+            --prefix NU_LIB_DIRS : ${inputs.osc7501-nu} \
             --set JJ_CI_SOURCE_SHA256 ${builtins.hashFile "sha256" ./jj/ci.nu}
           # Deprecated alias for the former `jj-ci` name.
           ln -s ci "$out/bin/jj-ci"
@@ -359,6 +366,7 @@
         default = denFlake.nixosConfigurations.asus.config.system.build.toplevel;
         headless = denFlake.nixosConfigurations.asus-headless.config.system.build.toplevel;
         desktop-primary = denAsusPrimary.config.system.build.toplevel;
+        ci = jjCi;
         jj = pkgs.jujutsu;
         jjui = pkgs.jjui;
         jj-ci-lifecycle = jjCiLifecycle;
@@ -582,6 +590,7 @@
             }
             ''
               export HOME="$TMPDIR/home"
+              export NU_LIB_DIRS=${inputs.osc7501-nu}
               mkdir -p "$HOME"
               nu --no-config-file -c "source ${src}/tests/ci-properties.nu"
               nu --no-config-file -c "source ${src}/tests/codex-session-properties.nu"

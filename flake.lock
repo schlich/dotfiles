@@ -1677,6 +1677,22 @@
         "type": "github"
       }
     },
+    "osc7501-nu": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1791367737,
+        "narHash": "sha256-dfSWVNSmRCPYrnlKjtTT/Dm+R3XDqcR4CDhrw8I/B58=",
+        "owner": "schlich",
+        "repo": "osc7501.nu",
+        "rev": "9853ca4ac1d67f8c7aa4710edb24c6663006e799",
+        "type": "github"
+      },
+      "original": {
+        "owner": "schlich",
+        "repo": "osc7501.nu",
+        "type": "github"
+      }
+    },
     "paseo": {
       "inputs": {
         "nixpkgs": [
@@ -1746,6 +1762,7 @@
         "noctalia-greeter": "noctalia-greeter",
         "nushellWith": "nushellWith",
         "opencode": "opencode",
+        "osc7501-nu": "osc7501-nu",
         "paseo": "paseo",
         "ptyZZZ": "ptyZZZ",
         "tangled": "tangled",

@@ -1,6 +1,7 @@
 {
   pkgs,
   config,
+  inputs,
   ...
 }:
 
@@ -12,6 +13,7 @@ let
     nativeBuildInputs = [ pkgs.makeWrapper ];
     postBuild = ''
       wrapProgram "$out/bin/ci" --prefix PATH : ${pkgs.git}/bin:${pkgs.gh}/bin \
+        --prefix NU_LIB_DIRS : ${inputs.osc7501-nu} \
         --set JJ_CI_SOURCE_SHA256 ${builtins.hashFile "sha256" ../../jj/ci.nu}
       # Deprecated alias for the former `jj-ci` name.
       ln -s ci "$out/bin/jj-ci"

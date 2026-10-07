@@ -200,6 +200,9 @@ def start_job(args: list[str], workspace: str | None, mutating: bool) -> str:
     env["CI_MCP_DONE"] = f"{topic}.done"
     env["CI_MCP_LOG"] = str(path / "log")
     env["CI_MCP_EXIT"] = str(path / "exit")
+    # ci reports its phases there as OSC 7501 records, which
+    # `watch-job <log_path>` follows beside the log.
+    env["PST_FILE"] = str(path / "log.status.jsonl")
     # The shell records the exit code even if this server exits first; the
     # job runs in its own session so a client disconnect does not kill it.
     proc = subprocess.Popen(
