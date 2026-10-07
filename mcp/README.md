@@ -68,6 +68,15 @@ Intelli-shell remains in the normal Nushell input path. Commands it generates
 or fixes are therefore recorded by Atuin and observed by XS without a second
 execution path.
 
+## Background job events
+
+The Nushell MCP server's `job-log` and the `ci` MCP server announce each
+background job on the same store: `job.<id>.start` carries the log path,
+working directory, and owner pid, and `job.<id>.done` carries the outcome.
+The job's `LOG.job.nuon` or `meta.json` names its topic. `watch-job` follows
+that topic, so a Monitor wakes the moment the job ends; the job's files stay
+the record when the store is down.
+
 ## Directory Structure
 
 ```

@@ -6,22 +6,29 @@
 # writes `exit` beside it. If the process that owns the job dies first, print
 # `DONE: {state: lost}` rather than wait out the Monitor's timeout.
 #
+# Both kinds of job announce their start and end on cross.stream, under a
+# topic of their own. The watcher follows that topic and reads the files on
+# each of its frames and on the store's heartbeat every --interval, so the
+# job's end wakes it at once. Without the store or a topic, it reads every
+# --interval instead.
+#
 # The position is kept in `LOG.seen` as the byte offset of each file's last
 # complete line, so a line caught mid-write is read once its newline lands,
 # and a Monitor re-armed after its timeout resumes where the last one stopped
 # instead of repeating earlier events.
 
-# The process whose death without a result means the job was lost: the
-# Nushell that `job-log` recorded, or a ci MCP job's runner.
-def owner-pid [log: path] {
-  let pid_file = $"($log).pid"
+# The job's owner, whose death without a result means the job was lost, and
+# its cross.stream topic: what `job-log` recorded, or a ci MCP job's meta.
+def job-record [log: path]: nothing -> record {
+  let record = $"($log).job.nuon"
   let meta = ($log | path dirname | path join meta.json)
-  if ($pid_file | path exists) {
-    open --raw $pid_file | str trim | into int
+  if ($record | path exists) {
+    open $record
   } else if ($log | path basename) == log and ($meta | path exists) {
-    open $meta | get pid
+    let meta = (open $meta)
+    { pid: $meta.pid, topic: $meta.topic? }
   } else {
-    null
+    { pid: null, topic: null }
   }
 }
 
@@ -54,45 +61,61 @@ def status-line [report: record] {
   $"STATUS ($report.state)($id)($progress)($tail)"
 }
 
+# What wakes the watcher: each frame on the job's topic and the store's
+# heartbeat, or without a store or topic, a timer. Either wakes it at once,
+# so the files are read even when a follow fails as it starts.
+def wakeups [interval: duration, topic: any] {
+  let store = ($env.XS_ADDR? | default ($env.HOME | path join .local/share/cross.stream/store))
+  let up = $topic != null and (try { (^xs version $store | complete).exit_code == 0 } catch { false })
+  if $up {
+    do -i { ^xs cat $store --follow --pulse ($interval / 1ms | into int) --topic $"($topic).*" } | lines | prepend start
+  } else {
+    generate {|first| if not $first { sleep $interval }; { out: tick, next: false } } true
+  }
+}
+
 def main [
   log: path # Log the job writes both streams to
   --pattern: string = '(?i)^===|landed|releas|tagg|mirror|error|fail|refus|conflict|status=|oom|passed|waiting' # Lines worth a notification
   --ignore: string = '(?i)\bno conflicts?\b' # Matching lines to drop anyway
-  --interval: duration = 2sec # How often to read the log
+  --interval: duration = 2sec # How often to read the files between job events
   --replay # Start from the beginning instead of the saved position
 ] {
   let log = ($log | path expand)
   let cursor = $"($log).seen"
   let status = $"($log).status.jsonl"
-  let owner = (owner-pid $log)
+  let job = (job-record $log)
   mut seen = if $replay or not ($cursor | path exists) { { log: 0, status: 0 } } else { open $cursor | from nuon }
   loop {
-    # Check the owner before the result, so a job that finishes in between
-    # reads as finished rather than lost.
-    let alive = $owner == null or ($"/proc/($owner)" | path exists)
-    let outcome = (result $log)
-    # A job that is over writes nothing more, so its last line counts even
-    # without a newline.
-    let final = $outcome != null or not $alive
-    if ($log | path exists) {
-      let new = (read-lines $log $seen.log --final=$final)
-      $new.lines | where {|line| $line =~ $pattern and $line !~ $ignore } | each { print $in } | ignore
-      $seen.log = $new.offset
+    for _ in (wakeups $interval $job.topic) {
+      # Check the owner before the result, so a job that finishes in between
+      # reads as finished rather than lost.
+      let alive = $job.pid == null or ($"/proc/($job.pid)" | path exists)
+      let outcome = (result $log)
+      # A job that is over writes nothing more, so its last line counts even
+      # without a newline.
+      let final = $outcome != null or not $alive
+      if ($log | path exists) {
+        let new = (read-lines $log $seen.log --final=$final)
+        $new.lines | where {|line| $line =~ $pattern and $line !~ $ignore } | each { print $in } | ignore
+        $seen.log = $new.offset
+      }
+      if ($status | path exists) {
+        let new = (read-lines $status $seen.status --final=$final)
+        $new.lines | each {|line| try { print (status-line ($line | from json)) } } | ignore
+        $seen.status = $new.offset
+      }
+      $seen | to nuon | save --force $cursor
+      if $outcome != null {
+        print $"DONE: ($outcome | to nuon)"
+        return
+      }
+      if not $alive {
+        print $"DONE: {state: lost, owner: ($job.pid)}"
+        return
+      }
     }
-    if ($status | path exists) {
-      let new = (read-lines $status $seen.status --final=$final)
-      $new.lines | each {|line| try { print (status-line ($line | from json)) } } | ignore
-      $seen.status = $new.offset
-    }
-    $seen | to nuon | save --force $cursor
-    if $outcome != null {
-      print $"DONE: ($outcome | to nuon)"
-      break
-    }
-    if not $alive {
-      print $"DONE: {state: lost, owner: ($owner)}"
-      break
-    }
+    # The follow ended before the job did, as when the store restarts.
     sleep $interval
   }
 }

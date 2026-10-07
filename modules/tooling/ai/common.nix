@@ -9,6 +9,7 @@
 let
   iwe = import ../knowledge/iwe-package.nix { inherit inputs lib pkgs; };
   kbRoot = "${config.home.homeDirectory}/kb";
+  xs = inputs.xs.packages.${pkgs.stdenv.hostPlatform.system}.default;
   # iwec serves the workspace in its working directory.
   kbMcp = pkgs.writeNuScriptBin "kb-mcp" ''
     def main [] {
@@ -21,8 +22,9 @@ let
     }
   '';
   # Runs the target workspace's own jj/ci.nu, so it needs what the `ci`
-  # wrapper in modules/programs/vcs.nix provides. The ruff flake check lints
-  # the source; writers.writePython3 would run flake8 instead.
+  # wrapper in modules/programs/vcs.nix provides, and xs to announce its
+  # jobs on cross.stream. The ruff flake check lints the source;
+  # writers.writePython3 would run flake8 instead.
   ciMcp =
     pkgs.runCommand "ci-mcp"
       {
@@ -36,6 +38,7 @@ let
             lib.makeBinPath [
               pkgs.git
               pkgs.gh
+              xs
             ]
           } \
           --set CI_MCP_NU ${lib.getExe config.programs.nushell.package}
@@ -96,4 +99,21 @@ in
       };
     };
   };
+
+  # Follow `job-log` and ci MCP jobs as a Monitor running watch-job does,
+  # with a local cross.stream store and without one.
+  dotfiles.tooling.checks.watch-job =
+    pkgs.runCommand "watch-job-check"
+      {
+        nativeBuildInputs = [
+          pkgs.nushell
+          xs
+        ];
+      }
+      ''
+        export HOME="$TMPDIR/home"
+        mkdir -p "$HOME"
+        nu --config ${./scripts/nu-mcp-config.nu} ${./tests/watch-job.nu} ${./scripts/watch-job.nu}
+        touch "$out"
+      '';
 }

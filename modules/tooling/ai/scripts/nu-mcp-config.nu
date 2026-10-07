@@ -8,8 +8,9 @@ $env.NU_MCP_OUTPUT_LIMIT = 50kb
 # Run a closure as a background job the harness can follow: both output
 # streams of its external commands go to LOG, the outcome to `LOG.done.nuon`,
 # its OSC 7501 reports (osc7501.nu's PST_FILE) to `LOG.status.jsonl`, and
-# this Nushell's pid to `LOG.pid` so a watcher can tell a lost job from a slow
-# one. Follow it with a Monitor running `watch-job LOG`.
+# this Nushell's pid and the job's cross.stream topic to `LOG.job.nuon`, so a
+# watcher can tell a lost job from a slow one and wake the moment it ends.
+# Follow it with a Monitor running `watch-job LOG`.
 def job-log [
   log: path # Log file, usually in the session scratchpad
   task: closure # Work to run; redirect nothing inside it
@@ -21,7 +22,9 @@ def job-log [
   # A reused log path must not hand a watcher the previous run's state.
   for suffix in [done.nuon status.jsonl seen] { rm --force $"($log).($suffix)" }
   "" | save --force $log
-  $nu.pid | save --force $"($log).pid"
+  let topic = $"job.(random uuid)"
+  { pid: $nu.pid, topic: $topic } | save --force $"($log).job.nuon"
+  job-event $"($topic).start" { log: $log, cwd: $cwd, pid: $nu.pid }
   let id = (job spawn --description ($log | path basename) {
     let outcome = try {
       cd $cwd
@@ -31,6 +34,15 @@ def job-log [
       { exit_code: ($env.LAST_EXIT_CODE? | default 1), error: $err.msg }
     }
     $outcome | save --force $"($log).done.nuon"
+    job-event $"($topic).done" { outcome: $outcome }
   })
   { job: $id, log: $log }
+}
+
+# Announce a job event on the local cross.stream store, where `watch-job` and
+# other readers follow it. The files stay the record, so a store that is down
+# costs a watcher only its prompt wake-up.
+def job-event [topic: string, meta: record] {
+  let store = ($env.XS_ADDR? | default ($env.HOME | path join .local/share/cross.stream/store))
+  try { ^xs append $store $topic --meta ($meta | to json --raw) | complete | ignore }
 }

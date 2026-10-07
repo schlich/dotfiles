@@ -8,6 +8,9 @@ under $XDG_STATE_HOME/ci-mcp/jobs, so a result survives the server.
 The server runs the target workspace's own jj/ci.nu when it has one, so an
 agent session never publishes with a `ci` built from an older checkout. In
 other repositories it falls back to the `ci` on PATH.
+
+Each job also announces its start and end on the local cross.stream store,
+under the topic its meta.json names, so `watch-job` wakes the moment it ends.
 """
 
 import asyncio
@@ -31,6 +34,9 @@ STATE = (
     Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local" / "state")
     / "ci-mcp"
     / "jobs"
+)
+XS_STORE = os.environ.get("XS_ADDR") or str(
+    Path.home() / ".local" / "share" / "cross.stream" / "store"
 )
 ANSI = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07]*\x07")
 # The wait a mutating tool gets when the caller names none: long enough for
@@ -115,6 +121,21 @@ def alive(pid: int) -> bool:
     return True
 
 
+def job_event(topic: str, meta: dict) -> None:
+    # The job directory stays the record, so a store that is down costs a
+    # watcher only its prompt wake-up.
+    try:
+        subprocess.run(
+            ["xs", "append", XS_STORE, topic, "--meta", json.dumps(meta)],
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            timeout=5,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+
+
 def job_state(path: Path, meta: dict) -> tuple[str, int | None]:
     exit_file = path / "exit"
     if exit_file.exists():
@@ -174,6 +195,9 @@ def start_job(args: list[str], workspace: str | None, mutating: bool) -> str:
     path = STATE / job_id
     path.mkdir(parents=True)
     command, env = ci_command(root)
+    topic = f"job.{job_id}"
+    env["CI_MCP_XS"] = XS_STORE
+    env["CI_MCP_DONE"] = f"{topic}.done"
     env["CI_MCP_LOG"] = str(path / "log")
     env["CI_MCP_EXIT"] = str(path / "exit")
     # The shell records the exit code even if this server exits first; the
@@ -182,7 +206,13 @@ def start_job(args: list[str], workspace: str | None, mutating: bool) -> str:
         [
             "sh",
             "-c",
-            '"$@" >"$CI_MCP_LOG" 2>&1; echo $? >"$CI_MCP_EXIT"',
+            # It then announces the exit code on cross.stream, so watch-job
+            # wakes the moment the job ends.
+            (
+                '"$@" >"$CI_MCP_LOG" 2>&1; code=$?; echo $code >"$CI_MCP_EXIT"; '
+                'xs append "$CI_MCP_XS" "$CI_MCP_DONE" '
+                '--meta "{\\"outcome\\": {\\"exit_code\\": $code}}" >/dev/null 2>&1'
+            ),
             "ci-mcp-job",
             *command,
             *args,
@@ -202,10 +232,15 @@ def start_job(args: list[str], workspace: str | None, mutating: bool) -> str:
                 "mutating": mutating,
                 "pid": proc.pid,
                 "started": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                "topic": topic,
             }
         )
     )
     (path / "log").touch()
+    job_event(
+        f"{topic}.start",
+        {"log": str(path / "log"), "cwd": str(root), "pid": proc.pid},
+    )
     return job_id
 
 

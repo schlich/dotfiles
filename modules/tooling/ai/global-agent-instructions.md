@@ -123,15 +123,18 @@ script, use valid Nushell syntax.
   It runs the closure as a Nushell job, appends both streams of its
   external commands to the log, saves the outcome in `LOG.done.nuon`, and
   points `PST_FILE` at `LOG.status.jsonl`, so OSC 7501 reports from the
-  `pst` module reach the watcher. Do not redirect inside the closure.
+  `pst` module reach the watcher. It also announces the job's start and end
+  on cross.stream, under the topic that `LOG.job.nuon` names. Do not
+  redirect inside the closure.
 
 - A Nushell job is invisible to the harness: no task-panel entry and no
   completion notice. When the harness provides the Monitor tool, start one
   for every job as soon as it is spawned, running `watch-job LOG` with
   `timeout_ms` at its maximum. The Monitor is the job's task in the panel
-  and on the Fieldnotes wallpaper. It emits matching log lines, a `STATUS`
-  line for each OSC 7501 report, and a final `DONE` line with the outcome,
-  or `DONE: {state: lost}` when the Nushell that ran the job has exited. If
+  and on the Fieldnotes wallpaper. It emits matching log lines and a
+  `STATUS` line for each OSC 7501 report within two seconds, and a final
+  `DONE` line with the outcome as soon as the job ends, or
+  `DONE: {state: lost}` when the Nushell that ran the job has exited. If
   the Monitor expires before `DONE`, start the same command again; it
   resumes where the last one stopped. Without Monitor, check the done
   marker before reporting.
