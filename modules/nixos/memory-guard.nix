@@ -3,19 +3,31 @@
 # sessions filled RAM and the RAM-backed zram swap; the kernel OOM killer
 # fired only once swap was completely full, and the next evaluation left the
 # desktop thrashing until a power cycle.
+{ config, ... }:
 {
   systemd.oomd = {
     enable = true;
-    # Kill the cgroup using the most swap once swap passes SwapUsedLimit.
+    # NixOS makes both of these memory-pressure kills: once pressure on the
+    # whole machine, or on a user's units, stays above 80% for
+    # DefaultMemoryPressureDurationSec, oomd kills the unit under the most
+    # pressure (an agent's scope, a terminal, an app).
     enableRootSlice = true;
-    # Kill a user unit (an agent's scope, a terminal, an app) whose memory
-    # pressure stays above 80% for DefaultMemoryPressureDurationSec.
     enableUserSlices = true;
     settings.OOM = {
-      SwapUsedLimit = "80%";
+      SwapUsedLimit = "90%";
       DefaultMemoryPressureDurationSec = "10s";
     };
   };
+
+  # Also kill the unit using the most swap once both RAM and swap are more
+  # than SwapUsedLimit full, as Fedora does by default; NixOS's options leave
+  # this out. zram swap lives in RAM, and on 2026-10-07 it filled to its last
+  # 48 kB before the kernel acted. oomd picks one leaf unit, never a whole
+  # session.
+  systemd.slices."-".sliceConfig.ManagedOOMSwap = "kill";
+
+  # systemd-oomd reads oomd.conf only when it starts.
+  systemd.services.systemd-oomd.restartTriggers = [ config.environment.etc."systemd/oomd.conf".text ];
 
   # When the kernel OOM-kills one process, leave the rest of its unit
   # running. With the default `stop`, killing a single evaluation an agent
