@@ -5,6 +5,7 @@
     ./inventory.nix
     ./aspects/base.nix
     ./aspects/paseo.nix
+    ./aspects/marimohub.nix
     ./aspects/workstation.nix
     ./aspects/server.nix
     ./aspects/system-files.nix

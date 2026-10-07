@@ -3,7 +3,8 @@
 A proof of concept for one Markdown file that is at once a readable document,
 a typed [IWE](https://github.com/iwe-org/iwe) node, and a
 [marimo](https://marimo.io) notebook. The file runs in a Nix environment
-named by its own frontmatter.
+named by its own frontmatter. Architecture, upstream findings, and open
+questions are in [docs/executable-knowledge.md](../docs/executable-knowledge.md).
 
 ```text
 workbench/
@@ -82,3 +83,33 @@ document's frontmatter. Each environment yields a Python closure, a runtime
 Set `allowPypi = true` only to let marimohub install notebook dependencies
 missing from the Nix closure. By default the image sets `UV_OFFLINE=1`, so a
 missing dependency fails loudly instead of installing an unpinned package.
+
+## Run it on the homelab
+
+The `marimohub` Den aspect (`modules/nixos/workbench-hub.nix`) runs the hub
+with `fs` storage in `/var/lib/marimohub`, rootless Podman kernels from these
+images, and Tailscale Serve identity. No host includes it yet. To enable it,
+add the aspect to the homelab and set the login domain:
+
+```nix
+# den/hosts.nix, in den.aspects.homelab.includes
+den.aspects.marimohub
+
+# a homelab module
+services.marimohub.auth.allowedEmailDomains = [ "gmail.com" ];
+```
+
+After the system switch, start `marimohub-serve.service` once Tailscale is
+logged in. The hub is then at `https://<homelab>.<tailnet>.ts.net:8443`.
+Create a project, then a push-mode Git notebook with `root_path: workbench`
+and `entry_notebook: knowledge/investigations/executable-knowledge-demo.md`.
+Store its sync URL and token, and publish landed commits with:
+
+```nu
+with-env { MARIMOHUB_SYNC_URL: $url, MARIMOHUB_SYNC_TOKEN: $token } {
+    workbench sync --repo schlich/dotfiles --root-path workbench
+}
+```
+
+Pick the `workbench-visualization` image for that notebook (**Change base
+image**); the hub does not read the frontmatter `environment` key.

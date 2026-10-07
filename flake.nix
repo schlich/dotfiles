@@ -217,6 +217,7 @@
       };
       lib = nixpkgs.lib;
       iwe = import ./modules/tooling/knowledge/iwe-package.nix { inherit inputs lib pkgs; };
+      marimohub = import ./modules/tooling/knowledge/marimohub-package.nix { inherit lib pkgs; };
       workbench = import ./workbench { inherit pkgs lib iwe; };
       workbenchImages = lib.mapAttrs' (
         name: environment: lib.nameValuePair "workbench-image-${name}" environment.image
@@ -302,6 +303,18 @@
           }).config.system.build.toplevel.drvPath
         }\n"
       );
+      # homelab with the marimohub aspect, before the host includes it. The
+      # login domain is a placeholder until the hub is enabled there.
+      marimohubHomelabEvaluationCheck = pkgs.writeText "marimohub-homelab-evaluation" (
+        builtins.unsafeDiscardStringContext "${
+          (denFlake.nixosConfigurations.homelab.extendModules {
+            modules = [
+              ./modules/nixos/workbench-hub.nix
+              { services.marimohub.auth.allowedEmailDomains = [ "example.com" ]; }
+            ];
+          }).config.system.build.toplevel.drvPath
+        }\n"
+      );
       denPolicyCheck =
         pkgs.runCommand "den-policy-check"
           {
@@ -349,6 +362,7 @@
         jjui = pkgs.jjui;
         xr-workbench = xrWorkbench;
         quota-advisor = quotaAdvisor;
+        inherit marimohub;
         workbench = workbench.cli;
       }
       // workbenchImages;
@@ -430,6 +444,8 @@
           touch "$out"
         '';
         den-host-evaluation = denHostEvaluationCheck;
+        marimohub = marimohub;
+        marimohub-homelab-evaluation = marimohubHomelabEvaluationCheck;
         # One Markdown file as an IWE node and a marimo notebook: IWE
         # validates the corpus, marimo executes the demo in the Nix
         # environment its frontmatter names, an editor save keeps the IWE
