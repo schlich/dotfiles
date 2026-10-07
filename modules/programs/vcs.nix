@@ -1,4 +1,5 @@
 {
+  lib,
   pkgs,
   config,
   inputs,
@@ -83,6 +84,40 @@ in
     (pkgs.writeNuScriptBin "jj-dashboard" (builtins.readFile ../../jj/dashboard.nu))
     (import ../../jj/context-status.nix { inherit pkgs; })
   ];
+
+  # Topics landed without `ci park`, tasks archived without it, and their
+  # branches piled up: 15 workspaces and 17 landed `jj-*` branches stood on
+  # 2026-10-07. Prune them daily. `--idle` leaves alone any workspace used in
+  # the last day, without running JJ in it, so a live session is never
+  # snapshotted; work above trunk is always kept.
+  systemd.user.services.ci-prune = {
+    Unit.Description = "Remove landed ci workspaces and topic branches";
+    Service = {
+      Type = "oneshot";
+      WorkingDirectory = "${config.home.homeDirectory}/dotfiles";
+      ExecStart = "${jjCi}/bin/ci prune --apply --idle 1day";
+      Environment = [
+        "PATH=${
+          lib.makeBinPath [
+            config.programs.jujutsu.package
+            pkgs.openssh
+            pkgs.util-linux
+            pkgs.coreutils
+          ]
+        }"
+        "SSH_AUTH_SOCK=%t/gcr/ssh"
+      ];
+    };
+  };
+  systemd.user.timers.ci-prune = {
+    Unit.Description = "Prune landed ci workspaces and topic branches daily";
+    Timer = {
+      OnCalendar = "daily";
+      Persistent = true;
+      RandomizedDelaySec = "1h";
+    };
+    Install.WantedBy = [ "timers.target" ];
+  };
 
   xdg.configFile."nushell/autoload/ci.nu".source = ../../jj/completions.nu;
   # Refuses an interactive `jj new` that would strand a `ci` topic.
