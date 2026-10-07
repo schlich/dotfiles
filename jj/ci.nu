@@ -74,7 +74,12 @@ def run-command [label: string, command: closure] {
 # Print a finished command's output, and fail with `label` if it failed.
 def report-command [label: string, result: record] {
     if ($result.stdout | is-not-empty) { print --no-newline $result.stdout }
-    if ($result.stderr | is-not-empty) { print --stderr --no-newline $result.stderr }
+    if ($result.stderr | is-not-empty) {
+        # JJ reports a no-op fetch, bookmark move, or push only as "Nothing
+        # changed.", which says nothing about which step it was.
+        let stderr = ($result.stderr | str replace --all --regex '(?m)^Nothing changed\.$' $"($label): nothing changed.")
+        print --stderr --no-newline $stderr
+    }
     if $result.exit_code != 0 {
         error make { msg: $"($label) failed with exit code ($result.exit_code)" }
     }
