@@ -1,4 +1,9 @@
-{ inputs, pkgs, ... }:
+{
+  inputs,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   atuinNushellConfig = pkgs.runCommandLocal "atuin-nushell-config.nu" { } ''
@@ -58,17 +63,26 @@ in
       COLORTERM = "truecolor";
     };
     configFile.source = ../../config.nu;
-    extraConfig = ''
-      source ${atuinPtyProxyNushellConfig}
-      source ${atuinNushellConfig}
-      source ${../../mcp/agent-shell.nu}
-      use ${../../mcp/rlm.nu} *
-      source ${../../mcp/terminal-events.nu}
-      setup-terminal-events
-      source ${../../nushell/project.nu}
-      source ${../../nushell/context-status.nu}
-      setup-context-status
-    '';
+    extraConfig = lib.mkMerge [
+      ''
+        source ${atuinPtyProxyNushellConfig}
+        source ${atuinNushellConfig}
+        source ${../../mcp/agent-shell.nu}
+        use ${../../mcp/rlm.nu} *
+        source ${../../mcp/terminal-events.nu}
+        setup-terminal-events
+        source ${../../nushell/project.nu}
+        source ${../../nushell/context-status.nu}
+        setup-context-status
+      ''
+      # Program Status Protocol (OSC 7501): `pst` reports status to the
+      # terminal, and background jobs show as jobs/<id> records. The jobs
+      # hook wraps PROMPT_COMMAND, so it must run after starship sets it.
+      (lib.mkAfter ''
+        use ${inputs.osc7501-nu}/pst
+        pst jobs install
+      '')
+    ];
   };
 
   xdg.configFile."nushell/autoload/xs.nu".source = "${inputs.xs}/xs.nu";
