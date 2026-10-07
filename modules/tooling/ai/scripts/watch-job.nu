@@ -1,10 +1,14 @@
-# Follow a background job for the Monitor tool, one stdout line per event:
-# each new log line that matches --pattern, and each OSC 7501 status report
-# the job appends to `LOG.status.jsonl` (osc7501.nu's PST_FILE), printed as
-# `STATUS state [id]: msg`. Exit with a DONE line when the job finishes: a
-# `job-log` job saves `LOG.done.nuon`, and a ci MCP job (LOG is its `log`)
-# writes `exit` beside it. If the process that owns the job dies first, print
-# `DONE: {state: lost}` rather than wait out the Monitor's timeout.
+# Follow a background job for the Monitor tool, one stdout line per event.
+# A job reports its progress as OSC 7501 program status, which osc7501.nu's
+# `pst report` appends to `LOG.status.jsonl` (its PST_FILE) as JSON records;
+# the watcher prints each one but `clear` as `STATUS: {...}` in NUON. Once a
+# job has reported, those records are its whole story and the log goes
+# unsearched. Only a job that reports nothing, such as a bare `nix build`,
+# falls back to its log lines that match --pattern. Exit with a
+# `DONE: {...}` line when the job finishes: a `job-log` job saves
+# `LOG.done.nuon`, and a ci MCP job (LOG is its `log`) writes `exit` beside
+# it. If the process that owns the job dies first, print `DONE: {state:
+# lost}` rather than wait out the Monitor's timeout.
 #
 # Both kinds of job announce their start and end on cross.stream, under a
 # topic of their own. The watcher follows that topic and reads the files on
@@ -53,12 +57,15 @@ def read-lines [file: path, offset: int, --final]: nothing -> record {
   { lines: ($chunk | bytes at ..<$end | decode utf-8 | lines), offset: ($offset + $end) }
 }
 
-def status-line [report: record] {
-  let id = if $report.id? != null { $" ($report.id)" } else { "" }
-  let progress = if $report.progress? != null { $" ($report.progress)%" } else { "" }
-  let text = ([$report.title? $report.msg? $report.kind?] | compact | str join " · ")
-  let tail = if $text != "" { $": ($text)" } else { "" }
-  $"STATUS ($report.state)($id)($progress)($tail)"
+# The status reports among `lines`, less their timestamps, which the
+# Monitor's own clock already gives. A `clear` only tells a terminal to drop
+# its records, so a watcher skips it, along with any line that is not a
+# report.
+def status-reports [lines: list<string>]: nothing -> list<record> {
+  $lines
+  | each {|line| try { $line | from json } catch { null } }
+  | where {|report| ($report | describe) starts-with record and $report.state? not-in [null clear] }
+  | reject --optional time
 }
 
 # What wakes the watcher: each frame on the job's topic and the store's
@@ -76,8 +83,8 @@ def wakeups [interval: duration, topic: any] {
 
 def main [
   log: path # Log the job writes both streams to
-  --pattern: string = '(?i)^===|landed|releas|tagg|mirror|error|fail|refus|conflict|status=|oom|passed|waiting' # Lines worth a notification
-  --ignore: string = '(?i)\bno conflicts?\b' # Matching lines to drop anyway
+  --pattern: string = '(?i)^===|landed|releas|tagg|mirror|error|fail|refus|conflict|status=|oom|passed|waiting' # Log lines worth a notification, for a job that writes no status reports
+  --ignore: string = '(?i)\bno conflicts?\b' # Matching log lines to drop anyway
   --interval: duration = 2sec # How often to read the files between job events
   --replay # Start from the beginning instead of the saved position
 ] {
@@ -95,15 +102,21 @@ def main [
       # A job that is over writes nothing more, so its last line counts even
       # without a newline.
       let final = $outcome != null or not $alive
+      # Read the log before the reports: a job that reported before it
+      # logged a line is then always seen to have reported.
+      mut logged = []
       if ($log | path exists) {
         let new = (read-lines $log $seen.log --final=$final)
-        $new.lines | where {|line| $line =~ $pattern and $line !~ $ignore } | each { print $in } | ignore
+        $logged = $new.lines
         $seen.log = $new.offset
       }
       if ($status | path exists) {
         let new = (read-lines $status $seen.status --final=$final)
-        $new.lines | each {|line| try { print (status-line ($line | from json)) } } | ignore
+        status-reports $new.lines | each {|report| print $"STATUS: ($report | to nuon)" } | ignore
         $seen.status = $new.offset
+      }
+      if $seen.status == 0 {
+        $logged | where {|line| $line =~ $pattern and $line !~ $ignore } | each { print $in } | ignore
       }
       $seen | to nuon | save --force $cursor
       if $outcome != null {

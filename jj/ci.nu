@@ -173,14 +173,22 @@ def remote-retry-delay [attempt: int, stderr: string] {
 }
 
 # `complete` for a fetch or push, retried while the remote rate-limits it.
-# Jitter keeps sessions refused together from retrying together.
+# Jitter keeps sessions refused together from retrying together. Each retry
+# is reported under `remote`, and so is a retried command that then succeeds.
 def remote-complete [label: string, command: closure] {
     mut attempt = 1
     loop {
         let result = (do $command | complete)
         let delay = (remote-retry-delay $attempt $result.stderr)
-        if $result.exit_code == 0 or $delay == null { return $result }
-        print --stderr $"($label): the remote is rate-limiting this address; trying again in ($delay) \(attempt ($attempt + 1) of ($REMOTE_ATTEMPTS))."
+        if $result.exit_code == 0 or $delay == null {
+            if $attempt > 1 and $result.exit_code == 0 {
+                report-status done $"($label) went through on attempt ($attempt)" --id remote
+            }
+            return $result
+        }
+        let retry = $"($label): the remote is rate-limiting this address; trying again in ($delay) \(attempt ($attempt + 1) of ($REMOTE_ATTEMPTS))."
+        print --stderr $retry
+        report-status working $retry --id remote
         sleep ($delay + (random int 0..1000 | into duration --unit ms))
         $attempt += 1
     }
@@ -1487,7 +1495,9 @@ def validate-change [] {
     let paths = ($files.stdout | lines | where {|p| $p != "" })
     mut runs = [(run-prek $context $paths)]
     if (prek-verdict $runs).rerun {
-        print "Prek's formatters rewrote files; checking the formatted tree once more."
+        let rerun = "Prek's formatters rewrote files; checking the formatted tree once more."
+        print $rerun
+        report-status working $rerun --id preflight
         $runs = ($runs | append (run-prek $context $paths))
     }
     let verdict = (prek-verdict $runs)
@@ -2002,6 +2012,7 @@ def land-published [published: record, repo: record, timeout: duration, gate: st
         }
         error make { msg: $"landing on ($TRUNK_REMOTE) failed with exit code ($pushed.exit_code): ($pushed.stderr | str trim)" }
     }
+    report-status done $"Landed ($published.branch) on main at ($published.head | str substring 0..11)" --id land
     mirror-main
     cut-releases $"($base)..($published.head)" false
     print $"Landed ($published.branch) on main. `ci park` frees the workspace."
@@ -2017,21 +2028,28 @@ def land-with-retries [published: record, repo: record, timeout: duration, gate:
     for attempt in 1..$attempts {
         if (land-published $current $repo $timeout $gate) { return }
         if $attempt == $attempts { break }
-        print $"main moved while the gate ran; rebasing onto the new main and trying again \(attempt ($attempt + 1) of ($attempts))."
+        let retry = $"main moved while the gate ran; rebasing onto the new main and trying again \(attempt ($attempt + 1) of ($attempts))."
+        print $retry
+        report-status working $retry --id land
         $current = (publish-topic)
     }
     error make { msg: $"main moved during each of ($attempts) landing attempts. Nothing landed; run `ci land` again once main is quiet." }
 }
 
 # Fast-forward GitHub's main to the trunk's. Tangled is authoritative, so a
-# rejected mirror push leaves the landing in place and reports how to retry.
+# rejected mirror push leaves the landing in place and reports how to retry,
+# as an error under `mirror` that does not fail the run.
 def mirror-main [] {
     let fetched = (do { ^jj git fetch --remote $GITHUB_REMOTE --branch main } | complete)
     let pushed = if $fetched.exit_code == 0 {
         do { ^jj git push --remote $GITHUB_REMOTE --bookmark main } | complete
     } else { $fetched }
     if $pushed.exit_code != 0 {
-        print --stderr $"Landed on ($TRUNK_REMOTE), but mirroring main to ($GITHUB_REMOTE) failed: ($pushed.stderr | str trim). Retry with `jj git push --remote ($GITHUB_REMOTE) --bookmark main`."
+        let failure = $"Landed on ($TRUNK_REMOTE), but mirroring main to ($GITHUB_REMOTE) failed: ($pushed.stderr | str trim). Retry with `jj git push --remote ($GITHUB_REMOTE) --bookmark main`."
+        print --stderr $failure
+        report-status error $failure --id mirror
+    } else {
+        report-status done $"Mirrored main to ($GITHUB_REMOTE)" --id mirror
     }
 }
 
@@ -2193,6 +2211,7 @@ def cut-releases [range: string, dry_run: bool] {
             run-command $"tagging ($version)" { ^jj tag set $version -r $revision.commit } | ignore
             run-remote $"pushing ($version) to ($TRUNK_REMOTE)" { ^jj git push --remote $TRUNK_REMOTE --tag $version } | ignore
             print $"released ($title)"
+            report-status done $"Released ($title)" --id $"release/($version)"
         }
         $known = ($known | append $version)
     }
@@ -2633,6 +2652,7 @@ def --env "main park" [
     let summary = if $published { $"Parked ($branch)." } else { "Parked an undispatched topic." }
     # Past the checks above, a published or non-empty topic is on main.
     release-workspace $summary $change $keep (if $published or not $empty { "delivered" } else { "discarded" })
+    report-status done $summary --id park
 }
 
 def --env "main finish" [

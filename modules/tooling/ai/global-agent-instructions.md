@@ -129,28 +129,32 @@ script, use valid Nushell syntax.
   points `PST_FILE` at `LOG.status.jsonl`, so OSC 7501 reports from the
   `pst` module reach the watcher. It also announces the job's start and end
   on cross.stream, under the topic that `LOG.job.nuon` names. Do not
-  redirect inside the closure.
+  redirect inside the closure, and end it in an external command: the log
+  takes only text, so report a typed result with `pst report` rather than
+  returning a record.
 
 - A Nushell job is invisible to the harness: no task-panel entry and no
   completion notice. When the harness provides the Monitor tool, start one
   for every job as soon as it is spawned, running `watch-job LOG` with
   `timeout_ms` at its maximum. The Monitor is the job's task in the panel
-  and on the Fieldnotes wallpaper. It emits matching log lines and a
-  `STATUS` line for each OSC 7501 report within two seconds, and a final
-  `DONE` line with the outcome as soon as the job ends, or
-  `DONE: {state: lost}` when the Nushell that ran the job has exited. If
-  the Monitor expires before `DONE`, start the same command again; it
-  resumes where the last one stopped. Without Monitor, check the done
-  marker before reporting.
+  and on the Fieldnotes wallpaper. Within two seconds it emits a
+  `STATUS: {state, id, msg, ...}` NUON record for each OSC 7501 report,
+  such as `ci`'s phases, landing, releases, and retries, and a final
+  `DONE: {...}` record with the outcome as soon as the job ends, or
+  `DONE: {state: lost}` when the Nushell that ran the job has exited. Only
+  a job that writes no reports, such as a bare `nix build`, falls back to
+  log lines that match its pattern. If the Monitor expires before `DONE`,
+  start the same command again; it resumes where the last one stopped.
+  Without Monitor, check the done marker before reporting.
 
 - When a ci MCP tool returns `state: running`, follow it the same way
   instead of polling `job` in a loop: start a Monitor running `watch-job`
   on the result's `log_path`, and read the final record with `job` once
   `DONE` arrives.
 
-- A `STATUS blocked` event or a `DONE` with a nonzero `exit_code` or
-  `state: lost` needs the user: tell them, and send a push notification
-  when the harness offers one.
+- A `STATUS` record with `state: blocked`, or a `DONE` with a nonzero
+  `exit_code` or `state: lost`, needs the user: tell them, and send a push
+  notification when the harness offers one.
 
 - Edit files with the harness's own editing tools, not with Nushell `save`
   or `str replace` pipelines. Claude Code's checkpoints and rewind track
@@ -192,10 +196,12 @@ well:
   and the file gets its own readable card.
 
 The Monitor tool's card shows its command the same way. Start that command
-with a `# comment` title line too, and keep the logic out of it: call
-`watch-job LOG`, adding `--pattern` only when the default milestones and
-errors do not fit, rather than writing a poll loop, `tail -f`, or a `grep`
-filter inline. Its `description`, such as `ci land for desktop-ssh`, labels
+with a `# comment` title line too, and keep the logic out of it: call plain
+`watch-job LOG` rather than writing a poll loop, `tail -f`, or a `grep`
+filter inline. Do not pass `--pattern` for a `ci` job: its status reports
+already carry each milestone and failure as a record. A job that needs a
+milestone it does not report should gain a `pst report` call, not a regex.
+The Monitor's `description`, such as `ci land for desktop-ssh`, labels
 the task panel entry and every notification, so name the job and its target.
 
 Before a group of shell calls, give the user a short commentary readout

@@ -77,6 +77,13 @@ The job's `LOG.job.nuon` or `meta.json` names its topic. `watch-job` follows
 that topic, so a Monitor wakes the moment the job ends; the job's files stay
 the record when the store is down.
 
+Progress travels as records too. Both servers point `PST_FILE` at
+`LOG.status.jsonl`, where the `pst` module appends each OSC 7501 report the
+job makes, and `watch-job` prints each as a `STATUS: {...}` NUON record.
+`ci` reports its phases, its landing, releases, the GitHub mirror, and its
+retries there. Only a job that reports nothing has its log searched with a
+pattern instead.
+
 ## Directory Structure
 
 ```

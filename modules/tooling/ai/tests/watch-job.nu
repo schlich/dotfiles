@@ -54,6 +54,22 @@ def main [watch_job: path] {
   let result = (do $watch $log 10sec)
   $failures = ($failures | append (check "job-log job ends at its done event" $result.run ['^=== build$' '^error: boom$' '^DONE: \{exit_code: 3, error: '] $result.took 5sec))
 
+  # A job that reports its status is followed by its reports alone, as NUON
+  # records without their timestamps: its log lines, even ones the pattern
+  # matches, and its clear report print nothing.
+  let log = ($tmp | path join reported.log)
+  job-log $log { ^sh -c r#'
+    report() { printf '%s\n' "$1" >> "$PST_FILE"; }
+    report '{"time":"2026-10-07T08:00:00-05:00","state":"working","id":"rebase","app":"ci","msg":"Rebasing"}'
+    echo "error: a line the pattern matches"
+    sleep 1
+    report '{"time":"2026-10-07T08:00:01-05:00","state":"done","id":"land","app":"ci","msg":"Landed jj-x on main"}'
+    report '{"time":"2026-10-07T08:00:01-05:00","state":"clear","app":"ci"}'
+    echo "Landed jj-x on main."
+  '# } | ignore
+  let result = (do $watch $log 10sec)
+  $failures = ($failures | append (check "reported job prints its reports alone" $result.run ['^STATUS: \{state: working, id: rebase, app: ci, msg: Rebasing\}$' '^STATUS: \{state: done, id: land, app: ci, msg: "Landed jj-x on main"\}$' '^DONE: \{exit_code: 0\}$'] $result.took 5sec))
+
   # Without a store the watcher reads on a timer, and a line written in two
   # parts is read once it is whole.
   let log = ($tmp | path join offline.log)

@@ -11,9 +11,16 @@ $env.NU_MCP_OUTPUT_LIMIT = 50kb
 # this Nushell's pid and the job's cross.stream topic to `LOG.job.nuon`, so a
 # watcher can tell a lost job from a slow one and wake the moment it ends.
 # Follow it with a Monitor running `watch-job LOG`.
+#
+# The log takes only text, written as the commands produce it, so the closure
+# must end in an external command or text: a record, a list, or null cannot
+# be written there, and the job fails after its work is done. Report anything
+# typed with `pst report` instead, which reaches the watcher as a record.
+# Capturing the closure's value would cost the streaming log and the exit
+# code of its last external command.
 def job-log [
   log: path # Log file, usually in the session scratchpad
-  task: closure # Work to run; redirect nothing inside it
+  task: closure # Work to run, ending in an external command or text; redirect nothing inside it
   --cwd: path # Directory to run in (default: the current one)
 ]: nothing -> record {
   let log = ($log | path expand)
