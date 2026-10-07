@@ -81,6 +81,10 @@ script, use valid Nushell syntax.
   indexed knowledge queries. Use Nushell to inspect or evaluate this
   repository's own Nix files and flake.
 
+- Inside the Claude desktop app, `sudo` always fails because the app's
+  sandbox sets the no-new-privileges flag. Do not attempt privileged
+  commands there; give the user the command to run in their own terminal.
+
 - The evaluate tool returns only when a command finishes, so the user sees
   nothing while it runs. Run long external commands whose progress matters,
   such as `nix build`, or `ci land` without the ci MCP server, as a Nushell
