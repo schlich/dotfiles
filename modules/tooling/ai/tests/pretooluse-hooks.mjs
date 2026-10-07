@@ -87,10 +87,10 @@ function run(name, stdin, mode, delay, hook = hookCommand(name)) {
 const claudePayload = (
   command,
   tool = "Bash",
-  { background = false, event = "PreToolUse" } = {},
+  { background = false, event = "PreToolUse", session = "test" } = {},
 ) =>
   JSON.stringify({
-    session_id: "test",
+    session_id: session,
     hook_event_name: event,
     tool_name: tool,
     tool_use_id: "toolu_test",
@@ -159,6 +159,12 @@ const cases = [
     stdin: claudePayload("ls"),
     decision: "deny",
     reason: /Nushell MCP tool/,
+  },
+  {
+    hook: "prefer-nushell",
+    name: "denies a bare true probe",
+    stdin: claudePayload("true", "Bash", { session: "noop" }),
+    decision: "deny",
   },
   {
     hook: "prefer-nushell",
@@ -452,6 +458,11 @@ const stopCases = [
   {
     name: "stays silent for a session without Bash requests",
     stdin: stopPayload("other"),
+    block: null,
+  },
+  {
+    name: "stays silent for a session with only a no-op probe",
+    stdin: stopPayload("noop"),
     block: null,
   },
   {

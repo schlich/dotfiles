@@ -29,6 +29,12 @@ def use-case-key [entry: record] {
   $"($entry.rule) · ($entry.programs | get -o 0 | default '')"
 }
 
+# A bare shell no-op such as `true` or `:`, which harnesses send to probe
+# the Bash tool. It carries no use case, so the Stop hook never raises it.
+def noop-command [command: string] {
+  ($command | str trim) in ["true" ":"]
+}
+
 def load-log [] {
   let path = (log-path)
   if not ($path | path exists) {
@@ -136,6 +142,7 @@ def "main stop-hook" [] {
     let fresh = (
       load-log
       | where {|entry| $entry.event == "request" and $entry.session_id? == $session }
+      | where {|entry| not (noop-command $entry.command) }
       | each {|entry| { key: (use-case-key $entry), command: $entry.command } }
       | where {|case| $case.key not-in $seen }
       | uniq-by key
