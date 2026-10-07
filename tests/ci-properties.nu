@@ -623,3 +623,31 @@ with-env { XDG_STATE_HOME: $outcome_dir } {
 print "ok local checks lock"
 
 rm --recursive $outcome_dir
+
+# Remote commands retry only Tangled's rate-limit refusal.
+
+def gen-remote-failure [key: string] {
+    {
+        attempt: (1 + (pick $"($key)/attempt" ($REMOTE_ATTEMPTS + 2)))
+        stderr: (pick-from $"($key)/stderr" [
+            $"git: knot: ($RATE_LIMITED) from your address, try again shortly"
+            "Error: Refusing to move bookmark backwards or sideways: main"
+            "git: Bad owner or permissions on /home/schlich/.ssh/config"
+            ""
+        ])
+    }
+}
+
+for-all "remote commands retry only a rate limit, and only while attempts remain" {|key|
+    let failure = (gen-remote-failure $key)
+    let delay = (remote-retry-delay $failure.attempt $failure.stderr)
+    let retries = ($failure.stderr | str contains $RATE_LIMITED) and $failure.attempt < $REMOTE_ATTEMPTS
+    assert equal ($delay != null) $retries
+}
+
+for-all "remote retries back off by doubling from two seconds" {|key|
+    let attempt = (1 + (pick $"($key)/attempt" ($REMOTE_ATTEMPTS - 2)))
+    let first = (remote-retry-delay $attempt $RATE_LIMITED)
+    assert equal (remote-retry-delay ($attempt + 1) $RATE_LIMITED) ($first * 2)
+    assert equal (remote-retry-delay 1 $RATE_LIMITED) 2sec
+}

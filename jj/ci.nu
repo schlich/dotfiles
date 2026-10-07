@@ -1,5 +1,9 @@
 def run-command [label: string, command: closure] {
-    let result = (do $command | complete)
+    report-command $label (do $command | complete)
+}
+
+# Print a finished command's output, and fail with `label` if it failed.
+def report-command [label: string, result: record] {
     if ($result.stdout | is-not-empty) { print --no-newline $result.stdout }
     if ($result.stderr | is-not-empty) { print --stderr --no-newline $result.stderr }
     if $result.exit_code != 0 {
@@ -84,6 +88,38 @@ const GITHUB_REQUIRED_CHECKS = ["impact classification" "nix flake checks"]
 const TANGLED_INDEX = "https://api.tangled.org"
 const TANGLED_WEB = "https://tangled.org"
 const IDENTITY_RESOLVER = "https://slingshot.microcosm.blue"
+
+# Tangled's knot refuses an address that holds too many git operations at
+# once, which happens whenever several sessions fetch or push together. The
+# refusal is transient, so a remote command waits and tries again.
+const REMOTE_ATTEMPTS = 5
+const RATE_LIMITED = 'too many concurrent operations'
+
+# How long to wait before retrying a remote command whose `attempt` failed
+# with `stderr`, or null when it fails for good: any other error, or the last
+# attempt. The wait doubles from 2 seconds.
+def remote-retry-delay [attempt: int, stderr: string] {
+    if $attempt >= $REMOTE_ATTEMPTS or not ($stderr | str contains $RATE_LIMITED) { return null }
+    2sec * (2 ** ($attempt - 1))
+}
+
+# `complete` for a fetch or push, retried while the remote rate-limits it.
+# Jitter keeps sessions refused together from retrying together.
+def remote-complete [label: string, command: closure] {
+    mut attempt = 1
+    loop {
+        let result = (do $command | complete)
+        let delay = (remote-retry-delay $attempt $result.stderr)
+        if $result.exit_code == 0 or $delay == null { return $result }
+        print --stderr $"($label): the remote is rate-limiting this address; trying again in ($delay) \(attempt ($attempt + 1) of ($REMOTE_ATTEMPTS))."
+        sleep ($delay + (random int 0..1000 | into duration --unit ms))
+        $attempt += 1
+    }
+}
+
+def run-remote [label: string, command: closure] {
+    report-command $label (remote-complete $label $command)
+}
 
 def xrpc [service: string, method: string, params: record] {
     let response = (http get --full --allow-errors $"($service)/xrpc/($method)?($params | url build-query)")
@@ -533,7 +569,7 @@ def push-bookmark [remote: string, bookmark: string] {
     run-command $"tracking ($bookmark)@($remote)" {
         ^jj bookmark track $"($bookmark)@($remote)"
     } | ignore
-    run-command $"pushing ($bookmark) to ($remote)" {
+    run-remote $"pushing ($bookmark) to ($remote)" {
         ^jj git push --remote $remote --bookmark $bookmark
     } | ignore
 }
@@ -554,7 +590,7 @@ def delete-topic-bookmark [bookmark: string] {
     }
     for remote in [$TRUNK_REMOTE $GITHUB_REMOTE] {
         if (revset-change-ids (remote-bookmark-revset $bookmark $remote) | is-not-empty) {
-            run-command $"deleting ($bookmark) from ($remote)" {
+            run-remote $"deleting ($bookmark) from ($remote)" {
                 ^jj git push --remote $remote --bookmark $bookmark
             } | ignore
         }
@@ -621,7 +657,7 @@ def push-tangled-stack [] {
     print $"Publishing ($revisions | length) Tangled stack layer\(s) for series ($series):"
     for revision in $revisions {
         let branch = $"stack/($series)/($revision.change_id)"
-        run-command $"pushing ($branch) to tangled" {
+        run-remote $"pushing ($branch) to tangled" {
             ^jj git push --remote tangled --named $"($branch)=($revision.commit_id)"
         } | ignore
         print $"  ($branch): ($revision.description)"
@@ -768,7 +804,7 @@ def print-conflicts [context: string] {
 }
 
 def fetch-trunk [] {
-    run-command $"fetching ($TRUNK_REMOTE)" { ^jj git fetch --remote $TRUNK_REMOTE } | ignore
+    run-remote $"fetching ($TRUNK_REMOTE)" { ^jj git fetch --remote $TRUNK_REMOTE } | ignore
 }
 
 def rebase-topic [] {
@@ -1822,7 +1858,7 @@ def land-published [published: record, repo: record, timeout: duration, gate: st
     fetch-trunk
     if not (contains-main $published.head) { return false }
     run-command "advancing main" { ^jj bookmark set main -r $published.head } | ignore
-    let pushed = (do { ^jj git push --remote $TRUNK_REMOTE --bookmark main } | complete)
+    let pushed = (remote-complete "advancing main" { ^jj git push --remote $TRUNK_REMOTE --bookmark main })
     if $pushed.exit_code != 0 {
         # The lease lost a race with a landing after the fetch above. Put the
         # local bookmark back on the trunk so the retry starts from it.
@@ -2014,7 +2050,7 @@ def cut-releases [range: string, dry_run: bool] {
             print $"would release ($title) at ($revision.commit | str substring 0..11)"
         } else {
             run-command $"tagging ($version)" { ^jj tag set $version -r $revision.commit } | ignore
-            run-command $"pushing ($version) to ($TRUNK_REMOTE)" { ^jj git push --remote $TRUNK_REMOTE --tag $version } | ignore
+            run-remote $"pushing ($version) to ($TRUNK_REMOTE)" { ^jj git push --remote $TRUNK_REMOTE --tag $version } | ignore
             print $"released ($title)"
         }
         $known = ($known | append $version)
