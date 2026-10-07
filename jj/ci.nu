@@ -824,7 +824,20 @@ def owner-status [owner: any] {
     if ($owner.finished? | default false) { "released" } else { "active" }
 }
 
+# Run from a Git worktree nested in the repository, such as a Claude Code
+# worktree, `jj` resolves to the shared checkout above it, so a topic command
+# there would move or rewrite that checkout's working copy, as one session's
+# `ci new` once moved another's (2026-10-07).
+def require-jj-workspace-here [] {
+    let root = (git-command "locating the workspace" { ^jj root })
+    let worktree = (enclosing-git-worktree $env.PWD $root)
+    if $worktree != null {
+        error make { msg: $"($worktree) is a Git worktree, not a JJ workspace, so this command would act on the shared checkout at ($root). Run `ci start NAME` here, then work in ($worktree)/.jj-workspaces/NAME." }
+    }
+}
+
 def require-owned-change [topic_id?: string] {
+    require-jj-workspace-here
     let owner = (session-owner)
     if (owner-status $owner) == "active" {
         if $owner.change_id != ($topic_id | default (current-topic-id)) {
@@ -1423,6 +1436,7 @@ def build-plan [published: list] {
 }
 
 def sync-main [] {
+    require-jj-workspace-here
     if (owner-status (session-owner)) == "active" {
         error make { msg: "An active Codex topic owns this workspace. Use `ci rebase`, park the topic, or `ci unclaim` a claim its task left behind before syncing." }
     }
@@ -2581,6 +2595,7 @@ def new-topic-refusal [facts: record] {
 def "main new" [
     --message (-m): string # Description for the new topic
 ] {
+    require-jj-workspace-here
     let root = (git-command "locating the workspace" { ^jj root })
     let marker = (owned-workspace-marker $root)
     let facts = (topic-facts)

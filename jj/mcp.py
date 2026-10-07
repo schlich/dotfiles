@@ -173,6 +173,11 @@ def running_mutation(root: Path) -> str | None:
 
 def start_job(args: list[str], workspace: str | None, mutating: bool) -> str:
     root = workspace_root(workspace)
+    # Run where the caller asked, not at the JJ root: from a Claude Code
+    # worktree, which has no .jj, the root is the shared checkout above it,
+    # so `ci start` could not see the worktree to nest the new workspace in,
+    # and topic commands could not refuse to act on the shared checkout.
+    cwd = Path(workspace or os.getcwd()).expanduser()
     if mutating and (busy := running_mutation(root)):
         raise ValueError(
             f"Job {busy} is still changing {root}; wait for it with `job` "
@@ -209,7 +214,7 @@ def start_job(args: list[str], workspace: str | None, mutating: bool) -> str:
             CI,
             *args,
         ],
-        cwd=root,
+        cwd=cwd,
         env=env,
         stdin=subprocess.DEVNULL,
         start_new_session=True,
@@ -231,7 +236,7 @@ def start_job(args: list[str], workspace: str | None, mutating: bool) -> str:
     (path / "log").touch()
     job_event(
         f"{topic}.start",
-        {"log": str(path / "log"), "cwd": str(root), "pid": proc.pid},
+        {"log": str(path / "log"), "cwd": str(cwd), "pid": proc.pid},
     )
     return job_id
 
@@ -414,8 +419,9 @@ async def start(
     wait_seconds: Wait = None,
 ) -> dict:
     """`ci start NAME`: create .jj-workspaces/NAME on main@tangled for an
-    actor that runs alongside the current working copy. Run later tools with
-    `workspace` set to the new directory."""
+    actor that runs alongside the current working copy, inside the Git
+    worktree `workspace` names if it is one (a Claude Code worktree). Run
+    later tools with `workspace` set to the new directory."""
     return await run(["start", name], workspace, wait_seconds)
 
 

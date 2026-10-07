@@ -579,7 +579,12 @@ changes, and built systems from half-finished topics (2026-10-07).
 
 - `ci start NAME` run inside such a worktree creates
   `<worktree>/.jj-workspaces/NAME`, where the app allows edits; elsewhere it
-  creates `.jj-workspaces/NAME` beside the default checkout as before.
+  creates `.jj-workspaces/NAME` beside the default checkout as before. The
+  ci MCP server runs each job in the directory its `workspace` names, not at
+  that directory's JJ root, so its `start` nests the same way.
+- Every other topic command (`new`, `sync`, `rebase`, `preflight`,
+  `dispatch`, `land`, `park`, `cancel`) refuses to run from such a worktree,
+  since it would act on the shared default checkout's working copy.
 - The context-status plugin's PreToolUse hook (`context-status guard`)
   refuses an Edit, Write, or NotebookEdit that JJ would attribute to the
   default checkout of a repository with topic workspaces: a tracked file in
