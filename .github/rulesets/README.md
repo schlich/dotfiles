@@ -3,18 +3,14 @@
 These JSON files are export/import sources for the repository ruleset UI and
 REST API; GitHub does not automatically apply files committed under `.github`.
 
-`main-checks.json` describes the active personal-repository ruleset. Required
-checks live in the classic branch protection that `ci github reconcile`
-manages; they are not strict, so a PR need not be up to date with `main`.
+GitHub (`origin`) only mirrors `main`. `ci land` delivers to Tangled and then
+fast-forwards GitHub's `main` to the same commit, so this repository never
+merges a pull request on GitHub: squash, rebase, and merge commits all rewrite
+or bypass the commit that the landing clearance tested.
 
-`main-checks-merge-queue.json` is the queue profile for when this repository is
-owned by an organization or otherwise runs on a GitHub plan that supports merge
-queues. It pairs with the `merge_group` trigger in `nix-ci.yml`. Apply it only
-after confirming the account supports merge queues; the queue then owns
-freshness testing.
-
-The queue keeps one entry per build and merge with squash. Each queued PR
-therefore becomes one commit on `main`, and each behavior or breaking commit
-gets its own CalVer release. The `impact classification` check runs on the pull
-request only; it is skipped for queue groups because the queue merges exactly
-the commits that were classified.
+`main-checks.json` describes the active personal-repository ruleset. It only
+blocks deleting `main` and rewriting it with a non-fast-forward push. It sets
+no required checks or pull request rule, because either would also reject the
+mirror push from `ci land`. GitHub requires at least one merge method to stay
+enabled, so nothing here can stop a pull request from being merged; that rule
+lives in `AGENTS.md`.

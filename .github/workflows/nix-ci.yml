@@ -50,7 +50,7 @@ jobs:
       - name: Check formatting with Checkmate
         shell: bash
         env:
-          DIFF_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || '' }}
+          DIFF_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
         run: |
           if [[ -z "$DIFF_BASE" || "$DIFF_BASE" =~ ^0+$ ]]; then
             DIFF_BASE=HEAD^
