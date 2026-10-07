@@ -517,3 +517,109 @@ for-all "unclaim leaves no claim without an active owner" {|key|
         assert ((not $claim_after) or $owner_active_after) "a claim outlived its owner"
     }
 }
+
+# Local clearance outcomes (2026-10-07). nix-fast-build writes its result file
+# only when it finishes, so a run that a signal ended, or that failed without
+# a failed check on record, was killed. An evaluation over the memory budget
+# counts as killed too. Only a check that failed by itself reads as failed.
+
+const MEMORY_BUDGET_ERROR = "evaluation exceeded the memory budget of 6144 MiB (workers * max-memory-size) even when run alone"
+const CHECK_OUTCOME_CASES = [
+    { exit: 0 results: null expected: { status: "success" } }
+    # The 2026-10-07 landing: the checks unit's main process died from a
+    # signal before nix-fast-build wrote any results.
+    { exit: 255 results: null expected: { status: "killed" error: "likely out of memory, exit status 255" } }
+    { exit: -9 results: null expected: { status: "killed" error: "likely out of memory, signal 9" } }
+    # nix-eval-jobs died, so nix-fast-build failed with every result passing.
+    { exit: 1 results: [{ type: "BUILD" attr: "fine" success: true error: null }] expected: { status: "killed" error: "likely out of memory, exit status 1" } }
+    { exit: 1 results: [{ type: "EVAL" attr: "desktop-primary" success: false error: $MEMORY_BUDGET_ERROR }] expected: { status: "killed" error: "likely out of memory, exit status 1" } }
+    { exit: 1 results: [{ type: "BUILD" attr: "den-inventory-tests" success: false error: "builder failed" }] expected: { status: "failed" error: "den-inventory-tests did not build" } }
+    { exit: 1 results: [{ type: "EVAL" attr: "broken" success: false error: "error: attribute 'x' missing" } { type: "BUILD" attr: "other" success: false error: "builder failed" }] expected: { status: "failed" error: "broken did not evaluate, other did not build" } }
+]
+
+let outcome_dir = (mktemp --directory --tmpdir "ci-outcome.XXXXXX")
+let outcome_file = ($outcome_dir | path join "checks.json")
+
+for case in $CHECK_OUTCOME_CASES {
+    rm --force $outcome_file
+    if $case.results != null { { results: $case.results } | to json | save $outcome_file }
+    assert equal (checks-outcome $case.exit $outcome_file) $case.expected $"exit ($case.exit) with results ($case.results | to nuon)"
+}
+print $"ok local check outcomes \(($CHECK_OUTCOME_CASES | length) cases)"
+
+# What a transient checks unit leaves behind, as observed on 2026-10-07: the
+# shell's recorded status and systemd-run's exit status for each way a run ends.
+const UNIT_EXIT_CASES = [
+    { recorded: "0" systemd_run: 0 expected: 0 }
+    { recorded: "1" systemd_run: 0 expected: 1 }
+    # The shell reports a check run killed by SIGKILL as 137.
+    { recorded: "137" systemd_run: 0 expected: -9 }
+    # A stop's SIGTERM counts as a clean exit: nothing recorded, and systemd-run
+    # exits 0, which once let unfinished checks pass.
+    { recorded: "" systemd_run: 0 expected: null }
+    # A unit killed whole records nothing, and systemd-run exits 255.
+    { recorded: "" systemd_run: 255 expected: 255 }
+]
+
+for case in $UNIT_EXIT_CASES {
+    assert equal (unit-exit-code $case.recorded $case.systemd_run) $case.expected $"recorded ($case.recorded | to nuon) with systemd-run exit ($case.systemd_run)"
+}
+print $"ok unit exit codes \(($UNIT_EXIT_CASES | length) cases)"
+
+def gen-check-result [key: string] {
+    let kind = (pick-from $"($key)/kind" ["passed" "build" "eval" "memory"])
+    {
+        type: (match $kind { "build" => "BUILD", "passed" => (pick-from $"($key)/type" ["BUILD" "EVAL"]), _ => "EVAL" })
+        attr: $"check-(pick $'($key)/attr' 100)"
+        success: ($kind == "passed")
+        error: (match $kind { "passed" => null, "memory" => $MEMORY_BUDGET_ERROR, _ => "error: builder failed" })
+    }
+}
+
+for-all "local checks read as killed exactly when no check failed by itself" {|key|
+    let exit_code = (pick-from $"($key)/exit" [1 2 255 -9 -15])
+    let finished = (flag $"($key)/finished")
+    let results = (0..<(pick $"($key)/count" 5) | each {|i| gen-check-result $"($key)/($i)" })
+    rm --force $outcome_file
+    if $finished { { results: $results } | to json | save $outcome_file }
+    let outcome = (checks-outcome $exit_code $outcome_file)
+    let own_failures = if $finished { $results | where {|result| not $result.success and $result.error != $MEMORY_BUDGET_ERROR } } else { [] }
+    if $exit_code < 0 or $exit_code == 255 or ($own_failures | is-empty) {
+        assert equal $outcome.status "killed"
+        assert ($outcome.error | str starts-with "likely out of memory") $outcome.error
+    } else {
+        assert equal $outcome.status "failed"
+        for failure in $own_failures {
+            assert ($outcome.error | str contains $failure.attr) $"($failure.attr) is missing from ($outcome.error)"
+        }
+    }
+}
+
+# The local checks lock (2026-10-07): a live holder keeps it, a holder that
+# exited or whose pid was reused gives way, and the locked work releases it
+# however it ends.
+
+with-env { XDG_STATE_HOME: $outcome_dir } {
+    let lock = (local-checks-lock-path)
+    let start = (process-start $nu.pid)
+    assert ($start != null) "no start time for this process"
+    assert equal (with-local-checks-lock deadbeef { 42 }) 42
+    assert (not ($lock | path exists)) "the lock outlived the work it guarded"
+    { topic: "live" pid: $nu.pid start: $start unit: null } | to json --raw | save --force $lock
+    assert equal (claim-local-checks-lock $lock "next" | get topic) "live"
+    for holder in [
+        { topic: "reused pid" pid: $nu.pid start: "1" unit: null }
+        { topic: "exited" pid: 99999999 start: $start unit: null }
+    ] {
+        $holder | to json --raw | save --force $lock
+        assert equal (claim-local-checks-lock $lock "next") null $holder.topic
+        assert equal (open --raw $lock | into binary | decode utf-8) "next"
+    }
+    rm $lock
+    let raised = (try { with-local-checks-lock deadbeef { error make { msg: "boom" } }; null } catch {|err| $err.msg })
+    assert equal $raised "boom"
+    assert (not ($lock | path exists)) "a failed body kept the lock"
+}
+print "ok local checks lock"
+
+rm --recursive $outcome_dir

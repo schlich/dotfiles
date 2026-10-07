@@ -175,6 +175,19 @@ leaves them unchanged (every refactor, for instance) builds only the cheap
 checks. The first landing after a large input update pays for the full
 system builds. Nix's configured remote builders apply as usual.
 
+Local clearance and a refactor's closure proof hold one lock for the whole
+machine, `$XDG_STATE_HOME/jj-ci/local-checks.lock` (under `~/.local/state` by
+default), shared by every workspace and session, since two of them at once
+can exhaust memory. A landing that finds it held prints
+`Waiting for local checks of <topic> (pid N) to finish.` and waits. A holder
+that has exited, unless its checks unit is still running, gives the lock up to
+the next waiter. When a check run dies from a signal, or fails without any
+check failing, clearance reports it as `killed (likely out of memory)` with
+its exit status rather than as a failed check. systemd counts a stopped unit
+as a success, so the checks record their own exit status, and a run stopped
+before it finished fails clearance too. Never stop another landing's checks
+to make room; wait for the lock instead.
+
 `ci land --clearance spindle` takes clearance from the repository's spindle instead. Pushes
 do not trigger it, so start `flake-checks.yml` on the topic branch by hand. It
 polls every 30 seconds (default timeout `--timeout 2hr`) and stops at the

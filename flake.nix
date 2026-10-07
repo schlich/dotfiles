@@ -574,7 +574,11 @@
           in
           pkgs.runCommand "ci-properties-check"
             {
-              nativeBuildInputs = [ pkgs.nushell ];
+              # util-linux provides the flock(1) that the local checks lock uses.
+              nativeBuildInputs = [
+                pkgs.nushell
+                pkgs.util-linux
+              ];
             }
             ''
               export HOME="$TMPDIR/home"

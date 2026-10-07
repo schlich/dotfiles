@@ -192,6 +192,144 @@ def github-checks-state [repo: string, commit: string] {
     { state: $state workflows: $workflows }
 }
 
+# Local clearance and the refactor proof are the heaviest things `ci` runs:
+# the flake checks may take 9 GiB, and the proof evaluates every host twice.
+# Two sessions that landed at once exhausted this 16 GiB machine, and the
+# kernel killed one landing's checks (2026-10-07). Both therefore run under
+# one lock shared by every workspace and session: a file under the state
+# directory that names its holder.
+def local-checks-lock-path [] {
+    $env.XDG_STATE_HOME? | default ($env.HOME | path join ".local" "state") | path join "jj-ci" "local-checks.lock"
+}
+
+# A process's start time in clock ticks since boot, or null once it has
+# exited. With the pid, it names one process even after the pid is reused.
+def process-start [pid: int] {
+    try {
+        open --raw $"/proc/($pid)/stat" | split row ")" | last | str trim | split row " " | get 19
+    } catch { null }
+}
+
+# Whether a lock holder still runs: its `ci` process, or the transient unit
+# running its checks, which outlives a `ci` that was cancelled or killed.
+def lock-holder-alive [holder: record] {
+    let start = (process-start $holder.pid)
+    if $start != null and $start == $holder.start { return true }
+    if ($holder.unit? | is-empty) { return false }
+    try { (^systemctl --user is-active --quiet $holder.unit | complete).exit_code == 0 } catch { false }
+}
+
+# The topic `commit` belongs to, as its change id and title, for the wait
+# message other sessions print. Outside a JJ workspace, the commit itself.
+def lock-topic [commit: string] {
+    let named = (try {
+        ^jj log -r $commit --no-graph -T 'change_id.short(8) ++ " " ++ description.first_line().escape_json()' | complete
+    } catch { { exit_code: 1 stdout: "" } })
+    if $named.exit_code == 0 and ($named.stdout | str trim | is-not-empty) {
+        $named.stdout | str trim
+    } else {
+        $commit | str substring 0..11
+    }
+}
+
+# Replace the lock file whose contents hash to `expected` ("absent" for no
+# file) with `next`, or remove it when `next` is empty, unless another session
+# changed it first. flock(1) on a guard file serializes the comparison and the
+# write, so two sessions that both find the lock free, or its holder dead,
+# cannot both take it.
+def swap-local-checks-lock [lock: string, expected: string, next: string] {
+    let swap = 'let current = (try { open --raw $env.LOCK | into binary | hash sha256 } catch { "absent" }); if $current != $env.EXPECTED { exit 3 }; if ($env.NEXT | is-empty) { rm --force $env.LOCK } else { $env.NEXT | save --force $env.LOCK }'
+    let result = (with-env { LOCK: $lock EXPECTED: $expected NEXT: $next } {
+        ^flock $"($lock).guard" $nu.current-exe --no-config-file --commands $swap | complete
+    })
+    if $result.exit_code not-in [0 3] {
+        error make { msg: $"updating ($lock) failed with exit code ($result.exit_code): ($result.stderr | str trim)" }
+    }
+    $result.exit_code == 0
+}
+
+# Take the lock for `claim` if it is free or its holder has died. Returns null
+# once it is taken, or else the record of the live session holding it.
+def claim-local-checks-lock [lock: string, claim: string] {
+    loop {
+        let raw = (try { open --raw $lock | into binary } catch { null })
+        let holder = (try { $raw | decode utf-8 | from json } catch { null })
+        if $holder != null and (try { lock-holder-alive $holder } catch { false }) { return $holder }
+        let current = if $raw == null { "absent" } else { $raw | hash sha256 }
+        if (swap-local-checks-lock $lock $current $claim) { return null }
+    }
+}
+
+# Run `body` under the local checks lock, waiting while another live session
+# holds it and printing that session once per holder. `unit` names the
+# transient unit that will run the checks: the lock stays held while it runs,
+# even if this process dies. The lock is released however `body` ends; if
+# this process is killed instead, the next session finds it dead and takes
+# the lock over.
+def with-local-checks-lock [commit: string, body: closure, --unit: string] {
+    let lock = (local-checks-lock-path)
+    mkdir ($lock | path dirname)
+    let claim = ({
+        topic: (lock-topic $commit)
+        pid: $nu.pid
+        start: (process-start $nu.pid)
+        unit: $unit
+        workspace: $env.PWD
+    } | to json --raw)
+    mut announced = {}
+    loop {
+        let holder = (claim-local-checks-lock $lock $claim)
+        if $holder == null { break }
+        if $holder != $announced {
+            print $"Waiting for local checks of ($holder.topic? | default 'another topic') \(pid ($holder.pid? | default '?')) to finish."
+            $announced = $holder
+        }
+        sleep 5sec
+    }
+    let outcome = try { { value: (do $body) error: null } } catch {|err| { value: null error: $err.msg } }
+    swap-local-checks-lock $lock ($claim | hash sha256) "" | ignore
+    if $outcome.error != null { error make { msg: $outcome.error } }
+    $outcome.value
+}
+
+# How a nix-fast-build run that exited with `exit_code` went, judged by the
+# result file it writes once it finishes. A signal, or a failure that left no
+# failed build or evaluation there, means something killed the run rather
+# than a check failing: on this machine, almost always memory. An evaluation
+# that outgrew the memory budget counts as killed too; nix-eval-jobs reports
+# it as failed once a retry on its own runs out as well.
+def checks-outcome [exit_code: int, results: string] {
+    if $exit_code == 0 { return { status: "success" } }
+    let failed = ((try { open $results | get results } catch { [] }) | where {|result|
+        not $result.success and ($result.error? | default "") !~ "exceeded the memory budget"
+    })
+    # Nu reports death by a signal as the negated signal number; systemd-run
+    # exits 255 when the unit's main process died from one.
+    if $exit_code < 0 or $exit_code == 255 or ($failed | is-empty) {
+        let ended = if $exit_code < 0 { $"signal (-1 * $exit_code)" } else { $"exit status ($exit_code)" }
+        return { status: "killed" error: $"likely out of memory, ($ended)" }
+    }
+    let checks = ($failed | each {|result|
+        match $result.type {
+            "BUILD" => $"($result.attr) did not build"
+            "EVAL" => $"($result.attr) did not evaluate"
+            _ => $"($result.attr) failed to ($result.type | str lowercase)"
+        }
+    })
+    { status: "failed" error: ($checks | str join ", ") }
+}
+
+# The exit code of checks that ran in a transient unit, in Nu's convention (a
+# signal N as -N), from the status their shell `recorded` and systemd-run's own
+# exit status; null when the run was stopped. systemd counts a stop's SIGTERM
+# as a clean exit, so a stopped run records nothing and systemd-run exits 0,
+# while a unit killed whole records nothing and keeps systemd-run's status.
+def unit-exit-code [recorded: string, systemd_run: int] {
+    if ($recorded | is-empty) { return (if $systemd_run == 0 { null } else { $systemd_run }) }
+    let code = ($recorded | into int)
+    if $code > 128 { -1 * ($code - 128) } else { $code }
+}
+
 # Build every flake check at `commit` on this machine with the command the
 # spindle workflow runs, streaming the build log. Outputs already in the local
 # store or a binary cache are skipped, so a topic that leaves the system
@@ -203,24 +341,39 @@ def github-checks-state [repo: string, commit: string] {
 #
 # The checks run in their own transient user service with a memory cap, so
 # when memory runs out the kernel or systemd-oomd stops that unit rather than
-# the terminal or agent app that started `ci land`.
+# the terminal or agent app that started `ci land`. They hold the local checks
+# lock, so another session's landing waits rather than running beside them.
+# systemd-run exits 0 for a service that a stop ended, which once let two
+# topics land without their checks finishing (2026-10-07), so a shell in the
+# unit records the checks' own exit status, and a run that recorded none fails.
 def local-checks-state [commit: string] {
-    let error = (with-commit-trees { head: $commit } {|trees|
-        let flake = $"path:($trees.head)"
-        let checks = [(which nix | get 0.path) --accept-flake-config run --inputs-from $flake nixpkgs#nix-fast-build -- --no-nom --skip-cached --eval-workers 1 --eval-max-memory-size 6144 --flake $"($flake)#checks.x86_64-linux"]
-        try {
-            if ($env.XDG_RUNTIME_DIR? | is-empty) {
-                run-external ...$checks
-            } else {
-                ^systemd-run --user --wait --pipe --collect --quiet --same-dir --unit=$"ci-local-checks-($commit | str substring 0..7)" -p MemoryHigh=7G -p MemoryMax=9G -p MemorySwapMax=2G -- ...$checks
+    let unit = if ($env.XDG_RUNTIME_DIR? | is-empty) { null } else { $"ci-local-checks-($commit | str substring 0..7)" }
+    let outcome = (with-local-checks-lock $commit --unit $unit {
+        with-commit-trees { head: $commit } {|trees|
+            let flake = $"path:($trees.head)"
+            let results = ($trees.head | path dirname | path join "checks.json")
+            let status = ($trees.head | path dirname | path join "checks.status")
+            let checks = [(which nix | get 0.path) --accept-flake-config run --inputs-from $flake nixpkgs#nix-fast-build -- --no-nom --skip-cached --eval-workers 1 --eval-max-memory-size 6144 --result-file $results --flake $"($flake)#checks.x86_64-linux"]
+            let ended = try {
+                if $unit == null {
+                    run-external ...$checks
+                } else {
+                    ^systemd-run --user --wait --pipe --collect --quiet --same-dir $"--unit=($unit)" -p MemoryHigh=7G -p MemoryMax=9G -p MemorySwapMax=2G -- /bin/sh -c '"$@"; echo $? > "$0"' $status ...$checks
+                }
+                { exit_code: 0 }
+            } catch {|err|
+                if $err.exit_code? == null { { error: $err.msg } } else { { exit_code: $err.exit_code } }
             }
-            null
-        } catch {|err|
-            $err.msg
+            if $ended.error? != null { return { status: "failed" error: $ended.error } }
+            let exit_code = if $unit == null { $ended.exit_code } else {
+                unit-exit-code (try { open --raw $status | str trim } catch { "" }) $ended.exit_code
+            }
+            if $exit_code == null { return { status: "killed" error: "stopped before it finished" } }
+            checks-outcome $exit_code $results
         }
     })
-    let status = if $error == null { "success" } else { "failed" }
-    { state: $status workflows: [{ name: "flake checks" status: $status error: ($error | default "") }] }
+    let state = if $outcome.status == "success" { "success" } else { "failed" }
+    { state: $state workflows: [{ name: "flake checks" status: $outcome.status error: ($outcome.error? | default "") }] }
 }
 
 # The check that gates a landing: the flake checks built on this machine, the
@@ -1805,10 +1958,13 @@ def with-commit-trees [revisions: record, body: closure] {
 }
 
 # Prove every NixOS closure at `head` matches `base`, or fail naming the hosts
-# that changed.
+# that changed. Evaluating every host twice is heavy, so the proof holds the
+# local checks lock.
 def require-closure-neutral [base: string, head: string] {
-    let differences = (with-commit-trees { base: $base head: $head } {|trees|
-        closure-differences (closure-fingerprint $"path:($trees.base)") (closure-fingerprint $"path:($trees.head)")
+    let differences = (with-local-checks-lock $head {
+        with-commit-trees { base: $base head: $head } {|trees|
+            closure-differences (closure-fingerprint $"path:($trees.base)") (closure-fingerprint $"path:($trees.head)")
+        }
     })
     if ($differences | is-not-empty) {
         error make { msg: $"Declared refactor, but these host closures changed: ($differences | str join ', '). Make the change closure-neutral or reclassify it as behavior or breaking." }
