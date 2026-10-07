@@ -34,14 +34,28 @@ def cached-trunk-script [source: string] {
     $script
 }
 
+# Whether JJ refused to run because this workspace is stale: another
+# workspace rewrote the change checked out here.
+def stale-working-copy [stderr: string] {
+    $stderr | str contains "working copy is stale"
+}
+
 def --wrapped main [...args] {
     let bundled = $env.CI_BUNDLED_SCRIPT
     let root = (^jj root | complete)
     let local = if $root.exit_code == 0 { $root.stdout | str trim | path join $SCRIPT } else { "" }
     let has_script = ($local | is-not-empty) and ($local | path exists)
-    let edits = if $has_script {
-        ^jj log --no-graph -r $"($TRUNK)..@ & files\(root:\"($SCRIPT)\")" -T 'change_id ++ "\n"' | complete
-    } else { { exit_code: 1 stdout: "" } }
+    let changes = {|| ^jj log --no-graph -r $"($TRUNK)..@ & files\(root:\"($SCRIPT)\")" -T 'change_id ++ "\n"' | complete }
+    let first = if $has_script { do $changes } else { { exit_code: 1 stdout: "" stderr: "" } }
+    # Update a stale workspace before anything else runs here; update-stale
+    # never overwrites a file edited since JJ last snapshotted it.
+    let edits = if $first.exit_code != 0 and (stale-working-copy $first.stderr) {
+        let updated = (^jj workspace update-stale | complete)
+        if $updated.exit_code == 0 {
+            print --stderr "ci: another workspace had rewritten this one's change; updated its files first."
+            do $changes
+        } else { $first }
+    } else { $first }
     let trunk = if $has_script and $edits.exit_code == 0 {
         ^jj file show -r $TRUNK $"root:\"($SCRIPT)\"" | complete
     } else { { exit_code: 1 stdout: "" } }

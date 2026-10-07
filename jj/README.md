@@ -268,6 +268,27 @@ not run `ci rebase` again while conflicts remain; doing so would attempt to
 move an already-rebased topic a second time. If a resolution goes wrong, use
 the printed checkpoint with `jj op restore` and retry from the pre-rebase state.
 
+### Stale workspaces
+
+Rewriting a change rebases its descendants, and another workspace that has
+one of them checked out goes stale: its files still show the old commit, and
+JJ refuses to run there until `jj workspace update-stale`. Sessions found
+their workspaces stale after another session rebased or abandoned a topic
+below theirs, and a switch once built a stale checkout (2026-10-07). Now:
+
+- `ci rebase` (and so `dispatch` and `land`), the stacked restack, and
+  `ci cancel` name the other workspaces whose working copies the rewrite
+  will move, and update them afterwards, printing each one they update.
+- `ci` itself, started in a stale workspace, updates it before anything else
+  and says so.
+- The context-status SessionStart handoff updates a stale workspace, the
+  session's own or one inside its worktree, and says so; the shell prompt
+  shows `⚠ stale` instead of changing files.
+
+`jj workspace update-stale` never overwrites a file edited there since JJ
+last snapshotted it; that file keeps its local content, which the next
+snapshot records.
+
 ## Continuous integration and conflict avoidance
 
 The canonical checkout tracks `main`; active work happens in dedicated JJ

@@ -698,6 +698,15 @@ for-all "remote commands retry only a rate limit, and only while attempts remain
     assert equal ($delay != null) $retries
 }
 
+for-all "a moved workspace is reported updated only when update-stale changed it" {|key|
+    let stderr = (pick-from $"($key)/stderr" [
+        "Attempted recovery, but the working copy is not stale."
+        "Working copy  (@) now at: mqrkszpm 1c2d3e4f rewritten from a"
+        ""
+    ])
+    assert equal (update-stale-noop $stderr) ($stderr | str starts-with "Attempted recovery")
+}
+
 for-all "ci start nests a workspace in the Git worktree it runs from" {|key|
     let worktree = if (flag $"($key)/worktree") { "/repo/.claude/worktrees/session" } else { null }
     let expected = if $worktree == null { "/repo/.jj-workspaces" } else { "/repo/.claude/worktrees/session/.jj-workspaces" }

@@ -953,9 +953,11 @@ def rebase-topic [] {
     }
     checkpoint "rebase"
     fetch-trunk
+    let moved = (other-workspaces-in 'roots(main@tangled..@)::')
     run-command "rebasing the topic stack" {
         ^jj rebase -s 'roots(main@tangled..@)' -o main@tangled --skip-emptied
     } | ignore
+    update-moved-workspaces $moved
     if (print-conflicts "Rebase completed") {
         error make { msg: "Rebase completed with conflicts. Resolve them before continuing." }
     }
@@ -1106,6 +1108,41 @@ def workspaces-in [revset: string] {
 
 def workspace-root [name: string] {
     run-command $"locating workspace ($name)" { ^jj workspace root --name $name }
+}
+
+# Rewriting a change rebases its descendants, and every other workspace that
+# has one of them checked out goes stale: its files still show the old commit,
+# and JJ refuses to run there until `jj workspace update-stale`. Sessions kept
+# finding their workspaces stale after another session rebased or abandoned a
+# topic below theirs, and a switch once built a stale checkout (2026-10-07).
+# So a `ci` command that rewrites names the other workspaces it will move
+# before rewriting, and updates them afterwards. update-stale never
+# overwrites a file edited there since JJ last snapshotted it.
+def other-workspaces-in [revset: string] {
+    let current = (git-command "locating the workspace" { ^jj root })
+    workspaces-in $revset | where {|name|
+        let root = (^jj workspace root --name $name | complete)
+        $root.exit_code != 0 or ($root.stdout | str trim) != $current
+    }
+}
+
+# Whether `jj workspace update-stale` found nothing to do.
+def update-stale-noop [stderr: string] {
+    $stderr | str contains "working copy is not stale"
+}
+
+def update-moved-workspaces [names: list<string>] {
+    for name in $names {
+        let found = (^jj workspace root --name $name | complete)
+        let root = ($found.stdout | str trim)
+        if $found.exit_code != 0 or not ($root | path exists) { continue }
+        let updated = (local-complete { ^jj --repository $root workspace update-stale })
+        if $updated.exit_code != 0 {
+            print --stderr $"Could not update workspace ($name) at ($root): ($updated.stderr | str trim). Run `jj workspace update-stale` there."
+        } else if not (update-stale-noop $updated.stderr) {
+            print $"Updated workspace ($name), whose checked-out change this rewrite moved."
+        }
+    }
 }
 
 # Restack a topic that other workspaces have checked out. Each one is
@@ -1957,7 +1994,9 @@ def restack-topic [parent: string] {
         error make { msg: $"The parent branch ($parent) has no local bookmark. Fetch and track it first." }
     }
     checkpoint "restack"
+    let moved = (other-workspaces-in $"roots\(::@ ~ ::($onto) ~ ::main@tangled)::")
     let stack = (restack "@" $onto)
+    update-moved-workspaces $moved
     let conflicts = (conflicted-revisions $stack)
     if ($conflicts | is-not-empty) {
         print $"Restacked onto ($parent) with ($conflicts | length) conflicted revision\(s):"
@@ -2700,7 +2739,9 @@ def --env "main cancel" [
     forget-publication-bookmark
     delete-topic-bookmark $branch
     if ($revisions | is-not-empty) {
+        let moved = (other-workspaces-in $"\(($revisions | get commit_id | str join ' | '))::")
         run-command "abandoning the topic" { ^jj abandon ...($revisions | get change_id) } | ignore
+        update-moved-workspaces $moved
     }
     release-workspace $"Cancelled the topic and abandoned ($revisions | length) revision\(s)." $change $keep "discarded"
 }

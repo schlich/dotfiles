@@ -161,6 +161,17 @@ for-all "a session's Git worktree is found inside the workspace, never above it"
     assert equal $at_root null
 }
 
+for-all "only JJ's stale working copy error counts as stale" {|key|
+    let stale = "Error: The working copy is stale (not updated since operation 2206fd5bc752).\nHint: Run `jj workspace update-stale` to update it."
+    let message = (pick-from $"($key)/message" [
+        $stale
+        "Attempted recovery, but the working copy is not stale."
+        "Error: There is no jj repo in \".\""
+        ""
+    ])
+    assert equal (stale-working-copy $message) ($message == $stale)
+}
+
 for-all "unpublished work above trunk is always surfaced" {|key|
     let facts = (consistent (gen-audit-facts $key) | merge { stack: (1 + (pick $"($key)/n" 3)) published: false })
     assert ("unpublished-work" in (audit-findings $facts | get code))

@@ -256,6 +256,26 @@ def collect [root: path] {
     $facts | merge (classify $facts)
 }
 
+# Whether JJ refused to read a workspace because another one rewrote the
+# change checked out there. Keep in step with stale-working-copy in
+# jj/ci-launch.nu.
+def stale-working-copy [message: string] {
+    $message | str contains "working copy is stale"
+}
+
+# Collect a workspace's facts, first updating it if another workspace left it
+# stale: as { facts healed }, or null when it cannot be read. Only a session
+# starting there does this; update-stale never overwrites a file edited since
+# JJ last snapshotted it.
+def collect-healing [root: path] {
+    let first = (try { { facts: (collect $root) error: null } } catch {|err| { facts: null error: $err.msg } })
+    if $first.error == null { return { facts: $first.facts healed: false } }
+    if not (stale-working-copy $first.error) { return null }
+    let updated = (^jj --repository $root workspace update-stale | complete)
+    if $updated.exit_code != 0 { return null }
+    try { { facts: (collect $root) healed: true } } catch { null }
+}
+
 def locked [root: path] {
     let lock = ($root | path join ".jj" $LOCK_FILE)
     ($lock | path exists) and ((date now) - (ls --long $lock | first | get modified)) < $LOCK_TTL
@@ -343,7 +363,14 @@ def topic-title [facts: record] {
 def "main prompt" [] {
     let root = (workspace-root $env.PWD)
     if $root == null { return }
-    let facts = (try { collect $root } catch { return })
+    # A stale checkout's files are not its change's: say so before anyone
+    # builds from them. The prompt never rewrites files itself.
+    let collected = (try { { facts: (collect $root) error: null } } catch {|err| { facts: null error: $err.msg } })
+    if $collected.error != null {
+        if (stale-working-copy $collected.error) { print --no-newline $"(ansi red)⚠ stale(ansi reset)" }
+        return
+    }
+    let facts = $collected.facts
     refresh-in-background $facts
     let parts = [
         (if ($facts.conflicts | is-not-empty) { $"(ansi red)⚠ conflict(ansi reset)" })
@@ -395,6 +422,9 @@ def handoff-text [facts: record] {
     [
         $"JJ workspace context \(context-status, (date now | format date '%Y-%m-%d %H:%M %Z')):"
         $"- Workspace: ($facts.root), ($owner)."
+        (if ($facts.healed? | default false) {
+            "- Updated this workspace's files first: another workspace had rewritten its checked-out change, which left it stale."
+        })
         (if $layout.default and $layout.dedicated {
             $"- Shared checkout: this is the repository's canonical checkout, and other sessions use it at the same time, so agent edits here are refused. Start your own workspace with `ci start NAME` and edit under ($facts.root)/.jj-workspaces/NAME."
         })
@@ -412,11 +442,13 @@ def handoff-text [facts: record] {
 # what JJ sees there, and the workspaces the session already made in it.
 def worktree-handoff-text [worktree: path, root: path] {
     let workspaces = (worktree-workspaces $worktree | each {|dir|
-        let facts = (try { collect $dir } catch { null })
-        if $facts == null {
-            $"  - ($dir): unreadable; run `jj workspace update-stale` there"
+        let collected = (collect-healing $dir)
+        if $collected == null {
+            $"  - ($dir): unreadable; run `jj status` there to see why"
         } else {
-            $"  - ($dir): (topic-title $facts | ansi strip), ($facts.stage); next: ($facts.next)"
+            let facts = $collected.facts
+            let healed = if $collected.healed { " (its files were stale and have been updated)" } else { "" }
+            $"  - ($dir): (topic-title $facts | ansi strip), ($facts.stage); next: ($facts.next)($healed)"
         }
     })
     [
@@ -479,7 +511,9 @@ def "main handoff" [
         let text = if $worktree != null {
             try { worktree-handoff-text $worktree $root } catch { return }
         } else {
-            let facts = (try { collect $root | insert layout (workspace-layout $root) } catch { return })
+            let collected = (collect-healing $root)
+            if $collected == null { return }
+            let facts = ($collected.facts | insert layout (workspace-layout $root) | insert healed $collected.healed)
             refresh-in-background $facts
             handoff-text $facts
         }

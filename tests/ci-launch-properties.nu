@@ -23,6 +23,17 @@ for-all "a topic that edits jj/ci.nu always runs its own copy" {|key|
     assert equal (launch-choice $facts) "topic"
 }
 
+for-all "only JJ's stale working copy error makes the launcher update the workspace" {|key|
+    let stale = "Error: The working copy is stale (not updated since operation 9791d5336f18).\nHint: Run `jj workspace update-stale` to update it."
+    let stderr = (pick-from $"($key)/stderr" [
+        $stale
+        "Error: Revision `main@tangled` doesn't exist"
+        "Attempted recovery, but the working copy is not stale."
+        ""
+    ])
+    assert equal (stale-working-copy $stderr) ($stderr == $stale)
+}
+
 for-all "every other workspace runs the trunk copy when it can read it" {|key|
     let facts = (gen-launch-facts $key)
     let trunk = $facts.has_script and (not $facts.topic_edits) and $facts.trunk_readable
