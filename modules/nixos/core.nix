@@ -1,6 +1,8 @@
 { pkgs, ... }:
 
 {
+  imports = [ ./boot-postmortem.nix ];
+
   nix = {
     registry.templates.to = {
       type = "github";

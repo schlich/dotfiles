@@ -10,6 +10,9 @@ let
   usageResetAlert = pkgs.writeNuScriptBin "usage-reset-alert" (
     builtins.readFile ../../noctalia/usage-reset-alert.nu
   );
+  bootPostmortem = pkgs.writeNuScriptBin "boot-postmortem" (
+    builtins.readFile ../../postmortem/boot-postmortem.nu
+  );
 in
 
 {
@@ -37,6 +40,28 @@ in
       OnUnitActiveSec = "5min";
     };
     Install.WantedBy = [ "timers.target" ];
+  };
+
+  # After an unclean shutdown, announce the system's boot-postmortem report
+  # once and offer to open an agent on it in a new terminal.
+  systemd.user.services.boot-postmortem-notify = {
+    Unit = {
+      Description = "Announce a report on an unclean shutdown";
+      After = [ "graphical-session.target" ];
+      PartOf = [ "graphical-session.target" ];
+    };
+    Service = {
+      # The notification waits for a click, so do not hold up the session.
+      Type = "exec";
+      ExecStart = "${bootPostmortem}/bin/boot-postmortem notify";
+      Environment = [
+        # niri comes from the system; `terminal`, `ai`, and `editor` from the profile.
+        "PATH=${
+          lib.makeBinPath [ pkgs.libnotify ]
+        }:/etc/profiles/per-user/${config.home.username}/bin:/run/current-system/sw/bin"
+      ];
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
   };
 
   programs = {
