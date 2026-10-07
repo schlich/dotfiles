@@ -25,6 +25,8 @@ def running-ids [] {
 def main [--target: string = "homelab"] {
   let dir = ($env.XDG_STATE_HOME? | default ($env.HOME | path join .local state) | path join fieldnotes agent-tasks)
   mkdir $dir
+  # Update the local records before copying them, so a slow or unreachable
+  # target holds up the next update by one bounded attempt at most.
   let running = (running-ids)
   let tasks = (
     glob ($dir | path join "*.json")
@@ -53,13 +55,17 @@ def main [--target: string = "homelab"] {
   }
   # Write a temporary file and rename it so the wallpaper never reads a
   # partial report. The remote login shell is Nushell, so run Bash explicitly.
+  # ConnectTimeout bounds only the connection and SSH banner, and homelab's
+  # Tailscale SSH holds a session in authentication until someone completes a
+  # browser check: give up once it has been silent for 10s, or after 20s.
   let result = (
     $report | to json
-    | ^ssh -o BatchMode=yes -o ForwardAgent=no -o ConnectTimeout=5 $target $"bash -c 'mkdir -p ($remote) && cat > ($remote)/($host).json.tmp && mv ($remote)/($host).json.tmp ($remote)/($host).json'"
+    | ^timeout --kill-after=5s 20s ssh -o BatchMode=yes -o ForwardAgent=no -o ConnectTimeout=5 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 $target $"bash -c 'mkdir -p ($remote) && cat > ($remote)/($host).json.tmp && mv ($remote)/($host).json.tmp ($remote)/($host).json'"
     | complete
   )
   if $result.exit_code != 0 {
-    print --stderr $"push to ($target) failed: ($result.stderr | str trim)"
+    let outcome = if $result.exit_code == 124 { "timed out after 20s" } else { $"failed with exit ($result.exit_code)" }
+    print --stderr $"push to ($target) ($outcome): ($result.stderr | str trim)"
     exit 1
   }
 }
