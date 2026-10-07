@@ -114,12 +114,28 @@ script, use valid Nushell syntax.
 
 # User-facing shell activity
 
-Codex Desktop can show a generic MCP tool label for Nushell evaluations. Before
-a group of shell calls, give the user a short commentary readout naming the
-operation and its target, such as checking JJ status in the current workspace
-or searching specific configuration files. Keep one readout for closely related
-probes and update it when the work moves to a new phase or finds a material
-result.
+Codex Desktop and the Claude desktop app show a Nushell evaluation as a
+generic MCP tool card: a label such as "nushell: evaluate" over the `input`
+argument, verbatim, in a narrow box. Write each `input` so that card reads
+well:
+
+- Start with a `# comment` line that says what the call does and to what,
+  such as `# Check devenv test in the newsletter worktree`. It serves as the
+  card's title.
+- Bind a long path once per session and refer to it afterwards, such as
+  `const S = '<scratchpad path>'` and then `$"($S)/check.nu"`. Constants and
+  `def`s persist between calls. Use `const`, not `let`, for a path that
+  `source` reads, since `source` needs it at parse time.
+- Put a script longer than about eight lines in a `.nu` file in the
+  scratchpad, written with the harness's file tool, and run it with
+  `source $"($S)/check.nu"`. Its bindings persist just as inline code's do,
+  and the file gets its own readable card.
+
+Before a group of shell calls, give the user a short commentary readout
+naming the operation and its target, such as checking JJ status in the
+current workspace or searching specific configuration files. Keep one readout
+for closely related probes and update it when the work moves to a new phase
+or finds a material result.
 
 For RLM work, name the source set and the visible phase: loading, searching,
 chunking, or asking sub-models to analyze it. A `let` binding and a history

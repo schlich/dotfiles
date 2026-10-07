@@ -4,9 +4,11 @@
 # a collapsed result. Show the full command, wrapped to the terminal, before
 # the call as a `systemMessage`, which the user sees and the model does not.
 # After the call, report only what the collapsed result hides: a failure, an
-# interruption, or a slow command's summary. This hook only displays: it never
-# decides, and any problem leaves it silent so the tool call proceeds exactly
-# as it would without it.
+# interruption, or a slow command's summary. The Claude desktop app already
+# shows the full `input` in its tool card and folds these messages into a
+# collapsed notice list, so there the hook skips the command and reports only
+# the result. This hook only displays: it never decides, and any problem
+# leaves it silent so the tool call proceeds exactly as it would without it.
 
 const max_command_lines = 40
 # Report a successful evaluation only when it took at least this long.
@@ -21,6 +23,10 @@ const fallback_width = 100
 
 def emit [message: string] {
   print ({ systemMessage: $message } | to json --raw)
+}
+
+def in-desktop-app [] {
+  ($env.CLAUDE_CODE_ENTRYPOINT? | default "") == "claude-desktop"
 }
 
 # The hook has no terminal of its own, but Claude Code, an ancestor process,
@@ -214,9 +220,11 @@ def main [] {
   let input = $in
   try {
     let payload = ($input | into string | from json)
-    $env.DISPLAY_COLUMNS = (terminal-width)
+    let desktop = (in-desktop-app)
+    # The desktop app has no terminal to measure; its notices use the fallback.
+    $env.DISPLAY_COLUMNS = if $desktop { $fallback_width } else { terminal-width }
     match ($payload.hook_event_name? | default "") {
-      "PreToolUse" => { show-command $payload }
+      "PreToolUse" => { if not $desktop { show-command $payload } }
       "PostToolUse" => { show-result $payload }
       "PostToolUseFailure" => { show-failure $payload }
       _ => {}

@@ -186,7 +186,8 @@ let
     builtins.readFile ../../../agent-monitor/push-background-tasks.nu
   );
   # MCP calls render as a bare `input:` argument; echo the full command before
-  # a Nushell evaluation and a one-line result summary after it.
+  # a Nushell evaluation and a one-line result summary after it. The desktop
+  # app's tool card already shows the command, so there only the summary runs.
   nushellDisplay =
     let
       hook = {
