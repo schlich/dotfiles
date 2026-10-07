@@ -5,20 +5,9 @@
 }:
 
 let
-  package = pkgs.github-copilot-cli.overrideAttrs (_: rec {
-    version = "1.0.73";
-    src = pkgs.fetchurl {
-      url = "https://github.com/github/copilot-cli/releases/download/v${version}/copilot-linux-x64.tar.gz";
-      hash = "sha256:8f9bb5f7e364c267265d1e24ac2aea69ed559ddb956719c6db12a353de6c5970";
-    };
-    sourceRoot = ".";
-    installPhase = ''
-      runHook preInstall
-      install -Dm755 copilot "$out/bin/copilot"
-      runHook postInstall
-    '';
-    postInstall = "";
-  });
+  # llm-agents tracks Copilot releases daily and serves them from its cache.
+  # Apply its overlay to this configuration's pkgs so allowUnfree holds.
+  package = (inputs.llm-agents.overlays.shared-nixpkgs pkgs pkgs).llm-agents.copilot-cli;
 in
 {
   imports = [
