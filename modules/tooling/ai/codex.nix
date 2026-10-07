@@ -30,7 +30,7 @@ let
         }
       }
       let directory_args = if $workspace == "" { [] } else { ["-C" $workspace] }
-      ^${pkgs.secretspec}/bin/secretspec run --file ${../../secretspec.toml} --provider keyring --reason "Codex invocation" -- ${pkgs.codex}/bin/codex ...$directory_args --config 'desktop.git-pr-watch-auto-merge=false' --config 'desktop.custom_file_handlers.jj-dashboard={label = "JJ dashboard", command = "jj-dashboard", icon = "${../../../jj/icon.svg}", input = "path", supports_ssh = false}' ...$args
+      ^${pkgs.secretspec}/bin/secretspec run --file ${../../secretspec.toml} --provider keyring --profile default --reason "Codex invocation" -- ${pkgs.codex}/bin/codex ...$directory_args --config 'desktop.git-pr-watch-auto-merge=false' --config 'desktop.custom_file_handlers.jj-dashboard={label = "JJ dashboard", command = "jj-dashboard", icon = "${../../../jj/icon.svg}", input = "path", supports_ssh = false}' ...$args
     }
   '';
 in

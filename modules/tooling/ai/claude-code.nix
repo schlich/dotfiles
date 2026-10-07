@@ -99,7 +99,7 @@ let
   # environment, where every shell command could read it.
   githubMcpHeaders = pkgs.writeNuScriptBin "claude-github-mcp-headers" ''
     def main [] {
-        let result = (^${pkgs.secretspec}/bin/secretspec get --file ${../../secretspec.toml} --provider keyring --reason "Claude Code GitHub MCP connection" GITHUB_TOKEN | complete)
+        let result = (^${pkgs.secretspec}/bin/secretspec get --file ${../../secretspec.toml} --provider keyring --profile default --reason "Claude Code GitHub MCP connection" GITHUB_TOKEN | complete)
         let token = ($result.stdout | str trim)
         if $result.exit_code != 0 or ($token | is-empty) {
             print --stderr "GITHUB_TOKEN is not available from secretspec."

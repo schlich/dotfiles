@@ -47,7 +47,7 @@ def api-key [] {
         return (validated-key $env.TYPESAFE_API_KEY "the environment")
     }
     let manifest = ($env.JEV_SECRETSPEC_FILE? | default ($env.FILE_PWD | path join ".." "modules" "secretspec.toml"))
-    let result = (^secretspec get --file $manifest --provider keyring --reason "Jev decision request" TYPESAFE_API_KEY | complete)
+    let result = (^secretspec get --file $manifest --provider keyring --profile default --reason "Jev decision request" TYPESAFE_API_KEY | complete)
     if $result.exit_code != 0 or ($result.stdout | str trim | is-empty) {
         error make { msg: "TYPESAFE_API_KEY is not set and is not available from secretspec." }
     }

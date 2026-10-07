@@ -20,7 +20,7 @@ def read-secret [label: string, command: closure] {
 def main [endpoint: string] {
     let manifest = "/home/schlich/dotfiles/modules/secretspec.toml"
     let secret = (read-secret "reading webhook secret from secretspec" {
-        ^secretspec get --file $manifest --provider keyring --reason "register GitHub workflow webhook" JJ_CI_WEBHOOK_SECRET
+        ^secretspec get --file $manifest --provider keyring --profile default --reason "register GitHub workflow webhook" JJ_CI_WEBHOOK_SECRET
     })
     if ($secret | is-empty) {
         error make { msg: "SecretSpec returned an empty webhook secret." }

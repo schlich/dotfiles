@@ -64,8 +64,12 @@ in
       after = [ "network-online.target" ];
       wants = [ "network-online.target" ];
       wantedBy = [ "multi-user.target" ];
+      # Give up after five failed starts in five minutes instead of retrying
+      # a persistent failure forever; `systemctl restart` clears the limit.
+      startLimitIntervalSec = 300;
+      startLimitBurst = 5;
       serviceConfig = {
-        ExecStart = "${pkgs.secretspec}/bin/secretspec run --file ${../../modules/secretspec.toml} --provider keyring --scope jj-ci-webhook --reason=webhook-listener-startup -- ${listener}/bin/jj-ci-webhook";
+        ExecStart = "${pkgs.secretspec}/bin/secretspec run --file ${../../modules/secretspec.toml} --provider keyring --profile default --scope jj-ci-webhook --reason=webhook-listener-startup -- ${listener}/bin/jj-ci-webhook";
         Environment = [
           "PATH=${homePath}/bin:${config.systemd.services.jj-ci-webhook.environment.PATH}"
         ];
@@ -91,7 +95,12 @@ in
           "AF_INET"
           "AF_INET6"
         ];
-        ReadWritePaths = [ cfg.projectDir ];
+        # The secretspec audit log records this unattended secret read; the
+        # leading "-" keeps a missing state directory from failing the unit.
+        ReadWritePaths = [
+          cfg.projectDir
+          "-/home/schlich/.local/state/secretspec"
+        ];
       };
       environment = {
         HOME = "/home/schlich";

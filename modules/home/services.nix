@@ -63,6 +63,10 @@ in
       Description = "OpenCode HTTP server";
       After = [ "network-online.target" ];
       Wants = [ "network-online.target" ];
+      # Give up after five failed starts in five minutes instead of retrying
+      # a persistent failure forever; `systemctl --user restart` clears it.
+      StartLimitIntervalSec = 300;
+      StartLimitBurst = 5;
     };
     Service = {
       ExecStart = "${config.programs.opencode.package}/bin/opencode serve --hostname 127.0.0.1 --port 4096";
