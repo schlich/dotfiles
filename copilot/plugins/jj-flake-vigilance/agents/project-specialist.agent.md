@@ -50,8 +50,9 @@ Evolve this flake carefully with **jj-first** version control discipline. Prefer
 
 When Nix configuration edits are ready to apply, identify whether they affect
 the NixOS system, Home Manager, or both, and ask the user for explicit approval
-before activating anything. For NixOS changes, offer
-`sudo nixos-rebuild switch --flake .#asus`; never run it automatically.
+before activating anything. For NixOS changes, land them, then offer
+`system-switch`, which applies Tangled's `main` without sudo; run it only
+when the user asks.
 
 Home Manager is embedded in the `asus` NixOS configuration, so do not use the
 standalone `home-manager switch` workflow. Use `home-activate` for a home-only

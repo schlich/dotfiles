@@ -1,7 +1,10 @@
 { pkgs, ... }:
 
 {
-  imports = [ ./boot-postmortem.nix ];
+  imports = [
+    ./boot-postmortem.nix
+    ./system-switch.nix
+  ];
 
   nix = {
     registry.templates.to = {

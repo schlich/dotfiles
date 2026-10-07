@@ -61,7 +61,12 @@ the active symlink target. If they match, do not run a NixOS switch just to
 record the source change; evaluation and builds do not create generations.
 
 When the paths differ and the system change is to be applied, use the deliberate
-NixOS activation workflow. Home Manager-only changes use `home-activate` when
+NixOS activation workflow: land the change, then run `system-switch`. It starts
+the root `nixos-switch-main` unit, which polkit lets the primary user start
+without a password. The unit builds the host from Tangled's `main` at a pinned
+revision, never from a working copy, skips the switch when that toplevel is
+already active, and records the result in `/var/lib/nixos-switch-main`.
+Home Manager-only changes use `home-activate` when
 they leave the NixOS toplevel unchanged. In this repository,
 `home-manager.useUserPackages = true`, so changes to `home.packages` are
 system-owned and can change the NixOS toplevel; classify those by the same path

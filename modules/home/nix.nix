@@ -89,34 +89,34 @@
         }
       }
     '')
-    (pkgs.writeNuScriptBin "nixos-activate" ''
-      # Give each distinct system closure a stable, recognizable boot label.
-      def --wrapped main [...args] {
-        let flake = "path:/home/schlich/dotfiles"
-        let toplevel = $"($flake)#nixosConfigurations.asus.config.system.build.toplevel.outPath"
-        let label_option = $"($flake)#nixosConfigurations.asus.config.system.nixos.label"
-        let base_path = (
-          ^env -u NIXOS_LABEL nix eval --raw --impure $toplevel
-          | str trim
+    (pkgs.writeNuScriptBin "system-switch" ''
+      # Apply the NixOS configuration on Tangled's main without sudo: start
+      # the root nixos-switch-main unit, then show its output and result.
+      # The journal is read through the user manager so this also works
+      # inside the Claude desktop app's sandbox.
+      def main [] {
+        let unit = "nixos-switch-main.service"
+        let bin = "/run/current-system/sw/bin"
+        let since = (date now | format date "%Y-%m-%d %H:%M:%S")
+        print $"Switching to main through ($unit)..."
+        let result = (^$"($bin)/systemctl" start $unit | complete)
+        let log = (
+          ^$"($bin)/systemd-run" --user --pipe --wait --collect --quiet
+            $"($bin)/journalctl" --unit $unit --since $since --no-pager --output cat
+          | complete
         )
-        let base_label = (
-          ^env -u NIXOS_LABEL nix eval --raw --impure $label_option
-          | str trim
-        )
-        let fingerprint = ($base_path | path basename | split row "-" | first)
-        let label = $"($base_label)-($fingerprint)"
-        let candidate = (
-          ^env $"NIXOS_LABEL=($label)" nix eval --raw --impure $toplevel
-          | str trim
-        )
-        let active = (^readlink --canonicalize /run/current-system | str trim)
-
-        if $candidate == $active {
-          print "The candidate NixOS toplevel is already active; no generation created."
-          return
+        print $log.stdout
+        let state = "/var/lib/nixos-switch-main/last.nuon"
+        if ($state | path exists) {
+          print (open $state)
         }
-
-        ^sudo env $"NIXOS_LABEL=($label)" nixos-rebuild switch --flake "path:/home/schlich/dotfiles#asus" ...$args
+        let failed = (^$"($bin)/systemctl" --failed --no-legend --plain | complete | get stdout | str trim)
+        if ($failed | is-not-empty) {
+          print $"Failed units:\n($failed)"
+        }
+        if $result.exit_code != 0 {
+          error make { msg: $"($unit) failed: ($result.stderr | str trim)" }
+        }
       }
     '')
     (pkgs.writeNuScriptBin "home-activate" ''

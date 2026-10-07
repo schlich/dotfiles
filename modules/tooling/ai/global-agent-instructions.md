@@ -110,6 +110,8 @@ script, use valid Nushell syntax.
 - Inside the Claude desktop app, `sudo` always fails because the app's
   sandbox sets the no-new-privileges flag. Do not attempt privileged
   commands there; give the user the command to run in their own terminal.
+  The exception is a NixOS switch in the dotfiles repository: when the user
+  asks for one, run `system-switch`, which needs no sudo and works there.
 
 - The evaluate tool returns only when a command finishes, so the user sees
   nothing while it runs, and a call that outlasts about two minutes is

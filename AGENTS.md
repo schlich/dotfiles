@@ -57,8 +57,11 @@
 - When Nix configuration edits are ready to apply, identify whether they affect
   the NixOS system, Home Manager, or both, and ask the user for explicit
   approval before activating anything.
-- For NixOS changes, offer `sudo nixos-rebuild switch --flake .#asus`; never
-  run it automatically.
+- For NixOS changes, land them, then offer `system-switch`. It applies
+  Tangled's `main` without sudo through the `nixos-switch-main` unit, which
+  polkit lets the user start, and prints the switch's output and any failed
+  units. Run it only when the user asks to switch; never start it on your
+  own. Unlanded changes cannot be switched to this way.
 - Create a NixOS generation only when the candidate
   `system.build.toplevel` store path differs from the active
   `/run/current-system` target. If they match, do not switch merely to record a
