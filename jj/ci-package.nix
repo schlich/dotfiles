@@ -9,7 +9,10 @@ pkgs.symlinkJoin {
   nativeBuildInputs = [ pkgs.makeWrapper ];
   meta.mainProgram = "ci";
   postBuild = ''
+    # The launcher runs jj before any ci.nu. Append it so CI runners without
+    # jj have one, while a user's own jj still comes first.
     wrapProgram "$out/bin/ci" --prefix PATH : ${pkgs.git}/bin:${pkgs.gh}/bin \
+      --suffix PATH : ${pkgs.jujutsu}/bin \
       --prefix NU_LIB_DIRS : ${osc7501-nu} \
       --set CI_BUNDLED_SCRIPT ${./ci.nu}
     # Deprecated alias for the former `jj-ci` name.
