@@ -1,7 +1,10 @@
 { pkgs, ... }:
 
 {
-  imports = [ ./core.nix ];
+  imports = [
+    ./core.nix
+    ./memory-guard.nix
+  ];
 
   environment.systemPackages = [ pkgs.google-chrome ];
 

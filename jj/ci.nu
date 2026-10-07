@@ -195,15 +195,25 @@ def github-checks-state [repo: string, commit: string] {
 # Build every flake check at `commit` on this machine with the command the
 # spindle workflow runs, streaming the build log. Outputs already in the local
 # store or a binary cache are skipped, so a topic that leaves the system
-# closures alone builds only the cheap checks. nix-fast-build caps evaluation
-# at workers times the per-worker size; this machine allows 8 GiB rather than
-# the spindle guest's 6 GiB, because den-host-evaluation alone needs about
-# 6 GiB once a flake input brings its own nixpkgs.
+# closures alone builds only the cheap checks. Evaluation uses one worker:
+# den-host-evaluation alone needs about 6 GiB once a flake input brings its
+# own nixpkgs, the per-worker size is only a soft limit checked between
+# attributes, and two workers beside open agent sessions exhausted this
+# 16 GiB machine and froze it (2026-10-07).
+#
+# The checks run in their own transient user service with a memory cap, so
+# when memory runs out the kernel or systemd-oomd stops that unit rather than
+# the terminal or agent app that started `ci land`.
 def local-checks-state [commit: string] {
     let error = (with-commit-trees { head: $commit } {|trees|
         let flake = $"path:($trees.head)"
+        let checks = [(which nix | get 0.path) --accept-flake-config run --inputs-from $flake nixpkgs#nix-fast-build -- --no-nom --skip-cached --eval-workers 1 --eval-max-memory-size 6144 --flake $"($flake)#checks.x86_64-linux"]
         try {
-            ^nix --accept-flake-config run --inputs-from $flake nixpkgs#nix-fast-build -- --no-nom --skip-cached --eval-workers 2 --eval-max-memory-size 4096 --flake $"($flake)#checks.x86_64-linux"
+            if ($env.XDG_RUNTIME_DIR? | is-empty) {
+                run-external ...$checks
+            } else {
+                ^systemd-run --user --wait --pipe --collect --quiet --same-dir --unit=$"ci-local-checks-($commit | str substring 0..7)" -p MemoryHigh=7G -p MemoryMax=9G -p MemorySwapMax=2G -- ...$checks
+            }
             null
         } catch {|err|
             $err.msg
