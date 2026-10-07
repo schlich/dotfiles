@@ -67,8 +67,13 @@ in
         ];
         patterns = [ "glob:'**/*.py'" ];
       };
-      git.push = "origin";
-      git.fetch = "origin";
+      # Tangled hosts trunk; GitHub (origin) is only a mirror that `ci land` updates.
+      git.push = "tangled";
+      git.fetch = [
+        "tangled"
+        "origin"
+      ];
+      revset-aliases."trunk()" = "main@tangled";
       git.executable-path = "${pkgs.git}/bin/git";
     };
   };
