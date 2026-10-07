@@ -1,0 +1,23 @@
+{
+  version: 1
+  name: "schlich-agent-marketplace"
+  visibility: "private"
+  packages: [
+    {
+      name: "token-budget-controller"
+      kind: "skill"
+      status: "staged"
+      description: "Guide model and reasoning-effort allocation across rolling compute budgets"
+      path: ".agents/skills/token-budget-controller"
+      portability: "portable"
+      targets: ["generic-agent"]
+      provides: ["skill"]
+      depends_on: []
+      source: {
+        repo: "schlich/dotfiles"
+        branch: "agent-skills-token-budget"
+        path: ".agents/skills/token-budget-controller"
+      }
+    }
+  ]
+}
