@@ -280,6 +280,10 @@ spawn-sh-at-startup "exec nu \"$HOME/.config/niri/session.nu\" startup"
 // Keep choice groups, such as the desktop coding agents, in one tabbed column.
 spawn-sh-at-startup "exec nu \"$HOME/.config/niri/session.nu\" watch-choices"
 
+// Run Handy in the tray so Mod+D reaches it; `--toggle-transcription` only
+// signals a running instance.
+spawn-at-startup "handy" "--start-hidden"
+
 hotkey-overlay {
     skip-at-startup
 }
@@ -641,6 +645,13 @@ binds {
     // from every app, so discard has its own chord.
     Mod+M repeat=false hotkey-overlay-title="Recorder: start or stop a spoken note" { spawn "dicta" "toggle"; }
     Mod+Shift+M repeat=false hotkey-overlay-title="Recorder: discard this take" { spawn "dicta" "cancel"; }
+
+    // Mod+D is Handy's dictation, which types what you say into the focused
+    // field: it starts listening, and again stops and types. Mod+Shift+D
+    // cancels. Wayland gives Handy no global shortcut of its own, so niri
+    // signals the running instance. Handy's overlay shows while it listens.
+    Mod+D repeat=false hotkey-overlay-title="Dictate: start or stop typing by voice" { spawn "handy" "--toggle-transcription"; }
+    Mod+Shift+D repeat=false hotkey-overlay-title="Dictate: cancel" { spawn "handy" "--cancel"; }
 
     // Alternatively, there are commands to move just a single window:
     // Mod+Ctrl+1 { move-window-to-workspace 1; }

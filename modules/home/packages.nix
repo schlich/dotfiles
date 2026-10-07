@@ -65,6 +65,16 @@ let
         platforms = [ "x86_64-linux" ];
       };
     };
+  # Handy treats a catalog file in its models directory as installed, so this
+  # needs no download; it lists as "Parakeet Unified EN 0.6B (Q4_K_M)", the
+  # smallest quant, for speed on a laptop CPU. The selected model stays in
+  # Handy's own settings store: choose it once in onboarding, after which
+  # Handy also picks it whenever no model is selected.
+  # Revision and checksum come from Handy's catalog (src-tauri/src/catalog).
+  handyParakeet = pkgs.fetchurl {
+    url = "https://huggingface.co/handy-computer/parakeet-unified-en-0.6b-gguf/resolve/7e948f21b7bdbac698d3318db9d350f1096f3b6c/parakeet-unified-en-0.6b-Q4_K_M.gguf";
+    hash = "sha256-qL894rOTvRTq1ahYw3SNXjsHog/eq907SY+6T0Y/qSk=";
+  };
   jev = import ../../jev/package.nix { inherit pkgs; };
   # Opens a URL in Quest Browser over ADB. A localhost URL is reverse-forwarded
   # so the headset reaches this machine's port without an IP address.
@@ -88,6 +98,8 @@ let
   watchJob = pkgs.writeNuScriptBin "watch-job" (builtins.readFile ../tooling/ai/scripts/watch-job.nu);
 in
 {
+  xdg.dataFile."com.pais.handy/models/parakeet-unified-en-0.6b-Q4_K_M.gguf".source = handyParakeet;
+
   home.packages = with pkgs; [
     (callPackage ./openchamber.nix { })
     xdg-user-dirs

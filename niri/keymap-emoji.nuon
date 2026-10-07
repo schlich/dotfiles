@@ -38,6 +38,10 @@
   { action: '^run dicta toggle', emoji: '📼' }
   { action: '^run dicta cancel', emoji: '❌' }
 
+  # Handy, dictation that types into the focused field.
+  { action: '^run handy --toggle-transcription', emoji: '💬' }
+  { action: '^run handy --cancel', emoji: '🔇' }
+
   # Applications and shell.
   { action: 'panel-toggle launcher', emoji: '🚀' }
   { action: 'panel-toggle control-center', emoji: '🧰' }
