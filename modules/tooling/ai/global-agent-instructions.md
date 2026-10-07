@@ -104,8 +104,10 @@ script, use valid Nushell syntax.
   ```
 
   Read the log with Nushell as it runs. A job sends no completion notice,
-  so wait for the done marker with the Monitor tool when the harness
-  provides it, or check it again before reporting.
+  so when the harness provides the Monitor tool, follow the job with
+  `watch-job $log`: it prints matching log lines as they arrive and exits
+  with a `DONE` line once the done marker appears. Otherwise check the
+  marker again before reporting.
 
 - When a file, log, diff, or command output is too large to read comfortably,
   keep it in a Nushell variable and follow the `rlm` skill (`rlm load`,
@@ -134,6 +136,12 @@ well:
   scratchpad, written with the harness's file tool, and run it with
   `source $"($S)/check.nu"`. Its bindings persist just as inline code's do,
   and the file gets its own readable card.
+
+The Monitor tool's card shows its command the same way. Start that command
+with a `# comment` title line too, and keep the logic out of it: call
+`watch-job LOG`, adding `--pattern` only when the default milestones and
+errors do not fit, rather than writing a poll loop, `tail -f`, or a `grep`
+filter inline.
 
 Before a group of shell calls, give the user a short commentary readout
 naming the operation and its target, such as checking JJ status in the
