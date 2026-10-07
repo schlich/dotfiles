@@ -51,7 +51,8 @@ script, use valid Nushell syntax.
 - Prefer a dedicated tool when one covers the operation: the jj MCP server
   for Jujutsu log, diff, status, describe, bookmark, abandon, and push; the
   GitHub MCP server for GitHub pull requests, issues, Actions runs, and
-  releases; the Nix MCP server for Nix ecosystem knowledge; the ci MCP
+  releases; the Nix MCP server for nixpkgs packages, options, and pinned
+  flake-input sources; the ci MCP
   server for the repository's `ci` workflow; and the harness's own
   file-reading and editing tools for single files. Fall back to the Nushell
   evaluate tool only when no dedicated tool fits, such as Tangled, flake
@@ -80,11 +81,29 @@ script, use valid Nushell syntax.
   is unavailable in a session, keep using those tools and report the missing
   tool to the user instead of retrying the work in Bash.
 
-- Use the Nix MCP server for Nix ecosystem knowledge: nixpkgs packages, NixOS
-  and Home Manager options, channels, flakes and their inputs, and Nix
-  documentation. Do not use Nushell or local Nix commands to answer those
-  indexed knowledge queries. Use Nushell to inspect or evaluate this
-  repository's own Nix files and flake.
+- Use the Nix MCP server (its `nix` and `nix_versions` tools) as part of
+  writing Nix, not only to answer questions about it. Your memory of
+  nixpkgs and its option sets lags by months, so look a name up before
+  relying on it, and do not answer these lookups with `nix search`,
+  `nix eval` of nixpkgs, or `gh api` against NixOS repositories. Use
+  Nushell only to inspect or evaluate this repository's own Nix files and
+  flake outputs.
+  - Before adding a package, confirm its attribute and that it is in the
+    channel: `{action: info, query: NAME}`. Find the package that ships a
+    binary with `{action: search, type: programs, query: BIN}`.
+  - Before setting or changing a NixOS, Home Manager, or nix-darwin
+    option, confirm its name, type, and default with
+    `{action: info, type: option, query: PATH}`, or browse a module's
+    options with `source: home-manager` and `action: browse`.
+  - Before using a pinned flake input's API (Den, home-manager, nixpkgs
+    lib), read it at the locked revision with
+    `{action: flake-inputs, type: read, query: "INPUT:path/in/source"}`,
+    and explore with `type: ls`. Read another store path with
+    `{action: store, type: read}`. Do not open `/nix/store` with shell or
+    file tools for these.
+  - Look up `lib` functions with `source: noogle`, version history with
+    `nix_versions`, and errors and idioms with `source: wiki` or
+    `nix-dev`.
 
 - Inside the Claude desktop app, `sudo` always fails because the app's
   sandbox sets the no-new-privileges flag. Do not attempt privileged

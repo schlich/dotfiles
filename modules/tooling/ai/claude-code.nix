@@ -182,6 +182,33 @@ let
       }
     } $out/hooks/hooks.json
   '';
+  # Remind the agent, once per session and kind, to answer Nix package, option,
+  # and pinned-source questions with the Nix MCP server rather than by hand.
+  preferNixMcpCommand = "${pkgs.nushell}/bin/nu --stdin ${./scripts/prefer-nix-mcp.nu}";
+  preferNixMcp = pkgs.runCommand "claude-code-prefer-nix-mcp" { } ''
+    install -Dm644 ${
+      pkgs.writers.writeJSON "plugin.json" {
+        name = "prefer-nix-mcp";
+        description = "Point Nix lookups done by hand at the Nix MCP server.";
+      }
+    } $out/.claude-plugin/plugin.json
+    install -Dm644 ${
+      pkgs.writers.writeJSON "hooks.json" {
+        hooks.PostToolUse = [
+          {
+            matcher = "Bash|Read|Glob|Grep|mcp__.*nushell__evaluate";
+            hooks = [
+              {
+                type = "command";
+                command = preferNixMcpCommand;
+                timeout = 5;
+              }
+            ];
+          }
+        ];
+      }
+    } $out/hooks/hooks.json
+  '';
   pushBackgroundTasks = pkgs.writeNuScriptBin "push-background-tasks" (
     builtins.readFile ../../../agent-monitor/push-background-tasks.nu
   );
@@ -254,6 +281,7 @@ in
     plugins.nushell-display = nushellDisplay;
     plugins.context-status = contextStatusHandoff;
     plugins.background-tasks = backgroundTasks;
+    plugins.prefer-nix-mcp = preferNixMcp;
     # IWE memory: inert outside a workspace whose root has a MEMORY.md policy.
     plugins.iwe = "${inputs.iwe-skills}";
   };
@@ -319,6 +347,14 @@ in
             prefer-nushell=${preferNushellGuard} \
             jev-bash-guard=${jevBashGuard} \
             copilot-guard=${../../../copilot/plugins/jj-flake-vigilance}
+          touch "$out"
+        '';
+    checks.prefer-nix-mcp-hook =
+      pkgs.runCommand "prefer-nix-mcp-hook-check" { nativeBuildInputs = [ pkgs.nushell ]; }
+        ''
+          export HOME="$TMPDIR/home"
+          mkdir -p "$HOME"
+          nu ${./tests/prefer-nix-mcp.nu} ${lib.escapeShellArg preferNixMcpCommand}
           touch "$out"
         '';
   };

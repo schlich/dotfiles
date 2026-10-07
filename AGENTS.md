@@ -214,7 +214,9 @@
 - Do not inspect `/nix/store` routinely. Prefer workspace files and Nix MCP
   package, option, and documentation queries; inspect the store only for an
   explicit user request, a specific path reported by a failure, or necessary
-  source from an exact pinned flake input.
+  source from an exact pinned flake input. Read those through the Nix MCP
+  server's `flake-inputs` and `store` actions rather than shell or file
+  tools.
 - Keep provider-neutral agent skills under `.agents/skills/`. Keep Copilot
   plugins, hooks, and plugin-bundled agent definitions under `copilot/`, and
   wire client exposure through `modules/tooling/ai/`.
@@ -224,7 +226,7 @@
 - Host files and `den/inventory.nix` describe facts; reusable behavior belongs in focused Den aspects.
 - Avoid hostname conditionals. Add a typed profile field and a reusable aspect when a capability is genuinely shared.
 - The `master` aspect resolves host facts into behavior. Prefer extending a focused aspect over expanding a catch-all module.
-- Inspect the pinned Den API in `flake.lock` and the fetched source before using schema, aspect, policy, or output features.
+- Inspect the pinned Den API before using schema, aspect, policy, or output features: read it with the Nix MCP server's `flake-inputs` action (`type: ls` or `read`, `query: "den:PATH"`), which resolves the revision in `flake.lock`.
 - Every declared host must evaluate. Keep policy and aspect metadata machine-readable so affected hosts, risk, checks, and reviewer domains can be identified.
 - Do not silently alter boot, storage, filesystem, encryption, swap, or security configuration. These are high-risk changes and generated hardware files remain host-local.
 - Never put plaintext secrets in the repository or Nix store. Preserve encrypted inputs and recovery paths.
