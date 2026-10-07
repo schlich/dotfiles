@@ -25,6 +25,12 @@ in
       name = config.accounts.email.accounts.personal.userName;
       email = config.accounts.email.accounts.personal.address;
     };
+    # Claude Desktop runs sessions in a user namespace where Nix-store files
+    # appear owned by `nobody`, so ssh refuses the Home Manager ~/.ssh/config
+    # ("Bad owner or permissions") and every fetch or push to Tangled fails.
+    # Naming the file with -F skips only that ownership check; ssh reads the
+    # same configuration everywhere. jj fetches and pushes through git.
+    settings.core.sshCommand = "ssh -F ${config.home.homeDirectory}/.ssh/config";
   };
   programs.gpg.enable = true;
   programs.lazygit.enable = false;

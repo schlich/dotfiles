@@ -1883,8 +1883,12 @@ def flush-verifications [] {
     let pending = (open --raw $outbox | lines | where {|line| $line | str trim | is-not-empty })
     mut sent = 0
     mut failure = ""
+    # Name the user config explicitly, as git's core.sshCommand does: inside
+    # Claude Desktop's sandbox ssh rejects the store-owned ~/.ssh/config.
+    let user_config = ($env.HOME | path join ".ssh" "config")
+    let config_args = if ($user_config | path exists) { ["-F" $user_config] } else { [] }
     for line in $pending {
-        let result = ($line | ^ssh -T -p $VERIFICATION_PORT -o BatchMode=yes -o ConnectTimeout=10 $VERIFICATION_REMOTE | complete)
+        let result = ($line | ^ssh ...$config_args -T -p $VERIFICATION_PORT -o BatchMode=yes -o ConnectTimeout=10 $VERIFICATION_REMOTE | complete)
         if $result.exit_code != 0 {
             $failure = ($result.stderr | str trim)
             break
