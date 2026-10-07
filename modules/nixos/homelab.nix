@@ -7,23 +7,9 @@
 }:
 
 let
-  iwe = import ../tooling/knowledge/iwe-package.nix {
-    inherit inputs lib pkgs;
-  };
   adminKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINJRdPuDm1hX5iOgHNl63aUVPIUvkMhAFlBaoxOiSPEA schlich@tangled";
 
-  agentMonitor = pkgs.writeShellApplication {
-    name = "agent-monitor";
-    runtimeInputs = [
-      (pkgs.python3.withPackages (python: [ python.textual ]))
-      pkgs.gh
-      inputs.ai-usagebar.packages.${pkgs.stdenv.hostPlatform.system}.default
-      iwe
-    ];
-    text = ''
-      exec python3 ${../../agent-monitor/tui.py} "$@"
-    '';
-  };
+  fieldnotes = import ../tooling/ai/fieldnotes-package.nix { inherit inputs lib pkgs; };
 
   # Servers lack the nushellWith overlay behind writeNuScriptBin.
   verificationReceiver = pkgs.writers.writeNuBin "receive-verification" (
@@ -107,7 +93,7 @@ in
   services.tailscale.enable = true;
 
   environment.systemPackages = with pkgs; [
-    agentMonitor
+    fieldnotes
     btop
     helix
     smartmontools
@@ -121,14 +107,14 @@ in
   # homelab has no Home Manager, so Niri reads this system-wide config.
   environment.etc."niri/config.kdl".source = niriConfig;
 
-  # An interactive terminal dashboard, also available as agent-monitor over SSH.
+  # The Fieldnotes dashboard fills the desktop; `fieldnotes` also runs over SSH.
   systemd.user.services.desktop-monitor = {
-    description = "Live agent usage and CI terminal dashboard";
+    description = "Fieldnotes dashboard for agent usage, CI, topics, and tasks";
     wantedBy = [ "graphical-session.target" ];
     partOf = [ "graphical-session.target" ];
     after = [ "graphical-session.target" ];
     serviceConfig = {
-      ExecStart = "${pkgs.alacritty}/bin/alacritty --title 'Agent Monitor' -e ${agentMonitor}/bin/agent-monitor";
+      ExecStart = "${pkgs.alacritty}/bin/alacritty --title Fieldnotes -e ${lib.getExe fieldnotes}";
       Environment = [ "FIELDNOTES_CI_REPO=schlich/dotfiles" ];
       Restart = "on-failure";
       RestartSec = 2;

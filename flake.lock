@@ -370,6 +370,26 @@
         "url": "https://flakehub.com/f/DeterminateSystems/fh/%2A.tar.gz"
       }
     },
+    "fieldnotes": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1791377867,
+        "narHash": "sha256-1IiWNhW53yunqi+/PRsU74MxLzEFQDeW8n8eTs+Turs=",
+        "owner": "schlich",
+        "repo": "fieldnotes",
+        "rev": "58e6662113504f33900aa81bfb3b6399341070e1",
+        "type": "github"
+      },
+      "original": {
+        "owner": "schlich",
+        "repo": "fieldnotes",
+        "type": "github"
+      }
+    },
     "flake-compat": {
       "flake": false,
       "locked": {
@@ -1531,6 +1551,7 @@
         "den": "den",
         "dicta": "dicta",
         "fh": "fh",
+        "fieldnotes": "fieldnotes",
         "gen-inspect": "gen-inspect",
         "gh-stack": "gh-stack",
         "grill-me": "grill-me",

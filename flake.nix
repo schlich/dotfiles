@@ -128,6 +128,10 @@
       url = "github:schlich/dicta";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    fieldnotes = {
+      url = "github:schlich/fieldnotes";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     xs = {
       url = "github:cablehead/xs";
       inputs.nixpkgs.follows = "nixpkgs";

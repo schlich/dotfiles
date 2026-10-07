@@ -1,31 +1,17 @@
 # Agent monitor
 
-Homelab opens this Textual dashboard in an Alacritty window when its graphical
-session starts. Run `agent-monitor` in a terminal or an SSH session to open it
-manually. Quitting closes the dashboard; it does not immediately restart.
+The Fieldnotes dashboard lives in its own repository,
+[schlich/fieldnotes](https://github.com/schlich/fieldnotes), and comes in
+through the `fieldnotes` flake input with the tools its panels read from
+(`modules/tooling/ai/fieldnotes-package.nix`). Homelab opens it full screen
+when its graphical session starts; `fieldnotes` runs it anywhere else,
+including over SSH.
 
-The dashboard shows provider usage and reset windows, GitHub Actions results
-(including failure streaks and retired workflows), published Tangled topics
-waiting to land, and Claude background tasks from other hosts. All rows remain
-available by scrolling, including in a narrow terminal.
+These scripts feed its background-task panel:
 
-The persistent hint line lists every keyboard shortcut. The single mode is
-**Normal**: arrow keys scroll, Page Up/Down move a page, Home/End jump to the
-top/bottom, R refreshes, and Q or Ctrl+C quits. Mouse scrolling also works.
-
-Remote sources refresh independently every 30 seconds. Background tasks and
-relative timestamps update every second. A failed refresh displays its error
-and retains the last successful data with its age. Slow requests leave the
-interface responsive, and refresh requests do not overlap for the same source.
-
-The Nix package supplies Textual, `gh`, and `ai-usagebar`. Provider credentials
-and GitHub authentication belong to the account running the dashboard.
-
-Optional environment variables:
-
-| Variable                      | Default                                 | Purpose                   |
-| ----------------------------- | --------------------------------------- | ------------------------- |
-| `FIELDNOTES_CI_REPO`          | `schlich/dotfiles`                      | GitHub Actions repository |
-| `FIELDNOTES_TANGLED_KNOT`     | `https://knot1.tangled.sh`              | Tangled knot endpoint     |
-| `FIELDNOTES_TANGLED_REPO_DID` | Repository DID in `tui.py`              | Tangled repository        |
-| `FIELDNOTES_TASKS_DIR`        | `~/.local/state/fieldnotes/agent-tasks` | Host task snapshots       |
+- `record-background-task.nu`, a Claude Code PostToolUse hook, records each
+  background Bash task and each Monitor as
+  `$XDG_STATE_HOME/fieldnotes/agent-tasks/<id>.json`.
+- `push-background-tasks.nu`, run by the `agent-tasks-push` timer, marks
+  finished tasks, drops those finished more than 15 minutes ago, and copies
+  the host's list to homelab as `<host>.json`.
