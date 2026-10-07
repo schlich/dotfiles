@@ -80,7 +80,7 @@ Use the narrowest workflow that matches the request:
 | Update a topic from trunk | `ci rebase` | Checkpoints, fetches, and rebases the same change. |
 | Restack dispatched topics after trunk moves | `ci sequence --apply` | Run it by hand only on request. Restacks stacked topics onto their parent's bookmark and conflicting topics onto `main@tangled`, parents first. Checked-out topics are rebased from their own workspace only when a trial merge is clean. Pushes only conflict-free stacks. `--all` also rebases topics that are merely behind; `--no-push` stops before any remote change. |
 | Start a topic | `ci new [-m <message>]` | Fetches and starts a new change on `main@tangled` in the current workspace; the previous topic stays as a sibling (`jj edit` returns to it). Refuses while an active Codex task owns the workspace or an unfinished `ci start` topic is checked out. |
-| Start concurrent work | `ci start <name>` | Creates `.jj-workspaces/<name>` at `main@tangled` for an actor that runs alongside the current working copy (another agent task, a build, a dev server); refuses a name already in use. |
+| Start concurrent work | `ci start <name>` | Creates `.jj-workspaces/<name>` at `main@tangled` for an actor that runs alongside the current working copy (another agent task, a build, a dev server), inside the Git worktree it runs from if any (such as a Claude Code worktree); refuses a name already in use. |
 | Finish a landed topic | `ci park` | Verifies the current revision is on `main@tangled`, deletes the topic bookmark locally and on Tangled, and removes a workspace that `ci start` created before archiving. `--keep` returns it to the pool instead: it stays on an empty change on main and drops its `ci start` marker, so the next task starts a fresh topic there. Any other workspace also stays. An empty working copy passes when its dispatched branch, if any, landed. |
 | Drop a topic that will not land | `ci cancel` | Refuses while a Tangled pull request from its branch is open. Checkpoints, deletes the topic bookmark, abandons the revisions above `main@tangled`, and releases the workspace like `park`. Requires an explicit user request. |
 | Reclaim leaked workspaces | `ci prune` | Dry run by default. Lists missing workspaces and unowned ones whose work is delivered (only an empty undescribed working copy remains above `main@tangled`), plus checkpoints older than `--keep-days`. Reports stale workspaces untouched. `--apply` updates stale ones, decides again, then forgets and deletes the listed ones, which requires an explicit user request. |
@@ -129,11 +129,15 @@ bypass the workflow with direct branch pushes or merges.
 
 ## Continuous integration and conflict handling
 
-The canonical checkout tracks `main`; start a topic there with `ci new` and
-continue in the current workspace. A separate JJ workspace created with
-`ci start` is only for concurrent work that needs the current working copy to
+The canonical checkout tracks `main`. In a repository with topic workspaces,
+other sessions share it, so agent hooks refuse edits there: an agent session
+opened in it starts with `ci start NAME`. In a topic workspace of its own,
+start the next topic with `ci new` and continue in place; another separate
+workspace is only for concurrent work that needs the current working copy to
 stay put, such as another active task, a build, a dev server, or an editor.
-Do not require a dedicated workspace just because the checkout is canonical.
+From a Claude Code worktree under `.claude/worktrees/`, which is a Git
+worktree rather than a JJ workspace, `ci start` creates the workspace inside
+it so the app lets the session edit there.
 Rebase before each review update and when the topic conflicts with `main`; a
 topic that merely fell behind needs nothing until it lands. `ci dispatch` and
 `ci land` perform a final rebase and validation before pushing, and `ci land`

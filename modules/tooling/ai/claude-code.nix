@@ -47,12 +47,15 @@ let
   '';
   contextStatus = import ../../../jj/context-status.nix { inherit pkgs; };
   # Hand each new or resumed session the workspace's topic, lifecycle stage,
-  # lint and pipeline state, and next `ci` step.
+  # lint and pipeline state, and next `ci` step. Concurrent sessions that
+  # shared the default checkout moved each other's working copy and split
+  # changes into divergent copies, so edits JJ would attribute to it, from it
+  # or from a session's Git worktree, are refused in favour of `ci start`.
   contextStatusHandoff = pkgs.runCommand "claude-code-context-status" { } ''
     install -Dm644 ${
       pkgs.writers.writeJSON "plugin.json" {
         name = "context-status";
-        description = "Add the JJ workspace's context status to each session.";
+        description = "Add the JJ workspace's context status to each session, and keep edits out of the shared default checkout.";
       }
     } $out/.claude-plugin/plugin.json
     install -Dm644 ${
@@ -64,6 +67,18 @@ let
               {
                 type = "command";
                 command = "${contextStatus}/bin/context-status handoff --hook";
+                timeout = 10;
+              }
+            ];
+          }
+        ];
+        hooks.PreToolUse = [
+          {
+            matcher = "Edit|MultiEdit|Write|NotebookEdit";
+            hooks = [
+              {
+                type = "command";
+                command = "${contextStatus}/bin/context-status guard";
                 timeout = 10;
               }
             ];

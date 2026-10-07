@@ -272,7 +272,13 @@ every topic; the hook creates the next task's topic revision when it starts.
 If Codex supplied the project as a linked Git worktree, the session hook
 initializes a non-colocated JJ workspace in that directory first, using the
 shared Git repository as its backend. It never automatically switches another
-task's working copy.
+task's working copy. Claude Code's desktop app supplies a linked Git worktree
+under `.claude/worktrees/` instead, which is not a JJ workspace: `jj` there
+acts on the shared checkout above it and never records the worktree's edits.
+Run `ci start NAME` from that worktree, which creates
+`<worktree>/.jj-workspaces/NAME`, and edit and run `ci` only there. In a
+repository with topic workspaces, the Claude Code and Codex hooks refuse
+agent edits to the shared default checkout and to such a worktree.
 
 When the working-copy diff contains multiple coherent deliverables, split it
 into separate JJ changes before dispatching or treating the work as complete.

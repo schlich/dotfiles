@@ -5,6 +5,8 @@
 #   context-status brief      a few lines, printed when a shell enters a workspace
 #   context-status handoff    Markdown for the next agent; --hook wraps it as
 #                             Claude Code or Codex SessionStart hook output
+#   context-status guard      Claude Code PreToolUse hook: refuse edits JJ would
+#                             attribute to the shared default checkout
 #   context-status json       the collected record
 #   context-status refresh    update the cached pipeline state now
 #
@@ -66,6 +68,56 @@ def require-root [dir?: path] {
     let root = (workspace-root ($dir | default $env.PWD))
     if $root == null { error make { msg: "Not inside a JJ workspace." } }
     $root
+}
+
+# The linked Git worktree that holds `dir` inside the JJ workspace `root`, or
+# null. Claude Code's desktop app gives each session such a worktree under
+# .claude/worktrees. It has no .jj of its own, so JJ resolves it to `root`
+# and never records the files edited there. Keep in step with
+# enclosing-git-worktree in jj/ci.nu.
+def enclosing-git-worktree [dir: path, root: path] {
+    mut current = ($dir | path expand)
+    while ($current | str starts-with $"($root)/") {
+        if ($current | path join ".git" | path type) == "file" { return $current }
+        $current = ($current | path dirname)
+    }
+    null
+}
+
+# Whether `root` is the canonical default checkout, and whether the repository
+# also has topic workspaces. Reads the workspace list without snapshotting:
+# the guard and the handoff must never record another session's edits.
+def workspace-layout [root: path] {
+    let listing = (^jj --ignore-working-copy --repository $root workspace list -T 'name ++ "\t" ++ root ++ "\n"' | complete)
+    if $listing.exit_code != 0 { return { default: false dedicated: false } }
+    let workspaces = ($listing.stdout | lines | where {|line| $line | is-not-empty } | parse "{name}\t{root}")
+    {
+        default: ($workspaces | any {|workspace| $workspace.name == "default" and $workspace.root == $root })
+        dedicated: (($workspaces | length) > 1)
+    }
+}
+
+# The JJ workspaces a session made inside its Git worktree, as `ci start`
+# places them there.
+def worktree-workspaces [worktree: path] {
+    let parent = ($worktree | path join ".jj-workspaces")
+    if ($parent | path type) != "dir" { return [] }
+    ls $parent | where type == dir | get name | where {|dir| ($dir | path join ".jj" | path type) == "dir" }
+}
+
+# Whether an agent may edit a file, from facts the guard reads:
+#   workspace  whether the file is inside a JJ workspace at all
+#   worktree   whether it sits in a Git worktree with no JJ workspace of its own
+#   default    whether its workspace is the canonical default checkout
+#   dedicated  whether the repository has topic workspaces besides it
+#   ignored    whether Git ignores the file there
+# Only a repository that uses topic workspaces is guarded: in it, the default
+# checkout is shared by every session, and a worktree's edits reach no change.
+def edit-verdict [facts: record] {
+    if not $facts.workspace or not $facts.dedicated { return { action: "allow" reason: null } }
+    if $facts.worktree { return { action: "deny" reason: "worktree" } }
+    if $facts.default and not $facts.ignored { return { action: "deny" reason: "shared-default" } }
+    { action: "allow" reason: null }
 }
 
 def read-json [path: path] {
@@ -339,9 +391,13 @@ def handoff-text [facts: record] {
         $"  - ($rev.short) ($rev.title)($suffix)"
     })
     let files = ($facts.working_copy | each {|file| $"($file.0) ($file.1)" })
+    let layout = ($facts.layout? | default { default: false dedicated: false })
     [
         $"JJ workspace context \(context-status, (date now | format date '%Y-%m-%d %H:%M %Z')):"
         $"- Workspace: ($facts.root), ($owner)."
+        (if $layout.default and $layout.dedicated {
+            $"- Shared checkout: this is the repository's canonical checkout, and other sessions use it at the same time, so agent edits here are refused. Start your own workspace with `ci start NAME` and edit under ($facts.root)/.jj-workspaces/NAME."
+        })
         $"- Topic: (topic-title $facts | ansi strip)."
         $"- Stage: ($facts.stage). Next: ($facts.next)."
         (if ($stack | is-not-empty) { (["- Changes above trunk, oldest first:"] | append $stack | str join "\n") })
@@ -350,6 +406,59 @@ def handoff-text [facts: record] {
         $"- Lint: (lint-summary $facts)."
         $"- CI: (ci-summary $facts)."
     ] | compact | str join "\n"
+}
+
+# The handoff for a session whose directory is a Git worktree inside `root`:
+# what JJ sees there, and the workspaces the session already made in it.
+def worktree-handoff-text [worktree: path, root: path] {
+    let workspaces = (worktree-workspaces $worktree | each {|dir|
+        let facts = (try { collect $dir } catch { null })
+        if $facts == null {
+            $"  - ($dir): unreadable; run `jj workspace update-stale` there"
+        } else {
+            $"  - ($dir): (topic-title $facts | ansi strip), ($facts.stage); next: ($facts.next)"
+        }
+    })
+    [
+        $"JJ workspace context \(context-status, (date now | format date '%Y-%m-%d %H:%M %Z')):"
+        $"- This session's directory, ($worktree), is a Git worktree, not a JJ workspace. `jj` and `ci` run here act on the shared checkout at ($root), and JJ never records files edited in the worktree itself, so agent edits there are refused."
+        $"- Start a topic with `ci start NAME` from this directory: it creates ($worktree)/.jj-workspaces/NAME on main@tangled. Edit only inside that workspace, and run `jj` and `ci` there."
+        (if ($workspaces | is-not-empty) { ["- JJ workspaces already in this worktree:"] | append $workspaces | str join "\n" })
+    ] | compact | str join "\n"
+}
+
+# PreToolUse guard for agent edits: refuse an Edit, Write, or NotebookEdit
+# that JJ would attribute to the shared default checkout, either because the
+# file is in it or because it is in a Git worktree with no JJ workspace of its
+# own. It reads the Claude Code hook event on stdin; silence lets the edit
+# through. Never snapshots a working copy.
+def "main guard" [] {
+    let event = (try { open --raw /dev/stdin | from json } catch { return })
+    let file = ($event.tool_input?.file_path? | default ($event.tool_input?.notebook_path? | default ""))
+    if ($file | is-empty) { return }
+    let file = ($file | path expand)
+    let dir = ($file | path dirname)
+    let root = (workspace-root $dir)
+    if $root == null { return }
+    let worktree = (enclosing-git-worktree $dir $root)
+    let layout = (workspace-layout $root)
+    let relative = ($file | path relative-to ($worktree | default $root))
+    let ignored = $worktree == null and $layout.default and (^git -C $root check-ignore --quiet -- $relative | complete).exit_code == 0
+    let verdict = (edit-verdict { workspace: true worktree: ($worktree != null) default: $layout.default dedicated: $layout.dedicated ignored: $ignored })
+    if $verdict.action == "allow" { return }
+    let reason = if $verdict.reason == "worktree" {
+        let existing = (worktree-workspaces $worktree | path basename)
+        let target = if ($existing | length) == 1 { $existing | first } else { "NAME" }
+        let known = if ($existing | length) > 1 { $" Workspaces here: ($existing | str join ', ')." } else { "" }
+        $"($file) is in the Git worktree ($worktree), which is not a JJ workspace: JJ resolves it to the shared checkout at ($root) and would never record this edit. (if ($existing | is-empty) { $'Run `ci start NAME` in ($worktree) first, then edit' } else { 'Edit' }) ($worktree)/.jj-workspaces/($target)/($relative) instead.($known)"
+    } else {
+        $"($file) is in ($root), the repository's canonical checkout, which other sessions use at the same time. Start your own workspace with `ci start NAME` and edit ($root)/.jj-workspaces/NAME/($relative) instead."
+    }
+    { hookSpecificOutput: {
+        hookEventName: "PreToolUse"
+        permissionDecision: "deny"
+        permissionDecisionReason: $reason
+    } } | to json --raw | print
 }
 
 # Markdown for the next agent. As a SessionStart hook it reads the hook event
@@ -361,13 +470,22 @@ def "main handoff" [
 ] {
     if $hook {
         let event = (try { open --raw /dev/stdin | from json } catch { {} })
-        let root = (workspace-root ($event.cwd? | default $env.PWD))
+        let cwd = ($event.cwd? | default $env.PWD)
+        let root = (workspace-root $cwd)
         if $root == null { return }
-        let facts = (try { collect $root } catch { return })
-        refresh-in-background $facts
+        let worktree = (enclosing-git-worktree $cwd $root)
+        # A worktree resolves to the shared checkout; describing (and so
+        # snapshotting) that checkout would hand this session another's topic.
+        let text = if $worktree != null {
+            try { worktree-handoff-text $worktree $root } catch { return }
+        } else {
+            let facts = (try { collect $root | insert layout (workspace-layout $root) } catch { return })
+            refresh-in-background $facts
+            handoff-text $facts
+        }
         { hookSpecificOutput: {
             hookEventName: ($event.hook_event_name? | default "SessionStart")
-            additionalContext: (handoff-text $facts)
+            additionalContext: $text
         } } | to json --raw | print
         return
     }

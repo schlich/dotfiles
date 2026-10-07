@@ -645,6 +645,12 @@ for-all "remote commands retry only a rate limit, and only while attempts remain
     assert equal ($delay != null) $retries
 }
 
+for-all "ci start nests a workspace in the Git worktree it runs from" {|key|
+    let worktree = if (flag $"($key)/worktree") { "/repo/.claude/worktrees/session" } else { null }
+    let expected = if $worktree == null { "/repo/.jj-workspaces" } else { "/repo/.claude/worktrees/session/.jj-workspaces" }
+    assert equal (start-parent "/repo" $worktree) $expected
+}
+
 for-all "remote retries back off by doubling from two seconds" {|key|
     let attempt = (1 + (pick $"($key)/attempt" ($REMOTE_ATTEMPTS - 2)))
     let first = (remote-retry-delay $attempt $RATE_LIMITED)

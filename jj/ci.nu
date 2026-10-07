@@ -2405,6 +2405,26 @@ def checked-out-changes [] {
     } | lines | where {|line| $line | is-not-empty }
 }
 
+# The linked Git worktree that holds `dir` inside the JJ workspace `root`, or
+# null. Claude Code's desktop app gives each session such a worktree under
+# .claude/worktrees and refuses edits outside it. Keep in step with
+# enclosing-git-worktree in jj/context-status.nu.
+def enclosing-git-worktree [dir: path, root: path] {
+    mut current = ($dir | path expand)
+    while ($current | str starts-with $"($root)/") {
+        if ($current | path join ".git" | path type) == "file" { return $current }
+        $current = ($current | path dirname)
+    }
+    null
+}
+
+# Where `ci start` puts a workspace: inside the Git worktree it runs from, so
+# a session confined to that worktree can edit it, or else beside the default
+# checkout.
+def start-parent [default_root: string, worktree: any] {
+    $worktree | default $default_root | path join ".jj-workspaces"
+}
+
 def "main start" [
     name: string # Workspace and topic name
 ] {
@@ -2414,20 +2434,22 @@ def "main start" [
     if $name in (list-workspaces | get name) {
         error make { msg: $"Workspace ($name) already exists. Park or cancel its topic first, or start a topic there with `ci new`." }
     }
-    let root = (workspace-root "default" | path join ".jj-workspaces" $name)
+    let default_root = (workspace-root "default")
+    let root = (start-parent $default_root (enclosing-git-worktree $env.PWD $default_root) | path join $name)
     if ($root | path exists) {
         error make { msg: $"($root) already exists. Inspect it with `ci prune` before reusing the name." }
     }
     fetch-trunk
+    mkdir ($root | path dirname)
     run-command $"creating workspace ($name)" {
-        ^jj --repository (workspace-root "default") workspace add --revision main@tangled --name $name $root
+        ^jj --repository $default_root workspace add --revision main@tangled --name $name $root
     } | ignore
     # The working-copy change JJ just created is the topic; recording it lets
     # later commands notice when the working copy leaves it.
     let topic = (^jj --repository $root log -r @ --no-graph -T change_id | complete)
     if $topic.exit_code != 0 { error make { msg: ($topic.stderr | str trim) } }
     { name: $name created: (date now | format date "%+") change_id: ($topic.stdout | str trim) } | to json | save (owned-workspace-marker $root)
-    print $"Created ($root) on main@tangled. `ci park` or `ci cancel` removes it when the topic ends."
+    print $"Created ($root) on main@tangled. Edit and run `jj` and `ci` there; `ci park` or `ci cancel` removes it when the topic ends."
 }
 
 # Why `ci new` may not start another topic in this workspace, or null. A

@@ -115,6 +115,52 @@ for-all "topic-stranded matches the guard in jj/ci.nu" {|key|
     assert equal (topic-stranded $facts) $expected
 }
 
+def gen-edit-facts [key: string] {
+    {
+        workspace: (flag $"($key)/workspace")
+        worktree: (flag $"($key)/worktree")
+        default: (flag $"($key)/default")
+        dedicated: (flag $"($key)/dedicated")
+        ignored: (flag $"($key)/ignored")
+    }
+}
+
+for-all "edits are never refused where no topic workspaces exist" {|key|
+    let facts = (gen-edit-facts $key)
+    if not $facts.workspace or not $facts.dedicated {
+        assert equal (edit-verdict $facts).action "allow"
+    }
+}
+
+for-all "a Git worktree's edits are refused wherever topic workspaces exist" {|key|
+    let facts = (gen-edit-facts $key | merge { workspace: true worktree: true dedicated: true })
+    assert equal (edit-verdict $facts) { action: "deny" reason: "worktree" }
+}
+
+for-all "only tracked edits to the shared default checkout are refused" {|key|
+    let facts = (gen-edit-facts $key | merge { workspace: true worktree: false dedicated: true })
+    let expected = if $facts.default and not $facts.ignored { "deny" } else { "allow" }
+    assert equal (edit-verdict $facts).action $expected
+}
+
+for-all "a session's Git worktree is found inside the workspace, never above it" {|key|
+    let base = (mktemp --directory --tmpdir "context-status-worktree.XXXXXX" | path expand)
+    let root = ($base | path join "repo")
+    let worktree = ($root | path join ".claude" "worktrees" "session")
+    let inner = (0..<(pick $"($key)/depth" 3) | reduce --fold $worktree {|level, dir| $dir | path join $"d($level)" })
+    mkdir ($root | path join ".jj") $inner ($root | path join "src")
+    # A linked worktree's .git is a file; one above the workspace never counts.
+    "gitdir: elsewhere" | save ($worktree | path join ".git")
+    "gitdir: outside" | save ($base | path join ".git")
+    let found = (enclosing-git-worktree $inner $root)
+    let outside = (enclosing-git-worktree ($root | path join "src") $root)
+    let at_root = (enclosing-git-worktree $root $root)
+    rm --recursive $base
+    assert equal $found $worktree
+    assert equal $outside null
+    assert equal $at_root null
+}
+
 for-all "unpublished work above trunk is always surfaced" {|key|
     let facts = (consistent (gen-audit-facts $key) | merge { stack: (1 + (pick $"($key)/n" 3)) published: false })
     assert ("unpublished-work" in (audit-findings $facts | get code))

@@ -553,6 +553,31 @@ Never edit `.jj/codex-session.json` by hand.
 `tests/codex-session-properties.nu` checks these rules against the helpers
 that decide them.
 
+### Claude Code sessions
+
+Claude Code's desktop app opens each session either in the default checkout
+or in a linked Git worktree under `.claude/worktrees/NAME`, and refuses
+edits outside that worktree. The worktree has no `.jj`, so `jj` and `ci`
+run there resolve to the default checkout, and JJ never records files edited
+in the worktree itself. Sessions that shared the default checkout moved each
+other's working copies, snapshotted each other's edits into divergent
+changes, and built systems from half-finished topics (2026-10-07).
+
+- `ci start NAME` run inside such a worktree creates
+  `<worktree>/.jj-workspaces/NAME`, where the app allows edits; elsewhere it
+  creates `.jj-workspaces/NAME` beside the default checkout as before.
+- The context-status plugin's PreToolUse hook (`context-status guard`)
+  refuses an Edit, Write, or NotebookEdit that JJ would attribute to the
+  default checkout of a repository with topic workspaces: a tracked file in
+  that checkout, or any file in a Git worktree without its own `.jj`. The
+  refusal names the path to edit instead. It reads the workspace list with
+  `--ignore-working-copy`, so it never snapshots another session's edits.
+- Its SessionStart handoff says when the session's directory is such a
+  worktree or the shared default checkout, and lists the JJ workspaces the
+  session already made inside its worktree.
+
+`tests/context-status-properties.nu` checks the guard's verdicts.
+
 ## Git worktrees and the devshell
 
 This repository's default devshell provides the Nushell, JJ, GitHub CLI,
