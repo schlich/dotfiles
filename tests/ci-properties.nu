@@ -622,7 +622,60 @@ with-env { XDG_STATE_HOME: $outcome_dir } {
 }
 print "ok local checks lock"
 
+# The topic lock (2026-10-07): a second `ci` moving a topic that a live one is
+# already moving fails at once instead of waiting, and the lock goes with the
+# work however it ends.
+
+with-env { XDG_STATE_HOME: $outcome_dir } {
+    let lock = (topic-lock-path "kxtopic")
+    assert equal (with-topic-lock "kxtopic" { 7 }) 7
+    assert (not ($lock | path exists)) "the topic lock outlived the work it guarded"
+    { topic: "live" pid: $nu.pid start: (process-start $nu.pid) workspace: "/w/other" } | to json --raw | save --force $lock
+    let refused = (try { with-topic-lock "kxtopic" { "ran" } } catch {|err| $err.msg })
+    assert ($refused | str contains "already dispatching or landing") $"a live holder let a second run through: ($refused)"
+    assert ($refused | str contains "/w/other") "the refusal does not name the holder's workspace"
+    { topic: "exited" pid: 99999999 start: "1" workspace: "/w/other" } | to json --raw | save --force $lock
+    assert equal (with-topic-lock "kxtopic" { "ran" }) "ran"
+    assert (not ($lock | path exists)) "a dead holder's lock was not taken over and released"
+    let other = (topic-lock-path "kyother")
+    { topic: "live" pid: $nu.pid start: (process-start $nu.pid) workspace: "/w/other" } | to json --raw | save --force $other
+    assert equal (with-topic-lock "kxtopic" { "ran" }) "ran" "another topic's lock blocked this one"
+}
+print "ok topic lock"
+
 rm --recursive $outcome_dir
+
+# Plan tips: every tip has its own name, and only a divergent change's copies
+# are told apart by commit, so the plan never hands JJ a bare divergent ID.
+
+for-all "every plan tip is named apart, by change unless the change is divergent" {|key|
+    let changes = (0..<(1 + (pick $"($key)/changes" 4)) | each {|i| gen-change-id $"($key)/change/($i)" })
+    let rows = (0..<(1 + (pick $"($key)/rows" 6)) | each {|i|
+        { commit: ($"($key)/commit/($i)" | hash sha256 | str substring 0..39) change: (pick-from $"($key)/of/($i)" $changes) }
+    } | uniq-by commit)
+    let tips = (tip-identities $rows)
+    assert equal ($tips | get commit) ($rows | get commit)
+    assert equal ($tips | get tip | uniq | length) ($tips | length)
+    for pair in ($rows | zip $tips) {
+        let copies = ($rows | where change == $pair.0.change | length)
+        assert equal ($pair.1.tip == $pair.0.change) ($copies == 1)
+        assert ($pair.1.tip | str starts-with $pair.0.change)
+    }
+}
+
+# Local commands retry only JJ's operation-heads race.
+
+for-all "local commands retry only the operation-heads race, while attempts remain" {|key|
+    let attempt = (1 + (pick $"($key)/attempt" ($LOCAL_ATTEMPTS + 2)))
+    let stderr = (pick-from $"($key)/stderr" [
+        "Internal error: Unexpected error from operation heads store\nCaused by: Failed to read operation heads"
+        "Error: Change ID `qlxvsrukuvws` is divergent"
+        "Error: Unable to create '.git/index.lock': File exists."
+        ""
+    ])
+    let delay = (local-retry-delay $attempt $stderr)
+    assert equal ($delay != null) (($stderr | str contains $OPERATION_HEADS_RACE) and $attempt < $LOCAL_ATTEMPTS)
+}
 
 # Remote commands retry only Tangled's rate-limit refusal.
 

@@ -39,8 +39,36 @@ def report-run [msg: string, body: closure] {
     report-status clear
 }
 
+# JJ lists its operation heads as files that another JJ process may be
+# replacing at that moment. When one vanishes mid-read, JJ fails with
+# "Failed to read operation heads" before it changes anything, which happened
+# whenever several sessions ran JJ in the same repository (2026-10-07). Such a
+# failure is retried; every other one is final.
+const LOCAL_ATTEMPTS = 3
+const OPERATION_HEADS_RACE = 'operation heads'
+
+# How long to wait before retrying a local command whose `attempt` failed with
+# `stderr`, or null when it fails for good.
+def local-retry-delay [attempt: int, stderr: string] {
+    if $attempt >= $LOCAL_ATTEMPTS or not ($stderr | str contains $OPERATION_HEADS_RACE) { return null }
+    500ms * $attempt
+}
+
+# `complete` for a local command, retried while it loses JJ's operation-heads
+# race to another process.
+def local-complete [command: closure] {
+    mut attempt = 1
+    loop {
+        let result = (do $command | complete)
+        let delay = (local-retry-delay $attempt $result.stderr)
+        if $result.exit_code == 0 or $delay == null { return $result }
+        sleep $delay
+        $attempt += 1
+    }
+}
+
 def run-command [label: string, command: closure] {
-    report-command $label (do $command | complete)
+    report-command $label (local-complete $command)
 }
 
 # Print a finished command's output, and fail with `label` if it failed.
@@ -54,7 +82,7 @@ def report-command [label: string, result: record] {
 }
 
 def git-command [label: string, command: closure] {
-    let result = (do $command | complete)
+    let result = (local-complete $command)
     if $result.exit_code != 0 {
         error make { msg: $"($label) failed with exit code ($result.exit_code): ($result.stderr | str trim)" }
     }
@@ -99,13 +127,13 @@ def git-worktree [path: string, main: string] {
 }
 
 def current-change [template: string] {
-    let result = (^jj log -r @ --no-graph -T $template | complete)
+    let result = (local-complete { ^jj log -r @ --no-graph -T $template })
     if $result.exit_code != 0 { error make { msg: ($result.stderr | str trim) } }
     $result.stdout | str trim
 }
 
 def revision-id [revision: string] {
-    let result = (^jj log -r $revision --no-graph -T 'commit_id' | complete)
+    let result = (local-complete { ^jj log -r $revision --no-graph -T 'commit_id' })
     if $result.exit_code != 0 { error make { msg: ($result.stderr | str trim) } }
     $result.stdout | str trim
 }
@@ -367,6 +395,36 @@ def with-local-checks-lock [commit: string, body: closure, --unit: string] {
         sleep 5sec
     }
     if $announced != {} { report-status clear --id local-checks }
+    let outcome = try { { value: (do $body) error: null } } catch {|err| { value: null error: $err.msg } }
+    swap-local-checks-lock $lock ($claim | hash sha256) "" | ignore
+    if $outcome.error != null { error make { msg: $outcome.error } }
+    $outcome.value
+}
+
+# Two sessions that dispatched or landed the same topic at once rebased it
+# separately, splitting it into divergent copies that then stopped every
+# landing (2026-10-07). So one process at a time may move a topic: a lock per
+# change ID under the state directory, claimed the way the local checks lock
+# is, names its holder.
+def topic-lock-path [change: string] {
+    $env.XDG_STATE_HOME? | default ($env.HOME | path join ".local" "state") | path join "jj-ci" "topics" $"($change).lock"
+}
+
+# Run `body` holding the lock for topic `change`, or fail at once naming the
+# live process that holds it: waiting would only move the topic twice.
+def with-topic-lock [change: string, body: closure] {
+    let lock = (topic-lock-path $change)
+    mkdir ($lock | path dirname)
+    let claim = ({
+        topic: (lock-topic $change)
+        pid: $nu.pid
+        start: (process-start $nu.pid)
+        workspace: $env.PWD
+    } | to json --raw)
+    let holder = (claim-local-checks-lock $lock $claim)
+    if $holder != null {
+        error make { msg: $"Another `ci` \(pid ($holder.pid? | default '?') in ($holder.workspace? | default 'another workspace')) is already dispatching or landing ($holder.topic? | default 'this topic'). Let it finish, or stop it, rather than moving the topic twice." }
+    }
     let outcome = try { { value: (do $body) error: null } } catch {|err| { value: null error: $err.msg } }
     swap-local-checks-lock $lock ($claim | hash sha256) "" | ignore
     if $outcome.error != null { error make { msg: $outcome.error } }
@@ -883,7 +941,7 @@ def rebase-topic [] {
 }
 
 def revset-change-ids [revset: string] {
-    let result = (^jj log -r $revset --no-graph -T 'change_id.short() ++ "\n"' | complete)
+    let result = (local-complete { ^jj log -r $revset --no-graph -T 'change_id.short() ++ "\n"' })
     if $result.exit_code != 0 { error make { msg: ($result.stderr | str trim) } }
     $result.stdout | lines | where {|line| $line | str trim | is-not-empty }
 }
@@ -1155,7 +1213,7 @@ def refresh-topics [push: bool, all: bool] {
 const PLAN_MAX_STACK = 3
 
 def revision-field [revision: string, template: string] {
-    let result = (^jj log -r $revision --no-graph -T $template | complete)
+    let result = (local-complete { ^jj log -r $revision --no-graph -T $template })
     if $result.exit_code != 0 { error make { msg: ($result.stderr | str trim) } }
     $result.stdout | str trim
 }
@@ -1166,43 +1224,73 @@ def contains-main [revision: string] {
 
 # Create a headless merge of the given revisions, report whether it conflicts
 # and whether it changes main, then abandon it. Working copies are untouched.
+# The probe is abandoned however the trial ends: one that failed after JJ made
+# the merge, as when another session held .git/index.lock, left its probe
+# behind for every later plan to count as a topic (2026-10-07).
 def trial-merge [revisions: list<string>] {
     let marker = $"jj-ci-plan-probe-(random uuid)"
-    git-command "creating a trial merge" { ^jj new --no-edit -m $marker ...$revisions } | ignore
-    let probe = (revision-field $"description\(substring:'($marker)')" 'commit_id')
-    let conflict = (revision-field $probe 'conflict') == "true"
-    let changes = (git-command "diffing the trial merge" {
-        ^jj diff --name-only --from main@tangled --to $probe
-    } | is-not-empty)
-    git-command "abandoning the trial merge" { ^jj abandon $probe } | ignore
-    { conflict: $conflict changes: $changes }
+    let probes = $"description\(substring:'($marker)')"
+    let outcome = try {
+        git-command "creating a trial merge" { ^jj new --no-edit -m $marker ...$revisions } | ignore
+        let probe = (revision-field $probes 'commit_id')
+        let conflict = (revision-field $probe 'conflict') == "true"
+        let changes = (git-command "diffing the trial merge" {
+            ^jj diff --name-only --from main@tangled --to $probe
+        } | is-not-empty)
+        { value: { conflict: $conflict changes: $changes } error: null }
+    } catch {|err| { value: null error: $err.msg } }
+    let abandoned = (do { ^jj abandon $probes } | complete)
+    if $outcome.error != null { error make { msg: $outcome.error } }
+    if $abandoned.exit_code != 0 {
+        error make { msg: $"abandoning the trial merge failed with exit code ($abandoned.exit_code): ($abandoned.stderr | str trim)" }
+    }
+    $outcome.value
+}
+
+# Name each topic tip, from rows of { commit change }, by its change ID, which
+# survives rewrites and so orders topics the same way in every workspace. The
+# copies of a divergent change share that ID, so they are told apart by
+# commit; JJ itself refuses the bare ID as a revision.
+def tip-identities [rows: list] {
+    let shared = ($rows | get change | uniq --repeated)
+    $rows | each {|row|
+        let tip = if $row.change in $shared { $"($row.change)/($row.commit | str substring 0..7)" } else { $row.change }
+        { tip: $tip commit: $row.commit }
+    }
 }
 
 def plan-topics [published: list] {
     let roots = ($published | each {|topic| bookmark-revset $topic.name } | append 'working_copies()' | str join ' | ')
     # A workspace parked on an empty, undescribed change contributes its parent.
     let placeholder = '(empty() & description(exact:""))'
-    let tips = (revset-change-ids $"heads\(\(main@tangled..\(($roots))) & mutable\() ~ ($placeholder))")
-    $tips | each {|tip|
-        let bookmark = ($published | where {|topic| revset-change-ids $"(bookmark-revset $topic.name) & ::($tip)" | is-not-empty } | sort-by name | get --optional 0.name)
-        let workspaces = (revision-field $"\(main@tangled..($tip) | children\(($tip))) & working_copies\()" 'working_copies ++ " "'
+    let heads = $"heads\(\(main@tangled..\(($roots))) & mutable\() ~ ($placeholder))"
+    # Every workspace's working copy is a candidate, so any of them going
+    # divergent would stop every session's landing if the plan named tips by
+    # change ID (2026-10-07). Revsets below therefore use commit IDs.
+    let rows = (git-command "listing topic tips" {
+        ^jj log -r $heads --no-graph -T 'commit_id ++ "\t" ++ change_id.short() ++ "\n"'
+    } | lines | where {|line| $line | is-not-empty } | parse "{commit}\t{change}")
+    tip-identities $rows | each {|tip|
+        let commit = $tip.commit
+        let bookmark = ($published | where {|topic| revset-change-ids $"(bookmark-revset $topic.name) & ::($commit)" | is-not-empty } | sort-by name | get --optional 0.name)
+        let workspaces = (revision-field $"\(main@tangled..($commit) | children\(($commit))) & working_copies\()" 'working_copies ++ " "'
             | split row " " | where {|name| $name | is-not-empty } | uniq)
         let names = (if $bookmark != null { [$bookmark] } else { [] } | append $workspaces)
-        let label = if ($names | is-empty) { $tip | str substring 0..7 } else { $names | str join " " }
-        let fork = $"fork_point\(($tip) | main@tangled)"
+        let label = if ($names | is-empty) { $tip.tip | str substring 0..7 } else { $names | str join " " }
+        let fork = $"fork_point\(($commit) | main@tangled)"
         {
             label: $label
-            tip: $tip
-            commit: (revision-id $tip)
+            tip: $tip.tip
+            commit: $commit
             bookmark: $bookmark
-            description: (revision-field $tip 'description.first_line()')
+            description: (revision-field $commit 'description.first_line()')
             # Author time survives rewrites; committer time moves whenever a
             # topic is validated or redescribed, which would reorder topics.
-            created: (revision-field $"($fork)..($tip)" 'author.timestamp().format("%s") ++ "\n"'
+            created: (revision-field $"($fork)..($commit)" 'author.timestamp().format("%s") ++ "\n"'
                 | lines | into int | math min)
-            files: (git-command "listing topic files" { ^jj diff --name-only --from $fork --to $tip } | lines)
-            current: (contains-main $tip)
-            impact: (combine-impacts (revisions-in $"($fork)..($tip)" | each {|revision| parse-impact $revision.description }) | get impact)
+            files: (git-command "listing topic files" { ^jj diff --name-only --from $fork --to $commit } | lines)
+            current: (contains-main $commit)
+            impact: (combine-impacts (revisions-in $"($fork)..($commit)" | each {|revision| parse-impact $revision.description }) | get impact)
         }
     }
 }
@@ -1210,7 +1298,7 @@ def plan-topics [published: list] {
 def plan-main-status [topic: record] {
     let result = if $topic.current {
         {
-            conflict: ((revision-field $topic.tip 'conflict') == "true")
+            conflict: ((revision-field $topic.commit 'conflict') == "true")
             changes: (git-command "diffing the topic" { ^jj diff --name-only --from main@tangled --to $topic.commit } | is-not-empty)
         }
     } else {
@@ -1963,23 +2051,25 @@ def "main dispatch" [
         return
     }
     report-run (if $land { "Landed the topic" } else { "Dispatched the topic" }) {
-        let published = (publish-topic)
-        let repo = (tangled-repo)
-        let pull = (open-pulls $repo | where branch == $published.branch | get --optional 0)
-        if $pull == null {
-            let form = ({ source: "branch" sourceBranch: $published.branch targetBranch: "main" } | url build-query)
-            print $"Pushed ($published.branch). Open a pull request to review it on Tangled: ($repo.web)/pulls/new?($form)"
-        } else {
-            print $"Pushed ($published.branch), which updates the pull request \"($pull.title)\"."
-        }
-        if $published.parent != null {
-            print $"Stacked on ($published.parent); it lands after that topic."
-        }
-        print $"Impact: ($published.impact)"
-        if $land {
-            land-with-retries $published $repo $timeout $clearance $attempts
-        } else {
-            print "Dispatched this topic in place. Further edits update the same JJ series and branch; `ci land` delivers it."
+        with-topic-lock (current-topic-id) {
+            let published = (publish-topic)
+            let repo = (tangled-repo)
+            let pull = (open-pulls $repo | where branch == $published.branch | get --optional 0)
+            if $pull == null {
+                let form = ({ source: "branch" sourceBranch: $published.branch targetBranch: "main" } | url build-query)
+                print $"Pushed ($published.branch). Open a pull request to review it on Tangled: ($repo.web)/pulls/new?($form)"
+            } else {
+                print $"Pushed ($published.branch), which updates the pull request \"($pull.title)\"."
+            }
+            if $published.parent != null {
+                print $"Stacked on ($published.parent); it lands after that topic."
+            }
+            print $"Impact: ($published.impact)"
+            if $land {
+                land-with-retries $published $repo $timeout $clearance $attempts
+            } else {
+                print "Dispatched this topic in place. Further edits update the same JJ series and branch; `ci land` delivers it."
+            }
         }
     }
 }
@@ -2005,8 +2095,10 @@ def "main land" [
         $gate
     }
     report-run "Landed the topic" {
-        let published = (publish-topic)
-        land-with-retries $published (tangled-repo) $timeout $cleared_by $attempts
+        with-topic-lock (current-topic-id) {
+            let published = (publish-topic)
+            land-with-retries $published (tangled-repo) $timeout $cleared_by $attempts
+        }
     }
 }
 

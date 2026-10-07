@@ -189,6 +189,20 @@ as a success, so the checks record their own exit status, and a run stopped
 before it finished fails clearance too. Never stop another landing's checks
 to make room; wait for the lock instead.
 
+Each topic also has its own lock while `ci dispatch` or `ci land` moves it,
+`$XDG_STATE_HOME/jj-ci/topics/<change-id>.lock`. Two sessions that landed the
+same topic at once rebased it separately and split it into divergent copies,
+so a second `ci` that finds a live holder fails at once, naming its pid and
+workspace, rather than waiting to move the topic again. Let that run finish.
+
+Other sessions' work cannot stop a landing either. The plan that places a
+topic names every other topic's tip by commit, so a divergent change in some
+other workspace no longer makes JJ refuse the plan; the copies show up as
+separate topics. A trial merge abandons its probe however it ends. A JJ
+command that loses the race to read the operation heads while another
+process replaces them ("Failed to read operation heads") fails before it
+changes anything, and `ci` retries it twice.
+
 `ci land --clearance spindle` takes clearance from the repository's spindle instead. Pushes
 do not trigger it, so start `flake-checks.yml` on the topic branch by hand. It
 polls every 30 seconds (default timeout `--timeout 2hr`) and stops at the
