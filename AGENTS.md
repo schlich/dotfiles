@@ -95,6 +95,9 @@
   a user-facing justification so the host presents an inline approval control
   in the current chat session. Do not require the user to leave the session
   to approve it.
+- In a shell without a terminal, such as Claude Code's Bash tool, use
+  `sudo -A`: `SUDO_ASKPASS` points at sudoplz, which shows the command in a
+  dialog and supplies the stored password only on approval.
 - Never pass a sudo password through chat, command arguments, stdin, or
   environment variables. If inline escalation is unavailable, tell the user
   to run the command themselves or enable approval handling in the client.

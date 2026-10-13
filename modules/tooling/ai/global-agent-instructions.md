@@ -118,6 +118,12 @@ script, use valid Nushell syntax.
   The exception is a NixOS switch in the dotfiles repository: when the user
   asks for one, run `system-switch`, which needs no sudo and works there.
 
+- Elsewhere, run a privileged command as `sudo -A COMMAND` in Bash. Bash
+  has no terminal for a password prompt, so `-A` asks sudoplz instead: it
+  shows the command in a dialog and supplies the stored password only if
+  the user approves. Never use `sudo -n`, which skips askpass. If sudoplz
+  reports no stored password, ask the user to run `sudoplz set` once.
+
 - The evaluate tool returns only when a command finishes, so the user sees
   nothing while it runs, and a call that outlasts about two minutes is
   silently promoted to a bare Nushell job you must collect with `job recv`.

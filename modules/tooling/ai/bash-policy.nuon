@@ -34,7 +34,7 @@
     }
     {
       pattern: '^\s*sudo\s'
-      why: "Privileged commands need Claude Code's approval prompt; the evaluate tool has no TTY for sudo"
+      why: "Privileged commands need Claude Code's approval prompt; run as `sudo -A`, they then also pass sudoplz's approval dialog"
     }
   ]
 }

@@ -24,6 +24,7 @@ let
   # The ci input's MCP server, which starts the same `ci` launcher as the
   # shell; with xs it announces its jobs on cross.stream.
   ciMcp = inputs.ci.packages.${pkgs.stdenv.hostPlatform.system}.ci-mcp.override { inherit xs; };
+  sudoplz = pkgs.callPackage ./sudoplz.nix { };
 in
 {
   home.packages = [
@@ -33,7 +34,11 @@ in
     # Monitor command for a Nushell job's log and done marker, so the
     # Monitor card shows one titled line instead of an inline poll loop.
     (pkgs.writeNuScriptBin "watch-job" (builtins.readFile ./scripts/watch-job.nu))
+    sudoplz
   ];
+  # Agents run `sudo -A`, which asks sudoplz's askpass; it shows the command
+  # in a dialog and supplies the stored password only when approved.
+  home.sessionVariables.SUDO_ASKPASS = "${sudoplz}/bin/askpass";
 
   programs.mcp = {
     enable = true;
