@@ -1,12 +1,27 @@
 {
   config,
   inputs,
+  lib,
   pkgs,
   ...
 }:
 
 let
   xs = inputs.xs.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  wrapWithConfig = import ../../lib/wrap-with-config.nix { inherit lib pkgs; };
+  udiskie = wrapWithConfig {
+    package = pkgs.udiskie;
+    flags = [
+      "--config"
+      ((pkgs.formats.yaml { }).generate "udiskie-config.yml" {
+        program_options = {
+          automount = true;
+          notify = true;
+          tray = "auto";
+        };
+      })
+    ];
+  };
 in
 
 {
@@ -17,13 +32,16 @@ in
       enableNushellIntegration = true;
     };
     gnome-keyring.enable = true;
+    # The module still writes the unit, whose tray.target dependency follows
+    # `tray`; the wrapper carries the configuration it would link.
     udiskie = {
       enable = true;
-      automount = true;
-      notify = true;
+      package = udiskie;
       tray = "auto";
     };
   };
+  xdg.configFile."udiskie/config.yml".enable = lib.mkForce false;
+  dotfiles.retiredHomeFiles = [ ".config/udiskie/config.yml" ];
 
   systemd.user.services.cross-stream = {
     Unit = {

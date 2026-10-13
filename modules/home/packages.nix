@@ -131,7 +131,6 @@ in
     pixi
     uv
     glow
-    bat
     gcc
     nil
     nixd

@@ -7,7 +7,9 @@
 {
   programs.ghostty = lib.mkIf (config.dotfiles.primary.terminal == "ghostty") {
     enable = true;
-    installBatSyntax = true;
+    # bat's wrapper in modules/programs/cli.nix builds Ghostty's syntax into
+    # its cache instead.
+    installBatSyntax = false;
     settings = {
       copy-on-select = true;
       font-family = "Monaspace Krypton";
