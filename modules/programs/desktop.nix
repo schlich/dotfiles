@@ -242,8 +242,6 @@ in
             show_labels = true;
             label_source = "id";
             name_labels = {
-              # `snorkel` is being renamed to `work`; drop it once that lands.
-              snorkel = "🤿";
               work = "🤿";
               research = "🔬";
               xr = "🥽";

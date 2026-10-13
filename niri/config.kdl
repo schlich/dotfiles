@@ -112,6 +112,7 @@ input {
 // take the workspaces after them. Version control, coding agents and the
 // session launcher are not workspaces but stacks or overlays within one: Mod+G,
 // Mod+A and Mod+0. Mod+O is Niri's own overview of every workspace.
+// docs/niri.md is the usage doctrine these settings enforce.
 workspace "work"      // 10-19
 workspace "research"  // 20-29
 workspace "xr"        // 30-39
@@ -135,23 +136,27 @@ layout {
     // - "always", the focused column will always be centered.
     // - "on-overflow", focusing a column will center it if it doesn't fit
     //   together with the previously focused column.
-    center-focused-column "never"
+    // The laptop panel fits two columns, so focus scrolls only when the next
+    // column would not fit beside the current one.
+    center-focused-column "on-overflow"
 
-    // You can customize the widths that "switch-preset-column-width" (Mod+R) toggles between.
+    // A lone window sits in the middle rather than against the left edge.
+    always-center-single-column
+
+    // Mod+R cycles half, two thirds and the whole panel; a third is too
+    // narrow on a laptop.
     preset-column-widths {
         // Proportion sets the width as a fraction of the output width, taking gaps into account.
-        // For example, you can perfectly fit four windows sized "proportion 0.25" on an output.
-        // The default preset widths are 1/3, 1/2 and 2/3 of the output.
-        proportion 0.33333
         proportion 0.5
         proportion 0.66667
-
-        // Fixed sets the width in logical pixels exactly.
-        // fixed 1920
+        proportion 1.0
     }
 
-    // You can also customize the heights that "switch-preset-window-height" (Mod+Shift+R) toggles between.
-    // preset-window-heights { }
+    // Mod+Shift+R splits a stacked tool column in half or gives one window all of it.
+    preset-window-heights {
+        proportion 0.5
+        proportion 1.0
+    }
 
     // You can change the default width of the new windows.
     default-column-width { proportion 0.5; }
@@ -288,6 +293,25 @@ hotkey-overlay {
     skip-at-startup
 }
 
+// The top-left hot corner and a three-finger swipe up open the overview, the
+// same as Mod+O.
+gestures {
+    hot-corners {
+        top-left
+    }
+}
+
+// Niri's own most-recently-used switcher is the one window switcher: Alt+Tab
+// walks every window, Alt+` only the focused app's.
+recent-windows {
+    binds {
+        Alt+Tab { next-window; }
+        Alt+Shift+Tab { previous-window; }
+        Alt+grave { next-window filter="app-id"; }
+        Alt+Shift+grave { previous-window filter="app-id"; }
+    }
+}
+
 // Uncomment this line to ask the clients to omit their client-side decorations if possible.
 // If the client will specifically ask for CSD, the request will be honored.
 // Additionally, clients will be informed that they are tiled, removing some client-side rounded corners.
@@ -378,16 +402,11 @@ debug {
 
 
 
-// Example: block out two password managers from screen capture.
-// (This example rule is commented out with a "/-" in front.)
-/-window-rule {
-    match app-id=r#"^org\.keepassxc\.KeePassXC$"#
-    match app-id=r#"^org\.gnome\.World\.Secrets$"#
+// Bitwarden never appears in a screencast or a shared window.
+window-rule {
+    match app-id=r#"(?i)^bitwarden$"#
 
-    block-out-from "screen-capture"
-
-    // Use this instead if you want them visible on third-party screenshot tools.
-    // block-out-from "screencast"
+    block-out-from "screencast"
 }
 
 // Example: enable rounded corners for all windows.
@@ -427,7 +446,7 @@ binds {
     Mod+Shift+S { spawn-sh "noctalia msg settings-toggle"; }
     Mod+B { spawn "google-chrome" "--profile-directory=Default"; }
     Super+Alt+L { spawn "swaylock"; }
-    Alt+Tab { spawn-sh "noctalia msg window-switcher"; }
+    // Alt+Tab is niri's recent-windows switcher (see recent-windows above).
 
     // You can also use a shell. Do this if you need pipes, multiple commands, etc.
     // Note: the entire command goes as a single argument in the end.
@@ -449,19 +468,22 @@ binds {
     Mod+Q { close-window; }
 
     // Navigate with arrows or HJKL; add Shift to move the focused column/window.
-    Mod+Left  { focus-column-left; }
-    Mod+Down  { focus-window-down; }
-    Mod+Up    { focus-window-up; }
-    Mod+Right { focus-column-right; }
+    // HJKL is canonical: the arrow, Page and wheel twins below keep working
+    // but stay out of the hotkey overlay (hotkey-overlay-title=null), so it
+    // lists one key per action.
+    Mod+Left  hotkey-overlay-title=null { focus-column-left; }
+    Mod+Down  hotkey-overlay-title=null { focus-window-down; }
+    Mod+Up    hotkey-overlay-title=null { focus-window-up; }
+    Mod+Right hotkey-overlay-title=null { focus-column-right; }
     Mod+H     { focus-column-left; }
     Mod+J     { focus-window-down; }
     Mod+K     { focus-window-up; }
     Mod+L     { focus-column-right; }
 
-    Mod+Shift+Left  { move-column-left; }
-    Mod+Shift+Down  { move-window-down; }
-    Mod+Shift+Up    { move-window-up; }
-    Mod+Shift+Right { move-column-right; }
+    Mod+Shift+Left  hotkey-overlay-title=null { move-column-left; }
+    Mod+Shift+Down  hotkey-overlay-title=null { move-window-down; }
+    Mod+Shift+Up    hotkey-overlay-title=null { move-window-up; }
+    Mod+Shift+Right hotkey-overlay-title=null { move-column-right; }
     Mod+Shift+H     { move-column-left; }
     Mod+Shift+J     { move-window-down; }
     Mod+Shift+K     { move-window-up; }
@@ -479,19 +501,19 @@ binds {
     Mod+Ctrl+Home { move-column-to-first; }
     Mod+Ctrl+End { move-column-to-last; }
 
-    Mod+Ctrl+Left  { focus-monitor-left; }
-    Mod+Ctrl+Down  { focus-monitor-down; }
-    Mod+Ctrl+Up    { focus-monitor-up; }
-    Mod+Ctrl+Right { focus-monitor-right; }
+    Mod+Ctrl+Left  hotkey-overlay-title=null { focus-monitor-left; }
+    Mod+Ctrl+Down  hotkey-overlay-title=null { focus-monitor-down; }
+    Mod+Ctrl+Up    hotkey-overlay-title=null { focus-monitor-up; }
+    Mod+Ctrl+Right hotkey-overlay-title=null { focus-monitor-right; }
     Mod+Ctrl+H     { focus-monitor-left; }
     Mod+Ctrl+J     { focus-monitor-down; }
     Mod+Ctrl+K     { focus-monitor-up; }
     Mod+Ctrl+L     { focus-monitor-right; }
 
-    Mod+Shift+Ctrl+Left  { move-column-to-monitor-left; }
-    Mod+Shift+Ctrl+Down  { move-column-to-monitor-down; }
-    Mod+Shift+Ctrl+Up    { move-column-to-monitor-up; }
-    Mod+Shift+Ctrl+Right { move-column-to-monitor-right; }
+    Mod+Shift+Ctrl+Left  hotkey-overlay-title=null { move-column-to-monitor-left; }
+    Mod+Shift+Ctrl+Down  hotkey-overlay-title=null { move-column-to-monitor-down; }
+    Mod+Shift+Ctrl+Up    hotkey-overlay-title=null { move-column-to-monitor-up; }
+    Mod+Shift+Ctrl+Right hotkey-overlay-title=null { move-column-to-monitor-right; }
     Mod+Shift+Ctrl+H     { move-column-to-monitor-left; }
     Mod+Shift+Ctrl+J     { move-column-to-monitor-down; }
     Mod+Shift+Ctrl+K     { move-column-to-monitor-up; }
@@ -506,23 +528,23 @@ binds {
     // ...
 
     // Page keys use Niri's native navigation; U/I skip empty workspaces.
-    Mod+Page_Down { focus-workspace-down; }
-    Mod+Page_Up   { focus-workspace-up; }
-    Mod+U         { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" workspace down"; }
-    Mod+I         { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" workspace up"; }
+    Mod+Page_Down hotkey-overlay-title=null { focus-workspace-down; }
+    Mod+Page_Up   hotkey-overlay-title=null { focus-workspace-up; }
+    Mod+U         hotkey-overlay-title="Next session with windows" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" workspace down"; }
+    Mod+I         hotkey-overlay-title="Previous session with windows" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" workspace up"; }
     Mod+Ctrl+U { move-column-to-workspace-down; }
     Mod+Ctrl+I { move-column-to-workspace-up; }
 
     // Logitech thumb buttons switch to the previous and next workspace.
-    MouseBack    { focus-workspace-up; }
-    MouseForward { focus-workspace-down; }
+    MouseBack    hotkey-overlay-title=null { focus-workspace-up; }
+    MouseForward hotkey-overlay-title=null { focus-workspace-down; }
 
     // Alternatively, there are commands to move just a single window:
     // Mod+Ctrl+U { move-window-to-workspace-down; }
     // ...
 
-    Mod+Shift+Page_Down { move-workspace-down; }
-    Mod+Shift+Page_Up   { move-workspace-up; }
+    Mod+Shift+Page_Down hotkey-overlay-title=null { move-workspace-down; }
+    Mod+Shift+Page_Up   hotkey-overlay-title=null { move-workspace-up; }
     Mod+Shift+U         { move-workspace-down; }
     Mod+Shift+I         { move-workspace-up; }
 
@@ -532,22 +554,22 @@ binds {
     // To avoid scrolling through workspaces really fast, you can use
     // the cooldown-ms property. The bind will be rate-limited to this value.
     // You can set a cooldown on any bind, but it's most useful for the wheel.
-    Mod+WheelScrollDown      cooldown-ms=150 { focus-workspace-down; }
-    Mod+WheelScrollUp        cooldown-ms=150 { focus-workspace-up; }
-    Mod+Ctrl+WheelScrollDown cooldown-ms=150 { move-column-to-workspace-down; }
-    Mod+Ctrl+WheelScrollUp   cooldown-ms=150 { move-column-to-workspace-up; }
+    Mod+WheelScrollDown      cooldown-ms=150 hotkey-overlay-title=null { focus-workspace-down; }
+    Mod+WheelScrollUp        cooldown-ms=150 hotkey-overlay-title=null { focus-workspace-up; }
+    Mod+Ctrl+WheelScrollDown cooldown-ms=150 hotkey-overlay-title=null { move-column-to-workspace-down; }
+    Mod+Ctrl+WheelScrollUp   cooldown-ms=150 hotkey-overlay-title=null { move-column-to-workspace-up; }
 
-    Mod+WheelScrollRight      { focus-column-right; }
-    Mod+WheelScrollLeft       { focus-column-left; }
-    Mod+Ctrl+WheelScrollRight { move-column-right; }
-    Mod+Ctrl+WheelScrollLeft  { move-column-left; }
+    Mod+WheelScrollRight      hotkey-overlay-title=null { focus-column-right; }
+    Mod+WheelScrollLeft       hotkey-overlay-title=null { focus-column-left; }
+    Mod+Ctrl+WheelScrollRight hotkey-overlay-title=null { move-column-right; }
+    Mod+Ctrl+WheelScrollLeft  hotkey-overlay-title=null { move-column-left; }
 
     // Usually scrolling up and down with Shift in applications results in
     // horizontal scrolling; these binds replicate that.
-    Mod+Shift+WheelScrollDown      { focus-column-right; }
-    Mod+Shift+WheelScrollUp        { focus-column-left; }
-    Mod+Ctrl+Shift+WheelScrollDown { move-column-right; }
-    Mod+Ctrl+Shift+WheelScrollUp   { move-column-left; }
+    Mod+Shift+WheelScrollDown      hotkey-overlay-title=null { focus-column-right; }
+    Mod+Shift+WheelScrollUp        hotkey-overlay-title=null { focus-column-left; }
+    Mod+Ctrl+Shift+WheelScrollDown hotkey-overlay-title=null { move-column-right; }
+    Mod+Ctrl+Shift+WheelScrollUp   hotkey-overlay-title=null { move-column-left; }
 
     // Similarly, you can bind touchpad scroll "ticks".
     // Touchpad scrolling is continuous, so for these binds it is split into
@@ -613,10 +635,10 @@ binds {
     Mod+Alt+L     hotkey-overlay-title="Grid: session to the right" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid right"; }
     Mod+Alt+K     hotkey-overlay-title="Grid: session above" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid up"; }
     Mod+Alt+J     hotkey-overlay-title="Grid: session below" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid down"; }
-    Mod+Alt+Left  { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid left"; }
-    Mod+Alt+Right { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid right"; }
-    Mod+Alt+Up    { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid up"; }
-    Mod+Alt+Down  { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid down"; }
+    Mod+Alt+Left  hotkey-overlay-title=null { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid left"; }
+    Mod+Alt+Right hotkey-overlay-title=null { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid right"; }
+    Mod+Alt+Up    hotkey-overlay-title=null { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid up"; }
+    Mod+Alt+Down  hotkey-overlay-title=null { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid down"; }
 
     // Niri's overview: every workspace zoomed out. The session launcher (the
     // grid, projects in ~/code, and `project DIR`) is Mod+0.
@@ -656,8 +678,10 @@ binds {
     // Alternatively, there are commands to move just a single window:
     // Mod+Ctrl+1 { move-window-to-workspace 1; }
 
-    // Switches focus between the current and the previous workspace.
-    Mod+Tab { focus-workspace-previous; }
+    // Jumps back to the previously focused window, across workspaces. The
+    // previous workspace is the area's own key again
+    // (workspace-auto-back-and-forth).
+    Mod+Tab hotkey-overlay-title="Back to the previous window" { focus-window-previous; }
 
     // The following binds move the focused window in and out of a column.
     // If the window is alone, they will consume it into the nearby column to the side.
@@ -717,8 +741,8 @@ binds {
     Mod+Alt+4 hotkey-overlay-title="Window 4 of this column" { focus-window-in-column 4; }
 
     // Cycle the windows, or tabs, of the focused column with the wheel.
-    Mod+Alt+WheelScrollDown cooldown-ms=150 { focus-window-down; }
-    Mod+Alt+WheelScrollUp   cooldown-ms=150 { focus-window-up; }
+    Mod+Alt+WheelScrollDown cooldown-ms=150 hotkey-overlay-title=null { focus-window-down; }
+    Mod+Alt+WheelScrollUp   cooldown-ms=150 hotkey-overlay-title=null { focus-window-up; }
 
     // Actions to switch layouts.
     // Note: if you uncomment these, make sure you do NOT have
