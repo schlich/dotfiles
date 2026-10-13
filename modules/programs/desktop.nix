@@ -187,7 +187,6 @@ in
             center = [
               "codex_usage"
               "claude_usage"
-              "elrondforwin/opencode-go-usage:bar"
             ];
             end = [
               "notifications"
@@ -205,16 +204,9 @@ in
         plugins = {
           enabled = [
             "felipeartur/ai-usagebar"
-            "elrondforwin/opencode-go-usage"
             "thepunkoff/pomodoro"
           ];
           source = [
-            {
-              name = "opencode-go-usage";
-              kind = "git";
-              location = "https://github.com/kaivalagi/noctalia-opencode-usage-plugin";
-              enabled = true;
-            }
             {
               name = "community";
               kind = "git";
