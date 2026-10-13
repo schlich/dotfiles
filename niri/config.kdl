@@ -280,14 +280,14 @@ layout {
 // spawn-at-startup "noctalia-shell"
 
 // Build the work and nix session layouts, then focus work.
-spawn-sh-at-startup "exec nu \"$HOME/.config/niri/session.nu\" startup"
+spawn-sh-at-startup "exec niri-desk startup"
 
 // Keep choice groups, such as the desktop coding agents, in one tabbed column.
-spawn-sh-at-startup "exec nu \"$HOME/.config/niri/session.nu\" watch-choices"
+spawn-sh-at-startup "exec niri-desk watch-choices"
 
 // Publish the focus context and its keys for the status bar's hint line
 // (Noctalia plugin schlich/niri-hints).
-spawn-sh-at-startup "exec nu \"$HOME/.config/niri/keymap.nu\" hints"
+spawn-sh-at-startup "exec niri-keymap hints"
 
 // Run Handy in the tray so Mod+D reaches it; `--toggle-transcription` only
 // signals a running instance.
@@ -437,14 +437,14 @@ binds {
     Mod+Shift+Slash { show-hotkey-overlay; }
     // Mod-/ draws the same binds as an emoji keyboard, one modifier layer at a
     // time (niri/keymap.nu; emoji in niri/keymap-emoji.nuon).
-    Mod+Slash hotkey-overlay-title="Keymap: emoji keyboard of these binds" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" keymap"; }
+    Mod+Slash hotkey-overlay-title="Keymap: emoji keyboard of these binds" { spawn-sh "exec niri-desk keymap"; }
 
     // Applications and session controls.
     // Workspaces are terminal sessions (niri/session.nu): Mod+Return opens a
     // shell in the session's directory, Mod+Shift+Return rebuilds its layout.
-    Mod+Return hotkey-overlay-title="Terminal in this session" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" open"; }
-    Mod+Shift+Return hotkey-overlay-title="Restore session layout" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" restore"; }
-    Mod+Alt+Return hotkey-overlay-title="Terminal stacked in this column" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" open --stack"; }
+    Mod+Return hotkey-overlay-title="Terminal in this session" { spawn-sh "exec niri-desk open"; }
+    Mod+Shift+Return hotkey-overlay-title="Restore session layout" { spawn-sh "exec niri-desk restore"; }
+    Mod+Alt+Return hotkey-overlay-title="Terminal stacked in this column" { spawn-sh "exec niri-desk open --stack"; }
     Mod+Space { spawn-sh "noctalia msg panel-toggle launcher"; }
     Mod+S { spawn-sh "noctalia msg panel-toggle control-center"; }
     Mod+Shift+S { spawn-sh "noctalia msg settings-toggle"; }
@@ -534,8 +534,8 @@ binds {
     // Page keys use Niri's native navigation; U/I skip empty workspaces.
     Mod+Page_Down hotkey-overlay-title=null { focus-workspace-down; }
     Mod+Page_Up   hotkey-overlay-title=null { focus-workspace-up; }
-    Mod+U         hotkey-overlay-title="Next session with windows" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" workspace down"; }
-    Mod+I         hotkey-overlay-title="Previous session with windows" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" workspace up"; }
+    Mod+U         hotkey-overlay-title="Next session with windows" { spawn-sh "exec niri-desk workspace down"; }
+    Mod+I         hotkey-overlay-title="Previous session with windows" { spawn-sh "exec niri-desk workspace up"; }
     Mod+Ctrl+U { move-column-to-workspace-down; }
     Mod+Ctrl+I { move-column-to-workspace-up; }
 
@@ -606,7 +606,7 @@ binds {
     Mod+KP_7 hotkey-overlay-title="70-79 Career (top left)" { focus-workspace "career"; }
     Mod+KP_8 hotkey-overlay-title="80-89 Personal" { focus-workspace "personal"; }
     Mod+KP_9 hotkey-overlay-title="90-99 Inbox" { focus-workspace "inbox"; }
-    Mod+KP_0 hotkey-overlay-title="00-09 System: session launcher" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" overview"; }
+    Mod+KP_0 hotkey-overlay-title="00-09 System: session launcher" { spawn-sh "exec niri-desk overview"; }
     Mod+Shift+KP_1 { move-column-to-workspace "work"; }
     Mod+Shift+KP_2 { move-column-to-workspace "research"; }
     Mod+Shift+KP_3 { move-column-to-workspace "xr"; }
@@ -625,7 +625,7 @@ binds {
     Mod+7 { focus-workspace "career"; }
     Mod+8 { focus-workspace "personal"; }
     Mod+9 { focus-workspace "inbox"; }
-    Mod+0 hotkey-overlay-title="00-09 System: session launcher" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" overview"; }
+    Mod+0 hotkey-overlay-title="00-09 System: session launcher" { spawn-sh "exec niri-desk overview"; }
     Mod+Shift+1 { move-column-to-workspace "work"; }
     Mod+Shift+2 { move-column-to-workspace "research"; }
     Mod+Shift+3 { move-column-to-workspace "xr"; }
@@ -635,14 +635,14 @@ binds {
     Mod+Shift+7 { move-column-to-workspace "career"; }
     Mod+Shift+8 { move-column-to-workspace "personal"; }
     Mod+Shift+9 { move-column-to-workspace "inbox"; }
-    Mod+Alt+H     hotkey-overlay-title="Grid: session to the left" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid left"; }
-    Mod+Alt+L     hotkey-overlay-title="Grid: session to the right" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid right"; }
-    Mod+Alt+K     hotkey-overlay-title="Grid: session above" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid up"; }
-    Mod+Alt+J     hotkey-overlay-title="Grid: session below" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid down"; }
-    Mod+Alt+Left  hotkey-overlay-title=null { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid left"; }
-    Mod+Alt+Right hotkey-overlay-title=null { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid right"; }
-    Mod+Alt+Up    hotkey-overlay-title=null { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid up"; }
-    Mod+Alt+Down  hotkey-overlay-title=null { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid down"; }
+    Mod+Alt+H     hotkey-overlay-title="Grid: session to the left" { spawn-sh "exec niri-desk grid left"; }
+    Mod+Alt+L     hotkey-overlay-title="Grid: session to the right" { spawn-sh "exec niri-desk grid right"; }
+    Mod+Alt+K     hotkey-overlay-title="Grid: session above" { spawn-sh "exec niri-desk grid up"; }
+    Mod+Alt+J     hotkey-overlay-title="Grid: session below" { spawn-sh "exec niri-desk grid down"; }
+    Mod+Alt+Left  hotkey-overlay-title=null { spawn-sh "exec niri-desk grid left"; }
+    Mod+Alt+Right hotkey-overlay-title=null { spawn-sh "exec niri-desk grid right"; }
+    Mod+Alt+Up    hotkey-overlay-title=null { spawn-sh "exec niri-desk grid up"; }
+    Mod+Alt+Down  hotkey-overlay-title=null { spawn-sh "exec niri-desk grid down"; }
 
     // Niri's overview: every workspace zoomed out. The session launcher (the
     // grid, projects in ~/code, and `project DIR`) is Mod+0.
@@ -651,18 +651,18 @@ binds {
     // Letters are stacks within the focused workspace, named for what they
     // hold. Mod+G focuses this workspace's VCS stack (Git/GitHub), opening it
     // if needed; again switches between its JJ and GitHub tabs.
-    Mod+G hotkey-overlay-title="VCS stack: JJ / GitHub" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" vcs"; }
+    Mod+G hotkey-overlay-title="VCS stack: JJ / GitHub" { spawn-sh "exec niri-desk vcs"; }
     // Mod+A brings the coding agents' stack here, starting OpenCode if none is
     // open; again switches between agents. Mod+Shift+A peeks instead: it
     // floats the last used agent over this workspace without reflowing its
     // columns, and again docks it back. While peeking, Mod+A swaps agents.
-    Mod+A hotkey-overlay-title="Agents stack: OpenCode / Codex" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" agents"; }
-    Mod+Shift+A hotkey-overlay-title="Peek at an agent" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" peek agents"; }
+    Mod+A hotkey-overlay-title="Agents stack: OpenCode / Codex" { spawn-sh "exec niri-desk agents"; }
+    Mod+Shift+A hotkey-overlay-title="Peek at an agent" { spawn-sh "exec niri-desk peek agents"; }
     // Mod+N opens this area's notes: its Johnny Decimal hub in ~/kb, or the
     // index outside an area. Mod+Shift+N captures a new note into today's
     // daily note, floating over this workspace; again brings it back here.
-    Mod+N hotkey-overlay-title="Notes: this area's hub" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" notes"; }
-    Mod+Shift+N hotkey-overlay-title="New note: capture to today" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" capture"; }
+    Mod+N hotkey-overlay-title="Notes: this area's hub" { spawn-sh "exec niri-desk notes"; }
+    Mod+Shift+N hotkey-overlay-title="New note: capture to today" { spawn-sh "exec niri-desk capture"; }
 
     // Mod+M is dicta's tape recorder: it starts a spoken note about the
     // focused window and the selected text, and again stops and transcribes
@@ -736,7 +736,7 @@ binds {
 
     // Alternatives for the same job (same app, or a choice group in
     // session.nu) belong in one tabbed column; gather them into this one.
-    Mod+Alt+W hotkey-overlay-title="Tab this window's choices together" { spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" stack-choices"; }
+    Mod+Alt+W hotkey-overlay-title="Tab this window's choices together" { spawn-sh "exec niri-desk stack-choices"; }
 
     // Jump straight to a window, or tab, of the focused column by position.
     Mod+Alt+1 hotkey-overlay-title="Window 1 of this column" { focus-window-in-column 1; }

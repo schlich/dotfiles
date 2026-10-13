@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ lib, pkgs, ... }:
 
 let
   niriSessionWait = pkgs.writeShellScriptBin "niri-session" ''
@@ -62,4 +62,10 @@ in
   };
 
   services.displayManager.noctalia-greeter.enable = true;
+
+  # niri falls back to /etc/niri/config.kdl when ~/.config/niri/config.kdl is
+  # absent, and reloads it when a switch moves /etc/static. Its binds run the
+  # niri-desk commands Home Manager installs (modules/home/files.nix).
+  # homelab sets its own config, which takes precedence over this default.
+  environment.etc."niri/config.kdl".source = lib.mkDefault ../../niri/config.kdl;
 }

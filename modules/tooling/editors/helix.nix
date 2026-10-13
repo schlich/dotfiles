@@ -30,10 +30,67 @@ let
 
     def main [] {}
   '';
+  wrapWithConfig = import ../../../lib/wrap-with-config.nix { inherit lib pkgs; };
+
+  # `hx -c` names config.toml. Helix reads languages.toml only from
+  # ~/.config/helix, so `languages` below stays a Home Manager link. A running
+  # Helix keeps the store file it started with; restart it after a switch.
+  hx = wrapWithConfig {
+    package = pkgs.helix;
+    flags = [
+      "-c"
+      ((pkgs.formats.toml { }).generate "helix-config.toml" settings)
+    ];
+  };
+
+  settings = {
+    theme = "dark-synthwave";
+    editor = {
+      shell = [
+        "nu"
+        "-c"
+      ];
+      auto-save.focus-lost = true;
+      line-number = "relative";
+      completion-replace = true;
+      completion-trigger-len = 0;
+      completion-timeout = 5;
+      bufferline = "multiple";
+      color-modes = true;
+      trim-final-newlines = true;
+      trim-trailing-whitespace = true;
+      lsp.display-inlay-hints = true;
+      cursor-shape.insert = "bar";
+      soft-wrap.enable = true;
+      end-of-line-diagnostics = "hint";
+      inline-diagnostics.cursor-line = "warning";
+    };
+    keys = {
+      normal = {
+        tab = "move_parent_node_end";
+        S-tab = "move_parent_node_start";
+        # Pick files with Yazi, starting at the current buffer.
+        C-y = [
+          ":insert-output ${lib.getExe yaziPicker} pick '%{buffer_name}'"
+          ":open %sh{${lib.getExe yaziPicker} paths}"
+          ":redraw"
+          # Re-enable mouse capture, which Yazi turns off on exit.
+          ":set mouse false"
+          ":set mouse true"
+        ];
+      };
+      insert.S-tab = "move_parent_node_end";
+      select = {
+        tab = "extend_parent_node_end";
+        S-tab = "extend_parent_node_start";
+      };
+    };
+  };
 in
 {
   programs.helix = {
     enable = config.dotfiles.alternates || config.dotfiles.primary.editor == "helix";
+    package = hx;
     extraPackages = with pkgs; [
       nixd
       nil
@@ -42,49 +99,6 @@ in
       taplo
       dhall
     ];
-    settings = {
-      theme = "dark-synthwave";
-      editor = {
-        shell = [
-          "nu"
-          "-c"
-        ];
-        auto-save.focus-lost = true;
-        line-number = "relative";
-        completion-replace = true;
-        completion-trigger-len = 0;
-        completion-timeout = 5;
-        bufferline = "multiple";
-        color-modes = true;
-        trim-final-newlines = true;
-        trim-trailing-whitespace = true;
-        lsp.display-inlay-hints = true;
-        cursor-shape.insert = "bar";
-        soft-wrap.enable = true;
-        end-of-line-diagnostics = "hint";
-        inline-diagnostics.cursor-line = "warning";
-      };
-      keys = {
-        normal = {
-          tab = "move_parent_node_end";
-          S-tab = "move_parent_node_start";
-          # Pick files with Yazi, starting at the current buffer.
-          C-y = [
-            ":insert-output ${lib.getExe yaziPicker} pick '%{buffer_name}'"
-            ":open %sh{${lib.getExe yaziPicker} paths}"
-            ":redraw"
-            # Re-enable mouse capture, which Yazi turns off on exit.
-            ":set mouse false"
-            ":set mouse true"
-          ];
-        };
-        insert.S-tab = "move_parent_node_end";
-        select = {
-          tab = "extend_parent_node_end";
-          S-tab = "extend_parent_node_start";
-        };
-      };
-    };
     languages = {
       language-server = {
         ruff = {
@@ -157,5 +171,6 @@ in
     };
   };
 
-  dotfiles.tooling.editors.helix.command = "${pkgs.helix}/bin/hx";
+  dotfiles.retiredHomeFiles = [ ".config/helix/config.toml" ];
+  dotfiles.tooling.editors.helix.command = lib.getExe hx;
 }

@@ -11,6 +11,9 @@
   programs ? [ (package.meta.mainProgram or (lib.getName package)) ],
   env ? { },
   flags ? [ ],
+  # Runs after wrapping, for files such as service units that name the
+  # unwrapped executable by store path.
+  postBuild ? "",
 }:
 
 let
@@ -33,7 +36,9 @@ pkgs.symlinkJoin {
   meta = (package.meta or { }) // {
     outputsToInstall = [ "out" ];
   };
-  postBuild = lib.concatMapStrings (program: ''
-    wrapProgram "$out/bin/${program}" ${wrapArgs}
-  '') programs;
+  postBuild =
+    lib.concatMapStrings (program: ''
+      wrapProgram "$out/bin/${program}" ${wrapArgs}
+    '') programs
+    + postBuild;
 }

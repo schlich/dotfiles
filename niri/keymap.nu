@@ -1,4 +1,4 @@
-# An emoji keyboard of the niri binds (Mod+Slash, `session.nu keymap`).
+# An emoji keyboard of the niri binds (Mod+Slash, `niri-desk keymap`).
 #
 # Reads the `binds { }` block of config.kdl, groups binds into layers by their
 # modifiers, and draws one layer at a time as an ANSI keyboard: the main block,
@@ -9,8 +9,10 @@
 #
 # Tab or the arrows switch layers, a digit picks one, and q or Esc closes.
 #
-# `keymap.nu hints` is the always-on counterpart: it names the focus context
+# `niri-keymap hints` is the always-on counterpart: it names the focus context
 # (the bar's mode) and the few binds that matter there, for the status bar.
+
+const emoji_file = path self keymap-emoji.nuon
 
 # Keyboard rows, one string per row. Each token is `keysym[=Label][:width]`
 # in key units, and `_:width` is a gap. Keysyms are XKB names, lower-cased as
@@ -69,15 +71,14 @@ def parse-rows [] {
   }
 }
 
-# `spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid left";` reads
-# `run session grid left`.
+# `spawn-sh "exec niri-desk grid left";` reads `run session grid left`.
 def normalise [action: string] {
   $action
   | str trim
   | str trim --right --char ';'
   | str replace --all '\"' '"'
   | str replace --all '"' ''
-  | str replace --regex 'exec nu \$HOME/\.config/niri/session\.nu' 'session'
+  | str replace --regex 'exec niri-desk' 'session'
   | str replace --regex '^spawn(-sh)? ' 'run '
 }
 
@@ -182,8 +183,11 @@ def render [layers: list, index: int, keys: list] {
   ] | str join "\n"
 }
 
+# The file niri loads: $NIRI_CONFIG, else the user's config.kdl if there is
+# one, else the system's /etc/niri/config.kdl.
 def default-config [] {
-  $env.XDG_CONFIG_HOME? | default $"($env.HOME)/.config" | path join niri config.kdl
+  let user = ($env.XDG_CONFIG_HOME? | default $"($env.HOME)/.config" | path join niri config.kdl)
+  $env.NIRI_CONFIG? | default (if ($user | path exists) { $user } else { '/etc/niri/config.kdl' })
 }
 
 # The keys that matter in each focus context, with short labels for the bar.
@@ -248,7 +252,7 @@ def "main hints" [--once, config?: path] {
 
 def main [config?: path] {
   let config = ($config | default (default-config))
-  let emoji = (open ($config | path dirname | path join keymap-emoji.nuon))
+  let emoji = (open $emoji_file)
   let binds = (load-binds $config $emoji)
   let layers = (layer-names $binds | each {|name|
     let layer = ($binds | where layer == $name)

@@ -86,7 +86,7 @@ in
             shadow = true;
           };
         };
-        wallpaper.default.path = "${config.xdg.dataHome}/wallpapers/niri-navigation.svg";
+        wallpaper.default.path = "${../../wallpapers/niri-navigation.svg}";
         system.monitor.enabled = true;
 
         bar = {

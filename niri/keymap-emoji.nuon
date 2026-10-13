@@ -1,8 +1,8 @@
-# Emoji for the keymap view (Mod+Slash, `session.nu keymap`).
+# Emoji for the keymap view (Mod+Slash, `niri-desk keymap`).
 #
 # Each bind's action is normalised before matching: quotes are dropped,
 # `spawn`/`spawn-sh` become `run`, and the session script becomes `session`,
-# so `spawn-sh "exec nu \"$HOME/.config/niri/session.nu\" grid left"` reads
+# so `spawn-sh "exec niri-desk grid left"` reads
 # `run session grid left`. The first `action` regex that matches wins. Prefer
 # emoji that render as emoji without a variation selector, so every keycap is
 # two columns wide.

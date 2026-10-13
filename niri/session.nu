@@ -8,7 +8,11 @@
 # Window app IDs are `niri.ws-<session>.<role>`; GTK ignores a Ghostty class
 # without a dot, so every ID keeps that shape.
 
-const status_loop = "loop { clear; let st = (^jj --color always status | complete); if $st.exit_code == 0 { print $st.stdout; print (^jj --color always diff --stat | complete).stdout } else { print 'Not in a JJ repository.' }; sleep 5sec }"
+# Sibling scripts, wherever this one is installed (the niri-desk package).
+const overview_script = path self workspace-overview.nu
+const keymap_script = path self keymap.nu
+
+const status_loop ="loop { clear; let st = (^jj --color always status | complete); if $st.exit_code == 0 { print $st.stdout; print (^jj --color always diff --stat | complete).stdout } else { print 'Not in a JJ repository.' }; sleep 5sec }"
 
 # Columns from left to right. `stack` puts a window below the previous one in
 # the same column, `tabbed` on a column's first window shows that column as
@@ -292,7 +296,7 @@ def "main overview" [] {
       return
     }
   }
-  let opened = (open-window niri.overview $env.HOME [nu -e "source ~/.config/niri/workspace-overview.nu"])
+  let opened = (open-window niri.overview $env.HOME [nu -e $"source ($overview_script)"])
   niri-action center-window --id $opened.id
 }
 
@@ -745,11 +749,10 @@ def "main keymap" [] {
       return
     }
   }
-  let script = ($env.XDG_CONFIG_HOME? | default $"($env.HOME)/.config" | path join niri keymap.nu)
-  let opened = (open-window niri.keymap $env.HOME [nu $script])
+  let opened = (open-window niri.keymap $env.HOME [nu $keymap_script])
   niri-action center-window --id $opened.id
 }
 
 def main [] {
-  print "Usage: session.nu (startup | restore [SESSION] | overview | keymap | grid DIRECTION | open [--stack] | project [DIR] | forget [SESSION] | vcs | agents | peek [GROUP] [--next] | notes | capture | stack-choices | watch-choices | workspace (up | down))"
+  print "Usage: niri-desk (startup | restore [SESSION] | overview | keymap | grid DIRECTION | open [--stack] | project [DIR] | forget [SESSION] | vcs | agents | peek [GROUP] [--next] | notes | capture | stack-choices | watch-choices | workspace (up | down))"
 }

@@ -1,6 +1,29 @@
-{ config, pkgs, ... }:
-
 {
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+
+let
+  # The niri session scripts as commands: config.kdl's binds run
+  # `niri-desk SUBCOMMAND` and `niri-keymap hints`, and the scripts find
+  # their siblings with `path self`. niri reads config.kdl from
+  # /etc/niri/config.kdl (modules/nixos/desktop.nix).
+  niriDesk = pkgs.runCommandLocal "niri-desk" { nativeBuildInputs = [ pkgs.makeWrapper ]; } ''
+    share="$out/share/niri-desk"
+    mkdir -p "$share"
+    cp ${../../niri/session.nu} "$share/session.nu"
+    cp ${../../niri/workspace-overview.nu} "$share/workspace-overview.nu"
+    cp ${../../niri/keymap.nu} "$share/keymap.nu"
+    cp ${../../niri/keymap-emoji.nuon} "$share/keymap-emoji.nuon"
+    makeWrapper ${lib.getExe pkgs.nushell} "$out/bin/niri-desk" --add-flags "$share/session.nu"
+    makeWrapper ${lib.getExe pkgs.nushell} "$out/bin/niri-keymap" --add-flags "$share/keymap.nu"
+  '';
+in
+{
+  home.packages = [ niriDesk ];
+
   xdg.configFile."nushell/completions/niri.nu".source =
     pkgs.runCommandLocal "niri-nushell-completions.nu"
       {
@@ -9,12 +32,6 @@
       ''
         ${pkgs.niri}/bin/niri completions nushell > "$out"
       '';
-  xdg.configFile."niri/config.kdl".source = ../../niri/config.kdl;
-  xdg.configFile."niri/session.nu".source = ../../niri/session.nu;
-  xdg.configFile."niri/workspace-overview.nu".source = ../../niri/workspace-overview.nu;
-  xdg.configFile."niri/keymap.nu".source = ../../niri/keymap.nu;
-  xdg.configFile."niri/keymap-emoji.nuon".source = ../../niri/keymap-emoji.nuon;
-  xdg.dataFile."wallpapers/niri-navigation.svg".source = ../../wallpapers/niri-navigation.svg;
   xdg.userDirs = {
     enable = true;
     createDirectories = true;
@@ -28,4 +45,13 @@
     publicShare = "${config.home.homeDirectory}/Public";
     templates = "${config.home.homeDirectory}/Templates";
   };
+
+  dotfiles.retiredHomeFiles = [
+    ".config/niri/config.kdl"
+    ".config/niri/session.nu"
+    ".config/niri/workspace-overview.nu"
+    ".config/niri/keymap.nu"
+    ".config/niri/keymap-emoji.nuon"
+    ".local/share/wallpapers/niri-navigation.svg"
+  ];
 }
