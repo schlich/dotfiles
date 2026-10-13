@@ -95,6 +95,9 @@ let
         deploy = {
           enable = true;
           targetHost = "homelab";
+          # Tailscale SSH admits root from the tailnet, so activation needs
+          # no sudo; homelab's sudo wants a password over Tailscale SSH.
+          targetUser = "root";
         };
         policy = {
           criticality = "critical";

@@ -128,8 +128,9 @@ host's profile and policy (`workstation`, `server`, `critical`, `niri`), and
 `allowApplyAll` is off, so a deploy names its hosts:
 `colmena apply --config path:. --on homelab` from a workspace at landed
 `main`, or `colmena apply-local --config path:. --sudo` on asus. Remote
-activation logs in as `deploy.targetUser` and needs non-interactive sudo on
-the target. Deploying from an unlanded topic skips the landing gate, so
+activation logs in as `deploy.targetUser`; homelab uses root, which its
+Tailscale SSH admits, because sudo there asks for a password over Tailscale
+SSH. Any other user needs non-interactive sudo on the target. Deploying from an unlanded topic skips the landing gate, so
 reserve it for `test` or `dry-activate` goals.
 Home Manager-only changes use `home-activate` when
 they leave the NixOS toplevel unchanged. In this repository,
