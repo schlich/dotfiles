@@ -36,15 +36,17 @@ let
       }
 
       # Build the exact closure gently, preview what activation will change,
-      # then switch to that store path.
+      # then switch to that store path. --no-reexec keeps nixos-rebuild from
+      # rebuilding itself through <nixpkgs/nixos>, which needs a nixos-config
+      # NIX_PATH entry this unit lacks; the unit's path already pins it.
       let code = (try {
         print "Free space on /nix:"
         ^df -h /nix
         print "Building the closure with one job and two cores..."
         ^env $"NIXOS_LABEL=($label)" nix build --no-link --impure --max-jobs 1 --cores 2 $"($system).build.toplevel"
         print $"Built ($candidate). Previewing service changes..."
-        ^nixos-rebuild dry-activate --store-path $candidate
-        ^nixos-rebuild switch --store-path $candidate
+        ^nixos-rebuild dry-activate --no-reexec --store-path $candidate
+        ^nixos-rebuild switch --no-reexec --store-path $candidate
         0
       } catch {
         $env.LAST_EXIT_CODE? | default 1
