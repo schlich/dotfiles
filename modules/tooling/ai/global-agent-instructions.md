@@ -83,6 +83,14 @@ script, use valid Nushell syntax.
   hook: run it in the Nushell evaluate tool. If Bash is truly required, tell
   the user why instead. The bash-feedback skill reviews the log.
 
+- When a skill tells you to run a shell script it bundles, run it from the
+  Nushell evaluate tool as `^bash <script> ...args | complete`, not through
+  Bash. If the script needs a program that is not installed, build it with
+  `nix build nixpkgs#PKG --print-out-paths --no-link` and prepend its `bin`
+  directory to `PATH` for the session. `$env.PATH` can arrive as a single
+  colon-joined string, so split it into a list before prepending:
+  `$env.PATH = ($env.PATH | each {|p| $p | split row (char esep) } | flatten | prepend $"($out)/bin")`.
+
 - To search or list repository files, use the harness's own search and
   file-reading tools first; they need no shell. If the Nushell evaluate tool
   is unavailable in a session, keep using those tools and report the missing
