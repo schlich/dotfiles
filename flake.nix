@@ -217,6 +217,13 @@
         '';
         meta.description = "Explainable Codex and Claude subscription pacing advisor";
       };
+      # Anything the devshell does not carry falls through to whatever a
+      # one-off `home-manager switch` left in ~/.nix-profile; this reports that
+      # fall-through, and how far behind the lock the resolved claude is.
+      profileDrift = pkgs.writeNuScriptBin "profile-drift" ''
+        const expected_claude = "${pkgs.claude-code.version}"
+        ${builtins.readFile ./tools/profile-drift.nu}
+      '';
       lib = nixpkgs.lib;
       iwe = import ./modules/tooling/knowledge/iwe-package.nix { inherit inputs lib pkgs; };
       marimohub = import ./modules/tooling/knowledge/marimohub-package.nix { inherit lib pkgs; };
@@ -375,6 +382,7 @@
         default = pkgs.mkShellNoCC {
           packages = with pkgs; [
             bat
+            claude-code
             d2
             difftastic
             fd
@@ -393,6 +401,7 @@
             python3
             nushell
             prek
+            profileDrift
             ripgrep
             tlaplus
           ];
@@ -511,6 +520,8 @@
           test -x ${jjCi}/bin/ci
           test -x ${pkgs.jujutsu}/bin/jj
           test -x ${pkgs.gh}/bin/gh
+          test -x ${pkgs.claude-code}/bin/claude
+          test -x ${profileDrift}/bin/profile-drift
           touch "$out"
         '';
         home-manager-nixos = homeCheck;
