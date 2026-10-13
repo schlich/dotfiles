@@ -20,7 +20,6 @@
     ./aspects/users/core.nix
     ./aspects/users/terminal.nix
     ./aspects/users/schlich.nix
-    ./aspects/users/agent.nix
     ./aspects/host-platforms.nix
     ./hosts.nix
   ];

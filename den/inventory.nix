@@ -40,13 +40,6 @@ let
       ];
       primary = true;
     };
-    users.agent = {
-      classes = [
-        "user"
-        "homeManager"
-      ];
-      environment = "agent";
-    };
     profile = {
       role = "workstation";
       desktop = "niri";

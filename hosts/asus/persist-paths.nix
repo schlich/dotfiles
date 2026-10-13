@@ -31,10 +31,6 @@
         directory = "/root";
         mode = "0700";
       }
-      {
-        directory = "/home/agent";
-        mode = "0700";
-      }
     ];
     files = [
       "/etc/machine-id"
