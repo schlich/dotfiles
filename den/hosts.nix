@@ -51,6 +51,7 @@ in
     services = [
       den.aspects.paseo
       den.aspects.opencode-server
+      den.aspects.cross-stream
     ];
     platform = [ den.aspects.homelab-platform ];
   };
