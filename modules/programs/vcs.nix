@@ -80,14 +80,24 @@ in
       ];
       patterns = [ "glob:'**/*.py'" ];
     };
-    # Tangled hosts trunk; GitHub (origin) is only a mirror that `ci land` updates.
-    git.push = "tangled";
-    git.fetch = [
-      "tangled"
-      "origin"
-    ];
-    revset-aliases."trunk()" = "main@tangled";
     git.executable-path = lib.getExe git;
+    # In the repositories Tangled hosts, it holds trunk and GitHub (origin) is
+    # only a mirror that `ci land` updates. Elsewhere jj keeps its own remote
+    # defaults; a global main@tangled broke every repository without one.
+    "--scope" = [
+      {
+        "--when".repositories = [
+          "~/dotfiles"
+          "~/40-49 Nix tooling/ci"
+        ];
+        git.push = "tangled";
+        git.fetch = [
+          "tangled"
+          "origin"
+        ];
+        revset-aliases."trunk()" = "main@tangled";
+      }
+    ];
   };
 
   home.packages = [
