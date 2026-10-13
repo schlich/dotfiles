@@ -43,7 +43,11 @@
     OOMPolicy = "continue";
   };
   nixpkgs.config.allowUnfree = true;
-  environment.systemPackages = [ pkgs.git ];
+  # The JJ fix tool and `ci`'s preflight run nixfmt from PATH on any host.
+  environment.systemPackages = [
+    pkgs.git
+    pkgs.nixfmt
+  ];
 
   time.timeZone = "America/Chicago";
   i18n.defaultLocale = "en_US.UTF-8";
