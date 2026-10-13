@@ -168,15 +168,19 @@
   follow-up changes after dispatch. A topic is a revision; a workspace is
   a working copy for one actor. Start a topic with `ci new -m MESSAGE` in the
   current workspace, which leaves earlier topics as siblings (`jj edit`
-  returns to one). Create a workspace with `ci start NAME` only for an actor
-  that runs concurrently with the current working copy: another active agent
-  task, or a build, dev server, or editor whose files must not change under
-  it. Reuse such workspaces with `ci park --keep` rather than creating one
-  per topic. Agent sessions never edit the default checkout `~/dotfiles`:
-  other sessions share it, so agents must refuse those edits, and a session
-  opened there starts with `ci start NAME`. From a Claude
-  Code worktree under `.claude/worktrees/`, which is not a JJ workspace,
-  `ci start` creates the workspace inside the worktree; edit only there. Use
+  returns to one). An agent session works only in a workspace whose change
+  it owns. A workspace idle on trunk (nothing above `main@tangled` but an
+  empty change, no live session owning it) is free, `~/dotfiles` included:
+  the session's first edit claims it, and `ci new -m MESSAGE` names the
+  claimed change in place. The hooks refuse edits to a workspace another
+  live session owns, or to one holding a topic no session owns, such as the
+  user's own work in progress, and name the free workspaces to move to.
+  Create a workspace with `ci start NAME` only when none is free. Never take
+  over a topic the user started unless they hand it over with `ci adopt`.
+  Reuse workspaces with `ci park --keep` rather than creating one per topic.
+  From a Claude Code worktree under `.claude/worktrees/`, which is not a JJ
+  workspace, `ci start` creates the workspace inside the worktree; edit only
+  there. Use
   `ci rebase` to update a topic in place. A conflict-free
   topic does not need to catch up with `main` before landing; `ci land` rebases it. `ci sequence --apply` restacks only stacked or
   conflicting topics, pushes only conflict-free rebases, and leaves conflicted
@@ -185,7 +189,8 @@
 - Before archiving a delivered topic, run `ci park` and confirm success.
   It verifies that the current head landed and removes a workspace that
   `ci start` created (`--keep` leaves it on an empty change on main, ready
-  for the pool's next task).
+  for the pool's next task). A workspace the session claimed instead, such
+  as `~/dotfiles`, stays on main and is free again.
   Use `ci cancel` for a topic that will not land.
   A failed pipeline, conflicts, or undispatched edits keep the task open. Native
   archive-button clicks are not a closeout hook.

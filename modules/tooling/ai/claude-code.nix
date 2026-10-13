@@ -48,14 +48,16 @@ let
   contextStatus = inputs.ci.packages.${pkgs.stdenv.hostPlatform.system}.context-status;
   # Hand each new or resumed session the workspace's topic, lifecycle stage,
   # lint and pipeline state, and next `ci` step. Concurrent sessions that
-  # shared the default checkout moved each other's working copy and split
-  # changes into divergent copies, so edits JJ would attribute to it, from it
-  # or from a session's Git worktree, are refused in favour of `ci start`.
+  # shared one checkout moved each other's working copy and split changes into
+  # divergent copies, so a session's first edit claims a workspace idle on
+  # trunk, the default checkout included, and edits to another session's
+  # workspace, to a topic nobody handed over, or from a session's Git
+  # worktree are refused.
   contextStatusHandoff = pkgs.runCommand "claude-code-context-status" { } ''
     install -Dm644 ${
       pkgs.writers.writeJSON "plugin.json" {
         name = "context-status";
-        description = "Add the JJ workspace's context status to each session, and keep edits out of the shared default checkout.";
+        description = "Add the JJ workspace's context status to each session, and claim a free workspace on a session's first edit.";
       }
     } $out/.claude-plugin/plugin.json
     install -Dm644 ${

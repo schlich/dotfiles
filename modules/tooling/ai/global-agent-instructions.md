@@ -290,23 +290,31 @@ create unrelated follow-up revisions after dispatching.
 A topic is a revision; a workspace is a working copy for one actor. Start a
 topic as a new change on trunk in the current workspace (`ci new -m MESSAGE`
 where `ci` is available, otherwise `jj new main@origin -m MESSAGE`); earlier
-topics stay as sibling changes, and `jj edit` returns to one. Create a separate
-workspace only when another actor uses the current working copy at the same
-time: another active agent task, or a long build, dev server, or editor whose
-files must not change underneath it. Never move a working copy owned by another
-active task. Where `ci` is available, create that workspace with
-`ci start NAME`; otherwise use
+topics stay as sibling changes, and `jj edit` returns to one.
+
+Work only in a workspace whose change this session owns. A workspace with
+trunk checked out (nothing above trunk but an empty change) and no live
+session owning it is free, the repository's default checkout included; check
+it out for this session at once. Where `ci` is available, the session's first
+edit claims it, and `ci new -m MESSAGE` names the claimed change in place.
+The hooks refuse edits to a workspace another live session owns, or to one
+holding a topic no session owns, such as the user's own work in progress,
+and name the free workspaces to move to. Never take over a topic the user
+started unless they hand it over (`ci adopt`). Create a separate workspace
+only when no workspace is free: where `ci` is available with
+`ci start NAME`, otherwise with
 `jj workspace add --revision main@origin --name NAME PATH` from the
-repository. Then open that directory as a local Codex project. Reuse a small
-pool of such workspaces with `ci park --keep` instead of creating one for
-every topic; start the next task's topic there with `ci new -m MESSAGE`.
+repository. Then open that directory as a local Codex project. Never move a
+working copy owned by another active task. Reuse a small pool of workspaces
+with `ci park --keep` instead of creating one for every topic; start the next
+task's topic there with `ci new -m MESSAGE`.
 If the project is a linked Git worktree, it is not automatically a JJ
 workspace: `jj` may act on the shared checkout above it and never record the
 worktree's edits. Run `ci start NAME` from that worktree, which creates
 `<worktree>/.jj-workspaces/NAME`; then open and edit only that JJ workspace. In
-a repository with topic workspaces, agents must not edit the shared default
-checkout or an unconverted Git worktree. Never add permanent session locks or
-reject prompts and recovery tools because a saved ownership record is stale.
+a repository with topic workspaces, agents must not edit an unconverted Git
+worktree. Never add permanent session locks or reject prompts and recovery
+tools because a saved ownership record is stale.
 
 When the working-copy diff contains multiple coherent deliverables, split it
 into separate JJ changes before dispatching or treating the work as complete.

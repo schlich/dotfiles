@@ -128,11 +128,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1791860535,
-        "narHash": "sha256-BcnXTXnIWD8AWX8ALAXOi6Vx2B7vXXGDiRI7nNNDxQ0=",
+        "lastModified": 1791935163,
+        "narHash": "sha256-HanVrauxxxCH+lsYH25Y3LSzwwWCY+UWapuFa9GU7Iw=",
         "owner": "schlich",
         "repo": "ci",
-        "rev": "848bbcc5572c3ec939874cf58306389254589e68",
+        "rev": "8153b41ce5164e46d391a12865891dd2ef3f9af4",
         "type": "github"
       },
       "original": {
