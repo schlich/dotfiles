@@ -12,7 +12,7 @@
 const overview_script = path self workspace-overview.nu
 const keymap_script = path self keymap.nu
 
-const status_loop ="loop { clear; let st = (^jj --color always status | complete); if $st.exit_code == 0 { print $st.stdout; print (^jj --color always diff --stat | complete).stdout } else { print 'Not in a JJ repository.' }; sleep 5sec }"
+const status_loop = "loop { clear; let st = (^jj --color always status | complete); if $st.exit_code == 0 { print $st.stdout; print (^jj --color always diff --stat | complete).stdout } else { print 'Not in a JJ repository.' }; sleep 5sec }"
 
 # Columns from left to right. `stack` puts a window below the previous one in
 # the same column, `tabbed` on a column's first window shows that column as
