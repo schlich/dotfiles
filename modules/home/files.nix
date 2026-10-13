@@ -38,12 +38,13 @@ in
 
     download = "${config.home.homeDirectory}/Downloads";
     documents = "${config.home.homeDirectory}/Documents";
-    music = "${config.home.homeDirectory}/Music";
     pictures = "${config.home.homeDirectory}/Pictures";
     videos = "${config.home.homeDirectory}/Videos";
-    desktop = "${config.home.homeDirectory}/Desktop";
-    publicShare = "${config.home.homeDirectory}/Public";
-    templates = "${config.home.homeDirectory}/Templates";
+    # Unused XDG dirs fold into Johnny Decimal areas instead of cluttering ~.
+    music = "${config.home.homeDirectory}/80-89 Personal";
+    desktop = "${config.home.homeDirectory}/90-99 Inbox";
+    publicShare = "${config.home.homeDirectory}/90-99 Inbox";
+    templates = "${config.home.homeDirectory}/90-99 Inbox";
   };
 
   dotfiles.retiredHomeFiles = [

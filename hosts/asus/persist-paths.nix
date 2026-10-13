@@ -45,7 +45,8 @@
 
   users.schlich = {
     directories = [
-      # Johnny Decimal areas, which link to the projects below.
+      # Johnny Decimal areas, which hold the projects. A new project created
+      # at the top of ~ is wiped at reboot; create it inside an area.
       "10-19 Pathfinder"
       "20-29 Research"
       "30-39 XR"
@@ -56,66 +57,21 @@
       "80-89 Personal"
       "90-99 Inbox"
 
-      # XDG user directories.
-      "Desktop"
+      # XDG user directories; the unused ones point into the areas above.
       "Documents"
       "Downloads"
-      "Music"
       "Pictures"
-      "Public"
-      "Templates"
       "Videos"
 
-      # Projects. A new project created at the top of ~ is wiped at reboot
-      # unless it is added here; create new ones under Projects or code.
-      "AgentFlow"
-      "ChatGPT"
-      "E1504FAAS320"
-      "Projects"
-      "Zotero"
-      "ai-job-search"
-      "bootstrap-ai"
-      "code"
-      "copilot-worktrees"
-      "den"
-      "den-diagram-tui"
-      "denful-pbt"
+      # Repositories that stay at the top of ~: configuration and tools
+      # reference dotfiles and kb by absolute path, and the kb workspaces
+      # find their repository by a relative path.
       "dotfiles"
-      "emojispeak"
-      "gen-inspect"
-      "go"
-      "http-nu"
-      "insight-engine"
-      "jev-niri"
-      "jne-aug-10-2026"
-      "jne-july-21-26"
       "kb"
       "kb-profile"
       "kb-public-split"
-      "lib"
-      "maolan-xr"
-      "new-jj-wt"
       "newsletter-agent"
-      "nix-observatory"
-      "nix-tui"
-      "nix-ui"
-      "nix-xr"
-      "nixconfig-quasigod"
-      "nu-pair"
-      "plugins"
-      "ptyZZZ"
-      "resume"
-      "signalproof_prototype"
-      "snorkel"
-      "starfish-harden-2afc-verifier"
-      "starfish-hierarchical-yesno"
-      "starfish-private-kit"
-      "starfish-projects"
-      "sundown"
-      "supro-ai"
-      "viperlith"
-      "xr-term"
-      "xs"
+      "go"
 
       # Tool and agent state at the top of ~.
       ".agents"
@@ -311,9 +267,6 @@
     ];
     files = [
       ".claude.json"
-      "agent-orchestrator-init.zip"
-      "niri-task-monitor.zip"
-      "tangled-chatgpt-plugin.zip"
       ".config/claude-oauth-token"
       ".config/mimeapps.list"
       ".config/pavucontrol.ini"

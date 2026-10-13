@@ -644,7 +644,7 @@ binds {
     Mod+Alt+Down  hotkey-overlay-title=null { spawn-sh "exec niri-desk grid down"; }
 
     // Niri's overview: every workspace zoomed out. The session launcher (the
-    // grid, projects in ~/code, and `project DIR`) is Mod+0.
+    // grid, projects in ~'s area directories, and `project DIR`) is Mod+0.
     Mod+O repeat=false hotkey-overlay-title="Overview: all workspaces" { toggle-overview; }
 
     // Letters are stacks within the focused workspace, named for what they

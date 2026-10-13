@@ -77,13 +77,9 @@ def project-sessions [] {
   if ($file | path exists) { open $file } else { {} }
 }
 
+# Projects live in the Johnny Decimal area directories at the top of ~.
 def project-directory [] {
-  let code = $"($env.HOME)/code"
-  if ($code | path exists) {
-    $code
-  } else {
-    $"($env.HOME)/dotfiles"
-  }
+  $env.HOME
 }
 
 # The knowledge base: an IWE workspace whose `<range>-<session>.md` notes are

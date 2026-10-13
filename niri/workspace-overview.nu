@@ -1,6 +1,6 @@
 # The session launcher (Mod+0; see `session.nu overview`): lists sessions by
 # the Mod+<digit> that reaches them, the Johnny Decimal areas and categories from
-# the knowledge base's hubs, and the projects in ~/code, then leaves a shell
+# the knowledge base's hubs, and the projects in ~'s area directories, then leaves a shell
 # where `project DIR` opens one. Run `overview` to list again.
 
 def workspace_snapshot [] {
@@ -50,19 +50,28 @@ def system_snapshot [] {
     }
 }
 
+# Projects live in the Johnny Decimal area directories of ~ ("40-49 Nix tooling/nix-ui")
+# and their categories ("70-79 Career/77 Gig & contract work/resume"); a numbered
+# subdirectory is a category, anything else a project.
 def project_snapshot [] {
     print "\nProjects"
-    let code = $"($env.HOME)/code"
-    let projects = if ($code | path exists) {
-        ls $code | where type == dir | get name
-    } else { [] }
+    let areas = (ls $env.HOME | where type == dir and ($it.name | path basename) =~ '^\d\d-\d\d ' | get name | sort)
+    let listings = ($areas | each {|area|
+        # Projects that must stay at the top of ~ (dotfiles, kb) are linked in.
+        let entries = (ls ($area | into glob) | get name | where ($it | path expand | path type) == dir)
+        let categories = ($entries | where ($it | path basename) =~ '^\d\d ')
+        let nested = ($categories | each {|category| ls ($category | into glob) | where type == dir | get name } | flatten)
+        {area: ($area | path basename), projects: ($entries | where $it not-in $categories | append $nested)}
+    } | where ($it.projects | is-not-empty))
 
-    if ($projects | is-empty) {
-        print "  No directories found in ~/code"
+    if ($listings | is-empty) {
+        print "  No projects found in the area directories of ~"
     } else {
-        $projects | each {|project| print $"  ($project | path basename)  ($project)" } | ignore
+        $listings | each {|listing|
+            print $"  ($listing.area): ($listing.projects | each { path basename } | str join ' · ')"
+        } | ignore
     }
-    print "\n`project DIR` opens a project session. Mod+0 closes this."
+    print "\n`project \"AREA/NAME\"` opens a project session. Mod+0 closes this."
 }
 
 def overview [] {
