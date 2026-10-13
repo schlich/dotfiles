@@ -40,8 +40,10 @@ script, use valid Nushell syntax.
   shell's syntax into a command intended for the user's Nushell prompt.
 
 - Use Nushell (`nu`) for shell pipelines and text processing instead of tools
-  such as `jq`, `awk`, `sed`, `grep`, or `rg`; prefer structured Nushell
-  commands and pipelines for searching, filtering, and transforming data.
+  such as `jq`, `awk`, `sed`, `grep`, `rg`, `find`, or `wc`; prefer structured
+  Nushell commands and pipelines for searching, filtering, and transforming
+  data. List files with `glob` or `ls` (`ls **/*.py | select name size`) and
+  count lines with `open --raw FILE | lines | length`.
 
 - To search a tree, glob the files and filter their lines in the evaluate
   tool instead of `grep -r` or `git ls-files`:
