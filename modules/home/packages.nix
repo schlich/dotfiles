@@ -93,9 +93,6 @@ let
       ^$adb shell am start -a android.intent.action.VIEW -d $url com.oculus.browser
     }
   '';
-  # Monitor command for a Nushell job's log and done marker, so the
-  # Monitor card shows one titled line instead of an inline poll loop.
-  watchJob = pkgs.writeNuScriptBin "watch-job" (builtins.readFile ../tooling/ai/scripts/watch-job.nu);
 in
 {
   xdg.dataFile."com.pais.handy/models/parakeet-unified-en-0.6b-Q4_K_M.gguf".source = handyParakeet;
@@ -153,7 +150,6 @@ in
     devenv
     jev
     questOpen
-    watchJob
     inputs.xs.packages.${pkgs.stdenv.hostPlatform.system}.default
     inputs.ai-usagebar.packages.${pkgs.stdenv.hostPlatform.system}.default
     inputs.tangled-dash.packages.${pkgs.stdenv.hostPlatform.system}.default

@@ -12,6 +12,8 @@
     ../../../modules/programs/ssh.nix
     ../../../modules/programs/vcs.nix
     ../../../modules/programs/yazi.nix
+    # The Claude Code CLI with its skills, hooks and MCP servers.
+    ../../../modules/tooling/ai/claude-code.nix
   ];
 
   # Workstations only: terminals, editors, agent clients, desktop apps and
@@ -27,7 +29,6 @@
     ../../../modules/tooling/ai/plugins.nix
     ../../../modules/tooling/ai/opencode-desktop.nix
     ../../../modules/tooling/ai/opencode.nix
-    ../../../modules/tooling/ai/claude-code.nix
     ../../../modules/tooling/ai/claude-desktop.nix
     ../../../modules/tooling/ai/codex.nix
     ../../../modules/tooling/ai/copilot.nix

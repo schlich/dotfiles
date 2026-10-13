@@ -276,9 +276,6 @@ let
       }
     } $out/hooks/hooks.json
   '';
-  pushBackgroundTasks = pkgs.writeNuScriptBin "push-background-tasks" (
-    builtins.readFile ../../../agent-monitor/push-background-tasks.nu
-  );
   # MCP calls render as a bare `input:` argument; echo the full command before
   # a Nushell evaluation and a one-line result summary after it. The desktop
   # app's tool card already shows the command, so there only the summary runs.
@@ -368,40 +365,6 @@ in
         bindings."alt+enter" = "chat:sendNow";
       }
     ];
-  };
-
-  # The hook also starts this unit, so a new task appears within seconds;
-  # the timer notices finished tasks and keeps homelab's copy fresh.
-  systemd.user.services.agent-tasks-push = {
-    Unit.Description = "Copy Claude Code background tasks to the homelab wallpaper";
-    Service = {
-      Type = "oneshot";
-      ExecStart = "${pushBackgroundTasks}/bin/push-background-tasks --target homelab";
-      # A oneshot has no start timeout by default, and the timer schedules
-      # the next run only after this one ends, so one hung run would stop
-      # every later update. A run takes about 10s to scan /proc and gives up
-      # on homelab within 25s.
-      TimeoutStartSec = "2min";
-      Environment = [
-        "PATH=${
-          lib.makeBinPath [
-            pkgs.coreutils
-            # Its configuration carries the homelab host block.
-            (import ../../programs/ssh-client.nix { inherit lib pkgs; })
-          ]
-        }"
-        "SSH_AUTH_SOCK=%t/gcr/ssh"
-      ];
-    };
-  };
-  systemd.user.timers.agent-tasks-push = {
-    Unit.Description = "Refresh the homelab wallpaper's Claude Code background tasks";
-    Timer = {
-      OnStartupSec = "30s";
-      OnUnitActiveSec = "20s";
-      AccuracySec = "1s";
-    };
-    Install.WantedBy = [ "timers.target" ];
   };
 
   dotfiles.tooling = {

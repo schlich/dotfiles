@@ -53,9 +53,10 @@ let
   editor = cfg.tooling.editors.${cfg.primary.editor} or null;
   ai = cfg.tooling.ai.${cfg.primary.ai} or null;
 
-  # Servers import only the shell home, which registers no terminals,
-  # editors or agents, so the launchers and their checks stay off there.
-  hasTooling = cfg.tooling.terminals != { } || cfg.tooling.editors != { } || cfg.tooling.ai != { };
+  # Only the desktop home registers terminals and editors. Servers import the
+  # shell home, which may register an agent CLI but no terminal, so the
+  # launchers and their checks stay off there.
+  hasTooling = cfg.tooling.terminals != { };
 in
 {
   options.dotfiles = {

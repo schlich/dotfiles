@@ -26,6 +26,15 @@ let
   ciMcp = inputs.ci.packages.${pkgs.stdenv.hostPlatform.system}.ci-mcp.override { inherit xs; };
 in
 {
+  home.packages = [
+    # The jj, nix and chrome-devtools servers start through npx and uvx.
+    pkgs.nodejs
+    pkgs.uv
+    # Monitor command for a Nushell job's log and done marker, so the
+    # Monitor card shows one titled line instead of an inline poll loop.
+    (pkgs.writeNuScriptBin "watch-job" (builtins.readFile ./scripts/watch-job.nu))
+  ];
+
   programs.mcp = {
     enable = true;
     servers = {

@@ -9,6 +9,9 @@
 let
   xs = inputs.xs.packages.${pkgs.stdenv.hostPlatform.system}.default;
   wrapWithConfig = import ../../lib/wrap-with-config.nix { inherit lib pkgs; };
+  pushBackgroundTasks = pkgs.writeNuScriptBin "push-background-tasks" (
+    builtins.readFile ../../agent-monitor/push-background-tasks.nu
+  );
   udiskie = wrapWithConfig {
     package = pkgs.udiskie;
     flags = [
@@ -95,6 +98,42 @@ in
     Install = {
       WantedBy = [ "default.target" ];
     };
+  };
+
+  # Copies this workstation's Claude Code background tasks to the homelab
+  # Fieldnotes wallpaper. The background-tasks hook (claude-code.nix) also
+  # starts this unit, so a new task appears within seconds; the timer notices
+  # finished tasks and keeps homelab's copy fresh.
+  systemd.user.services.agent-tasks-push = {
+    Unit.Description = "Copy Claude Code background tasks to the homelab wallpaper";
+    Service = {
+      Type = "oneshot";
+      ExecStart = "${pushBackgroundTasks}/bin/push-background-tasks --target homelab";
+      # A oneshot has no start timeout by default, and the timer schedules
+      # the next run only after this one ends, so one hung run would stop
+      # every later update. A run takes about 10s to scan /proc and gives up
+      # on homelab within 25s.
+      TimeoutStartSec = "2min";
+      Environment = [
+        "PATH=${
+          lib.makeBinPath [
+            pkgs.coreutils
+            # Its configuration carries the homelab host block.
+            (import ../programs/ssh-client.nix { inherit lib pkgs; })
+          ]
+        }"
+        "SSH_AUTH_SOCK=%t/gcr/ssh"
+      ];
+    };
+  };
+  systemd.user.timers.agent-tasks-push = {
+    Unit.Description = "Refresh the homelab wallpaper's Claude Code background tasks";
+    Timer = {
+      OnStartupSec = "30s";
+      OnUnitActiveSec = "20s";
+      AccuracySec = "1s";
+    };
+    Install.WantedBy = [ "timers.target" ];
   };
 
   # Give the default speaker output a modest boost after PipeWire is ready.
