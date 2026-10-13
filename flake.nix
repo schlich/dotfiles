@@ -445,6 +445,9 @@
       // workbenchImages;
 
       devShells.${system} = {
+        # git and jj come from the user profile, whose wrappers carry the
+        # identity, credential helper and fix tools from vcs.nix; plain copies
+        # here would shadow them on PATH.
         default = pkgs.mkShellNoCC {
           packages = with pkgs; [
             bat
@@ -454,10 +457,8 @@
             difftastic
             fd
             gh
-            git
             jq
             jjCi
-            jujutsu
             jjui
             nil
             nix-fast-build
