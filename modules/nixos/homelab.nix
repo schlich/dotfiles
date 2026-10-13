@@ -7,7 +7,8 @@
 }:
 
 let
-  adminKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINJRdPuDm1hX5iOgHNl63aUVPIUvkMhAFlBaoxOiSPEA schlich@tangled";
+  # asus administers homelab; modules/nixos/user.nix authorizes its login.
+  adminKey = (import ../../hosts/login-keys.nix).asus;
 
   fieldnotes = import ../tooling/ai/fieldnotes-package.nix { inherit inputs lib pkgs; };
 
@@ -27,13 +28,9 @@ in
   networking.hostName = "homelab";
   networking.networkmanager.enable = true;
 
-  # Allow the administrator's existing client key to log in over the private
-  # LAN or Tailscale address. Only the public key is stored in the repository.
-  users.users.schlich.openssh.authorizedKeys.keys = [ adminKey ];
-
-  # sudo also accepts that key from a forwarded SSH agent and falls back to the
-  # password without one. Its root-owned key list is separate from SSH logins,
-  # so a new login key does not also grant sudo.
+  # sudo also accepts asus's login key from a forwarded SSH agent and falls
+  # back to the password without one. Its root-owned key list is separate from
+  # SSH logins, so a new login key does not also grant sudo.
   security.pam = {
     sshAgentAuth = {
       enable = true;
