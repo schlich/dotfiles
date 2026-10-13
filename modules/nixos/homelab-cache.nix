@@ -16,6 +16,12 @@ in
     settings.bind = "[::]:${toString cache.port}";
   };
 
+  # Keep the service running instead of starting it on the first request.
+  # switch-to-configuration never restarts a changed socket unit by itself
+  # (nixpkgs#74899), only together with an active service; an idle Harmonia
+  # left the socket "listening" with no descriptor after its address changed.
+  systemd.services.harmonia.wantedBy = [ "multi-user.target" ];
+
   systemd.tmpfiles.rules = [ "d /var/lib/harmonia-secrets 0700 root root -" ];
 
   # Spindle guests reach the cache on loopback and the fleet over the tailnet;
