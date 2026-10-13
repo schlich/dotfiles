@@ -89,36 +89,6 @@
         }
       }
     '')
-    (pkgs.writeNuScriptBin "system-switch" ''
-      # Apply the NixOS configuration on Tangled's main without sudo: start
-      # the root nixos-switch-main unit, then show its output and result.
-      # The journal is read through the user manager so this also works
-      # inside the Claude desktop app's sandbox.
-      def main [] {
-        let unit = "nixos-switch-main.service"
-        let bin = "/run/current-system/sw/bin"
-        let since = (date now | format date "%Y-%m-%d %H:%M:%S")
-        print $"Switching to main through ($unit)..."
-        let result = (^$"($bin)/systemctl" start $unit | complete)
-        let log = (
-          ^$"($bin)/systemd-run" --user --pipe --wait --collect --quiet
-            $"($bin)/journalctl" --unit $unit --since $since --no-pager --output cat
-          | complete
-        )
-        print $log.stdout
-        let state = "/var/lib/nixos-switch-main/last.nuon"
-        if ($state | path exists) {
-          print (open $state)
-        }
-        let failed = (^$"($bin)/systemctl" --failed --no-legend --plain | complete | get stdout | str trim)
-        if ($failed | is-not-empty) {
-          print $"Failed units:\n($failed)"
-        }
-        if $result.exit_code != 0 {
-          error make { msg: $"($unit) failed: ($result.stderr | str trim)" }
-        }
-      }
-    '')
     (pkgs.writeNuScriptBin "home-activate" ''
       # Build and activate the Home Manager configuration embedded in NixOS.
       def main [] {

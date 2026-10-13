@@ -57,9 +57,44 @@ let
       }
     }
   '';
+
+  # Start the unit and show its output and result. The journal is read
+  # through the user manager so this also works inside the Claude desktop
+  # app's sandbox. It lives here, not in Home Manager, so hosts without Home
+  # Manager (homelab) get it too.
+  systemSwitch = pkgs.writers.writeNuBin "system-switch" ''
+    # Apply the NixOS configuration on Tangled's main without sudo: start
+    # the root ${unit} unit, then show its output and result.
+    def main [] {
+      let unit = "${unit}.service"
+      let bin = "/run/current-system/sw/bin"
+      let since = (date now | format date "%Y-%m-%d %H:%M:%S")
+      print $"Switching to main through ($unit)..."
+      let result = (^$"($bin)/systemctl" start $unit | complete)
+      let log = (
+        ^$"($bin)/systemd-run" --user --pipe --wait --collect --quiet
+          $"($bin)/journalctl" --unit $unit --since $since --no-pager --output cat
+        | complete
+      )
+      print $log.stdout
+      let state = "${stateDir}/last.nuon"
+      if ($state | path exists) {
+        print (open $state)
+      }
+      let failed = (^$"($bin)/systemctl" --failed --no-legend --plain | complete | get stdout | str trim)
+      if ($failed | is-not-empty) {
+        print $"Failed units:\n($failed)"
+      }
+      if $result.exit_code != 0 {
+        error make { msg: $"($unit) failed: ($result.stderr | str trim)" }
+      }
+    }
+  '';
 in
 
 {
+  environment.systemPackages = [ systemSwitch ];
+
   # Apply landed main without sudo: the system-switch command starts this
   # unit over D-Bus, which also works where sudo cannot, such as inside the
   # Claude desktop app's sandbox.
@@ -82,15 +117,17 @@ in
     };
   };
 
-  # schlich may start that one unit from an active local session without a
-  # password. Stopping, editing, or starting any other unit still asks.
+  # schlich may start that one unit from an active local session, and any
+  # wheel member may start it from a remote session such as ssh to homelab,
+  # without a password. Stopping, editing, or starting any other unit still
+  # asks.
   security.polkit.extraConfig = ''
     polkit.addRule(function (action, subject) {
       if (action.id == "org.freedesktop.systemd1.manage-units" &&
           action.lookup("unit") == "${unit}.service" &&
           action.lookup("verb") == "start" &&
-          subject.user == "schlich" &&
-          subject.local && subject.active) {
+          ((subject.user == "schlich" && subject.local && subject.active) ||
+           subject.isInGroup("wheel"))) {
         return polkit.Result.YES;
       }
     });
