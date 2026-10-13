@@ -41,7 +41,7 @@ in
     };
     listenPort = lib.mkOption {
       type = lib.types.port;
-      default = 8765;
+      default = 18765;
       description = "Local port for the webhook listener and Funnel backend.";
     };
     path = lib.mkOption {
