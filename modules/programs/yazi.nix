@@ -3,6 +3,7 @@
 let
   wrapWithConfig = import ../../lib/wrap-with-config.nix { inherit lib pkgs; };
   toml = pkgs.formats.toml { };
+  glow = lib.getExe pkgs.glow;
 in
 {
   # `y` browses with Yazi and changes to the directory it was quit in. The
@@ -31,7 +32,38 @@ in
               max_width = 1000;
               max_height = 1000;
             };
+            # Markdown previews render through glow (via the piper plugin)
+            # instead of bat's raw source view.
+            plugin.prepend_previewers = [
+              {
+                url = "*.{md,markdown,mdx}";
+                run = ''piper -- CLICOLOR_FORCE=1 ${glow} --width=$w --style=auto "$1"'';
+              }
+            ];
+            # Enter edits in $EDITOR; `o`/`O` also offers a full-screen
+            # glow reader.
+            opener.read-markdown = [
+              {
+                run = ''${glow} --pager "$1"'';
+                block = true;
+                desc = "Read (glow)";
+                for = "unix";
+              }
+            ];
+            open.prepend_rules = [
+              {
+                url = "*.{md,markdown,mdx}";
+                use = [
+                  "edit"
+                  "read-markdown"
+                ];
+              }
+            ];
           };
+        }
+        {
+          name = "plugins/piper.yazi";
+          path = pkgs.yaziPlugins.piper;
         }
         {
           name = "keymap.toml";
