@@ -9,6 +9,9 @@
 let
   wrapWithConfig = import ../../lib/wrap-with-config.nix { inherit lib pkgs; };
   tangledKey = "/home/schlich/.ssh/id_ed25519_tangled";
+  # Hosts without the dedicated key, such as homelab, authenticate to Tangled
+  # with their default key; ssh skips whichever file is missing.
+  defaultKey = "/home/schlich/.ssh/id_ed25519";
 in
 wrapWithConfig {
   package = pkgs.openssh;
@@ -24,6 +27,7 @@ wrapWithConfig {
         HostName tangled.org
         User git
         IdentityFile ${tangledKey}
+        IdentityFile ${defaultKey}
         IdentitiesOnly yes
         AddressFamily inet
 
