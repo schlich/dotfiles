@@ -8,5 +8,7 @@
   user = "nix-builder";
   # Each client's key, which the client generates itself and publishes at
   # /run/homelab-builder.pub; see modules/nixos/homelab-builder-client.nix.
-  clientKeys = [ ];
+  clientKeys = [
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBbY5pKgfFnAD7XMOq1eRwXbXGkSE+sSgIcMLXqv4i3p nix-builder@asus"
+  ];
 }
