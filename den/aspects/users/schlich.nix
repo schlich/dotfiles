@@ -1,10 +1,17 @@
-{ den, ... }:
+{ den, lib, ... }:
 {
   den.aspects.schlich = {
     includes = [
       den.batteries.define-user
       den.aspects.user-core
-      den.aspects.user-terminal
+      den.aspects.user-shell
+      # Servers such as homelab get the shell home only.
+      (
+        { host, ... }:
+        lib.optionalAttrs (host.profile.role == "workstation") {
+          includes = [ den.aspects.user-desktop ];
+        }
+      )
     ];
     homeManager = {
       home.username = "schlich";

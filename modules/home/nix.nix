@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ osConfig, pkgs, ... }:
 
 {
   nix.gc = {
@@ -92,7 +92,7 @@
     (pkgs.writeNuScriptBin "home-activate" ''
       # Build and activate the Home Manager configuration embedded in NixOS.
       def main [] {
-        let flake = "path:/home/schlich/dotfiles#nixosConfigurations.asus.config.home-manager.users.schlich.home.activationPackage"
+        let flake = "path:/home/schlich/dotfiles#nixosConfigurations.${osConfig.networking.hostName}.config.home-manager.users.schlich.home.activationPackage"
         let activation = (^/run/current-system/sw/bin/nix build --no-link --print-out-paths $flake | str trim)
 
         if ($activation | is-empty) {

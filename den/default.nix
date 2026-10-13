@@ -18,6 +18,7 @@
     ./aspects/secrets.nix
     ./aspects/gpu-amd.nix
     ./aspects/xr.nix
+    ./aspects/home-manager-host.nix
     ./aspects/users/core.nix
     ./aspects/users/terminal.nix
     ./aspects/users/schlich.nix

@@ -18,20 +18,12 @@
           ../../modules/nixos/codex.nix
           ../../modules/nixos/docker.nix
         ];
-        nixpkgs.overlays = [
-          inputs.jj-starship.overlays.default
-          inputs.nushellWith.overlays.default
-        ];
+        # den/aspects/home-manager-host.nix adds the jj-starship and
+        # nushellWith overlays and the Home Manager settings.
         environment.systemPackages = [
           inputs.fh.packages.x86_64-linux.default
           pkgs.jj-starship
         ];
-        home-manager = {
-          useGlobalPkgs = true;
-          useUserPackages = true;
-          backupFileExtension = "hm-backup";
-          extraSpecialArgs = { inherit inputs; };
-        };
       };
   };
 

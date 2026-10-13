@@ -113,19 +113,15 @@ in
     nodejs
     ty
     wget
-    nixfmt
     nh
     nix-tree
     nix-du
     nix-output-monitor
     graphviz
-    ruff
     systemctl-tui
     systemd-manager-tui
     mission-center
     nix-search-tv
-    difftastic
-    fzf
     lsp-ai
     pixi
     uv
@@ -136,7 +132,6 @@ in
     swaylock
     pavucontrol
     vscode-json-languageserver
-    jj-starship
     xwayland-satellite
     dhall
     skills
@@ -150,7 +145,6 @@ in
     nerd-fonts.symbols-only
     pandoc
     prek
-    ripgrep
     wl-clipboard-rs
     gh-stack
     # The repository's wrappers depend on secretspec; keep this copy ahead of

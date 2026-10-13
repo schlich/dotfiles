@@ -75,7 +75,12 @@ let
 
     homelab = [
       {
-        users.schlich = { };
+        # The shell home only; den/aspects/users/schlich.nix keeps desktop
+        # pieces to workstations.
+        users.schlich.classes = [
+          "user"
+          "homeManager"
+        ];
         profile = {
           role = "server";
           # A local session for debugging on the machine itself.

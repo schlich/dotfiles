@@ -24,9 +24,14 @@ typed inventory -> host aspect composition -> Den host/user pipeline
                  -> NixOS + Home Manager module graph -> outputs/checks
 ```
 
-User configuration is supplied by Den user aspects. The workstation aspect
-only enables the Home Manager integration; it does not hardcode a username,
-home directory, or user-specific `extraSpecialArgs`.
+User configuration is supplied by Den user aspects. A host runs Home Manager
+when a user there has the `homeManager` class (asus, asus-usb and homelab);
+`den/aspects/home-manager-host.nix` holds its NixOS settings for exactly those
+hosts. Every such user gets the shell home (`user-shell`: Nushell, its
+prompt and history tools, git, jj, ssh and the command-line tools), and
+workstations add the desktop home (`user-desktop`: terminals, editors, agent
+clients, desktop apps and their user services, plus the rest of
+`modules/programs`).
 
 ## Configuration ships with the package
 

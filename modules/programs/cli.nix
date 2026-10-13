@@ -164,6 +164,14 @@ in
     bat
     pet
     newsboat
+    # Run by the shell configuration: jj's diff formatter and fix tools
+    # (vcs.nix) and Starship's jj module (shell.nix).
+    pkgs.difftastic
+    pkgs.nixfmt
+    pkgs.ruff
+    pkgs.jj-starship
+    pkgs.ripgrep
+    pkgs.fzf
   ];
 
   dotfiles.retiredHomeFiles = [
