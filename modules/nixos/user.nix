@@ -1,9 +1,10 @@
-{ pkgs, ... }:
+{ lib, pkgs, ... }:
 
 {
   users.defaultUserShell = pkgs.nushell;
   users.users.schlich = {
-    uid = 1001;
+    # asus's UID; a host whose account predates this declaration sets its own.
+    uid = lib.mkDefault 1001;
     shell = pkgs.nushell;
     isNormalUser = true;
     extraGroups = [

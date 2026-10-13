@@ -3,6 +3,11 @@
 {
   system.nixos.tags = [ "homelab" ];
 
+  # schlich was created here as UID 1000, which owns /home/schlich. NixOS
+  # never renumbers an existing user, and Home Manager's activation refuses
+  # to run under a UID other than the declared one.
+  users.users.schlich.uid = 1000;
+
   # Add the generated file from the target machine at this path. The optional
   # import keeps the flake inspectable before that hardware-specific step is
   # complete, while the warning makes the deployment prerequisite explicit.
