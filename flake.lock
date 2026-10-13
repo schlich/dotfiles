@@ -860,6 +860,25 @@
         "url": "https://github.com/IBM/plex/releases/download/@ibm%2Fplex-mono@1.1.0/ibm-plex-mono.zip"
       }
     },
+    "impermanence": {
+      "inputs": {
+        "home-manager": [],
+        "nixpkgs": []
+      },
+      "locked": {
+        "lastModified": 1769548169,
+        "narHash": "sha256-03+JxvzmfwRu+5JafM0DLbxgHttOQZkUtDWBmeUkN8Y=",
+        "owner": "nix-community",
+        "repo": "impermanence",
+        "rev": "7b1d382faf603b6d264f58627330f9faa5cba149",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "impermanence",
+        "type": "github"
+      }
+    },
     "indigo": {
       "flake": false,
       "locked": {
@@ -1516,6 +1535,7 @@
         "gh-stack": "gh-stack",
         "grill-me": "grill-me",
         "home-manager": "home-manager",
+        "impermanence": "impermanence",
         "iwe": "iwe",
         "iwe-skills": "iwe-skills",
         "jj-starship": "jj-starship",

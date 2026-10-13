@@ -10,6 +10,11 @@
     den = {
       url = "github:denful/den/v0.18.0";
     };
+    impermanence = {
+      url = "github:nix-community/impermanence";
+      inputs.nixpkgs.follows = "";
+      inputs.home-manager.follows = "";
+    };
     gen-inspect = {
       url = "github:sini/gen-inspect";
     };

@@ -1,6 +1,7 @@
-{ ... }:
+{ config, lib, ... }:
 
 let
+  persistent = config.impermanence.enable;
   btrfsUuid = "27a94ece-bfea-4870-ac2e-6723e07db334";
   btrfsDevice = "/dev/disk/by-uuid/${btrfsUuid}";
   btrfsOptions = [
@@ -10,7 +11,16 @@ let
   ];
 in
 {
-  imports = [ ./hardware-common.nix ];
+  imports = [
+    ./hardware-common.nix
+    ./impermanence.nix
+  ];
+
+  # Off until `persist-migrate` has filled @persist; see impermanence.nix.
+  impermanence = {
+    enable = false;
+    wipe = false;
+  };
 
   boot.loader.limine.efiInstallAsRemovable = false;
 
@@ -33,6 +43,14 @@ in
       device = btrfsDevice;
       fsType = "btrfs";
       options = btrfsOptions ++ [ "subvol=@home" ];
+      # The bind mounts into /home are set up during activation.
+      neededForBoot = persistent;
+    };
+    "/persist" = lib.mkIf persistent {
+      device = btrfsDevice;
+      fsType = "btrfs";
+      options = btrfsOptions ++ [ "subvol=@persist" ];
+      neededForBoot = true;
     };
     "/nix" = {
       device = btrfsDevice;
@@ -43,6 +61,7 @@ in
       device = btrfsDevice;
       fsType = "btrfs";
       options = btrfsOptions ++ [ "subvol=@log" ];
+      neededForBoot = persistent;
     };
     "/.snapshots" = {
       device = btrfsDevice;
