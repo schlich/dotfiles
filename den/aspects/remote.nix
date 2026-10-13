@@ -2,6 +2,9 @@
 {
   den.aspects.remote = {
     meta = config.myConfig.aspectPolicy.remote;
-    nixos.services.tailscale.enable = true;
+    nixos = {
+      imports = [ ../../modules/nixos/homelab-cache-client.nix ];
+      services.tailscale.enable = true;
+    };
   };
 }

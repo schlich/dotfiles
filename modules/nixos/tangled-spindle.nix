@@ -43,15 +43,10 @@ let
   # Workflow guests build in their own store, so without a cache every run
   # whose flake.lock differs starts cold. Spindle imports each path a guest
   # builds into this host's store as the guest commits it, which keeps work
-  # from a run that times out, and Harmonia serves that store back to later
-  # guests. Imported paths are unrooted, so the weekly GC resets the cache.
-  harmoniaAddress = "127.0.0.1:5000";
-  # The secret half was generated on the host and never enters the
-  # repository or the store; to rotate it, rerun this on homelab and
-  # replace cachePublicKey with what it prints:
-  #   nix key generate-secret --key-name homelab-cache-1 | sudo tee /var/lib/harmonia-secrets/signing-key | nix key convert-secret-to-public
-  cacheSigningKey = "/var/lib/harmonia-secrets/signing-key";
-  cachePublicKey = "homelab-cache-1:iRxSmTDiOFX6oY5jLwiUiXCNJ5KSfHtmJBG7RDzLDaQ=";
+  # from a run that times out, and homelab's Harmonia serves that store back
+  # to later guests. Imported paths are unrooted, so the weekly GC resets them.
+  cache = import ../../hosts/homelab/cache.nix;
+  harmoniaAddress = "127.0.0.1:${toString cache.port}";
 in
 {
   imports = [ inputs.tangled.nixosModules.spindle ];
@@ -81,7 +76,7 @@ in
           "https://cache.nixos.org"
         ];
         trustedPublicKeys = [
-          cachePublicKey
+          cache.publicKey
           "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
         ];
         # Spindle runs as root, which the Nix daemon trusts to import the
@@ -101,14 +96,6 @@ in
       };
     };
   };
-
-  services.harmonia.cache = {
-    enable = true;
-    signKeyPaths = [ cacheSigningKey ];
-    settings.bind = harmoniaAddress;
-  };
-
-  systemd.tmpfiles.rules = [ "d /var/lib/harmonia-secrets 0700 root root -" ];
 
   # tangled.org reaches the spindle only through this Funnel: it verifies the
   # owner and dispatches pipelines at https://${hostname}. Funnel needs a
