@@ -122,8 +122,8 @@ revision, never from a working copy, skips the switch when that toplevel is
 already active, and records the result in `/var/lib/nixos-switch-main`.
 Colmena pushes the same systems over ssh instead of having the host pull
 them. `colmenaHive` deploys each host whose inventory sets `deploy.enable`,
-from the module list Den resolved for it, and the `colmena-hive` check fails
-if a node's system differs from `nixosConfigurations`. Tags come from the
+from the module list Den resolved for it, and a `colmena-hive-<host>` check
+per node fails if its system differs from `nixosConfigurations`. Tags come from the
 host's profile and policy (`workstation`, `server`, `critical`, `niri`), and
 `allowApplyAll` is off, so a deploy names its hosts:
 `colmena apply --config path:. --on homelab` from a workspace at landed

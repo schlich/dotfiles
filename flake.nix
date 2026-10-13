@@ -371,24 +371,24 @@
         }) deployHosts
       );
       # Colmena must deploy the system nixosConfigurations builds, which is
-      # what CI checks and system-switch activates.
-      colmenaHiveCheck = pkgs.writeText "colmena-hive" (
-        builtins.unsafeDiscardStringContext (
-          lib.concatStrings (
-            lib.mapAttrsToList (
-              name: _:
-              let
-                fromHive = colmenaHive.toplevel.${name}.drvPath;
-                fromDen = denFlake.nixosConfigurations.${name}.config.system.build.toplevel.drvPath;
-              in
-              assert lib.assertMsg (
-                fromHive == fromDen
-              ) "colmenaHive.${name} (${fromHive}) differs from nixosConfigurations.${name} (${fromDen})";
-              "${name}: ${fromHive}\n"
-            ) deployHosts
+      # what CI checks and system-switch activates. Comparing them evaluates
+      # each host twice, so every host gets its own check: all of them in one
+      # evaluator outgrew ci's 6 GiB evaluation budget.
+      colmenaHiveChecks = lib.mapAttrs' (
+        name: _:
+        let
+          fromHive = colmenaHive.toplevel.${name}.drvPath;
+          fromDen = denFlake.nixosConfigurations.${name}.config.system.build.toplevel.drvPath;
+        in
+        lib.nameValuePair "colmena-hive-${name}" (
+          pkgs.writeText "colmena-hive-${name}" (
+            assert lib.assertMsg (
+              fromHive == fromDen
+            ) "colmenaHive.${name} (${fromHive}) differs from nixosConfigurations.${name} (${fromDen})";
+            builtins.unsafeDiscardStringContext "${name}: ${fromHive}\n"
           )
         )
-      );
+      ) deployHosts;
       denPolicyCheck =
         pkgs.runCommand "den-policy-check"
           {
@@ -583,7 +583,6 @@
         desktop-primary = denAsusPrimary.config.system.build.toplevel;
         headless-system = denFlake.nixosConfigurations.asus-headless.config.system.build.toplevel;
         den-policy = denPolicyCheck;
-        colmena-hive = colmenaHiveCheck;
         dev-shell = pkgs.runCommand "dev-shell-check" { } ''
           test -x ${jjCi}/bin/ci
           test -x ${pkgs.jujutsu}/bin/jj
@@ -656,7 +655,8 @@
               fi
               touch "$out"
             '';
-      };
+      }
+      // colmenaHiveChecks;
     };
   nixConfig = {
     extra-substituters = [
