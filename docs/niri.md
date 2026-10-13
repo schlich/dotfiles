@@ -3,6 +3,8 @@
 How the workstation desktop is meant to be driven. `niri/config.kdl` and
 `niri/session.nu` enforce these rules; the rules explain why the binds are
 shaped the way they are. The panel is a laptop screen that fits two columns.
+Which keys Niri may claim, and which it leaves to the terminal and editor, is
+in [input.md](input.md).
 
 ## Doctrine
 

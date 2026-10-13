@@ -10,6 +10,8 @@
         { host, ... }:
         lib.optionalAttrs (host.profile.role == "workstation") {
           includes = [ den.aspects.user-desktop ];
+          # The input stack is declared with the desktop modules.
+          homeManager.dotfiles.input.enable = true;
         }
       )
     ];
