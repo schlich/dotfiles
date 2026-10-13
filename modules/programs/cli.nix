@@ -121,19 +121,19 @@ let
 in
 
 {
-  programs.git.enable = true;
   programs.home-manager.enable = true;
   programs.htop.enable = true;
   programs.fd.enable = true;
   programs.gh = {
     enable = true;
-    # gh still discovers repositories through Git internally.
+    # gh still discovers repositories through Git internally, with the
+    # wrapped git's configuration from modules/programs/vcs.nix.
     package = pkgs.symlinkJoin {
       name = "gh-jj-transport";
       paths = [ pkgs.gh ];
       nativeBuildInputs = [ pkgs.makeWrapper ];
       postBuild = ''
-        wrapProgram "$out/bin/gh" --prefix PATH : ${pkgs.git}/bin
+        wrapProgram "$out/bin/gh" --prefix PATH : ${config.programs.git.package}/bin
       '';
       meta.mainProgram = "gh";
     };

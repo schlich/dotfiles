@@ -386,7 +386,8 @@ in
         "PATH=${
           lib.makeBinPath [
             pkgs.coreutils
-            pkgs.openssh
+            # Its configuration carries the homelab host block.
+            (import ../../programs/ssh-client.nix { inherit lib pkgs; })
           ]
         }"
         "SSH_AUTH_SOCK=%t/gcr/ssh"

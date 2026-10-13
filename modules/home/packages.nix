@@ -112,7 +112,6 @@ in
     marimo
     nodejs
     ty
-    git
     wget
     nixfmt
     nh
