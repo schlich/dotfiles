@@ -184,7 +184,10 @@ in
               "network_rx"
               "network_tx"
             ];
+            # The niri hint line leads: the focus context and its keys
+            # (keymap.nu hints), always on screen.
             center = [
+              "schlich/niri-hints:hints"
               "codex_usage"
               "claude_usage"
             ];
@@ -205,12 +208,20 @@ in
           enabled = [
             "felipeartur/ai-usagebar"
             "thepunkoff/pomodoro"
+            "schlich/niri-hints"
           ];
           source = [
             {
               name = "community";
               kind = "git";
               location = "https://github.com/noctalia-dev/community-plugins";
+              enabled = true;
+            }
+            # This repository's own plugins, one directory each.
+            {
+              name = "dotfiles";
+              kind = "path";
+              location = "${../../noctalia/plugins}";
               enabled = true;
             }
           ];

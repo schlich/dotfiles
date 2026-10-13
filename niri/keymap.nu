@@ -8,6 +8,9 @@
 # that have no keycap. A key bound twice in one layer shows 💥.
 #
 # Tab or the arrows switch layers, a digit picks one, and q or Esc closes.
+#
+# `keymap.nu hints` is the always-on counterpart: it names the focus context
+# (the bar's mode) and the few binds that matter there, for the status bar.
 
 # Keyboard rows, one string per row. Each token is `keysym[=Label][:width]`
 # in key units, and `_:width` is a gap. Keysyms are XKB names, lower-cased as
@@ -179,8 +182,72 @@ def render [layers: list, index: int, keys: list] {
   ] | str join "\n"
 }
 
+def default-config [] {
+  $env.XDG_CONFIG_HOME? | default $"($env.HOME)/.config" | path join niri config.kdl
+}
+
+# The keys that matter in each focus context, with short labels for the bar.
+# A hint whose key is no longer bound in config.kdl drops out, and a hint
+# without a label falls back to the bind's hotkey-overlay-title. Overview keys
+# are niri's own, and Alt+Tab may live in the recent-windows block instead of
+# binds, so those always show.
+const hint_sets = {
+  base: [[key label]; [Mod+1…9 area] [Mod+Tab back] [Alt+Tab recent] [Mod+A agents] [Mod+G vcs] [Mod+O overview] [Mod+Slash keymap]]
+  empty: [[key label]; [Mod+Return terminal] [Mod+Shift+Return "restore layout"] [Mod+0 launcher] [Mod+A agents]]
+  single: [[key label]; [Mod+R width] [Mod+F maximise] [Mod+Return terminal] [Mod+A agents] [Mod+Tab back]]
+  stack: [[key label]; [Mod+J next] [Mod+K previous] [Mod+W tabs] [Mod+Period expel] [Mod+Shift+R height]]
+  floating: [[key label]; [Mod+V tile] [Mod+Shift+V "to tiled"] [Mod+Q close]]
+  overview: [[key label]; [←↓↑→ move] [Return pick] [Escape close]]
+}
+const always_shown = [Mod+1…9 Alt+Tab ←↓↑→ Return Escape]
+
+def niri-json [query: string] {
+  ^niri msg --json $query | from json
+}
+
+# base, empty, single, stack, floating or overview, from niri's focus.
+def focus-context [] {
+  if (niri-json overview-state).is_open { return 'overview' }
+  let focused = (niri-json focused-window)
+  if $focused == null { return 'empty' }
+  if $focused.is_floating { return 'floating' }
+  let tiled = (niri-json windows | where workspace_id == $focused.workspace_id and not $it.is_floating)
+  let column = $focused.layout.pos_in_scrolling_layout.0
+  if ($tiled | where layout.pos_in_scrolling_layout.0 == $column | length) > 1 { return 'stack' }
+  if ($tiled | get layout.pos_in_scrolling_layout | each { get 0 } | uniq | length) == 1 { return 'single' }
+  'base'
+}
+
+def hint-status [binds: list, mode: string] {
+  let titles = ($binds | each {|b| { key: ($b.mods | append $b.key | str join '+'), title: $b.title } })
+  let hints = (
+    $hint_sets | get $mode
+    | where {|h| $h.key in $always_shown or $h.key in $titles.key }
+    | each {|h| $h | update label { default ($titles | where key == $h.key | get 0?.title) } }
+  )
+  { mode: $mode, hints: $hints }
+}
+
+# The bar's hint line (Noctalia plugin niri-hints): follows niri's event
+# stream and writes the focus context and its keys to
+# $XDG_RUNTIME_DIR/niri-hints/status.json whenever they change. --once
+# prints the current status instead.
+def "main hints" [--once, config?: path] {
+  let config = ($config | default (default-config))
+  let binds = (load-binds $config [])
+  if $once { return (hint-status $binds (focus-context)) }
+  let dir = ($env.XDG_RUNTIME_DIR? | default /tmp | path join niri-hints)
+  mkdir $dir
+  let file = ($dir | path join status.json)
+  ^niri msg --json event-stream | lines | reduce --fold '' {|_, last|
+    let status = (hint-status $binds (focus-context) | to json --raw)
+    if $status != $last { $status | save --force $file }
+    $status
+  }
+}
+
 def main [config?: path] {
-  let config = ($config | default ($env.XDG_CONFIG_HOME? | default $"($env.HOME)/.config" | path join niri config.kdl))
+  let config = ($config | default (default-config))
   let emoji = (open ($config | path dirname | path join keymap-emoji.nuon))
   let binds = (load-binds $config $emoji)
   let layers = (layer-names $binds | each {|name|

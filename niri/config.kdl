@@ -285,6 +285,10 @@ spawn-sh-at-startup "exec nu \"$HOME/.config/niri/session.nu\" startup"
 // Keep choice groups, such as the desktop coding agents, in one tabbed column.
 spawn-sh-at-startup "exec nu \"$HOME/.config/niri/session.nu\" watch-choices"
 
+// Publish the focus context and its keys for the status bar's hint line
+// (Noctalia plugin schlich/niri-hints).
+spawn-sh-at-startup "exec nu \"$HOME/.config/niri/keymap.nu\" hints"
+
 // Run Handy in the tray so Mod+D reaches it; `--toggle-transcription` only
 // signals a running instance.
 spawn-at-startup "handy" "--start-hidden"

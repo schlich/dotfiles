@@ -1,0 +1,12 @@
+id          = "schlich/niri-hints"
+name        = "niri hints"
+version     = "0.1.0"
+plugin_api  = 3
+author      = "schlich"
+license     = "MIT"
+icon        = "keyboard"
+description = "The niri focus context as a mode, and the keys that work in it."
+
+[[widget]]
+id    = "hints"
+entry = "widget.luau"
