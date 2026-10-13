@@ -105,9 +105,11 @@ in
     ".config/jj/config.toml"
   ];
 
-  xdg.configFile."nushell/autoload/ci.nu".source = ciNushell.completions;
-  # Refuses an interactive `jj new` that would strand a `ci` topic.
-  xdg.configFile."nushell/autoload/jj-guard.nu".source = ciNushell.guard;
-  # `jw NAME` changes to a JJ workspace's root.
-  xdg.configFile."nushell/autoload/jj-workspace.nu".source = ciNushell.workspace;
+  dotfiles.nushellAutoload = {
+    ci = ciNushell.completions;
+    # Refuses an interactive `jj new` that would strand a `ci` topic.
+    jj-guard = ciNushell.guard;
+    # `jw NAME` changes to a JJ workspace's root.
+    jj-workspace = ciNushell.workspace;
+  };
 }

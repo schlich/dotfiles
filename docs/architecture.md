@@ -67,6 +67,15 @@ These stay in Home Manager:
 - Helix's `languages.toml`: Helix reads it only from its configuration
   directory, and patching the built-in copy would rebuild Helix without the
   binary cache.
+- Nushell's `config.nu`: no variable names it, an explicit `--config` also
+  loads for scripts and `nu -c`, and the vendor autoload directories reach the
+  agent MCP server as well as interactive sessions. Autoload files that only
+  define commands ship in the per-user profile through
+  `dotfiles.nushellAutoload` instead. Starship's `init nu` embeds the
+  unwrapped binary's path, so `config.nu` sets `STARSHIP_CONFIG` rather than
+  a wrapper.
+- intelli-shell's `config.toml`: its only directory override also moves its
+  database.
 
 ## Formatting and future unit tests
 

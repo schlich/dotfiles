@@ -12,6 +12,10 @@
     ];
   };
   environment.shells = [ pkgs.nushell ];
+  # Nushell searches share/nushell/vendor/autoload in the system and per-user
+  # profiles through XDG_DATA_DIRS; Home Manager ships its autoload files
+  # there instead of ~/.config/nushell/autoload.
+  environment.pathsToLink = [ "/share/nushell" ];
 
   services.openssh = {
     enable = true;
