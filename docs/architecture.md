@@ -28,6 +28,46 @@ User configuration is supplied by Den user aspects. The workstation aspect
 only enables the Home Manager integration; it does not hardcode a username,
 home directory, or user-specific `extraSpecialArgs`.
 
+## Configuration ships with the package
+
+Home Manager links generated files into `$HOME`, and those links cause most of
+this repository's activation trouble. Programs rewrite them in place (Copilot's
+`config.json`), Claude Desktop's sandbox rejects them (it shows the store target
+of `~/.ssh/config` as owned by `nobody`), and orphaned generations override the
+host's configuration (homelab). A program that reads its configuration from an
+environment variable or a flag gets that configuration on its executable
+instead. `lib/wrap-with-config.nix` sets the variables and leading flags, and
+`dotfiles.retiredHomeFiles` makes evaluation fail if Home Manager links a
+replaced path again.
+
+Choose the path the wrapper names by how long the program runs:
+
+- A command-line program starts fresh on every run, so it names the store file
+  directly.
+- A long-running graphical program that reloads its configuration names a
+  stable path that a switch updates, so a reload picks up the new
+  configuration: `/etc/niri/config.kdl` for niri, which never runs in the
+  sandbox, and the per-user profile for Ghostty.
+
+Do not move a program that agents run to `/etc`: the Claude Desktop sandbox
+shows no host `/etc/ssh` or `/etc/gitconfig`, while `/nix/store` and
+`/etc/profiles/per-user` stay visible. Where Home Manager still adds shell
+integration, keep `programs.<name>.enable` with the wrapped `package` and no
+`settings`, after checking at the locked revision that the module writes no
+file without settings.
+
+These stay in Home Manager:
+
+- Agent clients (Claude Code, Codex, Copilot, OpenCode, Zed): their
+  configuration directories are runtime state.
+- GnuPG: `GNUPGHOME` also holds the keys.
+- gh's `config.yml` and `hosts.yml`, which gh writes itself.
+- XDG user directories, systemd user units, fontconfig, and the shared
+  `.agents/skills` discovery paths.
+- Helix's `languages.toml`: Helix reads it only from its configuration
+  directory, and patching the built-in copy would rebuild Helix without the
+  binary cache.
+
 ## Formatting and future unit tests
 
 Repository-wide formatting and the future nix-unit test surface are provided

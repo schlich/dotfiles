@@ -32,7 +32,17 @@
   `nixosConfigurations.asus.config.home-manager.users.schlich.home.activationPackage`.
 - Add user packages in `modules/home/packages.nix`, version-control wrappers in
   `modules/programs/vcs.nix`, and AI client configuration in
-  `modules/programs/ai.nix`.
+  `modules/tooling/ai/`.
+- Ship a program's configuration with the program, not as a file in `$HOME`.
+  When it reads its configuration from an environment variable or flag, wrap
+  the package with `lib/wrap-with-config.nix` and point it at a store file
+  rather than using `home.file`, `xdg.configFile`, or `programs.*.settings`.
+  Add each path the wrapper replaces to `dotfiles.retiredHomeFiles` so
+  evaluation fails if Home Manager links it again. Do not move such
+  configuration to `/etc` for a program that agents run: the Claude Desktop
+  sandbox hides host `/etc`, and it shows store symlinks in `$HOME` as owned by
+  `nobody`. `docs/architecture.md` has the placement rules and the remaining
+  inventory.
 - Treat application-owned, self-mutating configuration as runtime state. Do
   not manage such files with `home.file`, `xdg.configFile`, or a Home Manager
   `programs.*.settings` option. When the application supports it, couple

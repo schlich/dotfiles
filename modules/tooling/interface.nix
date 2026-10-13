@@ -49,6 +49,10 @@ let
     };
   };
 
+  relinkedFiles = lib.filter (target: lib.elem target cfg.retiredHomeFiles) (
+    map (file: file.target) (lib.filter (file: file.enable) (lib.attrValues config.home.file))
+  );
+
   terminal = cfg.tooling.terminals.${cfg.primary.terminal} or null;
   editor = cfg.tooling.editors.${cfg.primary.editor} or null;
   ai = cfg.tooling.ai.${cfg.primary.ai} or null;
@@ -76,6 +80,17 @@ in
         ];
         description = "Primary agent desktop client.";
       };
+    };
+
+    retiredHomeFiles = mkOption {
+      type = types.listOf types.str;
+      default = [ ];
+      internal = true;
+      description = ''
+        Paths relative to $HOME whose configuration now ships on a wrapped
+        package (lib/wrap-with-config.nix). Evaluation fails if Home Manager
+        links one of them again.
+      '';
     };
 
     alternates = mkOption {
@@ -130,6 +145,10 @@ in
       {
         assertion = ai != null;
         message = "Primary AI harness '${cfg.primary.ai}' is not imported by this profile.";
+      }
+      {
+        assertion = relinkedFiles == [ ];
+        message = "Home Manager links files whose configuration ships on a wrapped package: ${lib.concatStringsSep ", " relinkedFiles}";
       }
     ];
 
