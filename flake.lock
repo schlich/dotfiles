@@ -171,6 +171,29 @@
         "type": "github"
       }
     },
+    "ci": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "osc7501-nu": [
+          "osc7501-nu"
+        ]
+      },
+      "locked": {
+        "lastModified": 1791860535,
+        "narHash": "sha256-BcnXTXnIWD8AWX8ALAXOi6Vx2B7vXXGDiRI7nNNDxQ0=",
+        "owner": "schlich",
+        "repo": "ci",
+        "rev": "848bbcc5572c3ec939874cf58306389254589e68",
+        "type": "github"
+      },
+      "original": {
+        "owner": "schlich",
+        "repo": "ci",
+        "type": "github"
+      }
+    },
     "codex-desktop-linux": {
       "inputs": {
         "flake-utils": "flake-utils",
@@ -1737,6 +1760,7 @@
         "anthropic-skills": "anthropic-skills",
         "archify": "archify",
         "autoresearch": "autoresearch",
+        "ci": "ci",
         "codex-desktop-linux": "codex-desktop-linux",
         "den": "den",
         "determinate": "determinate",

@@ -45,7 +45,7 @@ let
       }
     } $out/hooks/hooks.json
   '';
-  contextStatus = import ../../../jj/context-status.nix { inherit pkgs; };
+  contextStatus = inputs.ci.packages.${pkgs.stdenv.hostPlatform.system}.context-status;
   # Hand each new or resumed session the workspace's topic, lifecycle stage,
   # lint and pipeline state, and next `ci` step. Concurrent sessions that
   # shared the default checkout moved each other's working copy and split

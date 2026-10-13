@@ -5,7 +5,7 @@
   autoresearch = "${inputs.autoresearch}/.agents/skills/autoresearch";
   marimo-pair = "${inputs.marimo-pair}/skills/marimo-pair";
   bash-feedback = ../../../.agents/skills/bash-feedback;
-  ci = ../../../.agents/skills/ci;
+  ci = inputs.ci.lib.skills.ci;
   datastar = ../../../.agents/skills/datastar;
   rlm = ../../../.agents/skills/rlm;
   typesafe-ai = "${inputs.typesafe-skills}/skills/typesafe-ai";

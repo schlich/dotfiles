@@ -1,10 +1,9 @@
-{ pkgs, ... }:
+{ pkgs, inputs, ... }:
 
 let
-  codexJjSession = pkgs.writeNuScriptBin "codex-jj-session" (
-    builtins.readFile ../../jj/codex-session.nu
-  );
-  contextStatus = import ../../jj/context-status.nix { inherit pkgs; };
+  ci = inputs.ci.packages.${pkgs.stdenv.hostPlatform.system};
+  codexJjSession = ci.codex-jj-session;
+  contextStatus = ci.context-status;
   codexConfig = (pkgs.formats.toml { }).generate "codex-system-config" {
     # JJ has no global non-interactive environment switch. Codex shell tools
     # are non-interactive, so prevent an accidental editor or pager from

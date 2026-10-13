@@ -128,8 +128,11 @@
   `breaking` for a user-facing change that needs manual steps, which the
   description body must list. Keep refactors and user-facing changes in
   separate topics or stack layers. Each behavior or breaking revision that
-  lands becomes a `YYYY.MM.DD.N` release; refactors cut none. See
-  `jj/README.md`.
+  lands becomes a `YYYY.MM.DD.N` release; refactors cut none. See the ci
+  repository's README (tangled.org/schlich.tngl.sh/ci).
+- `ci` comes from the `ci` flake input. Change the workflow in its own
+  repository, then move this one to it with `nix flake update ci`; try an
+  unreleased copy here with `CI_SCRIPT=/path/to/ci.nu ci ...`.
 - Use a concise JJ change description. `ci dispatch` validates and pushes
   the topic's stable `jj-*` branch to Tangled; open a Tangled pull request from that branch when the topic needs review.
   Ordinary dispatch keeps editing the same change ID. Deliver it with

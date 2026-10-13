@@ -146,11 +146,19 @@
       url = "github:Mic92/nixbot";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    # The `pst` Nushell module (OSC 7501 program status) that jj/ci.nu uses;
-    # every runner of ci.nu puts this source on NU_LIB_DIRS.
+    # The `pst` Nushell module (OSC 7501 program status) that ci reports its
+    # phases with and the shell imports; the ci input follows it.
     osc7501-nu = {
       url = "github:schlich/osc7501.nu";
       flake = false;
+    };
+    # The `ci` trunk workflow with its companions and `ci tower`, hosted on
+    # Tangled and fetched from its GitHub mirror. Every workspace runs the
+    # version this lock pins; `nix flake update ci` moves to a newer one.
+    ci = {
+      url = "github:schlich/ci";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.osc7501-nu.follows = "osc7501-nu";
     };
   };
 
@@ -176,11 +184,8 @@
           name: input: "--override-input ${lib.escapeShellArg name} ${lib.escapeShellArg "${input}"}"
         ) inputs
       );
-      jjCi = import ./jj/ci-package.nix {
-        inherit pkgs;
-        inherit (inputs) osc7501-nu;
-      };
-      jjCiLifecycle = pkgs.callPackage ./jj/lifecycle/package.nix { };
+      jjCi = inputs.ci.packages.${system}.ci;
+      jjCiLifecycle = inputs.ci.packages.${system}.jj-ci-lifecycle;
       xrWorkbench = pkgs.writeShellApplication {
         name = "xr-workbench";
         runtimeInputs = [
@@ -541,64 +546,14 @@
               ${pkgs.nushell}/bin/nu --no-config-file ${src}/tests/agent.nu
               touch "$out"
             '';
-        ci-model =
-          pkgs.runCommand "ci-model-check"
-            {
-              nativeBuildInputs = [ pkgs.tlaplus ];
-            }
-            ''
-              cp ${./jj/JjCi.tla} JjCi.tla
-              cp ${./jj/JjCi.cfg} JjCi.cfg
-              tlc -metadir "$TMPDIR/tlc" -config JjCi.cfg JjCi.tla
-              touch "$out"
-            '';
-        # Its tests check the state machine against every action and
-        # invariant of the same bounded model.
-        ci-lifecycle = jjCiLifecycle;
-        ci-properties =
-          let
-            src = lib.fileset.toSource {
-              root = ./.;
-              fileset = lib.fileset.unions [
-                ./jj/ci.nu
-                ./jj/ci-launch.nu
-                ./jj/codex-session.nu
-                ./jj/context-status.nu
-                ./jj/guard.nu
-                ./tests/pbt.nu
-                ./tests/ci-properties.nu
-                ./tests/ci-launch-properties.nu
-                ./tests/codex-session-properties.nu
-                ./tests/context-status-properties.nu
-              ];
-            };
-          in
-          pkgs.runCommand "ci-properties-check"
-            {
-              # util-linux provides the flock(1) that the local checks lock uses.
-              nativeBuildInputs = [
-                pkgs.nushell
-                pkgs.util-linux
-              ];
-            }
-            ''
-              export HOME="$TMPDIR/home"
-              export NU_LIB_DIRS=${inputs.osc7501-nu}
-              mkdir -p "$HOME"
-              nu --no-config-file -c "source ${src}/tests/ci-properties.nu"
-              nu --no-config-file -c "source ${src}/tests/ci-launch-properties.nu"
-              nu --no-config-file -c "source ${src}/tests/codex-session-properties.nu"
-              nu --no-config-file -c "source ${src}/tests/context-status-properties.nu"
-              touch "$out"
-            '';
+        # The ci workflow's model, machine, and property tests run as the ci
+        # repository's own flake checks.
         ruff =
           pkgs.runCommand "ruff-check"
             {
               nativeBuildInputs = [ pkgs.ruff ];
             }
             ''
-              ruff check --no-cache ${./jj/mcp.py}
-              ruff format --no-cache --check ${./jj/mcp.py}
               ruff check --no-cache --config ${./workbench/ruff.toml} ${./workbench/python} ${./workbench/tests}
               ruff format --no-cache --config ${./workbench/ruff.toml} --check ${./workbench/python} ${./workbench/tests}
               touch "$out"

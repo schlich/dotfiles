@@ -21,34 +21,9 @@ let
       exec ${iwe}/bin/iwec --transport stdio
     }
   '';
-  # Starts the same `ci` launcher as the shell, which picks the jj/ci.nu to
-  # run, and needs xs to announce its jobs on cross.stream. The ruff flake
-  # check lints the source; writers.writePython3 would run flake8 instead.
-  ciMcp =
-    pkgs.runCommand "ci-mcp"
-      {
-        nativeBuildInputs = [ pkgs.makeWrapper ];
-        meta.mainProgram = "ci-mcp";
-      }
-      ''
-        makeWrapper ${pkgs.python3.withPackages (ps: [ ps.mcp ])}/bin/python "$out/bin/ci-mcp" \
-          --add-flags ${../../../jj/mcp.py} \
-          --prefix PATH : ${
-            lib.makeBinPath [
-              pkgs.git
-              pkgs.gh
-              xs
-            ]
-          } \
-          --set CI_MCP_CI ${
-            lib.getExe (
-              import ../../../jj/ci-package.nix {
-                inherit pkgs;
-                inherit (inputs) osc7501-nu;
-              }
-            )
-          }
-      '';
+  # The ci input's MCP server, which starts the same `ci` launcher as the
+  # shell; with xs it announces its jobs on cross.stream.
+  ciMcp = inputs.ci.packages.${pkgs.stdenv.hostPlatform.system}.ci-mcp.override { inherit xs; };
 in
 {
   programs.mcp = {

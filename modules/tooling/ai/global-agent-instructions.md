@@ -61,8 +61,11 @@ script, use valid Nushell syntax.
 
 - The ci MCP server runs each command as a job in the given `workspace`
   (default: the session's directory). Like the `ci` command, it runs the
-  topic's own `jj/ci.nu` when the topic edits it and `main@tangled`'s
-  otherwise, so there is no stale `ci` to work around with `nix develop`.
+  `ci.nu` its package bundles, the version the installed system pins;
+  inside the ci repository itself it runs the topic's own `ci.nu` when the
+  topic edits it and `main@tangled`'s otherwise. In a repository whose
+  flake.lock moved `ci` ahead of the installed one, `nix develop path:.`
+  runs the locked version.
   A tool returns once the command finishes or
   its `wait_seconds` elapse; poll a `running` result with its `job` tool,
   which also serves `ci dispatch` and `ci land`.
