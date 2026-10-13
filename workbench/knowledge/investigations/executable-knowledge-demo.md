@@ -54,9 +54,7 @@ curve = pl.DataFrame(
         lambda t: 1.0 - signal.cdf(t), return_dtype=pl.Float64
     ),
 )
-operating_point = pl.DataFrame(
-    {"false_alarm": [false_alarm_rate], "hit": [hit_rate]}
-)
+operating_point = pl.DataFrame({"false_alarm": [false_alarm_rate], "hit": [hit_rate]})
 
 roc = alt.Chart(curve).mark_line().encode(
     x=alt.X("false_alarm", title="False-alarm rate"),

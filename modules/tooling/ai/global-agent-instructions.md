@@ -299,17 +299,14 @@ active task. Where `ci` is available, create that workspace with
 `jj workspace add --revision main@origin --name NAME PATH` from the
 repository. Then open that directory as a local Codex project. Reuse a small
 pool of such workspaces with `ci park --keep` instead of creating one for
-every topic; the hook creates the next task's topic revision when it starts.
-If Codex supplied the project as a linked Git worktree, the session hook
-initializes a non-colocated JJ workspace in that directory first, using the
-shared Git repository as its backend. It never automatically switches another
-task's working copy. Claude Code's desktop app supplies a linked Git worktree
-under `.claude/worktrees/` instead, which is not a JJ workspace: `jj` there
-acts on the shared checkout above it and never records the worktree's edits.
-Run `ci start NAME` from that worktree, which creates
-`<worktree>/.jj-workspaces/NAME`, and edit and run `ci` only there. In a
-repository with topic workspaces, the Claude Code and Codex hooks refuse
-agent edits to the shared default checkout and to such a worktree.
+every topic; start the next task's topic there with `ci new -m MESSAGE`.
+If the project is a linked Git worktree, it is not automatically a JJ
+workspace: `jj` may act on the shared checkout above it and never record the
+worktree's edits. Run `ci start NAME` from that worktree, which creates
+`<worktree>/.jj-workspaces/NAME`; then open and edit only that JJ workspace. In
+a repository with topic workspaces, agents must not edit the shared default
+checkout or an unconverted Git worktree. Never add permanent session locks or
+reject prompts and recovery tools because a saved ownership record is stale.
 
 When the working-copy diff contains multiple coherent deliverables, split it
 into separate JJ changes before dispatching or treating the work as complete.

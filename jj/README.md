@@ -1,8 +1,8 @@
 # JJ project workflow
 
 The `ci` trunk workflow (`ci.nu` and its launcher, the TLA+ model and the
-lifecycle machine, `context-status`, the Codex ownership hooks, the MCP
-server, `ci tower`, and the `ci` skill) lives in its own repository,
+lifecycle machine, `context-status`, the MCP server, `ci tower`, and the `ci`
+skill) lives in its own repository,
 [tangled.org/schlich.tngl.sh/ci](https://tangled.org/schlich.tngl.sh/ci),
 mirrored to `github:schlich/ci`. Its README documents the workflow. This
 repository takes it as the `ci` flake input: every workspace runs the version
@@ -21,6 +21,13 @@ What stays in this directory is this machine's glue around it:
   `config-verifications` account that `ci verify` appends to.
 
 ## Desktop
+
+Codex has no JJ-specific hooks and does not load JJ context status. Its
+configured launcher can start a task workspace from the shared default
+checkout; otherwise, open the JJ workspace you want it to edit. Keep one actor
+per working copy and keep editing the same topic until delivery. Existing
+claims from the old hooks can be released with `ci unclaim` from the affected
+workspace once its previous actor has stopped; this leaves the topic intact.
 
 Press **Mod+G** to open or focus the focused Niri workspace's VCS stack: jjui
 and gh-dash as tabs of one column, where pressing it again switches tabs. From a

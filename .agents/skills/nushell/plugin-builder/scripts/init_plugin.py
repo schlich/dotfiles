@@ -18,8 +18,14 @@ def init_plugin(plugin_name: str, output_dir: Path) -> None:
     """Initialize a new plugin from template."""
     # Validate plugin name
     if not plugin_name.replace("_", "").replace("-", "").isalnum():
-        print(f"Error: Plugin name '{plugin_name}' contains invalid characters", file=sys.stderr)
-        print("Plugin name should only contain letters, numbers, hyphens, and underscores", file=sys.stderr)
+        print(
+            f"Error: Plugin name '{plugin_name}' contains invalid characters",
+            file=sys.stderr,
+        )
+        print(
+            "Plugin name should only contain letters, numbers, hyphens, and underscores",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     # Normalize plugin name to snake_case

@@ -173,8 +173,8 @@
   task, or a build, dev server, or editor whose files must not change under
   it. Reuse such workspaces with `ci park --keep` rather than creating one
   per topic. Agent sessions never edit the default checkout `~/dotfiles`:
-  other sessions share it, so the Claude Code and Codex hooks refuse those
-  edits, and a session opened there starts with `ci start NAME`. From a Claude
+  other sessions share it, so agents must refuse those edits, and a session
+  opened there starts with `ci start NAME`. From a Claude
   Code worktree under `.claude/worktrees/`, which is not a JJ workspace,
   `ci start` creates the workspace inside the worktree; edit only there. Use
   `ci rebase` to update a topic in place. A conflict-free
