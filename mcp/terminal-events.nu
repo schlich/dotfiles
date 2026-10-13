@@ -6,15 +6,20 @@ def xs-store [] {
     $env.XS_ADDR? | default ($nu.home-dir | path join ".local" "share" "cross.stream" "store")
 }
 
-export def publish-terminal-event [topic: string, event: record] {
-    let result = (
-        do -i {
-            ^xs append (xs-store) $topic --meta ($event | to json -r)
-        } | complete
-    )
+export def --env publish-terminal-event [topic: string, event: record] {
+    let exit_code = if (which xs | is-empty) {
+        1
+    } else {
+        try {
+            ^xs append (xs-store) $topic --meta ($event | to json -r) | complete | get exit_code
+        } catch {
+            1
+        }
+    }
 
-    if $result.exit_code != 0 {
-        if not ($env.XS_EVENT_WARNING_SHOWN? | default false) {
+    if $exit_code != 0 {
+        # Child processes inherit the flag as the string "true".
+        if not ($env.XS_EVENT_WARNING_SHOWN? | default false | into bool) {
             print --stderr "cross.stream is unavailable; terminal events will not be recorded."
             load-env { XS_EVENT_WARNING_SHOWN: true }
         }
