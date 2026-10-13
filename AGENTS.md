@@ -72,6 +72,11 @@
   polkit lets the user start, and prints the switch's output and any failed
   units. Run it only when the user asks to switch; never start it on your
   own. Unlanded changes cannot be switched to this way.
+- Colmena can push a landed `main` to a host instead
+  (`colmena apply --config path:. --on homelab`); it is the same system, and
+  the same rules apply: deploy only when the user asks, and only landed
+  changes except for `test` or `dry-activate`. Hosts opt in with
+  `deploy.enable` in `den/inventory.nix`.
 - Create a NixOS generation only when the candidate
   `system.build.toplevel` store path differs from the active
   `/run/current-system` target. If they match, do not switch merely to record a

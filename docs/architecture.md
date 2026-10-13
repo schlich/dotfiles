@@ -120,6 +120,17 @@ the root `nixos-switch-main` unit, which polkit lets the primary user start
 without a password. The unit builds the host from Tangled's `main` at a pinned
 revision, never from a working copy, skips the switch when that toplevel is
 already active, and records the result in `/var/lib/nixos-switch-main`.
+Colmena pushes the same systems over ssh instead of having the host pull
+them. `colmenaHive` deploys each host whose inventory sets `deploy.enable`,
+from the module list Den resolved for it, and the `colmena-hive` check fails
+if a node's system differs from `nixosConfigurations`. Tags come from the
+host's profile and policy (`workstation`, `server`, `critical`, `niri`), and
+`allowApplyAll` is off, so a deploy names its hosts:
+`colmena apply --config path:. --on homelab` from a workspace at landed
+`main`, or `colmena apply-local --config path:. --sudo` on asus. Remote
+activation logs in as `deploy.targetUser` and needs non-interactive sudo on
+the target. Deploying from an unlanded topic skips the landing gate, so
+reserve it for `test` or `dry-activate` goals.
 Home Manager-only changes use `home-activate` when
 they leave the NixOS toplevel unchanged. In this repository,
 `home-manager.useUserPackages = true`, so changes to `home.packages` are

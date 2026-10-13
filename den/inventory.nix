@@ -18,6 +18,8 @@ let
       secrets = false;
       remote = false;
     };
+    # Colmena logs in as the everyday user and escalates with sudo.
+    deploy.targetUser = "schlich";
     policy = {
       criticality = "workstation";
       autoDeploy = false;
@@ -57,6 +59,8 @@ let
     asus = [
       asusHardware
       personalWorkstation
+      # Deployed in place with `colmena apply-local`.
+      { deploy.enable = true; }
     ];
 
     asus-headless = [
@@ -88,6 +92,10 @@ let
           gpu = "intel";
           remote = true;
         };
+        deploy = {
+          enable = true;
+          targetHost = "homelab";
+        };
         policy = {
           criticality = "critical";
           healthChecks = [
@@ -107,7 +115,15 @@ let
     _: host:
     host
     // {
-      instantiate = args: inputs.nixpkgs.lib.nixosSystem (args // { specialArgs = { inherit inputs; }; });
+      # Keep the module list Den resolved for the host beside the
+      # evaluated configuration, so colmenaHive (flake.nix) deploys exactly
+      # what nixosConfigurations builds.
+      instantiate =
+        args:
+        inputs.nixpkgs.lib.nixosSystem (args // { specialArgs = { inherit inputs; }; })
+        // {
+          denModules = args.modules;
+        };
     }
   ) inventory;
   validated = builtins.deepSeq (lib.mapAttrsToList profileTools.validateHost inventory) withInstantiate;

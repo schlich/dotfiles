@@ -10,6 +10,13 @@
     den = {
       url = "github:denful/den/v0.18.0";
     };
+    # Pushes Den's hosts over ssh (colmenaHive below), alongside
+    # system-switch, which pulls Tangled's main on the host itself.
+    colmena = {
+      url = "github:zhaofengli/colmena";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.stable.follows = "nixpkgs";
+    };
     impermanence = {
       url = "github:nix-community/impermanence";
       inputs.nixpkgs.follows = "";
@@ -324,6 +331,64 @@
           }).config.system.build.toplevel.drvPath
         }\n"
       );
+      # Colmena pushes Den's hosts over ssh. Each node re-evaluates the module
+      # list Den resolved for the host (den/inventory.nix keeps it as
+      # denModules), and the inventory's typed deploy and profile facts supply
+      # the target and tags, so `colmena apply --on @server` needs no
+      # hostname lists here.
+      deployHosts = lib.filterAttrs (_: host: host.deploy.enable) denEval.config.den.hosts.${system};
+      colmenaHive = inputs.colmena.lib.makeHive (
+        {
+          meta = {
+            nixpkgs = import nixpkgs { inherit system; };
+            specialArgs = { inherit inputs; };
+            # Name the hosts with --on; nothing deploys the whole fleet at once.
+            allowApplyAll = false;
+          };
+        }
+        // lib.mapAttrs (name: host: {
+          imports = denFlake.nixosConfigurations.${name}.denModules ++ [
+            # What nixpkgs' flake lib.nixosSystem adds and Colmena's direct
+            # eval-config.nix call lacks: the flake's version and revision,
+            # and its source path.
+            {
+              system.nixos.versionSuffix = nixpkgs.lib.trivial.versionSuffix;
+              system.nixos.revision = nixpkgs.lib.trivial.revisionWithDefault null;
+              nixpkgs.flake.source = nixpkgs.outPath;
+            }
+          ];
+          deployment = {
+            inherit (host.deploy) targetHost targetUser;
+            allowLocalDeployment = host.deploy.targetHost == null;
+            tags = lib.unique (
+              [
+                host.profile.role
+                host.policy.criticality
+              ]
+              ++ lib.optional (host.profile.desktop != "none") host.profile.desktop
+            );
+          };
+        }) deployHosts
+      );
+      # Colmena must deploy the system nixosConfigurations builds, which is
+      # what CI checks and system-switch activates.
+      colmenaHiveCheck = pkgs.writeText "colmena-hive" (
+        builtins.unsafeDiscardStringContext (
+          lib.concatStrings (
+            lib.mapAttrsToList (
+              name: _:
+              let
+                fromHive = colmenaHive.toplevel.${name}.drvPath;
+                fromDen = denFlake.nixosConfigurations.${name}.config.system.build.toplevel.drvPath;
+              in
+              assert lib.assertMsg (
+                fromHive == fromDen
+              ) "colmenaHive.${name} (${fromHive}) differs from nixosConfigurations.${name} (${fromDen})";
+              "${name}: ${fromHive}\n"
+            ) deployHosts
+          )
+        )
+      );
       denPolicyCheck =
         pkgs.runCommand "den-policy-check"
           {
@@ -338,6 +403,7 @@
       tests.systems.${system} = import ./tests.nix { inherit lib; };
 
       nixosConfigurations = denFlake.nixosConfigurations;
+      inherit colmenaHive;
       den = denEval.config.den;
       gen-inspect = inputs.gen-inspect.lib;
 
@@ -383,6 +449,7 @@
           packages = with pkgs; [
             bat
             claude-code
+            colmena
             d2
             difftastic
             fd
@@ -516,6 +583,7 @@
         desktop-primary = denAsusPrimary.config.system.build.toplevel;
         headless-system = denFlake.nixosConfigurations.asus-headless.config.system.build.toplevel;
         den-policy = denPolicyCheck;
+        colmena-hive = colmenaHiveCheck;
         dev-shell = pkgs.runCommand "dev-shell-check" { } ''
           test -x ${jjCi}/bin/ci
           test -x ${pkgs.jujutsu}/bin/jj

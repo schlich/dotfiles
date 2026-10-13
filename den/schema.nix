@@ -97,6 +97,34 @@ let
     };
   };
 
+  deployType = types.submodule {
+    options = {
+      enable = mkOption {
+        type = types.bool;
+        default = false;
+        description = "Whether Colmena deploys this host (flake output colmenaHive).";
+      };
+      targetHost = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        example = "homelab";
+        description = ''
+          SSH destination Colmena pushes to, resolved through the user's ssh
+          configuration. null deploys only on the host itself with
+          `colmena apply-local`.
+        '';
+      };
+      targetUser = mkOption {
+        type = types.str;
+        default = "root";
+        description = ''
+          SSH user Colmena logs in as; any other user activates through
+          non-interactive sudo on the host.
+        '';
+      };
+    };
+  };
+
 in
 {
   config = {
@@ -112,6 +140,11 @@ in
             type = policyType;
             default = { };
             description = "Typed safety and deployment policy for this host.";
+          };
+          deploy = mkOption {
+            type = deployType;
+            default = { };
+            description = "How Colmena reaches this host, if it deploys it at all.";
           };
         };
       }

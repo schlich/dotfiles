@@ -14,6 +14,9 @@
   };
   fonts.fontconfig.enable = true;
   home.packages = [
+    # Deploys the flake's colmenaHive: `colmena apply --on homelab`. The
+    # binary-cached release; the colmena input supplies only makeHive.
+    pkgs.colmena
     (pkgs.writeNuScriptBin "nix-suite" ''
       # One entry point for Nix validation, builds, and dependency inspection.
       def usage [] {
