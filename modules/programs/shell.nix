@@ -49,20 +49,27 @@ let
   # `starship init nu` embeds the path of the binary it runs as, which for a
   # wrapper is the unwrapped program, so the prompt would skip a wrapper's
   # variables; config.nu sets STARSHIP_CONFIG instead.
+  #
+  # Starship runs `when` as well as `command` through `shell`, so with
+  # `use_stdin = false` each is the shell's last argument: `jj-starship
+  # detect` and `jj-starship prompt`. Fed on stdin instead, `when` ran the
+  # whole prompt a second time and pushed it past `command_timeout`.
   starshipConfig = toml.generate "starship.toml" {
     custom.jj = {
-      when = "jj-starship detect";
       shell = [ "jj-starship" ];
+      use_stdin = false;
+      when = "detect";
+      command = "prompt";
       format = "$output ";
     };
     # The topic's `ci` stage, pipeline verdict, and trunk drift. It reads
-    # only local state and a cache that it refreshes in the background.
+    # only local state and a cache that it refreshes in the background,
+    # and prints nothing outside a JJ workspace, so it needs no `when`.
     custom.context = {
-      when = "jj-starship detect";
-      shell = [
-        "context-status"
-        "prompt"
-      ];
+      shell = [ "context-status" ];
+      use_stdin = false;
+      when = true;
+      command = "prompt";
       format = "($output )";
     };
     gcloud.disabled = true;
