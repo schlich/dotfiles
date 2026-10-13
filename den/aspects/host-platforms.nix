@@ -21,6 +21,7 @@
       ../../hosts/homelab/default.nix
       ../../modules/nixos/homelab.nix
       ../../modules/nixos/homelab-cache.nix
+      ../../modules/nixos/homelab-builder.nix
       ../../modules/nixos/tangled-spindle.nix
     ];
   };
