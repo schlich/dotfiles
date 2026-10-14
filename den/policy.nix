@@ -36,6 +36,13 @@
       risk = "low";
       reviewers = [ "nix" ];
     };
+    nix-observability = {
+      risk = "medium";
+      reviewers = [
+        "nix"
+        "security"
+      ];
+    };
     remote = {
       risk = "high";
       reviewers = [

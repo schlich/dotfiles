@@ -15,6 +15,7 @@
     ./aspects/desktop-niri.nix
     ./aspects/laptop.nix
     ./aspects/development.nix
+    ./aspects/nix-observability.nix
     ./aspects/remote.nix
     ./aspects/secrets.nix
     ./aspects/gpu-amd.nix

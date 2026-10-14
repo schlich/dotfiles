@@ -93,6 +93,18 @@ let
       ^$adb shell am start -a android.intent.action.VIEW -d $url com.oculus.browser
     }
   '';
+  nixOtel = pkgs.writeNuScriptBin "nix-otel" ''
+    # Run the pinned Determinate Nix CLI with local trace export enabled.
+    def main [...args: string] {
+      if ($args | is-empty) {
+        error make {msg: "Pass a Nix subcommand, for example: nix-otel build --no-link path:."}
+      }
+      $env.OTEL_EXPORTER_OTLP_ENDPOINT = (
+        $env.OTEL_EXPORTER_OTLP_ENDPOINT? | default "http://127.0.0.1:4318"
+      )
+      ^nix run "https://flakehub.com/f/DeterminateSystems/nix-src/3.23.1" -- ...$args
+    }
+  '';
 in
 {
   xdg.dataFile."com.pais.handy/models/parakeet-unified-en-0.6b-Q4_K_M.gguf".source = handyParakeet;
@@ -150,6 +162,7 @@ in
     devenv
     jev
     questOpen
+    nixOtel
     inputs.xs.packages.${pkgs.stdenv.hostPlatform.system}.default
     inputs.ai-usagebar.packages.${pkgs.stdenv.hostPlatform.system}.default
     inputs.tangled-dash.packages.${pkgs.stdenv.hostPlatform.system}.default

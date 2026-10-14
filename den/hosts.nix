@@ -29,7 +29,10 @@ in
 
 {
   den.aspects.asus.includes = hostIncludes "asus" {
-    services = [ den.aspects.jj-ci-webhook ];
+    services = [
+      den.aspects.jj-ci-webhook
+      den.aspects.nix-observability
+    ];
     platform = [
       den.aspects.asus-platform
       den.aspects.asus-storage
