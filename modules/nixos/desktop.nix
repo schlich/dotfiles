@@ -1,4 +1,9 @@
-{ lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   niriSessionWait = pkgs.writeShellScriptBin "niri-session" ''
@@ -62,6 +67,13 @@ in
   };
 
   services.displayManager.noctalia-greeter.enable = true;
+  # Upstream's greeter module hands the greeter the installed sessions on
+  # XDG_DATA_DIRS; nixpkgs' does not, so pass them here.
+  services.greetd.settings.default_session.command = lib.concatStringsSep " " [
+    (lib.getExe' pkgs.coreutils "env")
+    "XDG_DATA_DIRS=${config.services.displayManager.sessionData.desktops}/share"
+    (lib.getExe' config.services.displayManager.noctalia-greeter.package "noctalia-greeter-session")
+  ];
 
   # niri falls back to /etc/niri/config.kdl when ~/.config/niri/config.kdl is
   # absent, and reloads it when a switch moves /etc/static. Its binds run the

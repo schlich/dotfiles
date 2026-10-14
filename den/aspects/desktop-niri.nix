@@ -10,7 +10,6 @@
       { config, ... }:
       {
         imports = [
-          inputs.noctalia-greeter.nixosModules.default
           inputs.niri.nixosModules.niri
           ../../modules/nixos/desktop.nix
         ];

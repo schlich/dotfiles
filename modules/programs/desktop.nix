@@ -70,12 +70,6 @@ in
     noctalia = {
       enable = true;
       systemd.enable = true;
-      # Upstream's workspaces widget can label pills only by number or name.
-      # The patch adds `name_labels`, which the workspace bar below uses for
-      # emoji. It is built from source rather than fetched from Noctalia's cache.
-      package = inputs.noctalia.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
-        patches = (old.patches or [ ]) ++ [ ../../noctalia/workspace-name-labels.patch ];
-      });
       settings = {
         shell = {
           launch_apps_as_systemd_services = true;
@@ -246,23 +240,11 @@ in
           privacy.hide_inactive = true;
           workspaces = {
             # A vertical bar has no room for names, and pill_scale cannot widen
-            # the pills, so each Johnny Decimal area shows an emoji and keeps
-            # its name in the tooltip. Project workspaces fall back to niri's
-            # Mod+<digit> number.
+            # the pills, so each pill shows niri's Mod+<digit> number and keeps
+            # the workspace's name in the tooltip.
             style = "regular";
             show_labels = true;
             label_source = "id";
-            name_labels = {
-              work = "🤿";
-              research = "🔬";
-              xr = "🥽";
-              nix = "❄️";
-              ai = "🤖";
-              shell = "🐚";
-              career = "💼";
-              personal = "🏠";
-              inbox = "📥";
-            };
             hide_when_empty = true;
             labels_only_when_occupied = true;
             max_label_chars = 13;

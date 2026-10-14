@@ -57,14 +57,6 @@
       url = "github:epireyn/niri-flake";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    noctalia = {
-      url = "github:noctalia-dev/noctalia/cachix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    noctalia-greeter = {
-      url = "github:noctalia-dev/noctalia-greeter";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     ai-usagebar = {
       url = "github:akitaonrails/ai-usagebar";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -689,11 +681,7 @@
     };
   nixConfig = {
     extra-substituters = [
-      "https://noctalia.cachix.org"
       "https://cache.flakehub.com/"
-    ];
-    extra-trusted-public-keys = [
-      "noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4="
     ];
     trusted-users = [ "schlich" ];
   };
