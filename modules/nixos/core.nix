@@ -78,4 +78,11 @@
   hardware.enableAllFirmware = true;
   programs.nix-ld.enable = true;
   security.polkit.enable = true;
+
+  # Cache a sudo credential for 30 minutes. Credentials stay per terminal
+  # (per parent process without one), so a terminal's credential never
+  # reaches an agent's `sudo -A`.
+  security.sudo.extraConfig = ''
+    Defaults timestamp_timeout=30
+  '';
 }
