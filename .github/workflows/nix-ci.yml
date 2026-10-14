@@ -202,10 +202,10 @@ jobs:
           CHECK: ${{ matrix.check }}
         run: >-
           nix --accept-flake-config run --inputs-from . nixpkgs#nix-fast-build -- --no-nom --skip-cached --flake .#checks.x86_64-linux --select "checks: { inherit (checks) $CHECK; }"
-      # This check evaluates the full workstation and the other hosts, so its
+      # This check evaluates the full workstation, the largest host, so its
       # fetcher cache serves the rest; anything missing is fetched as before.
       - name: Save the Nix fetcher cache
-        if: matrix.check == 'den-host-evaluation' && steps.fetcher-cache.outputs.cache-hit != 'true'
+        if: matrix.check == 'colmena-hive-asus' && steps.fetcher-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
           path: ~/.cache/nix

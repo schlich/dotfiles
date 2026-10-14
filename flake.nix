@@ -284,21 +284,25 @@
           inherit path;
         }) denAsus.config.home-manager.users.schlich.dotfiles.tooling.checks
       );
-      denHostEvaluationCheck = pkgs.writeText "den-host-evaluation" (
-        # Keep all host derivations evaluated without adding their closures as
-        # inputs. headless-system already evaluates and builds asus-headless.
-        builtins.unsafeDiscardStringContext (
-          lib.concatStringsSep "" (
-            lib.mapAttrsToList (
-              name: host:
-              "${name}: ${host.config.networking.hostName}: ${host.config.system.build.toplevel.drvPath}\n"
-            ) (removeAttrs denFlake.nixosConfigurations [ "asus-headless" ])
+      # Keep every host derivation evaluated without adding its closure as an
+      # input, one check per host: all of them in one evaluator came within
+      # 0.3 GiB of ci's 6 GiB evaluation budget. headless-system already
+      # evaluates and builds asus-headless, and colmena-hive-NAME evaluates
+      # each deployed host.
+      denHostEvaluationChecks =
+        lib.mapAttrs'
+          (
+            name: host:
+            lib.nameValuePair "den-host-${name}" (
+              pkgs.writeText "den-host-${name}" (
+                builtins.unsafeDiscardStringContext "${name}: ${host.config.networking.hostName}: ${host.config.system.build.toplevel.drvPath}\n"
+              )
+            )
           )
-        )
-      );
+          (removeAttrs denFlake.nixosConfigurations ([ "asus-headless" ] ++ builtins.attrNames deployHosts));
       # The workstation with only its primary terminal, editor, and agent
-      # desktop client; CI builds this closure, and the host evaluation check
-      # covers the full one.
+      # desktop client; CI builds this closure, and colmena-hive-asus
+      # evaluates the full one.
       denAsusPrimary = denAsus.extendModules {
         modules = [ { home-manager.users.schlich.dotfiles.alternates = false; } ];
       };
@@ -524,7 +528,6 @@
           PYTHONPATH=src python3 -m unittest discover -s tests -v
           touch "$out"
         '';
-        den-host-evaluation = denHostEvaluationCheck;
         marimohub = marimohub;
         marimohub-homelab-evaluation = marimohubHomelabEvaluationCheck;
         # One Markdown file as an IWE node and a marimo notebook: IWE
@@ -657,7 +660,8 @@
               touch "$out"
             '';
       }
-      // colmenaHiveChecks;
+      // colmenaHiveChecks
+      // denHostEvaluationChecks;
     };
   nixConfig = {
     extra-substituters = [
