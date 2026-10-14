@@ -251,6 +251,12 @@ decisions, how-tos, and personal notes.
 
 # Jujutsu
 
+When a repository uses Git but has no JJ repository, such as when a `jj`
+command reports that there is no jj repo, run `jj git init --colocate` in it
+before other work, without asking. Colocation keeps Git working alongside JJ.
+Then track the trunk's remote bookmark, such as
+`jj bookmark track main@origin`.
+
 Do not invoke `jj` in interactive mode. Use only non-interactive invocations,
 supplying every required argument or message flag explicitly.
 
