@@ -296,6 +296,13 @@ before other work, without asking. Colocation keeps Git working alongside JJ.
 Then track the trunk's remote bookmark, such as
 `jj bookmark track main@origin`.
 
+A new project, one whose repository has no remotes yet, is hosted on Tangled.
+The Nushell `jj git init` runs `tangled-init` for such a repository, which adds
+the `tangled` remote for `schlich.tngl.sh/NAME` and makes it the repository's
+push remote and trunk. Run `tangled-init` yourself when the repository was
+initialized another way, such as through the jj MCP server. Creating the
+repository on Tangled is the user's step; `tangled-init` says whether it exists.
+
 Do not invoke `jj` in interactive mode. Use only non-interactive invocations,
 supplying every required argument or message flag explicitly.
 

@@ -85,6 +85,8 @@ in
     # In the repositories Tangled hosts, it holds trunk and GitHub (origin) is
     # only a mirror that `ci land` updates. Elsewhere jj keeps its own remote
     # defaults; a global main@tangled broke every repository without one.
+    # New repositories get the same settings in their own config from
+    # `tangled-init`.
     "--scope" = [
       {
         "--when".repositories = [
@@ -108,6 +110,7 @@ in
     ci.jj-describe
     ci.ci
     (pkgs.writeNuScriptBin "jj-dashboard" (builtins.readFile ../../jj/dashboard.nu))
+    (pkgs.writeNuScriptBin "tangled-init" (builtins.readFile ../../jj/tangled-init.nu))
     ci.context-status
   ];
 
@@ -123,5 +126,7 @@ in
     jj-guard = ciNushell.guard;
     # `jw NAME` changes to a JJ workspace's root.
     jj-workspace = ciNushell.workspace;
+    # `jj git init` of a repository without remotes runs `tangled-init`.
+    jj-tangled-init = ../../jj/tangled-init-hook.nu;
   };
 }

@@ -15,6 +15,13 @@ Earlier history of the workflow is here: `jj log -- jj/ci.nu`.
 What stays in this directory is this machine's glue around it:
 
 - `dashboard.nu` is `jj-dashboard`, below.
+- `tangled-init.nu` is `tangled-init`, which gives a new repository the
+  `tangled` remote for `schlich.tngl.sh/NAME` and makes it the repository's
+  push remote and trunk in its own JJ config. `tangled-init-hook.nu` runs it
+  after a Nushell `jj git init` whose repository has no remotes, so clones and
+  repositories that already publish elsewhere are left alone. Create the
+  repository at https://tangled.org/repo/new; `tangled-init` reports whether
+  it exists yet.
 - `webhook-setup.nu` and `WEBHOOK.md` set up the agent follow-up after
   successful checks.
 - `receive-verification.nu` is homelab's forced command for the

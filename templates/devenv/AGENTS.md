@@ -31,8 +31,9 @@
   the task; dispatch does not create unrelated follow-up changes.
 - Use a dedicated JJ workspace per concurrent task and open it as a local
   project. Do not use the desktop Git worktree or commit actions.
-- Start each workspace from `main@origin`, rebase after trunk advances and
-  before review or queue updates, and never share a mutable topic worktree.
+- Start each workspace from `trunk()` (`main@tangled`), rebase after trunk
+  advances and before review or queue updates, and never share a mutable
+  topic worktree.
 - Where available, use `ci rebase`, `ci dispatch`, and `ci park` for
   updating, dispatching, and closing out the topic. Archive only after verified
   delivery of the current head to main.
