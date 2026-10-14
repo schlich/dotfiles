@@ -12,9 +12,10 @@ editor's save endpoint), then checks that
 4. IWE normalization (which rewrites fences as ``` python {.marimo})
    leaves marimo's view of the cells unchanged;
 5. the version-control diff contains the edit and nothing else, apart from
-   the final newline: marimo strips the rendered document on save
-   (marimo/_convert/markdown/flavor/base.py), so a file that ended in a
-   newline loses it. The diff comes from `jj diff --git` when WORKSPACE is a
+   the final newline and `marimo-version`: marimo strips the rendered
+   document on save (marimo/_convert/markdown/flavor/base.py), so a file
+   that ended in a newline loses it, and it stamps its own version over the
+   frontmatter's. The diff comes from `jj diff --git` when WORKSPACE is a
    JJ repository, so the check sees exactly what review would see.
 """
 
@@ -140,7 +141,8 @@ def main(workspace: Path) -> None:
     unexpected = {
         line[1:].strip()
         for line in changed
-        if line[1:].strip() not in allowed and not line.startswith("+marimo-version:")
+        if line[1:].strip() not in allowed
+        and not line[1:].startswith("marimo-version:")
     }
     assert not unexpected, f"unexpected changes: {unexpected}"
     assert any(NEW in line for line in changed), "the edit is missing from the diff"
