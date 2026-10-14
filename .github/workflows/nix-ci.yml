@@ -1,6 +1,7 @@
 name: nix-ci
-# Build every flake check and verify formatting and impact classification
-# for topic branches, pull requests, and main.
+# Build every flake check and verify formatting for topic branches, pull
+# requests, and main. Impact declarations live in the landing machine's ci
+# log, so `ci land` classifies the topic there rather than here.
 on:
   pull_request:
   # `ci land --gate github` pushes the topic branch and waits for these
@@ -17,27 +18,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  impact:
-    # Every commit carries an Impact trailer; a refactor must leave every
-    # NixOS closure identical to the merge base. Main runs were already
-    # classified on their topic branch.
-    name: impact classification
-    if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/jj-')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: DeterminateSystems/determinate-nix-action@v3.21.9
-      - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
-      - name: Classify and verify the topic
-        env:
-          PR_BASE: ${{ github.event.pull_request.base.sha }}
-          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: |
-          BASE="${PR_BASE:-$(git merge-base origin/main "$HEAD")}"
-          nix run .#ci -- impact check "$BASE" "$HEAD"
   checkmate:
     name: Checkmate formatting and unit-test skeleton
     runs-on: ubuntu-latest
@@ -148,7 +128,7 @@ jobs:
           [[ "$DISCOVER" == success && "$CHECK" == success ]]
   failure-review:
     name: CI failure architecture review
-    needs: [impact, checkmate, discover, check, checks]
+    needs: [checkmate, discover, check, checks]
     if: ${{ always() && failure() }}
     runs-on: ubuntu-latest
     steps:

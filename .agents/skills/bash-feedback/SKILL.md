@@ -59,7 +59,7 @@ or data from other projects into the repository.
 ## 3. Change the repository
 
 Work in the dotfiles repository under its own rules: a dedicated JJ
-workspace, `Impact: behavior` for instruction or policy changes, and
+workspace, impact declared `behavior` for instruction or policy changes, and
 approval before activation. If `bash-policy.nuon` changes, add a case to
 `modules/tooling/ai/tests/pretooluse-hooks.mjs` that the new rule
 decides.

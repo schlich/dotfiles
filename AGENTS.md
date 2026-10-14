@@ -147,7 +147,8 @@
 - Tangled (`tangled` remote) hosts `main` and every topic branch. GitHub
   (`origin`) mirrors `main` and can clear a landing with
   `ci land --clearance github`. Never merge a GitHub pull request: squash and
-  rebase merges rewrite the tested commit and lose change IDs and trailers.
+  rebase merges rewrite the tested commit and lose change IDs and the impact
+  declarations keyed by them.
 - Use `ci sync` only from an empty working copy without an active task owner.
   It fetches `tangled`,
   advances the local `main` bookmark to `main@tangled`, and rebases the working
@@ -172,14 +173,18 @@
 
 - `prek` is installed declaratively. Run `prek run --all-files` or
   `ci preflight` before dispatch; JJ changes do not invoke Git hooks.
-- End every JJ change description with an `Impact:` trailer. Use `refactor`
-  when no NixOS closure changes (refactors, docs, CI, and tooling;
-  `ci land` verifies it), `behavior` for a user-facing change, and
-  `breaking` for a user-facing change that needs manual steps, which the
-  description body must list. Keep refactors and user-facing changes in
-  separate topics or stack layers. Each behavior or breaking revision that
-  lands becomes a `YYYY.MM.DD.N` release; refactors cut none. See the ci
-  repository's README (tangled.org/schlich.tngl.sh/ci).
+- Declare every JJ change's impact with `ci impact set CLASS`, not in its
+  description, which stays prose. Use `refactor` when no NixOS closure
+  changes (refactors, docs, CI, and tooling; `ci land` verifies it),
+  `behavior` for a user-facing change, and `breaking STEP...` for a
+  user-facing change that needs manual steps, one argument per step. Pass
+  `-r REV` to declare another revision of a stack; declaring again replaces
+  the declaration. It is recorded in this machine's ci log, keyed by change
+  ID, so dispatch and land the topic from the machine that declared it. Keep
+  refactors and user-facing changes in separate topics or stack layers. Each
+  behavior or breaking revision that lands becomes a `YYYY.MM.DD.N` release;
+  refactors cut none. See the ci repository's README
+  (tangled.org/schlich.tngl.sh/ci).
 - `ci` comes from the `ci` flake input. Change the workflow in its own
   repository, then move this one to it with `nix flake update ci`; try an
   unreleased copy here with `CI_SCRIPT=/path/to/ci.nu ci ...`.
@@ -191,7 +196,7 @@
   also authorizes delivery: run `ci dispatch`, then `ci land` right away
   (its local clearance builds the checks), and `ci park` afterwards. Still stop after dispatching
   and ask before landing when the change affects several hosts, is part of a
-  stack, is `Impact: breaking`, or touches boot, storage, encryption, or
+  stack, is declared `breaking`, or touches boot, storage, encryption, or
   security configuration. A failed validation, pipeline, or rebase conflict
   stops delivery and is reported, never resolved automatically.
 - Keep one coherent topic per Codex task. Use one stable JJ change for a single

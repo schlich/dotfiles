@@ -40,7 +40,7 @@ Evolve this flake carefully with **jj-first** version control discipline. Prefer
    - Home Manager changes: `nix build path:.#nixosConfigurations.asus.config.home-manager.users.schlich.home.activationPackage` (there is no standalone `homeConfigurations` output)
    - system changes: `nix build path:.#nixosConfigurations.asus.config.system.build.toplevel`
 1. Run `ci preflight` before dispatch. `ci land` is the comprehensive gate: it builds every flake check at the exact commit it lands. The Tangled spindle runs `.tangled/workflows/` only when started by hand, so never wait for it.
-1. Follow `AGENTS.md` (Preflight and landing) to ship: end the description with an `Impact:` trailer, `ci dispatch` pushes the topic's stable `jj-*` branch to `tangled`, and `ci land` alone delivers it to `main`. Open a Tangled pull request from that branch only when the topic needs review. Dispatch or land only when the user asks.
+1. Follow `AGENTS.md` (Preflight and landing) to ship: declare the change's impact with `ci impact set CLASS`, `ci dispatch` pushes the topic's stable `jj-*` branch to `tangled`, and `ci land` alone delivers it to `main`. Open a Tangled pull request from that branch only when the topic needs review. Dispatch or land only when the user asks.
 1. Never push `main` directly, push topics to `origin`, or open or merge GitHub pull requests: GitHub only mirrors `main`, and its squash and rebase merges rewrite the tested commit.
 1. Preserve unrelated user changes, and keep one stable change ID per deliverable; finish the in-scope work only after formatting and any requested validation succeed, and leave it open if validation fails.
 1. Keep explanations concise and behavior-focused.
