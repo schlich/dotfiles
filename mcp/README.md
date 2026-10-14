@@ -86,5 +86,8 @@ Progress travels as records too. Both servers point `PST_FILE` at
 `LOG.status.jsonl`, where the `pst` module appends each OSC 7501 report the
 job makes, and `watch-job` prints each as a `STATUS: {...}` NUON record.
 `ci` reports its phases, its landing, releases, the GitHub mirror, and its
-retries there. Only a job that reports nothing has its log searched with a
-pattern instead.
+retries there. A reporting job's log is still searched for alarms, such as
+a killed evaluator, which print as `ALARM: LINE`; a job that reports
+nothing has its log searched with a broader pattern instead. A job quiet
+for `--quiet-after` (five minutes) gets a `STILL: {...}` heartbeat with its
+latest phase, how long it has been there, and its last log line.

@@ -146,9 +146,13 @@ script, use valid Nushell syntax.
   `STATUS: {state, id, msg, ...}` NUON record for each OSC 7501 report,
   such as `ci`'s phases, landing, releases, and retries, and a final
   `DONE: {...}` record with the outcome as soon as the job ends, or
-  `DONE: {state: lost}` when the Nushell that ran the job has exited. Only
-  a job that writes no reports, such as a bare `nix build`, falls back to
-  log lines that match its pattern. If the Monitor expires before `DONE`,
+  `DONE: {state: lost}` when the Nushell that ran the job has exited. A
+  reporting job's log still raises `ALARM: LINE` for trouble it did not
+  report, such as a killed evaluator; only a job that writes no reports,
+  such as a bare `nix build`, falls back to log lines that match its
+  pattern. After five quiet minutes, and every five after that, a
+  `STILL: {quiet, phase, phase_for, last_line}` heartbeat says where the
+  job is. If the Monitor expires before `DONE`,
   start the same command again; it resumes where the last one stopped.
   Without Monitor, check the done marker before reporting.
 
@@ -159,7 +163,9 @@ script, use valid Nushell syntax.
 
 - A `STATUS` record with `state: blocked`, or a `DONE` with a nonzero
   `exit_code` or `state: lost`, needs the user: tell them, and send a push
-  notification when the harness offers one.
+  notification when the harness offers one. An `ALARM` line may be
+  recoverable, as when an evaluator restarts a worker it killed: tell the
+  user what it says, without a push unless the job then fails.
 
 - Edit files with the harness's own editing tools, not with Nushell `save`
   or `str replace` pipelines. Claude Code's checkpoints and rewind track

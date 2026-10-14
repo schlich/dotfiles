@@ -54,14 +54,14 @@ def main [watch_job: path] {
   let result = (do $watch $log 10sec)
   $failures = ($failures | append (check "job-log job ends at its done event" $result.run ['^=== build$' '^error: boom$' '^DONE: \{exit_code: 3, error: '] $result.took 5sec))
 
-  # A job that reports its status is followed by its reports alone, as NUON
+  # A job that reports its status is followed by its reports, as NUON
   # records without their timestamps: its log lines, even ones the pattern
   # matches, and its clear report print nothing.
   let log = ($tmp | path join reported.log)
   job-log $log { ^sh -c r#'
     report() { printf '%s\n' "$1" >> "$PST_FILE"; }
     report '{"time":"2026-10-07T08:00:00-05:00","state":"working","id":"rebase","app":"ci","msg":"Rebasing"}'
-    echo "error: a line the pattern matches"
+    echo "=== a line the pattern matches"
     sleep 1
     report '{"time":"2026-10-07T08:00:01-05:00","state":"done","id":"land","app":"ci","msg":"Landed jj-x on main"}'
     report '{"time":"2026-10-07T08:00:01-05:00","state":"clear","app":"ci"}'
@@ -69,6 +69,33 @@ def main [watch_job: path] {
   '# } | ignore
   let result = (do $watch $log 10sec)
   $failures = ($failures | append (check "reported job prints its reports alone" $result.run ['^STATUS: \{state: working, id: rebase, app: ci, msg: Rebasing\}$' '^STATUS: \{state: done, id: land, app: ci, msg: "Landed jj-x on main"\}$' '^DONE: \{exit_code: 0\}$'] $result.took 5sec))
+
+  # Trouble a reporting job logs but does not report still reaches the
+  # Monitor, as an alarm after the report it follows.
+  let log = ($tmp | path join alarm.log)
+  job-log $log { ^sh -c r#'
+    report() { printf '%s\n' "$1" >> "$PST_FILE"; }
+    report '{"time":"2026-10-07T08:00:00-05:00","state":"working","id":"clearance","app":"ci","msg":"Waiting for local flake checks"}'
+    echo "=== a line only the pattern matches"
+    echo "memory budget of 6144 MiB exceeded (6156 MiB in use), killing worker 411986 ('den-host-evaluation', 6118 MiB)"
+  '# } | ignore
+  let result = (do $watch $log 10sec)
+  $failures = ($failures | append (check "reported job raises alarms" $result.run ['^STATUS: \{state: working, id: clearance, app: ci, msg: "Waiting for local flake checks"\}$' '^ALARM: memory budget of 6144 MiB exceeded .*killing worker' '^DONE: \{exit_code: 0\}$'] $result.took 5sec))
+
+  # A job quiet for longer than --quiet-after gets a heartbeat naming its
+  # phase and last log line, once per quiet period.
+  let log = ($tmp | path join quiet.log)
+  job-log $log { ^sh -c r#'
+    printf '%s\n' "{\"time\":\"$(date -Iseconds)\",\"state\":\"working\",\"id\":\"build\",\"app\":\"ci\",\"msg\":\"Building\"}" >> "$PST_FILE"
+    echo "building desktop-primary"
+    sleep 1.6
+  '# } | ignore
+  let result = (do {
+    let started = (date now)
+    let run = (^timeout 30 nu --no-config-file $watch_job $log --interval 200ms --quiet-after 1sec | complete)
+    { run: $run, took: ((date now) - $started) }
+  })
+  $failures = ($failures | append (check "quiet job gets a heartbeat" $result.run ['^STATUS: \{state: working, id: build, app: ci, msg: Building\}$' '^STILL: \{quiet: "1sec", phase: Building, phase_for: "[12]sec", last_line: "building desktop-primary"\}$' '^DONE: \{exit_code: 0\}$'] $result.took 5sec))
 
   # Without a store the watcher reads on a timer, and a line written in two
   # parts is read once it is whole.
