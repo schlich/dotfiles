@@ -626,6 +626,30 @@
               ${pkgs.nushell}/bin/nu --no-config-file ${src}/tests/agent.nu
               touch "$out"
             '';
+        nushell-parse =
+          let
+            # profile-drift.nu is a fragment the flake completes, so check
+            # the installed script in its place.
+            src = lib.fileset.toSource {
+              root = ./.;
+              fileset = lib.fileset.difference (lib.fileset.fileFilter (
+                file: file.hasExt "nu"
+              ) ./.) ./tools/profile-drift.nu;
+            };
+          in
+          pkgs.runCommand "nushell-parse-check"
+            {
+              nativeBuildInputs = [ pkgs.nushell ];
+            }
+            ''
+              export HOME="$TMPDIR/home"
+              mkdir -p "$HOME"
+              cd ${src}
+              find . -name '*.nu' -print0 \
+                | xargs -0 ${pkgs.nushell}/bin/nu --no-config-file ${./tests/nu-parse.nu} \
+                  ${profileDrift}/bin/profile-drift
+              touch "$out"
+            '';
         # The ci workflow's model, machine, and property tests run as the ci
         # repository's own flake checks.
         ruff =
