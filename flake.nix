@@ -882,6 +882,20 @@
               ruff format --no-cache --config ${./workbench/ruff.toml} --check ${./workbench/python} ${./workbench/tests}
               touch "$out"
             '';
+        # TLC explores every state of the staged switch's bounded model, once
+        # with activation able to outlast the dead-man's grace period and once
+        # with the timer firing only after its run has died.
+        staged-switch-model =
+          pkgs.runCommand "staged-switch-model-check" { nativeBuildInputs = [ pkgs.tlaplus ]; }
+            ''
+              cp ${./deploy/StagedSwitch.tla} StagedSwitch.tla
+              cp ${./deploy/StagedSwitch.cfg} StagedSwitch.cfg
+              cp ${./deploy/StagedSwitchOnTime.cfg} StagedSwitchOnTime.cfg
+              for cfg in StagedSwitch StagedSwitchOnTime; do
+                tlc -workers auto -metadir "$TMPDIR/$cfg" -config "$cfg.cfg" StagedSwitch.tla
+              done
+              touch "$out"
+            '';
         whitespace =
           pkgs.runCommand "whitespace-check"
             {
