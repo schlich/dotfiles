@@ -52,6 +52,22 @@
         "type": "github"
       }
     },
+    "antithesis-skills": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1792043478,
+        "narHash": "sha256-q9heor3NFDIS3Q4hcmkd2y2KBZyNBcVdE0UNW3Frvlo=",
+        "owner": "antithesishq",
+        "repo": "antithesis-skills",
+        "rev": "527c182d17aac476fdf9c9ca5e290e03caa4b62a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "antithesishq",
+        "repo": "antithesis-skills",
+        "type": "github"
+      }
+    },
     "archify": {
       "flake": false,
       "locked": {
@@ -978,6 +994,22 @@
         "type": "github"
       }
     },
+    "hegel-skill": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1791812317,
+        "narHash": "sha256-AtMzIyK0zFecAVybl86nDFfJkb28qMvmhBIPgkGSXKw=",
+        "owner": "hegeldev",
+        "repo": "hegel-skill",
+        "rev": "6fd049a4a1912588c8a6be238d3654ed66a80646",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hegeldev",
+        "repo": "hegel-skill",
+        "type": "github"
+      }
+    },
     "hls-src": {
       "flake": false,
       "locked": {
@@ -1805,6 +1837,7 @@
     "root": {
       "inputs": {
         "ai-usagebar": "ai-usagebar",
+        "antithesis-skills": "antithesis-skills",
         "archify": "archify",
         "atuin": "atuin",
         "autoresearch": "autoresearch",
@@ -1818,6 +1851,7 @@
         "gen-inspect": "gen-inspect",
         "gh-stack": "gh-stack",
         "grill-me": "grill-me",
+        "hegel-skill": "hegel-skill",
         "home-manager": "home-manager",
         "impermanence": "impermanence",
         "iwe": "iwe",

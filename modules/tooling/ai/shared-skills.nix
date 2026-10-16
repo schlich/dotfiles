@@ -26,3 +26,23 @@
   "html-plan"
   "html-diagram"
 ] (name: "${inputs.effective-html}/skills/${name}")
+# Antithesis's skills for setting up, launching, and triaging Antithesis runs.
+// inputs.nixpkgs.lib.genAttrs [
+  "antithesis-debug"
+  "antithesis-documentation"
+  "antithesis-feature-workload"
+  "antithesis-launch"
+  "antithesis-mutation-testing"
+  "antithesis-research"
+  "antithesis-review-inputs"
+  "antithesis-setup"
+  "antithesis-setup-k8s"
+  "antithesis-skills-feedback"
+  "antithesis-triage"
+  "antithesis-workload"
+] (name: "${inputs.antithesis-skills}/${name}")
+# Hegel's skills for writing and reviewing property-based tests.
+// inputs.nixpkgs.lib.genAttrs [
+  "hegel"
+  "hegel-review"
+] (name: "${inputs.hegel-skill}/skills/${name}")

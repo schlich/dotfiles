@@ -102,6 +102,14 @@
       url = "github:uditgoenka/autoresearch";
       flake = false;
     };
+    antithesis-skills = {
+      url = "github:antithesishq/antithesis-skills";
+      flake = false;
+    };
+    hegel-skill = {
+      url = "github:hegeldev/hegel-skill";
+      flake = false;
+    };
     # No flake upstream; bump the tag to update IWE.
     iwe = {
       url = "github:iwe-org/iwe/iwe-v0.24.2";
