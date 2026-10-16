@@ -1,0 +1,7 @@
+{
+  "name": "nushell-cards",
+  "version": "0.1.0",
+  "description": "Draw each Nushell evaluate call as a card titled by its comment, and stream the logs of job-log jobs into it and into their Monitors.",
+  "author": { "name": "schlich" },
+  "types": "./types/index.d.ts"
+}

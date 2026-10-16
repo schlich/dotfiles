@@ -328,6 +328,9 @@ in
     plugins.prefer-nushell = preferNushellGuard;
     plugins.agent-trust = agentTrust;
     plugins.nushell-display = nushellDisplay;
+    # Draw each Nushell evaluation as a card titled by its `# comment`, and
+    # stream a `job-log` job's log into its card and its Monitor's.
+    plugins.nushell-cards = ./claude-plugins/nushell-cards;
     plugins.context-status = contextStatusHandoff;
     plugins.background-tasks = backgroundTasks;
     plugins.prefer-nix-mcp = preferNixMcp;
