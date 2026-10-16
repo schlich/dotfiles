@@ -218,9 +218,12 @@
 - The spindle runs `.tangled/workflows` only when started by hand; pushes do
   not trigger it, so never wait for a spindle run before landing. The
   flake-checks workflow and the local clearance run the same command: it builds
-  every attribute of `checks.x86_64-linux`, including the headless and primary
-  desktop system builds, and skips checks whose outputs are already cached.
-  Add a check by adding a flake check; neither needs a change.
+  every attribute of `checks.x86_64-linux` and skips checks whose outputs are
+  already cached. Those checks evaluate every host but build no system
+  closure: the headless and primary desktop closures are `remoteChecks`,
+  which GitHub Actions builds after each push without blocking a landing. A closure that fails to build can land, but no host
+  activates it, since a switch builds before it stages anything. Add a check
+  by adding a flake check; neither needs a change.
 
 ## Stacked topics
 
@@ -288,8 +291,9 @@
 - The architecture and safe recovery flow are documented in `docs/architecture.md`.
 
 Repository checks are `nix fmt` and `nix flake check --no-build path:.`. The
-flake checks include the workstation and headless system builds, so build them
-only when explicitly requested because they are expensive; `nix-fast-build --skip-cached --flake path:.#checks.x86_64-linux` runs the same set as CI.
+flake checks evaluate the workstation and headless systems, and `remoteChecks`
+build them, so build either only when explicitly requested because they are
+expensive; `nix-fast-build --skip-cached --flake path:.#checks.x86_64-linux` runs the same set as `ci land`.
 `nixos-rebuild switch` is never an agent validation step.
 
 ## Continuous integration and merge-conflict policy

@@ -284,8 +284,7 @@
       );
       # Keep every host derivation evaluated without adding its closure as an
       # input, one check per host: all of them in one evaluator came within
-      # 0.3 GiB of ci's 6 GiB evaluation budget. headless-system already
-      # evaluates and builds asus-headless, and colmena-hive-NAME evaluates
+      # 0.3 GiB of ci's 6 GiB evaluation budget. colmena-hive-NAME evaluates
       # each deployed host. Disposable hosts are left to remoteChecks.
       denHostEvaluationChecksFor = lib.mapAttrs' (
         name: host:
@@ -297,7 +296,7 @@
       );
       denHostEvaluationChecks = denHostEvaluationChecksFor (
         removeAttrs denFlake.nixosConfigurations (
-          [ "asus-headless" ] ++ builtins.attrNames deployHosts ++ builtins.attrNames remoteCheckHosts
+          builtins.attrNames deployHosts ++ builtins.attrNames remoteCheckHosts
         )
       );
       # Hosts whose inventory policy marks them disposable still have to
@@ -310,8 +309,8 @@
         builtins.intersectAttrs remoteCheckHosts denFlake.nixosConfigurations
       );
       # The workstation with only its primary terminal, editor, and agent
-      # desktop client; CI builds this closure, and colmena-hive-asus
-      # evaluates the full one.
+      # desktop client; CI builds this closure after landing, and
+      # colmena-hive-asus evaluates the full one.
       denAsusPrimary = denAsus.extendModules {
         modules = [ { home-manager.users.schlich.dotfiles.alternates = false; } ];
       };
@@ -591,8 +590,11 @@
                 --flake ${./.}#tests.systems.${system}
               touch "$out"
             '';
-        desktop-primary = denAsusPrimary.config.system.build.toplevel;
-        headless-system = denFlake.nixosConfigurations.asus-headless.config.system.build.toplevel;
+        # The closure builds after landing (remoteChecks); evaluating it here
+        # still rejects a broken configuration before it lands.
+        desktop-primary-evaluation = pkgs.writeText "desktop-primary-evaluation" (
+          builtins.unsafeDiscardStringContext "${denAsusPrimary.config.system.build.toplevel.drvPath}\n"
+        );
         den-policy = denPolicyCheck;
         dev-shell = pkgs.runCommand "dev-shell-check" { } ''
           test -x ${jjCi}/bin/ci
@@ -701,6 +703,11 @@
       remoteChecks.${system} = remoteHostEvaluationChecks // {
         marimohub-homelab-evaluation = marimohubHomelabEvaluationCheck;
         nixbot-homelab-evaluation = nixbotHomelabEvaluationCheck;
+        # The system closures build after landing. A revision whose closure
+        # fails to build can land, but no host activates it: a switch builds
+        # the closure before it stages anything.
+        desktop-primary = denAsusPrimary.config.system.build.toplevel;
+        headless-system = denFlake.nixosConfigurations.asus-headless.config.system.build.toplevel;
       };
     };
   nixConfig = {

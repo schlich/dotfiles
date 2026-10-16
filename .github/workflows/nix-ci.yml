@@ -82,19 +82,22 @@ jobs:
       - name: Run Checkmate nix-unit tests
         run: nix build --no-update-lock-file -L github:denful/checkmate#checks.x86_64-linux.nix-unit --override-input target github:$GITHUB_REPOSITORY/$GITHUB_SHA
   discover:
-    # The flake's checks output is the only list of CI checks: each attribute
-    # becomes one job below, locally and in CI alike.
+    # The flake's checks and remoteChecks outputs are the only lists of CI
+    # checks: each attribute becomes one job below, locally and in CI alike.
     name: Discover flake checks
     runs-on: ubuntu-latest
     outputs:
       checks: ${{ steps.checks.outputs.checks }}
+      remote: ${{ steps.checks.outputs.remote }}
     steps:
       - uses: actions/checkout@v6
       - uses: DeterminateSystems/determinate-nix-action@v3.21.9
       - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
       - name: List flake checks
         id: checks
-        run: echo "checks=$(nix --accept-flake-config eval --json .#checks.x86_64-linux --apply builtins.attrNames)" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "checks=$(nix --accept-flake-config eval --json .#checks.x86_64-linux --apply builtins.attrNames)" >> "$GITHUB_OUTPUT"
+          echo "remote=$(nix --accept-flake-config eval --json .#remoteChecks.x86_64-linux --apply builtins.attrNames)" >> "$GITHUB_OUTPUT"
   check:
     name: flake check (${{ matrix.check }})
     needs: discover
@@ -105,125 +108,29 @@ jobs:
         check: ${{ fromJSON(needs.discover.outputs.checks) }}
     steps:
       - uses: actions/checkout@v6
-      # Only the desktop closure outgrows the runner's free disk.
-      - name: Start freeing runner disk space
-        if: matrix.check == 'desktop-primary'
-        run: |
-          status_file="$RUNNER_TEMP/runner-disk-cleanup.status"
-          log_file="$RUNNER_TEMP/runner-disk-cleanup.log"
-          pid_file="$RUNNER_TEMP/runner-disk-cleanup.pid"
-          rm -f "$status_file" "$log_file" "$pid_file"
-
-          (
-            trap 'printf "%s\n" "$?" > "$status_file"' EXIT
-            set -e
-            cleanup_paths=(
-              /opt/ghc
-              /opt/hostedtoolcache/CodeQL
-              /usr/local/lib/android
-              /usr/local/lib/node_modules
-              /usr/local/share/chromium
-              /usr/local/share/powershell
-              /usr/share/dotnet
-            )
-            cleanup_pids=()
-            for path in "${cleanup_paths[@]}"; do
-              sudo rm -rf -- "$path" &
-              cleanup_pids+=("$!")
-            done
-            cleanup_status=0
-            for cleanup_pid in "${cleanup_pids[@]}"; do
-              if ! wait "$cleanup_pid"; then
-                cleanup_status=1
-              fi
-            done
-            if ((cleanup_status != 0)); then
-              exit "$cleanup_status"
-            fi
-            sudo apt-get clean
-            sudo docker system prune --all --force
-            df -h
-          ) >"$log_file" 2>&1 </dev/null &
-          echo "$!" > "$pid_file"
-      - uses: DeterminateSystems/determinate-nix-action@v3.21.9
-      - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
-      # Evaluation fetches sources outside flake.lock, such as Helix's
-      # tree-sitter grammars, which no binary cache holds. Reuse Nix's fetcher
-      # cache instead of downloading them again in every job.
-      - name: Restore the Nix fetcher cache
-        id: fetcher-cache
-        uses: actions/cache/restore@v6
+      - uses: ./.github/actions/flake-check
         with:
-          path: ~/.cache/nix
-          key: nix-fetcher-${{ hashFiles('flake.lock') }}
-          restore-keys: nix-fetcher-
-      # nix-fast-build evaluates and queries the binary cache through `nix`
-      # before building, so only `nix build` waits for the cleanup; the
-      # evaluation runs meanwhile. Its stdout is the job log.
-      - name: Hold builds until runner disk cleanup finishes
-        if: matrix.check == 'desktop-primary'
-        run: |
-          wrapper="$RUNNER_TEMP/nix-after-disk-cleanup"
-          cat > "$wrapper" <<'EOF'
-          #!/usr/bin/env bash
-          set -euo pipefail
-          case " $* " in
-            *" build "*)
-              status_file="$RUNNER_TEMP/runner-disk-cleanup.status"
-              log_file="$RUNNER_TEMP/runner-disk-cleanup.log"
-              pid_file="$RUNNER_TEMP/runner-disk-cleanup.pid"
-              cleanup_pid="$(<"$pid_file")"
-
-              while [[ ! -f "$status_file" ]]; do
-                if ! kill -0 "$cleanup_pid" 2>/dev/null; then
-                  echo "Runner disk cleanup exited without reporting a status."
-                  cat "$log_file"
-                  exit 1
-                fi
-                sleep 1
-              done
-
-              cleanup_status="$(<"$status_file")"
-              if [[ "$cleanup_status" != 0 ]]; then
-                cat "$log_file"
-                exit "$cleanup_status"
-              fi
-              df -h
-              ;;
-          esac
-          exec nix "$@"
-          EOF
-          chmod +x "$wrapper"
-          echo "NIX_FAST_BUILD_NIX=$wrapper" >> "$GITHUB_ENV"
-      # --skip-cached replaces path filtering: an unchanged check is already
-      # in the binary cache, so it passes without being downloaded or rebuilt.
-      - name: Build ${{ matrix.check }}
-        env:
-          CHECK: ${{ matrix.check }}
-        run: >-
-          nix --accept-flake-config run --inputs-from . nixpkgs#nix-fast-build -- --no-nom --skip-cached --flake .#checks.x86_64-linux --select "checks: { inherit (checks) $CHECK; }"
-      # This check evaluates the full workstation, the largest host, so its
-      # fetcher cache serves the rest; anything missing is fetched as before.
-      - name: Save the Nix fetcher cache
-        if: matrix.check == 'colmena-hive-asus' && steps.fetcher-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
-        with:
-          path: ~/.cache/nix
-          key: ${{ steps.fetcher-cache.outputs.cache-primary-key }}
-  remote-checks:
-    # The flake's remoteChecks, such as disposable hosts' evaluations, report
-    # here without blocking: no required status needs this job, and ci land
-    # builds only checks.
-    name: remote checks (non-blocking)
+          set: checks
+          check: ${{ matrix.check }}
+  remote-check:
+    # The flake's remoteChecks, the system closures among them, build here
+    # after each push without blocking: no required status needs
+    # this job, and ci land builds only checks. A failure on main is a
+    # regression that landed; the staged switch keeps it off the hosts.
+    name: remote check (${{ matrix.check }}, non-blocking)
+    needs: discover
     runs-on: ubuntu-latest
     continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        check: ${{ fromJSON(needs.discover.outputs.remote) }}
     steps:
       - uses: actions/checkout@v6
-      - uses: DeterminateSystems/determinate-nix-action@v3.21.9
-      - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
-      - name: Build remote checks
-        run: >-
-          nix --accept-flake-config run --inputs-from . nixpkgs#nix-fast-build -- --no-nom --skip-cached --flake .#remoteChecks.x86_64-linux
+      - uses: ./.github/actions/flake-check
+        with:
+          set: remoteChecks
+          check: ${{ matrix.check }}
   checks:
     # The single required status, so adding or renaming a flake check never
     # requires a branch protection change.
