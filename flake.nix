@@ -293,8 +293,9 @@
       );
       # Keep every host derivation evaluated without adding its closure as an
       # input, one check per host: all of them in one evaluator came within
-      # 0.3 GiB of ci's 6 GiB evaluation budget. colmena-hive-NAME evaluates
-      # each deployed host. Disposable hosts are left to remoteChecks.
+      # 0.3 GiB of 6 GiB, far past ci's 4 GiB evaluation budget.
+      # colmena-hive-NAME evaluates each deployed host. Disposable hosts are
+      # left to remoteChecks.
       denHostEvaluationChecksFor = lib.mapAttrs' (
         name: host:
         lib.nameValuePair "den-host-${name}" (
@@ -418,7 +419,7 @@
       # Colmena must deploy the system nixosConfigurations builds, which is
       # what CI checks and system-switch activates. Comparing them evaluates
       # each host twice, so every host gets its own check: all of them in one
-      # evaluator outgrew ci's 6 GiB evaluation budget.
+      # evaluator outgrew ci's 4 GiB evaluation budget.
       colmenaHiveChecks = lib.mapAttrs' (
         name: _:
         let
