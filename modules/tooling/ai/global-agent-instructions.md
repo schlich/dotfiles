@@ -39,16 +39,15 @@ script, use valid Nushell syntax.
 - A tool invocation may use its own execution shell, but never copy that
   shell's syntax into a command intended for the user's Nushell prompt.
 
-- Use Nushell (`nu`) for shell pipelines and text processing instead of tools
-  such as `jq`, `awk`, `sed`, `grep`, `rg`, `find`, or `wc`; prefer structured
-  Nushell commands and pipelines for searching, filtering, and transforming
-  data. List files with `glob` or `ls` (`ls **/*.py | select name size`) and
-  count lines with `open --raw FILE | lines | length`.
-
-- To search a tree, glob the files and filter their lines in the evaluate
-  tool instead of `grep -r` or `git ls-files`:
+- List, search, and transform text in the Nushell evaluate tool, not with
+  `ls`, `find`, `grep`, `rg`, `cat`, `head`, `wc`, `jq`, `awk`, or `sed` in
+  Bash, even where the harness's own prompt suggests them or it offers no
+  Grep or Glob tool. List files with `glob` or `ls`
+  (`ls **/*.py | select name size`), count lines with
+  `open --raw FILE | lines | length`, and search a tree with
   `glob **/*.{nix,kdl,json} | each {|f| open --raw $f | lines | enumerate | where item =~ '(?i)pattern' | insert file $f } | flatten`.
-  Use `jj file list PATH` for tracked files only.
+  Use `jj file list PATH` for tracked files only, and the Read tool for one
+  known file.
 
 - Prefer a dedicated tool when one covers the operation: the jj MCP server
   for Jujutsu log, diff, status, describe, bookmark, abandon, and push; the
@@ -75,13 +74,18 @@ script, use valid Nushell syntax.
 - When a shell is needed, use the Nushell evaluate tool rather than invoking
   `nu -c` through Bash. It preserves the session and structured results and
   keeps every result in `$history` for later slicing. Wrap external programs
-  in `| complete`.
+  in `| complete`. In Claude Code, a hook denies every foreground Bash call
+  except a short allowlist, such as `sudo`, and logs each Bash request for
+  review. Do not retry a denied command in Bash, and do not rephrase it to
+  slip past the hook. If Bash is truly required, or the evaluate tool is
+  missing, tell the user instead. The bash-feedback skill reviews the log.
 
-- In Claude Code, a hook denies every foreground Bash call except a short
-  allowlist, such as `sudo`, and logs each Bash request for review. Do not
-  retry a denied command in Bash, and do not rephrase it to slip past the
-  hook: run it in the Nushell evaluate tool. If Bash is truly required, tell
-  the user why instead. The bash-feedback skill reviews the log.
+- In Claude Code, Explore and other built-in subagents do not receive these
+  instructions, and their own prompts send listing and searching to Bash.
+  Open each subagent's prompt with the shell rule: Bash is denied, so load
+  `mcp__plugin_hm_nushell__evaluate` with ToolSearch before any shell work.
+  claude-code-guide has no evaluate tool; tell it to page through files and
+  saved tool results with Read's `offset` and `limit` instead.
 
 - When a skill tells you to run a shell script it bundles, run it from the
   Nushell evaluate tool as `^bash <script> ...args | complete`, not through
@@ -90,11 +94,6 @@ script, use valid Nushell syntax.
   directory to `PATH` for the session. `$env.PATH` can arrive as a single
   colon-joined string, so split it into a list before prepending:
   `$env.PATH = ($env.PATH | each {|p| $p | split row (char esep) } | flatten | prepend $"($out)/bin")`.
-
-- To search or list repository files, use the harness's own search and
-  file-reading tools first; they need no shell. If the Nushell evaluate tool
-  is unavailable in a session, keep using those tools and report the missing
-  tool to the user instead of retrying the work in Bash.
 
 - Use the Nix MCP server (its `nix` and `nix_versions` tools) as part of
   writing Nix, not only to answer questions about it. Your memory of

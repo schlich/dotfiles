@@ -239,7 +239,7 @@ const cases = [
       "python3 << 'EOF'\nprint(open('result.txt').read())\nEOF",
     ),
     decision: "deny",
-    reason: /built-in Read, Grep, and Glob tools/,
+    reason: /Read tool's offset and limit/,
   },
   {
     hook: "prefer-nushell",
