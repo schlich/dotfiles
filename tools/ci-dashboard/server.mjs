@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
-import { readFile } from "node:fs/promises";
+import { open, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
@@ -26,6 +26,11 @@ const LOG_ANSI = /\x1b\[[0-9;]*m/g;
 // Substitution and download progress, which buries a Nix build's error.
 const LOG_NOISE =
   /^\s*(copying path '|downloading '|these \d+ paths? will be (fetched|built)|this path will be (fetched|built)|\/nix\/store\/\S+$)/;
+
+// A local run's log opens on its last 64 KiB, and each follow-up read returns
+// at most 256 KiB, so a long build log never arrives whole.
+const JOB_LOG_WINDOW = 64 * 1024;
+const JOB_LOG_CHUNK = 256 * 1024;
 
 function send(
   response,
@@ -423,6 +428,47 @@ async function runLog(id) {
   return steps;
 }
 
+// Bytes of a local run's log from `from` on, or its last `JOB_LOG_WINDOW` when
+// `from` is absent. A read stops at the last complete line, so a line still
+// being written, or a character split across reads, arrives whole next time;
+// a finished run's unterminated last line is returned as it is.
+async function jobLog(path, from, finished) {
+  const file = await open(path, "r");
+  try {
+    const { size } = await file.stat();
+    // A log that shrank was replaced; read the new one from its start.
+    let start = from === null || from > size ? null : from;
+    const opening = start === null;
+    if (opening) start = Math.max(0, size - JOB_LOG_WINDOW);
+    const length = Math.min(JOB_LOG_CHUNK, size - start);
+    const buffer = Buffer.alloc(length);
+    const { bytesRead } = await file.read(buffer, 0, length, start);
+    let bytes = buffer.subarray(0, bytesRead);
+    let skipped = 0;
+    // A window that opens mid-line starts at the next one.
+    if (opening && start > 0) {
+      const first = bytes.indexOf(0x0a);
+      skipped = first === -1 ? bytes.length : first + 1;
+      bytes = bytes.subarray(skipped);
+    }
+    const atEnd = start + bytesRead >= size;
+    if (!(finished && atEnd)) {
+      const last = bytes.lastIndexOf(0x0a);
+      if (last !== -1) bytes = bytes.subarray(0, last + 1);
+      else if (bytesRead < JOB_LOG_CHUNK) bytes = bytes.subarray(0, 0);
+    }
+    return {
+      text: bytes.toString("utf8").replace(LOG_ANSI, ""),
+      from: start + skipped,
+      next: start + skipped + bytes.length,
+      size,
+      clipped: start + skipped > 0 && opening,
+    };
+  } finally {
+    await file.close();
+  }
+}
+
 const towerResponse = cachedFeed(collectTower, CACHE_MS);
 const actionsResponse = cachedFeed(collectActions, ACTIONS_CACHE_MS);
 
@@ -472,6 +518,51 @@ const server = createServer(async (request, response) => {
       send(response, 200, request.method === "HEAD" ? "" : body);
     } catch (error) {
       send(response, 502, JSON.stringify({ steps: [], error: error.message }));
+    }
+    return;
+  }
+
+  // A local run's log, named by run id: only paths the tower snapshot lists
+  // are ever read.
+  if (url.pathname === "/api/runs/log") {
+    const id = url.searchParams.get("run") ?? "";
+    const fromParam = url.searchParams.get("from");
+    const from = fromParam === null ? null : Number(fromParam);
+    if (!id || (from !== null && !(Number.isInteger(from) && from >= 0))) {
+      send(
+        response,
+        400,
+        JSON.stringify({ error: "Expected a run id and a byte offset." }),
+      );
+      return;
+    }
+    try {
+      const tower = await towerResponse();
+      const run = asArray(tower.snapshot?.runs).find(
+        (entry) => entry.id === id,
+      );
+      if (!run?.log) {
+        send(
+          response,
+          404,
+          JSON.stringify({ error: `No log is known for run ${id}.` }),
+        );
+        return;
+      }
+      const finished = !["running", "working", "blocked", "queued"].includes(
+        String(run.state),
+      );
+      const body = JSON.stringify({
+        id,
+        path: run.log,
+        state: run.state,
+        finished,
+        ...(await jobLog(run.log, from, finished)),
+        error: null,
+      });
+      send(response, 200, request.method === "HEAD" ? "" : body);
+    } catch (error) {
+      send(response, 502, JSON.stringify({ text: "", error: error.message }));
     }
     return;
   }

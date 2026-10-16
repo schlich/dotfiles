@@ -39,6 +39,11 @@ generation running on the host that provides the dashboard.
 - The local runs panel shows runs in flight and, from the last day, each failure
   the same command has not since passed in that workspace. It ignores parked
   workspaces and other repositories, and counts the day's runs.
+- The logs panel lists every local run with a log, ci-mcp jobs and `job-log`
+  runs alike, newest first and filterable to running or failed ones, and tails
+  the selected run's log, following it every 2 seconds while it runs. It opens
+  on a running run, else the newest; a run's detail links to its log. The server
+  reads only log paths the tower snapshot lists, opening on the last 64 KiB.
 - The trunk rail lists the latest landings and marks those that landed after the
   host last activated, with any locally verified releases.
 - Expandable run detail, a theme toggle, and direct JSON import make the

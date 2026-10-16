@@ -695,6 +695,134 @@
       .log-block .log-error {
         color: var(--bad);
       }
+      .logs-panel {
+        margin-top: 14px;
+      }
+      .logs-panel select {
+        min-height: 30px;
+        padding: 0 8px;
+        border: 1px solid var(--rule);
+        border-radius: 3px;
+        color: var(--ink);
+        background: var(--panel);
+        font-size: 11px;
+      }
+      .logs-body {
+        display: grid;
+        grid-template-columns: minmax(220px, 0.42fr) minmax(0, 1fr);
+        min-height: 420px;
+      }
+      .log-runs {
+        max-height: 620px;
+        margin: 0;
+        padding: 0;
+        overflow-y: auto;
+        border-right: 1px solid var(--rule);
+        list-style: none;
+      }
+      .log-run {
+        display: grid;
+        width: 100%;
+        gap: 3px;
+        padding: 9px 14px;
+        border: 0;
+        border-bottom: 1px solid var(--rule);
+        background: transparent;
+        cursor: pointer;
+        text-align: left;
+      }
+      .log-run:hover {
+        background: var(--panel-hi);
+      }
+      .log-run[aria-pressed="true"] {
+        background: var(--panel-hi);
+        box-shadow: inset 3px 0 0 var(--accent-strong);
+      }
+      .log-run-line {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        min-width: 0;
+      }
+      .log-run-command {
+        overflow: hidden;
+        font: 600 11px/1.4 var(--mono);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .log-run-meta {
+        overflow: hidden;
+        color: var(--faint);
+        font: 9px/1.4 var(--mono);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .log-view {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        min-width: 0;
+      }
+      .log-view-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px 14px;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--rule);
+      }
+      .log-view-title {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        font: 600 11px/1.4 var(--mono);
+      }
+      .log-view-meta {
+        display: block;
+        margin-top: 2px;
+        color: var(--faint);
+        font: 9px/1.4 var(--mono);
+        overflow-wrap: anywhere;
+      }
+      .log-follow {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 11px;
+        white-space: nowrap;
+      }
+      .log-text {
+        max-height: 620px;
+        margin: 0;
+        padding: 10px 14px;
+        overflow: auto;
+        color: var(--muted);
+        background: var(--page);
+        font: 10.5px/1.5 var(--mono);
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      .log-text .log-error {
+        color: var(--bad);
+      }
+      .log-text .log-pass {
+        color: var(--good);
+      }
+      .log-text .log-clip {
+        color: var(--faint);
+        font-style: italic;
+      }
+      .link-button {
+        margin-top: 10px;
+        padding: 0;
+        border: 0;
+        color: var(--accent-strong);
+        background: none;
+        cursor: pointer;
+        font-size: 10px;
+        text-decoration: underline;
+      }
       .rail-panel {
         padding: 18px 18px 17px;
       }
@@ -820,6 +948,17 @@
         }
         .workbench {
           grid-template-columns: minmax(0, 1fr);
+        }
+        .logs-body {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .log-runs {
+          max-height: 240px;
+          border-right: 0;
+          border-bottom: 1px solid var(--rule);
+        }
+        .log-text {
+          max-height: 480px;
         }
       }
       @media (max-width: 620px) {
@@ -1130,8 +1269,59 @@
           </aside>
         </div>
 
+        <section class="panel logs-panel" aria-labelledby="logs-title">
+          <header class="panel-head">
+            <div class="panel-heading">
+              <p class="section-kicker">LOCAL LOGS</p>
+              <h2 id="logs-title">
+                <span aria-hidden="true">📜</span> Run logs
+              </h2>
+              <span class="panel-subtitle" id="logs-subtitle"
+                >Every ci and job-log run on this host, newest first</span
+              >
+            </div>
+            <label class="log-follow"
+              >Show
+              <select id="log-filter" aria-label="Which runs to list">
+                <option value="all">All runs</option>
+                <option value="running">Running</option>
+                <option value="failed">Failed or lost</option>
+              </select></label
+            >
+          </header>
+          <div class="logs-body">
+            <ol class="log-runs" id="log-runs" aria-label="Local runs">
+              <li class="rail-empty">Waiting for the local tower snapshot.</li>
+            </ol>
+            <div class="log-view">
+              <div class="log-view-head">
+                <div>
+                  <span class="log-view-title" id="log-title"
+                    >No run selected</span
+                  >
+                  <span class="log-view-meta" id="log-meta"></span>
+                </div>
+                <label class="log-follow"
+                  ><input type="checkbox" id="log-follow" checked /> Follow the
+                  end</label
+                >
+              </div>
+              <pre
+                class="log-text"
+                id="log-text"
+                tabindex="0"
+                aria-label="Log of the selected run"
+                aria-live="off"
+              ></pre>
+            </div>
+          </div>
+        </section>
+
         <footer class="footer">
-          <span>Local only · read-only · refreshes every 15 seconds</span>
+          <span
+            >Local only · read-only · refreshes every 15 seconds; a running log
+            every 2</span
+          >
           <span
             >Start the feed from the repository root:
             <code>node tools/ci-dashboard/server.mjs</code></span
@@ -1161,8 +1351,19 @@
           actionsFetchedAt: null,
           // Run id -> failed-step excerpts, or a promise while one loads.
           logs: new Map(),
+          // The local run whose log the logs panel shows, and how far into
+          // that log it has read.
+          logRun: null,
+          logNext: null,
+          logFinished: false,
+          logPending: false,
+          // Set when the operator picks a run, so a refresh never moves away.
+          logPicked: false,
         };
         const REFRESH_MS = 15_000;
+        const LOG_POLL_MS = 2_000;
+        // Chunks of log kept on the page; older ones drop off the top.
+        const LOG_CHUNKS = 400;
         const DAY_MS = 86_400_000;
 
         function asList(value) {
@@ -1408,6 +1609,7 @@
                 ${run?.log ? `<dt>Log file</dt><dd><code>${escapeHTML(run.log)}</code></dd>` : ""}
               </dl>
               ${phaseMarkup}${summaryMarkup}
+              ${run?.log ? `<button class="link-button" type="button" data-open-log="${escapeHTML(runId)}">Open log</button>` : ""}
             </div>
           </details>
         </article>`;
@@ -1524,6 +1726,176 @@
           $("#run-list").innerHTML = shown.length
             ? shown.map(runRow).join("")
             : '<p class="empty-row">Nothing running, and no unresolved failures in the last 24 hours.</p>';
+        }
+
+        // The logs panel: every local run with a log, newest first, and a
+        // live tail of the selected one.
+        function logRuns() {
+          const filter = $("#log-filter").value;
+          return asList(state.data?.runs)
+            .filter((run) => run?.log && run?.id)
+            .sort(
+              (a, b) => Number(b.started_ms || 0) - Number(a.started_ms || 0),
+            )
+            .filter((run) => {
+              const key = runState(run).key;
+              if (filter === "running")
+                return key === "running" || key === "queued";
+              if (filter === "failed")
+                return key === "failed" || run.state === "lost";
+              return true;
+            })
+            .slice(0, 60);
+        }
+
+        function selectedRun() {
+          return asList(state.data?.runs).find(
+            (run) => run?.id === state.logRun,
+          );
+        }
+
+        function lastPhase(run) {
+          const phases = asList(run?.phases);
+          return phases[phases.length - 1] || null;
+        }
+
+        function renderLogRuns() {
+          const runs = logRuns();
+          if (!state.logPicked || !selectedRun()) {
+            const running = runs.find((run) =>
+              ["running", "queued"].includes(runState(run).key),
+            );
+            const pick = running || runs[0];
+            if (pick && pick.id !== state.logRun) openLog(pick.id);
+          }
+          const all = asList(state.data?.runs).filter((run) => run?.log);
+          const live = all.filter((run) =>
+            ["running", "queued"].includes(runState(run).key),
+          ).length;
+          $("#logs-subtitle").textContent =
+            `${all.length} runs with logs on this host · ${live} running`;
+          $("#log-runs").innerHTML = runs.length
+            ? runs
+                .map((run) => {
+                  const status = runState(run);
+                  const phase = lastPhase(run);
+                  const where = shortPath(run.workspace);
+                  return `<li><button class="log-run" type="button" data-run="${escapeHTML(run.id)}" aria-pressed="${run.id === state.logRun}">
+                  <span class="log-run-line"><span class="log-run-command">${escapeHTML(runCommand(run))}</span><span class="state-tag ${status.tone}">${escapeHTML(run.state === "lost" ? "lost" : status.label)}</span></span>
+                  <span class="log-run-meta">${escapeHTML(durationFrom(run.started_ms))} · ${escapeHTML(where)}${phase?.msg ? ` · ${escapeHTML(phase.msg)}` : ""}</span>
+                </button></li>`;
+                })
+                .join("")
+            : '<li class="rail-empty">No runs match.</li>';
+          renderLogHead();
+        }
+
+        function renderLogHead(payload) {
+          const run = selectedRun();
+          if (!run && !payload) return;
+          const status = runState(run || { state: payload?.state });
+          const phase = lastPhase(run);
+          $("#log-title").textContent = run
+            ? `${runCommand(run)} · ${run.state === "lost" ? "lost" : status.label}`
+            : state.logRun;
+          $("#log-meta").textContent = [
+            run ? stamp(run.started_ms, { year: "numeric" }) : "",
+            phase?.msg ? `${phase.id}: ${phase.msg}` : "",
+            payload?.path || run?.log || "",
+          ]
+            .filter(Boolean)
+            .join(" · ");
+        }
+
+        function logLineClass(line) {
+          if (/\b(error|failed|failure|fatal)\b|✗|##\[error\]/i.test(line))
+            return "log-error";
+          if (/\b(passed|succeeded)\b|✓/i.test(line)) return "log-pass";
+          return "";
+        }
+
+        function appendLog(text, note) {
+          const pre = $("#log-text");
+          const atEnd =
+            pre.scrollHeight - pre.scrollTop - pre.clientHeight < 24;
+          const chunk = document.createElement("span");
+          chunk.innerHTML =
+            (note
+              ? `<span class="log-clip">${escapeHTML(note)}</span>\n`
+              : "") +
+            text
+              .split(/(?<=\n)/)
+              .map((line) => {
+                const kind = logLineClass(line);
+                return kind
+                  ? `<span class="${kind}">${escapeHTML(line)}</span>`
+                  : escapeHTML(line);
+              })
+              .join("");
+          pre.append(chunk);
+          while (pre.childElementCount > LOG_CHUNKS)
+            pre.firstElementChild.remove();
+          if ($("#log-follow").checked && (atEnd || note !== undefined))
+            pre.scrollTop = pre.scrollHeight;
+        }
+
+        async function readLog() {
+          const id = state.logRun;
+          if (!id || state.logPending) return;
+          state.logPending = true;
+          try {
+            const from = state.logNext === null ? "" : `&from=${state.logNext}`;
+            const response = await fetch(
+              `/api/runs/log?run=${encodeURIComponent(id)}${from}`,
+              { cache: "no-store" },
+            );
+            const payload = await response.json();
+            if (id !== state.logRun) return;
+            if (payload.error) throw new Error(payload.error);
+            const opening = state.logNext === null;
+            if (opening || payload.from < state.logNext) {
+              $("#log-text").textContent = "";
+            }
+            if (payload.text || opening)
+              appendLog(
+                payload.text || (payload.finished ? "(empty log)\n" : ""),
+                opening && payload.clipped
+                  ? `… showing the last ${Math.round((payload.size - payload.from) / 1024)} KiB of ${Math.round(payload.size / 1024)} KiB`
+                  : opening
+                    ? ""
+                    : undefined,
+              );
+            state.logNext = payload.next;
+            state.logFinished = payload.finished;
+            renderLogHead(payload);
+            // A finished log still has more to read when the last read was
+            // capped; keep reading until it is all here.
+            if (payload.next < payload.size) setTimeout(readLog, 0);
+          } catch (error) {
+            if (id === state.logRun && state.logNext === null)
+              $("#log-text").textContent = `Log unavailable: ${error.message}`;
+          } finally {
+            state.logPending = false;
+          }
+        }
+
+        function openLog(id, { picked = false } = {}) {
+          if (picked) state.logPicked = true;
+          if (id === state.logRun) return;
+          state.logRun = id;
+          state.logNext = null;
+          state.logFinished = false;
+          $("#log-text").textContent = "Loading…";
+          document
+            .querySelectorAll("#log-runs .log-run")
+            .forEach((button) =>
+              button.setAttribute(
+                "aria-pressed",
+                String(button.dataset.run === id),
+              ),
+            );
+          renderLogHead();
+          readLog();
         }
 
         function renderHost() {
@@ -1861,6 +2233,7 @@
           renderHost();
           renderLocks();
           renderTrunk();
+          renderLogRuns();
           updateAge();
           if (state.stale) {
             setConnection("STALE SNAPSHOT", "stale");
@@ -1935,6 +2308,19 @@
           refresh({ manual: true });
           refreshActions();
         });
+        $("#log-runs").addEventListener("click", (event) => {
+          const button = event.target.closest("[data-run]");
+          if (button) openLog(button.dataset.run, { picked: true });
+        });
+        $("#run-list").addEventListener("click", (event) => {
+          const button = event.target.closest("[data-open-log]");
+          if (!button) return;
+          openLog(button.dataset.openLog, { picked: true });
+          $(".logs-panel").scrollIntoView({ behavior: "smooth" });
+        });
+        $("#log-filter").addEventListener("change", () => {
+          if (state.data) renderLogRuns();
+        });
         $("#theme-button").addEventListener("click", () =>
           setTheme(
             document.documentElement.dataset.theme === "dark"
@@ -1970,6 +2356,9 @@
         refresh();
         refreshActions();
         setInterval(updateAge, 1000);
+        setInterval(() => {
+          if (state.logRun && !state.logFinished && !document.hidden) readLog();
+        }, LOG_POLL_MS);
         setInterval(() => {
           if (!state.imported) refresh();
           refreshActions();
