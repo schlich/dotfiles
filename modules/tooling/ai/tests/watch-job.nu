@@ -71,16 +71,18 @@ def main [watch_job: path] {
   $failures = ($failures | append (check "reported job prints its reports alone" $result.run ['^STATUS: \{state: working, id: rebase, app: ci, msg: Rebasing\}$' '^STATUS: \{state: done, id: land, app: ci, msg: "Landed jj-x on main"\}$' '^DONE: \{exit_code: 0\}$'] $result.took 5sec))
 
   # Trouble a reporting job logs but does not report still reaches the
-  # Monitor, as an alarm after the report it follows.
+  # Monitor, as an alarm after the report it follows. An evaluator replacing
+  # a worker that outgrew its memory budget is routine and prints nothing.
   let log = ($tmp | path join alarm.log)
   job-log $log { ^sh -c r#'
     report() { printf '%s\n' "$1" >> "$PST_FILE"; }
     report '{"time":"2026-10-07T08:00:00-05:00","state":"working","id":"clearance","app":"ci","msg":"Waiting for local flake checks"}'
     echo "=== a line only the pattern matches"
     echo "memory budget of 6144 MiB exceeded (6156 MiB in use), killing worker 411986 ('den-host-evaluation', 6118 MiB)"
+    echo "error: evaluation worker 411987 was killed by signal 9"
   '# } | ignore
   let result = (do $watch $log 10sec)
-  $failures = ($failures | append (check "reported job raises alarms" $result.run ['^STATUS: \{state: working, id: clearance, app: ci, msg: "Waiting for local flake checks"\}$' '^ALARM: memory budget of 6144 MiB exceeded .*killing worker' '^DONE: \{exit_code: 0\}$'] $result.took 5sec))
+  $failures = ($failures | append (check "reported job raises alarms" $result.run ['^STATUS: \{state: working, id: clearance, app: ci, msg: "Waiting for local flake checks"\}$' '^ALARM: error: evaluation worker 411987 was killed by signal 9$' '^DONE: \{exit_code: 0\}$'] $result.took 5sec))
 
   # A job quiet for longer than --quiet-after gets a heartbeat naming its
   # phase and last log line, once per quiet period.
