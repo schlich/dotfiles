@@ -113,6 +113,7 @@ in
     (callPackage ./openchamber.nix { })
     xdg-user-dirs
     bubblewrap
+    antigravity-cli
     acreomApp
     handyApp
     super-productivity
