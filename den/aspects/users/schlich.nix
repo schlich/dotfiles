@@ -19,7 +19,7 @@
       home.stateVersion = "26.05";
       dotfiles.primary = {
         terminal = "ghostty";
-        editor = "helix";
+        editor = "zed";
         ai = "opencode";
         desktopAgent = "opencode";
       };

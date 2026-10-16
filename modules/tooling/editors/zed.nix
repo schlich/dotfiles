@@ -8,6 +8,18 @@
 
 let
   skills = import ../ai/shared-skills.nix { inherit inputs; };
+  # $EDITOR callers (jj, Nushell's Ctrl+O, Yazi) need the editor to block
+  # until the file closes. Without a graphical session, such as over SSH or
+  # on a TTY, Zed cannot open a window, so Helix takes over there.
+  zedOrHelix = pkgs.writeNuScriptBin "zed-or-helix" ''
+    def --wrapped main [...args] {
+      if ($env.WAYLAND_DISPLAY? | is-empty) or ($env.SSH_CONNECTION? | is-not-empty) {
+        exec ${config.dotfiles.tooling.editors.helix.command} ...$args
+      } else {
+        exec ${pkgs.zed-editor}/bin/zeditor --wait ...$args
+      }
+    }
+  '';
 in
 
 {
@@ -26,7 +38,13 @@ in
 
   programs.zed-editor = {
     enable = config.dotfiles.alternates || config.dotfiles.primary.editor == "zed";
+    extraPackages = with pkgs; [
+      nixd
+      nil
+    ];
     userSettings = {
+      helix_mode = true;
+
       # This covers Zed's built-in terminal and task runner. ACP agent tool
       # shells are selected independently by Zed and currently cannot be
       # overridden through its settings.
@@ -42,6 +60,18 @@ in
       };
 
       lsp.nil.settings.nil.nix.flake.autoArchive = true;
+      # The same flake-aware option completion Helix's nixd setup gives.
+      lsp.nixd.settings = {
+        nixpkgs.expr = "import (builtins.getFlake (builtins.toString ./.)).inputs.nixpkgs { }";
+        options = {
+          nixos.expr = "(builtins.getFlake (builtins.toString ./.)).nixosConfigurations.asus.options";
+          home-manager.expr = "(builtins.getFlake (builtins.toString ./.)).nixosConfigurations.asus.options.home-manager.users.type.getSubOptions []";
+        };
+      };
+      languages.Nix.language_servers = [
+        "nixd"
+        "nil"
+      ];
 
       # Ty supplies Python type-checking diagnostics; Ruff supplies
       # formatting and linting. This also excludes Zed's default BasedPyright.
@@ -73,5 +103,5 @@ in
     };
   };
 
-  dotfiles.tooling.editors.zed.command = "${pkgs.zed-editor}/bin/zeditor";
+  dotfiles.tooling.editors.zed.command = "${zedOrHelix}/bin/zed-or-helix";
 }
