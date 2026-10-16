@@ -97,7 +97,9 @@ let
   );
 
   # Servers lack the nushellWith overlay behind writeNuScriptBin. The
-  # dead-man timer's transient unit gets only this PATH.
+  # dead-man timer's transient unit gets only this PATH. The build runs as
+  # root against the local store, so nix itself opens the ssh-ng connection
+  # to a remote builder and needs ssh here.
   switchMain = wrapWithConfig {
     package = pkgs.writers.writeNuBin unit (builtins.readFile ../../deploy/switch.nu);
     env = {
@@ -105,6 +107,7 @@ let
       PATH = lib.makeBinPath [
         config.nix.package
         config.systemd.package
+        config.programs.ssh.package
         pkgs.coreutils
         pkgs.git
       ];
