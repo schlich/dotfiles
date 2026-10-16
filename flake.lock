@@ -1430,6 +1430,22 @@
     },
     "nixpkgs_2": {
       "locked": {
+        "lastModified": 1790510107,
+        "narHash": "sha256-EVMNYv7hYDDD9TGVT/hIyTYgpiXA8y3m5xIEIxuGNU0=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "3181085bfd08663b6b9e60bc7a8395c2aaa741bd",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixpkgs-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_3": {
+      "locked": {
         "lastModified": 1781216227,
         "narHash": "sha256-9mUW6gNwoN2SWc/l0fW4svPNOulXLl8ijqKyeSOGgJE=",
         "owner": "nixos",
@@ -1500,6 +1516,25 @@
         "owner": "YPares",
         "ref": "master",
         "repo": "nushellWith",
+        "type": "github"
+      }
+    },
+    "opencode": {
+      "inputs": {
+        "nixpkgs": "nixpkgs_2"
+      },
+      "locked": {
+        "lastModified": 1792093702,
+        "narHash": "sha256-w8OJztN6XRZs5lhDneJ3VAOtCEuP/gzFU9kzUQJU01E=",
+        "owner": "anomalyco",
+        "repo": "opencode",
+        "rev": "f16ef9ad8878279ea2be3cfab7baeed97aef61aa",
+        "type": "github"
+      },
+      "original": {
+        "owner": "anomalyco",
+        "ref": "v2.0.30",
+        "repo": "opencode",
         "type": "github"
       }
     },
@@ -1587,6 +1622,7 @@
         "nixpkgs": "nixpkgs",
         "npr": "npr",
         "nushellWith": "nushellWith",
+        "opencode": "opencode",
         "osc7501-nu": "osc7501-nu",
         "paseo": "paseo",
         "ptyZZZ": "ptyZZZ",
@@ -1902,7 +1938,7 @@
         "mathjax-src": "mathjax-src_2",
         "mermaid-src": "mermaid-src_2",
         "microvm": "microvm_2",
-        "nixpkgs": "nixpkgs_2",
+        "nixpkgs": "nixpkgs_3",
         "sqlite-lib-src": "sqlite-lib-src_2",
         "tailwindcss-animated-src": "tailwindcss-animated-src_2"
       },
