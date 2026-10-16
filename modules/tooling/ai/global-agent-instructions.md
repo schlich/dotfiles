@@ -259,6 +259,14 @@ decisions, how-tos, and personal notes.
 - Treat its contents as private: never copy them into a public repository,
   issue, or pull request without the user's approval.
 
+# Diagrams
+
+- For a diagram of a real system or codebase, such as an architecture,
+  request flow, schema, state machine, or incident timeline, use the
+  `archify` skill, even when the `html` skill would route it elsewhere.
+- Use `html-diagram` for conceptual or one-off diagrams, and for a diagram
+  that is part of a larger HTML artifact.
+
 # Nix configuration
 
 - Treat application-owned, self-mutating configuration as runtime state. Do

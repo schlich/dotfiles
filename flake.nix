@@ -94,8 +94,8 @@
       url = "github:typesafe-ai/skills";
       flake = false;
     };
-    bro = {
-      url = "github:backnotprop/bro";
+    effective-html = {
+      url = "github:plannotator/effective-html";
       flake = false;
     };
     autoresearch = {

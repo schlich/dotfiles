@@ -84,22 +84,6 @@
         "type": "github"
       }
     },
-    "bro": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1792090659,
-        "narHash": "sha256-chKC0GRd1bNve+PVwIGTYeTjV25EbAai6VqS/eNgiLk=",
-        "owner": "backnotprop",
-        "repo": "bro",
-        "rev": "3737bf2b3e5ef8f44639ebf6e6bbbf821b3edfb9",
-        "type": "github"
-      },
-      "original": {
-        "owner": "backnotprop",
-        "repo": "bro",
-        "type": "github"
-      }
-    },
     "bun2nix": {
       "inputs": {
         "flake-parts": [
@@ -280,6 +264,22 @@
       "original": {
         "owner": "schlich",
         "repo": "dicta",
+        "type": "github"
+      }
+    },
+    "effective-html": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1792084834,
+        "narHash": "sha256-24KqX6FXRlzAJIlISwUbyg9igA78B8CMT6pkx47/kwE=",
+        "owner": "plannotator",
+        "repo": "effective-html",
+        "rev": "975b047f6da6874e176db54f048c0c31c30e9f65",
+        "type": "github"
+      },
+      "original": {
+        "owner": "plannotator",
+        "repo": "effective-html",
         "type": "github"
       }
     },
@@ -1615,12 +1615,12 @@
         "ai-usagebar": "ai-usagebar",
         "archify": "archify",
         "autoresearch": "autoresearch",
-        "bro": "bro",
         "ci": "ci",
         "codex-desktop-linux": "codex-desktop-linux",
         "colmena": "colmena",
         "den": "den",
         "dicta": "dicta",
+        "effective-html": "effective-html",
         "fh": "fh",
         "fieldnotes": "fieldnotes",
         "gen-inspect": "gen-inspect",
