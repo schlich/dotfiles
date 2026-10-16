@@ -23,6 +23,28 @@ def settings [] {
 
 def state-file [cfg: record, name: string] { $cfg.state | path join $name }
 
+# Report a step for system-switch to follow: one JSON line in the shape
+# osc7501.nu's PST_FILE uses, tagged with this unit run's invocation so the
+# follower skips an earlier run's lines. A failed write never stops a switch.
+def status [cfg: record, state: string, id: string, msg: string, --progress: int] {
+    # nix colours its errors even without a terminal; a report is plain text.
+    let text = ($msg | ansi strip | str replace --all --regex '[\x00-\x1f\x7f]' ' ' | lines | where $it != '' | get 0? | default '' | str substring 0..<300)
+    let record = { time: (date now | format date '%+'), state: $state, id: $id, app: 'nixos-switch-main', msg: $text, progress: $progress, run: ($env.INVOCATION_ID? | default '') }
+    let present = ($record | columns | where {|column| ($record | get $column) != null })
+    try { $"($record | select ...$present | to json --raw)\n" | save --append (state-file $cfg status.jsonl) }
+}
+
+# Start this run's status file afresh. Probe details and unit names reach
+# it, so only wheel, which may read the journal, can read it.
+def reset-status [cfg: record] {
+    let file = (state-file $cfg status.jsonl)
+    try {
+        '' | save --force $file
+        ^chgrp wheel $file
+        ^chmod 0640 $file
+    }
+}
+
 def active [] { ^readlink --canonicalize /run/current-system | str trim }
 
 def failed-units [] {
@@ -113,11 +135,16 @@ def watch [cfg: record, baseline: record, since: datetime] {
         }
         if ($breached | is-not-empty) { return $breached }
         let failing = ($results | where not ok)
-        if ($failing | is-empty) {
-            print $"Healthy: all ($results | length) checks pass."
+        let elapsed = ([((date now) - $since) ($cfg.watch.duration * 1sec)] | math min)
+        let at = $"(($elapsed / 1sec) | math floor)/($cfg.watch.duration)s"
+        let progress = (($elapsed / ($cfg.watch.duration * 1sec)) * 100 | math floor)
+        let line = if ($failing | is-empty) {
+            $"Healthy: all ($results | length) checks pass."
         } else {
-            print $"Watching: ($failing | each {|row| $'($row.probe): ($row.detail)' } | str join '; ')"
+            $"Watching: ($failing | each {|row| $'($row.probe): ($row.detail)' } | str join '; ')"
         }
+        print $line
+        status $cfg working switch/watch $"($at) ($line)" --progress $progress
         if (date now) >= $deadline { return [] }
         sleep ($cfg.watch.interval * 1sec)
     }
@@ -284,9 +311,15 @@ def revert [cfg: record, pending: record, phase: string, breached: list] {
     disarm-deadman
     let diagnostics = (diagnose $pending)
     print $"Reverting to ($pending.previous)."
+    status $cfg working switch/revert $"Reverting to ($pending.previous | path basename)"
     let code = (try { ^$"($pending.previous)/bin/switch-to-configuration" test; 0 } catch { $env.LAST_EXIT_CODE? | default 1 })
     let entry = (record-revert $cfg $pending $phase $breached $diagnostics true ($code == 0))
     rm --force (state-file $cfg pending.nuon)
+    if $code == 0 {
+        status $cfg done switch/revert $"Reverted to ($pending.previous | path basename)"
+    } else {
+        status $cfg error switch/revert $"Reactivating ($pending.previous | path basename) exited ($code); the host may be running the candidate"
+    }
     $entry
 }
 
@@ -300,9 +333,12 @@ def commit [cfg: record, pending: record] {
         error make { msg: "The staged switch was reverted while its watch ran; nothing was committed." }
     }
     print $"Healthy for ($cfg.watch.duration)s; making it the boot default."
+    status $cfg done switch/watch $"Healthy for ($cfg.watch.duration)s"
+    status $cfg working switch/commit "Making it the boot default"
     ^nix-env --profile /nix/var/nix/profiles/system --set $pending.candidate
     ^$"($pending.candidate)/bin/switch-to-configuration" boot
     rm --force $file
+    status $cfg done switch/commit "Made it the boot default"
 }
 
 # Activate, watch, then commit or revert. Returns the revert log entry of a
@@ -310,10 +346,13 @@ def commit [cfg: record, pending: record] {
 def stage [cfg: record, candidate: string, meta: record] {
     let previous = (active)
     print "Previewing service changes..."
+    status $cfg working switch/preview "Previewing service changes"
     let previewed = (try { ^$"($candidate)/bin/switch-to-configuration" dry-activate; true } catch { false })
     if not $previewed {
+        status $cfg error switch/preview "switch-to-configuration dry-activate failed"
         return (reject $cfg ($meta | merge { candidate: $candidate, previous: $previous }) preview "switch-to-configuration dry-activate failed")
     }
+    status $cfg done switch/preview "Previewed service changes"
 
     # The journal's error rate over a window as long as the watch, so a host
     # that is always noisy is judged against itself.
@@ -328,17 +367,23 @@ def stage [cfg: record, candidate: string, meta: record] {
     arm-deadman $cfg
 
     print $"Activating ($candidate) without making it the boot default..."
+    status $cfg working switch/activate $"Activating ($candidate | path basename) without making it the boot default"
     let code = (try { ^$"($candidate)/bin/switch-to-configuration" test; 0 } catch { $env.LAST_EXIT_CODE? | default 1 })
     let pending = ($pending | insert activated (date now))
     $pending | to nuon | save --force $file
     if $code != 0 {
+        status $cfg error switch/activate $"switch-to-configuration test exited ($code)"
         return (revert $cfg $pending activation [{ probe: activation, ok: false, detail: $"switch-to-configuration test exited ($code)" }])
     }
+    status $cfg done switch/activate "Activated"
 
     print $"Watching health for ($cfg.watch.duration)s..."
+    status $cfg working switch/watch $"Watching health for ($cfg.watch.duration)s" --progress 0
     let breached = (watch $cfg $baseline $pending.activated)
     if ($breached | is-not-empty) {
-        print $"Breached: ($breached | each {|row| $'($row.probe): ($row.detail)' } | str join '; ')"
+        let line = $"Breached: ($breached | each {|row| $'($row.probe): ($row.detail)' } | str join '; ')"
+        print $line
+        status $cfg error switch/watch $line
         return (revert $cfg $pending watch $breached)
     }
     commit $cfg $pending
@@ -382,6 +427,7 @@ def main [
     if $auto and ($last.rev? == $rev or $rev in $rejected) {
         return
     }
+    reset-status $cfg
     if $rev in $rejected {
         print $"main at ($short) was rejected before; staging it again on request."
     }
@@ -390,7 +436,9 @@ def main [
     let flake = $"git+($cfg.repo)?ref=main&rev=($rev)"
     let system = $"($flake)#nixosConfigurations.($cfg.host).config.system"
     print $"Switching ($cfg.host) to main at ($short): ($meta.subject)"
+    status $cfg working switch $"Switching ($cfg.host) to main at ($short): ($meta.subject)"
 
+    status $cfg working switch/evaluate $"Evaluating ($cfg.host)"
     let evaluated = (try {
         let base_path = (nix-eval $"($system).build.toplevel.outPath")
         let base_label = (nix-eval $"($system).nixos.label")
@@ -402,37 +450,65 @@ def main [
         { error: ($err.msg) }
     })
     if ($evaluated.error? != null) {
+        status $cfg error switch/evaluate $"Evaluating ($cfg.host) failed: ($evaluated.error | lines | where $it =~ 'error' | get 0? | default $evaluated.error)"
         let entry = (reject $cfg $meta eval $"Evaluating ($cfg.host) failed: ($evaluated.error)")
         save-last $cfg { rev: $rev, toplevel: '', label: '', outcome: rejected, exit_code: 1, report: $entry.report }
+        status $cfg error switch $"Rejected main at ($short): evaluation failed; report ($entry.report)"
         exit 1
     }
     let candidate = $evaluated.candidate
     let state = { rev: $rev, toplevel: $candidate, label: $evaluated.label }
+    status $cfg done switch/evaluate $"Evaluated ($evaluated.label)"
 
     if $candidate == (active) {
         print "That configuration is already active; no generation created."
         save-last $cfg ($state | merge { outcome: active, exit_code: 0 })
+        status $cfg done switch "That configuration is already active; no generation created"
         return
     }
 
-    # Build the exact closure gently, then stage that store path.
+    # Build the exact closure gently, then stage that store path. Under the
+    # unit, nix writes its progress straight to the journal, where
+    # system-switch follows it as it happens, and a rejection reads this
+    # run's lines back from there.
+    let free = (^df -h --output=avail /nix | lines | last | str trim)
     print "Free space on /nix:"
     ^df -h /nix
     print "Building the closure with one job and two cores..."
-    let build = (^env $"NIXOS_LABEL=($evaluated.label)" nix build --no-link --impure --max-jobs 1 --cores 2 $"($system).build.toplevel" | complete)
-    print $build.stderr
+    status $cfg working switch/build $"Building the closure with one job and two cores, ($free) free on /nix"
+    let nix_build = {|| ^env $"NIXOS_LABEL=($evaluated.label)" nix build --no-link --impure --max-jobs 1 --cores 2 $"($system).build.toplevel" }
+    let started = (date now)
+    let build = if ($env.INVOCATION_ID? | is-empty) {
+        let result = (do $nix_build | complete)
+        print $result.stderr
+        $result
+    } else {
+        let code = (try { do $nix_build; 0 } catch { $env.LAST_EXIT_CODE? | default 1 })
+        ^journalctl --sync | complete | ignore
+        { exit_code: $code, stderr: (journal $started $"_SYSTEMD_INVOCATION_ID=($env.INVOCATION_ID)" | str join "\n") }
+    }
     if $build.exit_code != 0 {
+        # The first derivation that failed is the cause; the toplevel's own
+        # failure only repeats it, and other errors may be warnings.
+        let errors = ($build.stderr | ansi strip | lines | where $it =~ '^error:' | str replace --all --regex '/nix/store/[0-9a-z]{32}-' '')
+        let cause = ($errors | where $it =~ '^error: Cannot build' | append $errors | get 0? | default $"nix build exited ($build.exit_code)")
+        status $cfg error switch/build $cause
         let entry = (reject $cfg ($meta | merge { candidate: $candidate }) build ($build.stderr | lines | last 60 | str join "\n"))
         save-last $cfg ($state | merge { outcome: rejected, exit_code: $build.exit_code, report: $entry.report })
+        status $cfg error switch $"Rejected main at ($short): the build failed; report ($entry.report)"
         exit $build.exit_code
     }
     print $"Built ($candidate)."
+    status $cfg done switch/build $"Built ($candidate | path basename)"
 
     let reverted = (stage $cfg $candidate $meta)
     if $reverted == null {
         save-last $cfg ($state | merge { outcome: deployed, exit_code: 0 })
+        status $cfg done switch $"Deployed main at ($short) on ($cfg.host)"
     } else {
         save-last $cfg ($state | merge { outcome: reverted, exit_code: 1, report: $reverted.report })
+        let verb = if $reverted.activated { 'Reverted' } else { 'Rejected' }
+        status $cfg error switch $"($verb) main at ($short) in its ($reverted.phase) phase; report ($reverted.report)"
         exit 1
     }
 }

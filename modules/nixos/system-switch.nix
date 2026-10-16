@@ -135,42 +135,17 @@ let
     };
   };
 
-  # Start the unit and show its output and result. The journal is read
-  # through the user manager so this also works inside the Claude desktop
-  # app's sandbox. It lives here, not in Home Manager, so hosts without Home
-  # Manager (homelab) get it too.
-  systemSwitch = pkgs.writers.writeNuBin "system-switch" ''
-    # Apply the NixOS configuration on Tangled's main without sudo: start
-    # the root ${unit} unit, then show its output and result.
-    def main [] {
-      let unit = "${unit}.service"
-      let bin = "/run/current-system/sw/bin"
-      let since = (date now | format date "%Y-%m-%d %H:%M:%S")
-      print $"Switching to main through ($unit); a new system is watched for ${toString cfg.watch.duration}s before it becomes the boot default..."
-      let result = (^$"($bin)/systemctl" start $unit | complete)
-      let log = (
-        ^$"($bin)/systemd-run" --user --pipe --wait --collect --quiet
-          $"($bin)/journalctl" --unit $unit --since $since --no-pager --output cat
-        | complete
-      )
-      print $log.stdout
-      let state = "${stateDir}/last.nuon"
-      if ($state | path exists) {
-        let last = (open $state)
-        print $last
-        if ($last.report? | is-not-empty) {
-          print $"Revert report: ($last.report)"
-        }
-      }
-      let failed = (^$"($bin)/systemctl" --failed --no-legend --plain | complete | get stdout | str trim)
-      if ($failed | is-not-empty) {
-        print $"Failed units:\n($failed)"
-      }
-      if $result.exit_code != 0 {
-        error make { msg: $"($unit) failed: ($result.stderr | str trim)" }
-      }
-    }
-  '';
+  # Start the unit and follow its journal and step reports as it runs. It
+  # lives here, not in Home Manager, so hosts without Home Manager (homelab)
+  # get it too.
+  systemSwitch = wrapWithConfig {
+    package = pkgs.writers.writeNuBin "system-switch" (builtins.readFile ../../deploy/system-switch.nu);
+    env = {
+      DEPLOY_UNIT = unit;
+      DEPLOY_STATE = stateDir;
+      DEPLOY_WATCH = toString cfg.watch.duration;
+    };
+  };
 in
 
 {
