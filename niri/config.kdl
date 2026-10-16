@@ -105,23 +105,23 @@ input {
 }
 
 // Every workspace is a session (niri/session.nu). Workspaces 1-9 are pinned
-// Johnny Decimal areas, so Mod+<digit> always reaches that area at the same
-// numpad cell (Mod+8 is 80-89). 00-09 System is not a workspace but the
-// session launcher over the grid (Mod+0),
-// and the dotfiles live in 40-49 Nix tooling. Project sessions opened later
+// places, so Mod+<digit> always reaches the same place at the same numpad
+// cell (Mod+8 is Personal). The session launcher over the grid (Mod+0) is
+// not a workspace,
+// and the dotfiles live in Nix (Mod+4). Project sessions opened later
 // take the workspaces after them. Version control, coding agents and the
 // session launcher are not workspaces but stacks or overlays within one: Mod+G,
 // Mod+A and Mod+0. Mod+O is Niri's own overview of every workspace.
 // docs/niri.md is the usage doctrine these settings enforce.
-workspace "work"      // 10-19
-workspace "research"  // 20-29
-workspace "xr"        // 30-39
-workspace "nix"       // 40-49
-workspace "ai"        // 50-59
-workspace "shell"     // 60-69
-workspace "career"    // 70-79
-workspace "personal"  // 80-89
-workspace "inbox"     // 90-99
+workspace "work"      // Mod+1
+workspace "research"  // Mod+2
+workspace "xr"        // Mod+3
+workspace "nix"       // Mod+4
+workspace "ai"        // Mod+5
+workspace "shell"     // Mod+6
+workspace "career"    // Mod+7
+workspace "personal"  // Mod+8
+workspace "inbox"     // Mod+9
 
 // Settings that influence how windows are positioned and sized.
 // Find more information on the wiki:
@@ -584,8 +584,8 @@ binds {
     // Mod+TouchpadScrollDown { spawn "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "0.02+"; }
     // Mod+TouchpadScrollUp   { spawn "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "0.02-"; }
 
-    // Numbers are Johnny Decimal areas: Mod+<digit> holds that area (Mod+8 is
-    // 80-89), on a 3x3 grid
+    // Numbers are places: Mod+<digit> holds that workspace (Mod+8 is
+    // Personal), on a 3x3 grid
     // laid out like the numpad:
     //
     //   7 Career    8 Personal  9 Inbox
@@ -596,17 +596,17 @@ binds {
     // keys: Mod+KP_<digit> (or Mod+<digit>) focuses that area,
     // Mod+Shift+KP_<digit> (or Mod+Shift+<digit>) moves the focused column there, and Mod+Alt+H/J/K/L or
     // the arrows step to the neighbouring cell. Mod+0, the key under the grid,
-    // is 00-09 System: the index, so it opens the session launcher over the grid.
-    Mod+KP_1 hotkey-overlay-title="10-19 Work (bottom left)" { focus-workspace "work"; }
-    Mod+KP_2 hotkey-overlay-title="20-29 Research" { focus-workspace "research"; }
-    Mod+KP_3 hotkey-overlay-title="30-39 XR" { focus-workspace "xr"; }
-    Mod+KP_4 hotkey-overlay-title="40-49 Nix tooling" { focus-workspace "nix"; }
-    Mod+KP_5 hotkey-overlay-title="50-59 AI and agents (centre)" { focus-workspace "ai"; }
-    Mod+KP_6 hotkey-overlay-title="60-69 Shell tools" { focus-workspace "shell"; }
-    Mod+KP_7 hotkey-overlay-title="70-79 Career (top left)" { focus-workspace "career"; }
-    Mod+KP_8 hotkey-overlay-title="80-89 Personal" { focus-workspace "personal"; }
-    Mod+KP_9 hotkey-overlay-title="90-99 Inbox" { focus-workspace "inbox"; }
-    Mod+KP_0 hotkey-overlay-title="00-09 System: session launcher" { spawn-sh "exec niri-desk overview"; }
+    // opens the session launcher over the grid.
+    Mod+KP_1 hotkey-overlay-title="Work (bottom left)" { focus-workspace "work"; }
+    Mod+KP_2 hotkey-overlay-title="Research" { focus-workspace "research"; }
+    Mod+KP_3 hotkey-overlay-title="XR" { focus-workspace "xr"; }
+    Mod+KP_4 hotkey-overlay-title="Nix" { focus-workspace "nix"; }
+    Mod+KP_5 hotkey-overlay-title="AI and agents (centre)" { focus-workspace "ai"; }
+    Mod+KP_6 hotkey-overlay-title="Shell" { focus-workspace "shell"; }
+    Mod+KP_7 hotkey-overlay-title="Career (top left)" { focus-workspace "career"; }
+    Mod+KP_8 hotkey-overlay-title="Personal" { focus-workspace "personal"; }
+    Mod+KP_9 hotkey-overlay-title="Inbox" { focus-workspace "inbox"; }
+    Mod+KP_0 hotkey-overlay-title="Session launcher" { spawn-sh "exec niri-desk overview"; }
     Mod+Shift+KP_1 { move-column-to-workspace "work"; }
     Mod+Shift+KP_2 { move-column-to-workspace "research"; }
     Mod+Shift+KP_3 { move-column-to-workspace "xr"; }
@@ -625,7 +625,7 @@ binds {
     Mod+7 { focus-workspace "career"; }
     Mod+8 { focus-workspace "personal"; }
     Mod+9 { focus-workspace "inbox"; }
-    Mod+0 hotkey-overlay-title="00-09 System: session launcher" { spawn-sh "exec niri-desk overview"; }
+    Mod+0 hotkey-overlay-title="Session launcher" { spawn-sh "exec niri-desk overview"; }
     Mod+Shift+1 { move-column-to-workspace "work"; }
     Mod+Shift+2 { move-column-to-workspace "research"; }
     Mod+Shift+3 { move-column-to-workspace "xr"; }
@@ -658,8 +658,8 @@ binds {
     // columns, and again docks it back. While peeking, Mod+A swaps agents.
     Mod+A hotkey-overlay-title="Agents stack: OpenCode / Codex" { spawn-sh "exec niri-desk agents"; }
     Mod+Shift+A hotkey-overlay-title="Peek at an agent" { spawn-sh "exec niri-desk peek agents"; }
-    // Mod+N opens this area's notes: its Johnny Decimal hub in ~/kb, or the
-    // index outside an area. Mod+Shift+N captures a new note into today's
+    // Mod+N opens this workspace's notes: its hub in ~/kb, or the index
+    // outside the nine places. Mod+Shift+N captures a new note into today's
     // daily note, floating over this workspace; again brings it back here.
     Mod+N hotkey-overlay-title="Notes: this area's hub" { spawn-sh "exec niri-desk notes"; }
     Mod+Shift+N hotkey-overlay-title="New note: capture to today" { spawn-sh "exec niri-desk capture"; }

@@ -87,14 +87,13 @@ def project-directory [] {
 }
 
 # The knowledge base: an IWE workspace whose `<range>-<session>.md` notes are
-# the hubs of the Johnny Decimal areas below, and whose index is 00-09 System.
+# the hubs of the pinned workspaces below, plus an index.
 def kb-root [] {
   $env.KB_ROOT? | default $"($env.HOME)/kb"
 }
 
-# Sessions with a fixed name and layout: the Johnny Decimal areas, which
-# niri/config.kdl pins to workspaces 1-9. 00-09 System is the overview, not a
-# session. Research maintains the knowledge base; other areas without a single
+# Sessions with a fixed name and layout: the places niri/config.kdl pins to
+# workspaces 1-9. The overview is not a session. Research maintains the knowledge base; other areas without a single
 # repository open a plain shell in the home directory.
 def presets [] {
   let area = { layout: area, directory: $env.HOME }
@@ -720,7 +719,7 @@ def "main notes" [] {
   niri-action set-window-width --id $opened.id "40%"
 }
 
-# Capture a new note into today's daily note, the 90-99 Inbox of the
+# Capture a new note into today's daily note, the inbox of the
 # knowledge base, floating over the focused workspace (Mod+Shift+N). An open
 # capture moves here instead of closing, so unsaved text is never lost; quit
 # Helix to dismiss it.

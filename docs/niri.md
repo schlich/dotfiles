@@ -6,8 +6,9 @@ shaped the way they are. The panel is a laptop screen that fits two columns.
 
 ## Doctrine
 
-1. **A workspace is a task.** Workspaces 1–9 are the Johnny Decimal areas,
-   laid out like the numpad (7 8 9 / 4 5 6 / 1 2 3). Projects opened from the
+1. **A workspace is a task.** Workspaces 1–9 are pinned places (Work,
+   Research, XR, Nix, AI, Shell, Career, Personal, Inbox), laid out like the
+   numpad (7 8 9 / 4 5 6 / 1 2 3). Projects opened from the
    session launcher take the workspaces after them. Apps open on the
    workspace that has focus, so go to the area first, then open.
 1. **A column is a role. A tab is an alternative.** Windows you use together
