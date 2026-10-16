@@ -392,5 +392,15 @@ in
           nu ${./tests/prefer-nix-mcp.nu} ${lib.escapeShellArg preferNixMcpCommand}
           touch "$out"
         '';
+    # The test kit runs each test file in a child of the CLI, offline.
+    checks.nushell-cards-mod =
+      pkgs.runCommand "nushell-cards-mod-check" { nativeBuildInputs = [ pkgs.claude-code ]; }
+        ''
+          export HOME="$TMPDIR/home"
+          mkdir -p "$HOME"
+          claude plugin validate --strict ${./claude-plugins/nushell-cards}
+          claude plugin test ${./claude-plugins/nushell-cards}
+          touch "$out"
+        '';
   };
 }
