@@ -31,13 +31,18 @@ generation running on the host that provides the dashboard.
   latest failing or running run of each live branch. A row's detail lists its
   failing or running jobs and, for a failed run, the lines before each failed
   step's last error.
-- The dashboard summarizes host generation and release verification, topic state
-  and locks, recent CI runs and phases, and trunk history.
-- The first screen is information-dense: five live KPIs, a 24-hour run
-  histogram, an outcome donut for the snapshot, and a stacked view of topic
-  stages. Emoji labels and color-coded shapes make each measure easy to scan.
-- Search, status filters, expandable run detail, a theme toggle, and direct JSON
-  import make the snapshot useful without adding CI write operations.
+- The page shows only what needs attention. The status line names the host and
+  how long ago it activated.
+- The topics panel lists open topics with their next step: conflicted, stranded,
+  or failed topics first, then published ones. Idle workspaces collapse into one
+  line, and locks appear only while one is held.
+- The local runs panel shows runs in flight and, from the last day, each failure
+  the same command has not since passed in that workspace. It ignores parked
+  workspaces and other repositories, and counts the day's runs.
+- The trunk rail lists the latest landings and marks those that landed after the
+  host last activated, with any locally verified releases.
+- Expandable run detail, a theme toggle, and direct JSON import make the
+  snapshot useful without adding CI write operations.
 - The page reports connection errors and snapshot age while retaining the last
   successful data.
 
