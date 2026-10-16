@@ -3,6 +3,7 @@
 {
   imports = [
     ./boot-postmortem.nix
+    ./closure-diff.nix
     ./system-switch.nix
   ];
 

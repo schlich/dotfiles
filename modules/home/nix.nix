@@ -1,5 +1,13 @@
-{ osConfig, pkgs, ... }:
+{
+  lib,
+  osConfig,
+  pkgs,
+  ...
+}:
 
+let
+  closureDiff = lib.getExe (import ../../lib/closure-diff.nix { inherit lib pkgs; });
+in
 {
   nix.gc = {
     automatic = true;
@@ -19,8 +27,9 @@
     pkgs.colmena
     (pkgs.writeNuScriptBin "nix-suite" ''
       # One entry point for Nix validation, builds, and dependency inspection.
+      # A raw string, so the apostrophe in "flake's" does not end it.
       def usage [] {
-        print 'Usage: nix-suite <command> [args...]
+        print r#'Usage: nix-suite <command> [args...]
 
       Validation and builds:
         check       Format-check, flake-check, and build Home Manager + NixOS
@@ -34,13 +43,65 @@
         treemap     Run nix-deps-treemap from its flake
         topology    Build this flake's nix-topology output
 
+      Package changes (dix):
+        diff        From the running system to this checkout's system; from the
+                    running system to one closure; or between two closures.
+                    Each may be a store path or an installable to build.
+        last [N]    Across the N newest system generations (default 1)
+
       Examples:
         nix-suite check
         nix-suite build path:.#nixosConfigurations.asus.config.system.build.toplevel
         nix-suite tree path:/run/current-system/sw
         nix-suite du --root /run/current-system/sw
         nix-suite deps nixtract.jsonl
-      '
+        nix-suite diff
+        nix-suite diff /nix/var/nix/profiles/system-41-link /run/current-system
+        nix-suite last 3
+      '#
+      }
+
+      # A path as given; anything else is an installable to build first.
+      def closure [target: string] {
+        if ($target | path exists) {
+          $target
+        } else {
+          print --stderr $"==> Building ($target)"
+          ^nix build --no-link --print-out-paths $target | lines | last
+        }
+      }
+
+      def package-changes [targets: list<string>] {
+        let pair = match ($targets | length) {
+          0 => ["/run/current-system" (closure "path:.#nixosConfigurations.${osConfig.networking.hostName}.config.system.build.toplevel")]
+          1 => ["/run/current-system" (closure $targets.0)]
+          2 => [(closure $targets.0) (closure $targets.1)]
+          _ => { error make { msg: "diff takes at most two closures: OLD NEW" } }
+        }
+        ^${closureDiff} $pair.0 $pair.1
+      }
+
+      def system-generations [profiles: path = "/nix/var/nix/profiles"] {
+        ls $profiles
+        | where name =~ 'system-\d+-link$'
+        | each {|link|
+            {
+              generation: ($link.name | parse --regex 'system-(?<n>\d+)-link$' | get 0.n | into int)
+              path: $link.name
+            }
+          }
+        | sort-by generation
+      }
+
+      def generation-changes [count: int] {
+        let generations = (system-generations | last ($count + 1))
+        if ($generations | length) < 2 {
+          error make { msg: "Fewer than two system generations exist." }
+        }
+        for pair in ($generations | window 2) {
+          print $"==> system generation ($pair.0.generation) -> ($pair.1.generation)"
+          ^${closureDiff} $pair.0.path $pair.1.path
+        }
       }
 
       def run-step [label: string, command: closure] {
@@ -85,6 +146,8 @@
           "topology" => {
             ^nix build path:.#topology.x86_64-linux.config.output ...$args
           }
+          "diff" => (package-changes $args)
+          "last" => (generation-changes ($args | get --optional 0 | default 1 | into int))
           _ => {
             usage
             error make { msg: $"Unknown nix-suite command: ($command)" }

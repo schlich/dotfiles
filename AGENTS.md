@@ -99,6 +99,12 @@
   `home-activate` for a home-only activation without `sudo`. This does not
   apply system-owned changes, including `home.packages` because
   `home-manager.useUserPackages = true`.
+- Every activation prints dix's package and version changes from the running
+  system (`modules/nixos/closure-diff.nix`), so `system-switch` and Colmena
+  output include them. When offering `system-switch`, mention the notable
+  changes if a build already exists; `nix-suite diff` builds this checkout's
+  system and shows them, but it is a build, so run it only when the user asks.
+  `nix-suite last [N]` shows what recent switches changed.
 
 ## Workarounds for nixpkgs
 
