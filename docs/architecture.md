@@ -175,6 +175,25 @@ and undoes one that breaks the host:
    timer) reactivates the previous system and rejects the revision. A reboot at
    any point before the commit boots the previous system.
 
+Every entry point takes one lock in the state directory: a switch, manual or
+automatic, the dead-man timer, and `nixos-switch-main-settle`, which runs at
+boot. A dead-man that fires while its run is alive waits for the lock instead
+of racing it. A stage whose run died, by a kill or a reboot, is settled under
+that lock before anything else is staged. A stage that reached the system
+profile finishes its commit. Any other is rejected, so the canary does not stage
+a candidate that crashed the host again at every boot, and the host returns to
+the boot default if it is not running it. `deploy/StagedSwitch.tla` models these
+processes, kills, and reboots. The `staged-switch-model` flake check runs TLC
+over it, with activation both able and unable to outlast the dead-man's grace
+period. It proves the following for every interleaving:
+
+- Only a candidate that passed its watch becomes the boot default.
+- No stage is both committed and reverted, and no stage is reverted twice.
+- Every revert restores the boot default.
+- Once nothing is in flight, the host runs its boot default with no
+  `pending.nuon` left.
+- The canary stages each revision at most once.
+
 The running system's settings judge the candidate, so a candidate cannot
 weaken its own watch. Each revert, and each revision that fails to evaluate or
 build, appends a line to `/var/lib/nixos-switch-main/reverts.jsonl` with a

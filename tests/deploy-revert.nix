@@ -1,7 +1,8 @@
 # The staged switch in deploy/switch.nu, end to end in a VM: a candidate
 # that breaks a health check is reverted and logged, a healthy one becomes
-# the boot default, and the dead-man timer reverts a switch whose watch was
-# killed. Each specialisation stands in for a landed revision.
+# the boot default, the dead-man timer reverts a switch whose watch was
+# killed, and the boot-time settle reverts one whose dead-man died too. Each
+# specialisation stands in for a landed revision.
 { pkgs, ... }:
 
 pkgs.testers.runNixOSTest {
@@ -83,6 +84,19 @@ pkgs.testers.runNixOSTest {
         # writing its report and clearing the pending switch.
         machine.wait_until_succeeds("test ! -e /var/lib/nixos-switch-main/pending.nuon", timeout=120)
         reverts('length == 2 and .[1].phase == "deadman" and .[1].restored')
+        machine.wait_for_unit("sshd.service")
+
+    with subtest("the boot-time settle reverts a stage whose run and dead-man both died"):
+        machine.succeed(f'systemd-run --unit=staged-switch-again --setenv=PATH="$PATH" "$(command -v nixos-switch-main)" apply {base}')
+        machine.wait_until_succeeds("grep -q activated /var/lib/nixos-switch-main/pending.nuon")
+        machine.succeed("systemctl kill --signal=KILL staged-switch-again.service")
+        # A reboot drops the transient timer; stop it as one would.
+        machine.succeed("systemctl stop nixos-switch-main-deadman.timer")
+        assert current() == base, "the staged candidate is not active"
+        machine.succeed("nixos-switch-main settle")
+        assert current() == healthy, "the settle did not return to the boot default"
+        machine.fail("test -e /var/lib/nixos-switch-main/pending.nuon")
+        reverts('length == 3 and .[2].phase == "boot" and .[2].restored')
         machine.wait_for_unit("sshd.service")
   '';
 }

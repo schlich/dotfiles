@@ -6,6 +6,12 @@
 # `deploy-reverts` reads. Until the commit, a reboot boots the previous
 # system, since the boot default has not moved.
 #
+# Every entry point takes the state directory's lock, so a switch, the
+# dead-man timer, and the boot-time settle never act at once. A stage whose
+# run died is settled under that lock before anything else is staged.
+# deploy/StagedSwitch.tla models these processes; its flake check proves
+# the guarantees above for every interleaving of them, kills, and reboots.
+#
 # DEPLOY_CONFIG names the JSON settings modules/nixos/system-switch.nix
 # writes: the host, the repository, the state directory, the watch window,
 # and the host's health probes. The running system's settings judge the
@@ -22,6 +28,20 @@ def settings [] {
 }
 
 def state-file [cfg: record, name: string] { $cfg.state | path join $name }
+
+# Run this command again with `args` under the state directory's flock, and
+# exit with its status; in the process that holds the lock, return. With
+# --nonblock, give way to a holder: it settles any stage a dead run left
+# before it stages its own.
+def relock [cfg: record, args: list<string>, --nonblock] {
+    let lock = (state-file $cfg lock)
+    if ($env.NIXOS_SWITCH_MAIN_LOCK? | default '') == $lock { return }
+    let flags = if $nonblock { [--nonblock --conflict-exit-code 0] } else { [] }
+    let code = (with-env { NIXOS_SWITCH_MAIN_LOCK: $lock } {
+        try { ^flock ...$flags $lock $nu.current-exe --no-config-file $env.CURRENT_FILE ...$args; 0 } catch { $env.LAST_EXIT_CODE? | default 1 }
+    })
+    exit $code
+}
 
 # Report a step for system-switch to follow: one JSON line in the shape
 # osc7501.nu's PST_FILE uses, tagged with this unit run's invocation so the
@@ -151,8 +171,9 @@ def watch [cfg: record, baseline: record, since: datetime] {
 }
 
 # Revert a staged switch on its own if the watch never decides, as when its
-# process is killed. The transient unit inherits nothing, so it gets the
-# settings and PATH explicitly.
+# process is killed. The transient unit waits for the lock, so it settles
+# the stage only once the run that armed it is gone. It inherits nothing,
+# so it gets the settings and PATH explicitly.
 def arm-deadman [cfg: record] {
     disarm-deadman
     let after = ($cfg.watch.duration + $cfg.watch.grace)
@@ -165,8 +186,10 @@ def arm-deadman [cfg: record] {
         $nu.current-exe --no-config-file $env.CURRENT_FILE revert)
 }
 
+# Stop the timer and a dead-man that fired and waits for the lock. Only a
+# process that holds the lock disarms, so the dead-man is never mid-settle.
 def disarm-deadman [] {
-    ^systemctl stop $"($DEADMAN).timer" | complete | ignore
+    ^systemctl stop $"($DEADMAN).timer" $"($DEADMAN).service" | complete | ignore
     ^systemctl reset-failed $"($DEADMAN).timer" $"($DEADMAN).service" | complete | ignore
 }
 
@@ -307,8 +330,9 @@ def reject [cfg: record, meta: record, phase: string, detail: string] {
     record-revert $cfg $meta $phase [{ probe: $phase, ok: false, detail: $detail }] $none false true
 }
 
-def revert [cfg: record, pending: record, phase: string, breached: list] {
-    disarm-deadman
+# Reactivate `pending.previous`, record the revert, and clear the pending
+# switch.
+def restore [cfg: record, pending: record, phase: string, breached: list] {
     let diagnostics = (diagnose $pending)
     print $"Reverting to ($pending.previous)."
     status $cfg working switch/revert $"Reverting to ($pending.previous | path basename)"
@@ -321,6 +345,53 @@ def revert [cfg: record, pending: record, phase: string, breached: list] {
         status $cfg error switch/revert $"Reactivating ($pending.previous | path basename) exited ($code); the host may be running the candidate"
     }
     $entry
+}
+
+# Revert this run's stage. The dead-man stays armed until the revert is
+# recorded and cleared, so a run killed partway leaves it to finish.
+def revert [cfg: record, pending: record, phase: string, breached: list] {
+    let entry = (restore $cfg $pending $phase $breached)
+    disarm-deadman
+    $entry
+}
+
+# Settle a stage whose run died, by the dead-man, the boot-time settle, or
+# a run before it stages its own. It holds the lock, so no live run owns the
+# stage. One that reached the system profile finishes its commit. Any other
+# is rejected, and the host returns to the system profile, the boot
+# default, if it is not running it: never to a previous system nobody
+# watched.
+def settle [cfg: record, phase: string, detail: string] {
+    let file = (state-file $cfg pending.nuon)
+    if not ($file | path exists) { return }
+    let pending = (try { open $file } catch { null })
+    if ($pending | describe) !~ '^record' {
+        print $"Removing an unreadable ($file)."
+        rm --force $file
+        return
+    }
+    let profile = (^readlink --canonicalize /nix/var/nix/profiles/system | str trim)
+    if $profile == $pending.candidate {
+        print "A staged switch stopped after it became the system profile; finishing its commit."
+        status $cfg working switch/settle "Finishing an interrupted commit"
+        ^$"($pending.candidate)/bin/switch-to-configuration" boot
+        record-generation $cfg $pending $pending.candidate deployed
+        rm --force $file
+        status $cfg done switch/settle "Finished an interrupted commit"
+        return
+    }
+    let target = ($pending | upsert previous $profile)
+    let breached = [{ probe: watch, ok: false, detail: $detail }]
+    if (active) != $profile {
+        print $"A staged switch stopped before its watch decided; reverting to the boot default."
+        restore $cfg $target $phase $breached | ignore
+    } else {
+        # The host already runs the boot default, as after a reboot; the
+        # revision is still rejected, so the canary does not stage it again.
+        print $"A staged switch stopped before its watch decided; rejecting it."
+        record-revert $cfg $target $phase $breached (diagnose $target) ($pending.activated? != null) true | ignore
+        rm --force $file
+    }
 }
 
 # The newest system profile generation that points at a store path.
@@ -355,14 +426,14 @@ def record-generation [cfg: record, meta: record, toplevel: string, outcome: str
     try { $"($entry | to json --raw)\n" | save --append (state-file $cfg generations.jsonl) }
 }
 
-# Make a candidate that passed its watch the boot default. A revert by the
-# dead-man timer while this run was stalled wins: the candidate is no
-# longer active, so it is not committed.
+# Make a candidate that passed its watch the boot default. The dead-man
+# stays armed until the pending switch is cleared, so a run killed partway
+# leaves it to settle. Under the lock nothing else reverts the candidate;
+# the check guards against a hand-run activation.
 def commit [cfg: record, pending: record] {
-    disarm-deadman
     let file = (state-file $cfg pending.nuon)
     if (active) != $pending.candidate or not ($file | path exists) {
-        error make { msg: "The staged switch was reverted while its watch ran; nothing was committed." }
+        error make { msg: "The staged switch is no longer active; nothing was committed." }
     }
     print $"Healthy for ($cfg.watch.duration)s; making it the boot default."
     status $cfg done switch/watch $"Healthy for ($cfg.watch.duration)s"
@@ -371,6 +442,7 @@ def commit [cfg: record, pending: record] {
     ^$"($pending.candidate)/bin/switch-to-configuration" boot
     record-generation $cfg $pending $pending.candidate deployed
     rm --force $file
+    disarm-deadman
     status $cfg done switch/commit "Made it the boot default"
 }
 
@@ -396,8 +468,11 @@ def stage [cfg: record, candidate: string, meta: record] {
     }
     let pending = ($meta | merge { candidate: $candidate, previous: $previous, baseline: $baseline, started: (date now) })
     let file = (state-file $cfg pending.nuon)
-    $pending | to nuon | save --force $file
+    # Armed first, so a pending switch always has a dead-man; written just
+    # before activation, so a settle that finds it rejects a revision that
+    # may have run.
     arm-deadman $cfg
+    $pending | to nuon | save --force $file
 
     print $"Activating ($candidate) without making it the boot default..."
     status $cfg working switch/activate $"Activating ($candidate | path basename) without making it the boot default"
@@ -443,11 +518,14 @@ def save-last [cfg: record, state: record] {
 
 # Switch to Tangled's main, giving each distinct closure a stable,
 # recognizable boot label. With --auto, as the canary timer runs it, a
-# revision already deployed or rejected is left alone until main moves.
+# revision already deployed or rejected is left alone until main moves, and
+# a switch that holds the lock is left to finish.
 def main [
     --auto # skip a revision this host already handled
 ] {
     let cfg = (settings)
+    relock $cfg (if $auto { [--auto] } else { [] }) --nonblock=$auto
+    settle $cfg interrupted "the switch stopped before its watch decided"
     let rev = (try { ^git ls-remote $cfg.repo refs/heads/main | lines | first | split row "\t" | first | str trim } catch { '' })
     if ($rev | is-empty) {
         error make { msg: $"Could not resolve main on ($cfg.repo)." }
@@ -550,6 +628,8 @@ def main [
 # Stage an already built toplevel, such as a NixOS test's specialisation.
 def "main apply" [toplevel: string] {
     let cfg = (settings)
+    relock $cfg [apply $toplevel]
+    settle $cfg interrupted "the switch stopped before its watch decided"
     let candidate = (^readlink --canonicalize $toplevel | str trim)
     if $candidate == (active) {
         print "That configuration is already active."
@@ -561,17 +641,21 @@ def "main apply" [toplevel: string] {
     }
 }
 
-# Run by the dead-man timer: revert a staged switch that is still pending.
+# Run by the dead-man timer: settle a staged switch whose run is gone. It
+# waits for the lock, so a run that is slow but alive decides for itself
+# and stops this unit when it disarms.
 def "main revert" [] {
     let cfg = (settings)
-    let file = (state-file $cfg pending.nuon)
-    if not ($file | path exists) { return }
-    let pending = (open $file)
-    if (active) != $pending.candidate {
-        rm --force $file
-        return
-    }
-    print "The staged switch stopped before its watch decided; reverting."
+    relock $cfg [revert]
     let limit = ($cfg.watch.duration + $cfg.watch.grace)
-    revert $cfg $pending deadman [{ probe: watch, ok: false, detail: $"the watch did not decide within ($limit)s" }] | ignore
+    settle $cfg deadman $"the watch did not decide within ($limit)s"
+}
+
+# Run once at boot: settle a staged switch that a restart cut short, such as
+# one whose candidate hung or crashed the host, so the canary does not stage
+# it again. A switch that already holds the lock settles it itself.
+def "main settle" [] {
+    let cfg = (settings)
+    relock $cfg [settle] --nonblock
+    settle $cfg boot "the host restarted before the watch decided"
 }

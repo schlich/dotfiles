@@ -99,7 +99,9 @@ let
   # Servers lack the nushellWith overlay behind writeNuScriptBin. The
   # dead-man timer's transient unit gets only this PATH. The build runs as
   # root against the local store, so nix itself opens the ssh-ng connection
-  # to a remote builder and needs ssh here.
+  # to a remote builder and needs ssh here. Every entry point takes the
+  # state directory's lock with flock(1) itself, so the manual switch, the
+  # automatic one, the dead-man, and the boot-time settle never act at once.
   switchMain = wrapWithConfig {
     package = pkgs.writers.writeNuBin unit (builtins.readFile ../../deploy/switch.nu);
     env = {
@@ -110,6 +112,7 @@ let
         config.programs.ssh.package
         pkgs.coreutils
         pkgs.git
+        pkgs.util-linux
       ];
     };
   };
@@ -129,10 +132,6 @@ let
     };
   };
 
-  # The manual and the automatic switch share one lock, so they never stage
-  # two systems at once; the automatic one gives way. flock takes its
-  # options before the lock file.
-  lock = flags: "${pkgs.util-linux}/bin/flock ${flags}${stateDir}/lock";
   switchService = {
     wants = [ "network-online.target" ];
     after = [ "network-online.target" ];
@@ -274,7 +273,7 @@ in
     systemd.services.${unit} = switchService // {
       description = "Switch to the NixOS configuration on Tangled's main";
       serviceConfig = switchService.serviceConfig // {
-        ExecStart = "${lock ""} ${switchMain}/bin/${unit}";
+        ExecStart = "${switchMain}/bin/${unit}";
       };
     };
 
@@ -286,7 +285,7 @@ in
       // {
         description = "Stage each new landing of Tangled's main on this canary";
         serviceConfig = switchService.serviceConfig // {
-          ExecStart = "${lock "--nonblock --conflict-exit-code 0 "} ${switchMain}/bin/${unit} --auto";
+          ExecStart = "${switchMain}/bin/${unit} --auto";
         };
       }
     );
@@ -297,6 +296,19 @@ in
         OnBootSec = "10min";
         OnUnitInactiveSec = cfg.poll;
         RandomizedDelaySec = "30s";
+      };
+    };
+
+    # A restart drops the dead-man timer, so settle a stage the restart cut
+    # short: reject its revision, which keeps a candidate that crashes the
+    # host from being staged again at every boot. It gives way to a switch
+    # that holds the lock, as during the activation that adds this unit.
+    systemd.services."${unit}-settle" = {
+      description = "Settle a staged NixOS switch that a restart cut short";
+      wantedBy = [ "multi-user.target" ];
+      restartIfChanged = false;
+      serviceConfig = switchService.serviceConfig // {
+        ExecStart = "${switchMain}/bin/${unit} settle";
       };
     };
 
