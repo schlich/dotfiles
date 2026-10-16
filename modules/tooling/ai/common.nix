@@ -69,8 +69,12 @@ in
         ];
       };
       nix = {
-        command = "uvx";
-        args = [ "mcp-nixos" ];
+        command = "nix";
+        args = [
+          "run"
+          "github:utensils/mcp-nixos"
+          "--"
+        ];
       };
       nushell = {
         # Pin a Nushell by store path: environments such as dev shells can put

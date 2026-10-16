@@ -17,6 +17,8 @@ moves them.*
 
 ## Active
 
+[Run MCP-NixOS with Nix](plans/20261016-mcp-nixos-nix-launch.md)
+
 ## Done
 
 [Add Stately MCP server](plans/20261016-stately-mcp-server.md)
