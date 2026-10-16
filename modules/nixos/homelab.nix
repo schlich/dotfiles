@@ -17,6 +17,14 @@ let
     builtins.readFile ../../jj/receive-verification.nu
   );
 
+  ciPackage = inputs.ci.packages.${pkgs.stdenv.hostPlatform.system}.ci;
+
+  ciDashboard = pkgs.runCommand "ci-dashboard" { } ''
+    mkdir -p "$out/share/ci-dashboard"
+    cp ${../../tools/ci-dashboard/index.html} "$out/share/ci-dashboard/index.html"
+    cp ${../../tools/ci-dashboard/server.mjs} "$out/share/ci-dashboard/server.mjs"
+  '';
+
   # Niri's own default config, minus its waybar autostart: homelab has no
   # waybar, and the desktop session instead starts the monitor terminal.
   niriConfig = pkgs.runCommand "niri-homelab-config.kdl" { } ''
@@ -103,6 +111,55 @@ in
 
   # homelab has no Home Manager, so Niri reads this system-wide config.
   environment.etc."niri/config.kdl".source = niriConfig;
+
+  # The browser feed is local-only; Tailscale Serve publishes it on a
+  # separate HTTPS port for tailnet devices, leaving the existing public
+  # Funnel on 443 untouched.
+  systemd.services.ci-dashboard = {
+    description = "Read-only CI tower dashboard";
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "simple";
+      User = "schlich";
+      WorkingDirectory = "/home/schlich/dotfiles";
+      Environment = [
+        "CI_REPO=/home/schlich/dotfiles"
+        "HOME=/home/schlich"
+        "PATH=${ciPackage}/bin:/run/current-system/sw/bin"
+        "PORT=4173"
+      ];
+      ExecStart = "${pkgs.nodejs}/bin/node ${ciDashboard}/share/ci-dashboard/server.mjs";
+      Restart = "on-failure";
+      RestartSec = "5s";
+      ProtectSystem = "strict";
+      ProtectHome = "read-only";
+      PrivateTmp = true;
+      NoNewPrivileges = true;
+    };
+  };
+
+  # This is Tailscale Serve, not Funnel: only tailnet devices can reach it.
+  # The dedicated port keeps the existing root route and Funnel configuration
+  # on 443 independent from the dashboard.
+  systemd.services.ci-dashboard-serve = {
+    description = "Publish the CI dashboard privately on the tailnet";
+    wantedBy = [ "multi-user.target" ];
+    requires = [
+      "ci-dashboard.service"
+      "tailscaled.service"
+    ];
+    after = [
+      "ci-dashboard.service"
+      "tailscaled.service"
+    ];
+    serviceConfig = {
+      Type = "simple";
+      ExecStart = "${pkgs.tailscale}/bin/tailscale serve --https=8443 http://127.0.0.1:4173";
+      ExecStop = "${pkgs.tailscale}/bin/tailscale serve --https=8443 off";
+      Restart = "on-failure";
+      RestartSec = "10s";
+    };
+  };
 
   # The Fieldnotes dashboard fills the desktop; `fieldnotes` also runs over SSH.
   systemd.user.services.desktop-monitor = {

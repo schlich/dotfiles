@@ -13,3 +13,5 @@ generated:
 deprecation — the `status` frontmatter (`proposed` → `accepted` → `implemented`,
 terminal `deprecated`/`cancelled`) carries the lifecycle, so the list stays
 flat. Group with `##` headings once it outgrows a single list.*
+
+[Reactive CI and Nix dashboard](features/ci-nix-dashboard.md)

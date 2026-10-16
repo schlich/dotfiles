@@ -16,3 +16,5 @@ Record a design decision here the moment it's made — the alternatives you
 rejected are as valuable as the one you picked.*
 
 [Configuration factory](architecture/configuration-factory.md)
+
+[Local CI tower dashboard feed](architecture/ci-nix-dashboard.md)

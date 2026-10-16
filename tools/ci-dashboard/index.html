@@ -1,0 +1,2536 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#11161b" />
+    <title>CI Tower — local dashboard</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --page: #10151a;
+        --panel: #171e24;
+        --panel-hi: #1d262e;
+        --ink: #e5edf0;
+        --muted: #a3b0b7;
+        --faint: #73818a;
+        --rule: #35414a;
+        --grid: rgb(219 235 239 / 3%);
+        --accent: #b8e0ec;
+        --accent-strong: #83c8dc;
+        --good: #84d4aa;
+        --warn: #f1c36a;
+        --bad: #fa877e;
+        --neutral: #a3b0b7;
+        --focus: #f4cd64;
+        --shadow: 0 18px 50px rgb(0 0 0 / 22%);
+        --mono:
+          ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        --sans:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+      }
+      :root[data-theme="light"] {
+        color-scheme: light;
+        --page: #edf1ef;
+        --panel: #fbfcfa;
+        --panel-hi: #f1f5f3;
+        --ink: #17242a;
+        --muted: #54636b;
+        --faint: #728088;
+        --rule: #d1dad8;
+        --grid: rgb(26 53 61 / 4%);
+        --accent: #174f61;
+        --accent-strong: #126c84;
+        --good: #167047;
+        --warn: #94600a;
+        --bad: #ad3d36;
+        --neutral: #53646b;
+        --focus: #8d5900;
+        --shadow: 0 16px 40px rgb(24 44 49 / 8%);
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      html {
+        min-width: 320px;
+        background: var(--page);
+      }
+      body {
+        margin: 0;
+        color: var(--ink);
+        background:
+          linear-gradient(
+            90deg,
+            transparent 0 49.9%,
+            var(--grid) 50%,
+            transparent 50.1%
+          ),
+          var(--page);
+        font: 14px/1.5 var(--sans);
+        letter-spacing: 0.005em;
+      }
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+      button,
+      label,
+      summary {
+        -webkit-tap-highlight-color: transparent;
+      }
+      button {
+        color: inherit;
+      }
+      button:focus-visible,
+      input:focus-visible,
+      summary:focus-visible,
+      a:focus-visible,
+      .table-scroll:focus-visible {
+        outline: 2px solid var(--focus);
+        outline-offset: 3px;
+      }
+      a {
+        color: var(--accent-strong);
+      }
+      code,
+      .mono {
+        font-family: var(--mono);
+        font-variant-numeric: tabular-nums;
+      }
+      .skip-link {
+        position: absolute;
+        z-index: 10;
+        top: 8px;
+        left: 8px;
+        padding: 10px 14px;
+        color: var(--page);
+        background: var(--accent);
+        transform: translateY(-150%);
+      }
+      .skip-link:focus {
+        transform: translateY(0);
+      }
+      .shell {
+        width: min(1480px, 100% - 56px);
+        margin: 0 auto;
+      }
+      .masthead {
+        min-height: 72px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 22px;
+        border-bottom: 1px solid var(--rule);
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: max-content;
+      }
+      .brand-mark {
+        width: 28px;
+        height: 28px;
+        color: var(--accent-strong);
+      }
+      .brand-name {
+        font-weight: 760;
+        letter-spacing: 0.09em;
+        font-size: 12px;
+      }
+      .brand-name span {
+        color: var(--muted);
+        font-weight: 500;
+      }
+      .feed-state {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--muted);
+        font: 10px/1.2 var(--mono);
+        letter-spacing: 0.08em;
+      }
+      .feed-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--faint);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--faint) 14%, transparent);
+      }
+      .feed-state[data-state="live"] .feed-dot {
+        background: var(--good);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 16%, transparent);
+      }
+      .feed-state[data-state="stale"] .feed-dot {
+        background: var(--warn);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 17%, transparent);
+      }
+      .feed-state[data-state="offline"] .feed-dot {
+        background: var(--bad);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--bad) 17%, transparent);
+      }
+      .feed-divider {
+        color: var(--rule);
+      }
+      .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .toolbar-button,
+      .import-button {
+        display: inline-flex;
+        min-height: 36px;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 0 12px;
+        border: 1px solid var(--rule);
+        border-radius: 3px;
+        color: var(--ink);
+        background: transparent;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 620;
+        transition:
+          background-color 0.15s ease,
+          border-color 0.15s ease;
+      }
+      .toolbar-button:hover,
+      .import-button:hover {
+        background: var(--panel-hi);
+        border-color: var(--faint);
+      }
+      .toolbar-button.primary {
+        border-color: var(--accent-strong);
+        color: var(--page);
+        background: var(--accent);
+      }
+      .toolbar-button.primary:hover {
+        background: var(--accent-strong);
+      }
+      .toolbar-button:disabled {
+        cursor: wait;
+        opacity: 0.7;
+      }
+      .toolbar-button svg,
+      .import-button svg {
+        width: 14px;
+        height: 14px;
+      }
+      .toolbar-button.is-syncing svg {
+        animation: spin 0.9s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .file-input {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+      .file-input:focus-visible + .import-button {
+        outline: 2px solid var(--focus);
+        outline-offset: 3px;
+      }
+      main {
+        padding: 14px 0 42px;
+      }
+      .status-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        min-height: 39px;
+        margin-bottom: 12px;
+        border-bottom: 1px solid var(--rule);
+        color: var(--muted);
+        font: 10px/1.3 var(--mono);
+      }
+      .host-inline {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+      }
+      .host-inline strong {
+        overflow: hidden;
+        color: var(--ink);
+        font: 620 12px/1.2 var(--sans);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .host-inline .host-status {
+        color: var(--good);
+        font-size: 9px;
+        letter-spacing: 0.06em;
+        white-space: nowrap;
+      }
+      .host-inline .host-status[data-state="offline"] {
+        color: var(--warn);
+      }
+      .status-time {
+        flex: 0 0 auto;
+        color: var(--faint);
+        text-align: right;
+      }
+      .section-kicker {
+        margin: 0;
+        color: var(--accent-strong);
+        font: 9px/1.4 var(--mono);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      .feed-note {
+        margin: 0 0 18px;
+        padding: 10px 13px;
+        border-left: 3px solid var(--warn);
+        color: var(--ink);
+        background: color-mix(in srgb, var(--warn) 9%, var(--panel));
+        font-size: 12px;
+      }
+      .feed-note[data-kind="error"] {
+        border-left-color: var(--bad);
+        background: color-mix(in srgb, var(--bad) 8%, var(--panel));
+      }
+      .feed-note[hidden] {
+        display: none;
+      }
+      .overview {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 1px;
+        margin: 0 0 12px;
+        border: 1px solid var(--rule);
+        background: var(--rule);
+        box-shadow: var(--shadow);
+      }
+      .metric {
+        min-width: 0;
+        min-height: 76px;
+        padding: 11px 15px 10px;
+        background: var(--panel);
+      }
+      .metric-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        overflow: hidden;
+        color: var(--muted);
+        font: 9px/1.3 var(--mono);
+        letter-spacing: 0.05em;
+        text-overflow: ellipsis;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+      .metric-emoji {
+        font-size: 11px;
+        letter-spacing: 0;
+      }
+      .metric-value {
+        display: block;
+        margin-top: 6px;
+        font: 560 27px/0.95 var(--mono);
+        letter-spacing: -0.07em;
+        font-variant-numeric: tabular-nums;
+      }
+      .metric[data-tone="bad"] .metric-value {
+        color: var(--bad);
+      }
+      .chart-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.45fr) minmax(240px, 0.9fr) minmax(
+            235px,
+            0.86fr
+          );
+        gap: 12px;
+        margin-bottom: 12px;
+        align-items: stretch;
+      }
+      .chart-panel {
+        min-width: 0;
+        min-height: 174px;
+        padding: 12px 14px;
+        overflow: hidden;
+      }
+      .chart-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .chart-head h2 {
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.25;
+        font-weight: 650;
+        letter-spacing: -0.015em;
+      }
+      .chart-meta {
+        color: var(--faint);
+        font: 9px/1.2 var(--mono);
+        text-align: right;
+        white-space: nowrap;
+      }
+      .chart-svg {
+        display: block;
+        width: 100%;
+        height: 112px;
+        margin-top: 4px;
+        overflow: visible;
+      }
+      .chart-gridline {
+        stroke: var(--rule);
+        stroke-width: 1;
+        stroke-dasharray: 2 4;
+      }
+      .chart-axis {
+        fill: var(--faint);
+        font: 8px var(--mono);
+        text-anchor: middle;
+      }
+      .chart-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 10px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .chart-legend li {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        min-width: 0;
+        color: var(--muted);
+        font: 9px/1.3 var(--mono);
+        white-space: nowrap;
+      }
+      .legend-swatch {
+        width: 7px;
+        height: 7px;
+        flex: 0 0 7px;
+        border-radius: 1px;
+        background: var(--neutral);
+      }
+      .legend-swatch.succeeded {
+        background: var(--good);
+      }
+      .legend-swatch.failed {
+        background: var(--bad);
+      }
+      .legend-swatch.running {
+        background: var(--accent-strong);
+      }
+      .legend-swatch.queued {
+        background: var(--warn);
+      }
+      .legend-swatch.other {
+        background: var(--neutral);
+      }
+      .outcome-layout {
+        display: grid;
+        grid-template-columns: 106px minmax(0, 1fr);
+        align-items: center;
+        gap: 8px;
+        margin-top: 3px;
+      }
+      .outcome-svg {
+        display: block;
+        width: 106px;
+        height: 106px;
+        overflow: visible;
+      }
+      .outcome-track,
+      .outcome-segment {
+        fill: none;
+        stroke-width: 13;
+      }
+      .outcome-track {
+        stroke: var(--panel-hi);
+      }
+      .outcome-segment {
+        transform: rotate(-90deg);
+        transform-origin: 60px 60px;
+      }
+      .outcome-segment.succeeded {
+        stroke: var(--good);
+      }
+      .outcome-segment.failed {
+        stroke: var(--bad);
+      }
+      .outcome-segment.running {
+        stroke: var(--accent-strong);
+      }
+      .outcome-segment.queued {
+        stroke: var(--warn);
+      }
+      .outcome-segment.other {
+        stroke: var(--neutral);
+      }
+      .outcome-total {
+        fill: var(--ink);
+        font: 600 23px var(--mono);
+        text-anchor: middle;
+      }
+      .outcome-label {
+        fill: var(--faint);
+        font: 8px var(--mono);
+        text-anchor: middle;
+        letter-spacing: 0.06em;
+      }
+      .outcome-legend {
+        display: grid;
+        gap: 5px;
+      }
+      .outcome-legend li {
+        display: grid;
+        grid-template-columns: 7px minmax(0, 1fr) auto;
+        gap: 6px;
+      }
+      .outcome-legend strong {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      .stage-bar {
+        display: flex;
+        width: 100%;
+        height: 12px;
+        margin: 16px 0 12px;
+        overflow: hidden;
+        border-radius: 2px;
+        background: var(--panel-hi);
+      }
+      .stage-segment {
+        min-width: 2px;
+        height: 100%;
+      }
+      .stage-segment.stage-0,
+      .legend-swatch.stage-0 {
+        background: var(--accent-strong);
+      }
+      .stage-segment.stage-1,
+      .legend-swatch.stage-1 {
+        background: var(--good);
+      }
+      .stage-segment.stage-2,
+      .legend-swatch.stage-2 {
+        background: var(--warn);
+      }
+      .stage-segment.stage-3,
+      .legend-swatch.stage-3 {
+        background: var(--bad);
+      }
+      .stage-segment.stage-4,
+      .legend-swatch.stage-4 {
+        background: #b4a1e5;
+      }
+      .stage-segment.stage-5,
+      .legend-swatch.stage-5 {
+        background: var(--neutral);
+      }
+      .stage-legend {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px 10px;
+      }
+      .stage-legend li {
+        display: grid;
+        grid-template-columns: 7px minmax(0, 1fr) auto;
+        gap: 6px;
+        min-width: 0;
+      }
+      .stage-legend .stage-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .stage-legend strong {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      .stage-empty {
+        height: 100%;
+        flex: 1;
+        background: var(--panel-hi);
+      }
+      .workbench {
+        display: grid;
+        grid-template-columns: minmax(0, 1.7fr) minmax(275px, 0.72fr);
+        align-items: start;
+        gap: 14px;
+      }
+      .primary-column,
+      .rail {
+        display: grid;
+        gap: 14px;
+        min-width: 0;
+      }
+      .panel {
+        min-width: 0;
+        border: 1px solid var(--rule);
+        background: var(--panel);
+        box-shadow: var(--shadow);
+      }
+      .panel-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 14px 16px 12px;
+        border-bottom: 1px solid var(--rule);
+      }
+      .panel-heading {
+        min-width: 0;
+      }
+      .panel-head h2,
+      .rail-panel h2 {
+        margin: 4px 0 0;
+        font-size: 16px;
+        line-height: 1.2;
+        letter-spacing: -0.025em;
+        font-weight: 650;
+      }
+      .panel-subtitle {
+        display: block;
+        margin: 4px 0 0;
+        color: var(--faint);
+        font: 9px/1.3 var(--mono);
+      }
+      .record-count {
+        padding-top: 2px;
+        color: var(--muted);
+        font: 11px var(--mono);
+        white-space: nowrap;
+      }
+      .topic-controls {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 13px 20px;
+        border-bottom: 1px solid var(--rule);
+      }
+      .search-wrap {
+        position: relative;
+        flex: 1;
+        min-width: 120px;
+      }
+      .search-wrap svg {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        width: 14px;
+        height: 14px;
+        color: var(--faint);
+        pointer-events: none;
+      }
+      .search-input {
+        width: 100%;
+        min-height: 35px;
+        padding: 7px 10px 7px 32px;
+        border: 1px solid var(--rule);
+        border-radius: 2px;
+        color: var(--ink);
+        background: var(--page);
+        font-size: 12px;
+      }
+      .search-input::placeholder {
+        color: var(--faint);
+      }
+      .search-input:focus-visible {
+        border-color: var(--accent-strong);
+      }
+      .small-note {
+        color: var(--faint);
+        font-size: 11px;
+        white-space: nowrap;
+      }
+      .table-scroll {
+        width: 100%;
+        overflow-x: auto;
+        overscroll-behavior-inline: contain;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+      }
+      th {
+        padding: 10px 14px;
+        color: var(--faint);
+        background: var(--panel-hi);
+        font: 10px/1.3 var(--mono);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+      td {
+        padding: 12px 14px;
+        border-top: 1px solid var(--rule);
+        vertical-align: middle;
+      }
+      tbody tr:hover {
+        background: color-mix(in srgb, var(--panel-hi) 55%, transparent);
+      }
+      .workspace-name {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        min-width: 130px;
+      }
+      .workspace-name strong {
+        font-size: 12px;
+        font-weight: 640;
+      }
+      .workspace-name span {
+        color: var(--faint);
+        font: 10px var(--mono);
+      }
+      .current-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        width: fit-content;
+        color: var(--accent-strong);
+        font: 9px var(--mono);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .current-label::before {
+        content: "";
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+      .state-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--muted);
+        font: 10px var(--mono);
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+      .state-tag::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+      .state-tag.good {
+        color: var(--good);
+      }
+      .state-tag.warn {
+        color: var(--warn);
+      }
+      .state-tag.bad {
+        color: var(--bad);
+      }
+      .state-tag.neutral {
+        color: var(--neutral);
+      }
+      .head-title {
+        display: block;
+        max-width: 250px;
+        overflow: hidden;
+        color: var(--ink);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 11px;
+      }
+      .head-meta {
+        display: block;
+        margin-top: 3px;
+        color: var(--faint);
+        font: 10px var(--mono);
+      }
+      .behind {
+        color: var(--muted);
+        font: 11px var(--mono);
+        white-space: nowrap;
+      }
+      .behind[data-behind="0"] {
+        color: var(--good);
+      }
+      .empty-row {
+        padding: 26px 18px;
+        color: var(--muted);
+        text-align: center;
+        font-size: 12px;
+      }
+      .run-panel .panel-head {
+        align-items: center;
+      }
+      .run-filter {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 4px;
+      }
+      .filter-button {
+        padding: 6px 9px;
+        border: 1px solid transparent;
+        border-radius: 2px;
+        color: var(--muted);
+        background: transparent;
+        cursor: pointer;
+        font: 10px var(--mono);
+      }
+      .filter-button:hover {
+        color: var(--ink);
+        background: var(--panel-hi);
+      }
+      .filter-button[aria-pressed="true"] {
+        border-color: var(--rule);
+        color: var(--ink);
+        background: var(--panel-hi);
+      }
+      .run-list {
+        display: grid;
+      }
+      .run-row {
+        min-width: 0;
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--rule);
+      }
+      .run-row:last-child {
+        border-bottom: 0;
+      }
+      .run-main {
+        display: grid;
+        grid-template-columns: 78px minmax(0, 1fr);
+        align-items: start;
+        gap: 13px;
+      }
+      .run-time {
+        padding-top: 2px;
+        color: var(--muted);
+        font: 10px/1.4 var(--mono);
+        white-space: nowrap;
+      }
+      .run-content {
+        min-width: 0;
+      }
+      .run-title-line {
+        display: flex;
+        align-items: flex-start;
+        gap: 9px;
+        min-width: 0;
+      }
+      .run-title {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        font: 600 12px/1.4 var(--mono);
+      }
+      .run-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 12px;
+        margin-top: 5px;
+        color: var(--faint);
+        font-size: 10px;
+      }
+      .run-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 7px;
+        border: 1px solid color-mix(in srgb, currentColor 38%, transparent);
+        border-radius: 2px;
+        color: var(--neutral);
+        font: 9px/1.2 var(--mono);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+      .run-status::before {
+        content: "";
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+      .run-status.good {
+        color: var(--good);
+      }
+      .run-status.warn {
+        color: var(--warn);
+      }
+      .run-status.bad {
+        color: var(--bad);
+      }
+      .run-status.neutral {
+        color: var(--neutral);
+      }
+      .run-detail {
+        margin: 11px 0 0 91px;
+      }
+      .run-detail summary {
+        width: fit-content;
+        color: var(--accent-strong);
+        cursor: pointer;
+        font-size: 10px;
+      }
+      .detail-body {
+        margin-top: 10px;
+        padding: 11px 13px;
+        border-left: 1px solid var(--accent-strong);
+        background: var(--panel-hi);
+      }
+      .detail-grid {
+        display: grid;
+        grid-template-columns: 72px minmax(0, 1fr);
+        gap: 5px 12px;
+        margin: 0;
+        font-size: 10px;
+      }
+      .detail-grid dt {
+        color: var(--faint);
+      }
+      .detail-grid dd {
+        min-width: 0;
+        margin: 0;
+        overflow-wrap: anywhere;
+        color: var(--muted);
+      }
+      .phase-list,
+      .summary-lines {
+        display: grid;
+        gap: 5px;
+        margin: 10px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+      .phase-item {
+        display: grid;
+        grid-template-columns: 80px 58px minmax(0, 1fr);
+        gap: 8px;
+        color: var(--muted);
+        font-size: 10px;
+      }
+      .phase-item .phase-id {
+        color: var(--ink);
+        font-family: var(--mono);
+      }
+      .phase-item .phase-state {
+        color: var(--faint);
+        font-family: var(--mono);
+      }
+      .summary-lines li {
+        color: var(--muted);
+        font: 10px/1.45 var(--mono);
+        overflow-wrap: anywhere;
+      }
+      .more-row {
+        display: flex;
+        justify-content: center;
+        padding: 12px;
+        border-top: 1px solid var(--rule);
+      }
+      .more-button {
+        padding: 7px 11px;
+        border: 1px solid var(--rule);
+        border-radius: 2px;
+        color: var(--ink);
+        background: transparent;
+        cursor: pointer;
+        font-size: 11px;
+      }
+      .more-button:hover {
+        background: var(--panel-hi);
+      }
+      .rail-panel {
+        padding: 18px 18px 17px;
+      }
+      .rail-panel + .rail-panel {
+        border-top: 1px solid var(--rule);
+      }
+      .rail-panel h2 {
+        margin-bottom: 12px;
+      }
+      .host-facts {
+        display: grid;
+        gap: 12px;
+        margin: 0;
+      }
+      .host-facts div {
+        display: grid;
+        gap: 4px;
+      }
+      .host-facts dt {
+        color: var(--faint);
+        font: 9px var(--mono);
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+      }
+      .host-facts dd {
+        min-width: 0;
+        margin: 0;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .store-path {
+        display: block;
+        overflow-wrap: anywhere;
+        color: var(--ink);
+        font-size: 10px;
+      }
+      .verification-list {
+        display: grid;
+        gap: 7px;
+        margin: 8px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+      .verification-list li {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding-top: 7px;
+        border-top: 1px solid var(--rule);
+        color: var(--muted);
+        font: 10px var(--mono);
+      }
+      .small-empty {
+        color: var(--faint);
+        font-size: 11px;
+      }
+      .lock-list,
+      .trunk-list {
+        display: grid;
+        gap: 0;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .lock-item {
+        display: grid;
+        grid-template-columns: 7px minmax(0, 1fr);
+        gap: 10px;
+        padding: 10px 0;
+        border-top: 1px solid var(--rule);
+      }
+      .lock-item:first-child,
+      .trunk-item:first-child {
+        border-top: 0;
+        padding-top: 1px;
+      }
+      .lock-light {
+        width: 6px;
+        height: 6px;
+        margin-top: 5px;
+        border-radius: 50%;
+        background: var(--warn);
+      }
+      .lock-title {
+        overflow-wrap: anywhere;
+        font-size: 11px;
+        line-height: 1.35;
+      }
+      .lock-meta {
+        margin-top: 4px;
+        color: var(--faint);
+        font: 9px/1.4 var(--mono);
+        overflow-wrap: anywhere;
+      }
+      .trunk-item {
+        position: relative;
+        display: grid;
+        grid-template-columns: 54px minmax(0, 1fr);
+        gap: 11px;
+        padding: 10px 0;
+        border-top: 1px solid var(--rule);
+      }
+      .trunk-date {
+        padding-top: 1px;
+        color: var(--faint);
+        font: 9px/1.4 var(--mono);
+      }
+      .trunk-title {
+        display: block;
+        color: var(--ink);
+        font-size: 10px;
+        line-height: 1.4;
+      }
+      .trunk-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px 8px;
+        margin-top: 4px;
+        color: var(--faint);
+        font: 9px var(--mono);
+      }
+      .impact {
+        color: var(--accent-strong);
+      }
+      .rail-empty {
+        padding: 8px 0;
+        color: var(--faint);
+        font-size: 11px;
+      }
+      .footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 22px;
+        margin-top: 24px;
+        padding-top: 12px;
+        border-top: 1px solid var(--rule);
+        color: var(--faint);
+        font-size: 10px;
+      }
+      .footer code {
+        color: var(--muted);
+        font-size: 10px;
+      }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+      @media (max-width: 940px) {
+        .shell {
+          width: min(100% - 36px, 760px);
+        }
+        .masthead {
+          flex-wrap: wrap;
+          padding: 12px 0;
+        }
+        .feed-state {
+          order: 3;
+          width: 100%;
+        }
+        .workbench {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .chart-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .stage-panel {
+          grid-column: 1 / -1;
+        }
+        .rail {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          align-items: start;
+        }
+        .rail .panel {
+          min-width: 0;
+        }
+        .host-panel {
+          grid-column: 1 / -1;
+        }
+        .rail-panel + .rail-panel {
+          border-top: 0;
+        }
+      }
+      @media (max-width: 620px) {
+        .shell {
+          width: calc(100% - 28px);
+        }
+        .masthead {
+          align-items: flex-start;
+          gap: 11px;
+        }
+        .brand {
+          min-height: 35px;
+        }
+        .brand-name {
+          font-size: 10px;
+        }
+        .toolbar {
+          gap: 5px;
+        }
+        .toolbar-button,
+        .import-button {
+          min-height: 34px;
+          padding: 0 8px;
+          font-size: 10px;
+        }
+        .toolbar-button svg,
+        .import-button svg {
+          width: 12px;
+          height: 12px;
+        }
+        .feed-state {
+          font-size: 9px;
+        }
+        main {
+          padding-top: 10px;
+        }
+        .status-row {
+          min-height: 34px;
+          gap: 8px;
+          margin-bottom: 10px;
+          font-size: 9px;
+        }
+        .host-inline {
+          gap: 6px;
+        }
+        .host-inline strong {
+          font-size: 11px;
+        }
+        .status-time {
+          max-width: 112px;
+        }
+        .overview {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          margin-bottom: 10px;
+        }
+        .metric {
+          min-height: 65px;
+          padding: 9px 11px;
+        }
+        .metric:last-child {
+          grid-column: 1 / -1;
+        }
+        .metric-label {
+          font-size: 8px;
+        }
+        .metric-value {
+          margin-top: 5px;
+          font-size: 23px;
+        }
+        .chart-grid {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 9px;
+        }
+        .stage-panel {
+          grid-column: auto;
+        }
+        .chart-panel {
+          min-height: 156px;
+          padding: 11px 12px;
+        }
+        .trend-panel {
+          min-height: 164px;
+        }
+        .chart-svg {
+          height: 106px;
+        }
+        .panel-head h2,
+        .rail-panel h2 {
+          font-size: 15px;
+        }
+        .panel-head {
+          padding: 14px 13px 12px;
+        }
+        .topic-controls {
+          align-items: flex-start;
+          flex-direction: column;
+          padding: 10px 13px;
+        }
+        .search-wrap {
+          width: 100%;
+        }
+        .small-note {
+          font-size: 10px;
+        }
+        th {
+          padding: 9px 11px;
+        }
+        td {
+          padding: 10px 11px;
+        }
+        .run-panel .panel-head {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+        .run-filter {
+          justify-content: flex-start;
+        }
+        .run-row {
+          padding: 12px 13px;
+        }
+        .run-main {
+          grid-template-columns: 54px minmax(0, 1fr);
+          gap: 8px;
+        }
+        .run-time {
+          font-size: 9px;
+        }
+        .run-title-line {
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+        .run-title {
+          font-size: 10px;
+        }
+        .run-status {
+          font-size: 8px;
+        }
+        .run-detail {
+          margin-left: 62px;
+        }
+        .phase-item {
+          grid-template-columns: 65px 48px minmax(0, 1fr);
+          gap: 5px;
+        }
+        .rail {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 12px;
+        }
+        .host-panel {
+          grid-column: auto;
+        }
+        .footer {
+          flex-direction: column;
+          gap: 6px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to dashboard</a>
+    <div class="shell">
+      <header class="masthead">
+        <div class="brand" aria-label="CI Tower local dashboard">
+          <svg
+            class="brand-mark"
+            viewBox="0 0 32 32"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M16 2.5 19.2 12.8 29.5 16l-10.3 3.2L16 29.5l-3.2-10.3L2.5 16l10.3-3.2L16 2.5Z"
+              stroke="currentColor"
+              stroke-width="1.4"
+            />
+            <circle cx="16" cy="16" r="2.2" fill="currentColor" />
+            <path
+              d="M16 6v5M26 16h-5M16 26v-5M6 16h5"
+              stroke="currentColor"
+              stroke-width="1.2"
+            />
+          </svg>
+          <div class="brand-name">CI TOWER <span>/ NIX FLEET</span></div>
+        </div>
+        <div class="feed-state" id="feed-state" data-state="offline">
+          <span class="feed-dot" aria-hidden="true"></span>
+          <span id="connection-label">CONNECTING</span>
+          <span class="feed-divider" aria-hidden="true">/</span>
+          <span>READ ONLY</span>
+        </div>
+        <div class="toolbar" aria-label="Dashboard controls">
+          <button
+            class="toolbar-button primary"
+            id="refresh-button"
+            type="button"
+            title="Fetch a fresh tower snapshot"
+          >
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path
+                d="M16.5 8a6.6 6.6 0 0 0-11.2-3L3.5 6.8M3.5 3.5v3.3h3.3M3.5 12a6.6 6.6 0 0 0 11.2 3l1.8-1.8m0 3.3v-3.3h-3.3"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span>Refresh</span>
+          </button>
+          <button
+            class="toolbar-button"
+            id="theme-button"
+            type="button"
+            aria-label="Switch to light theme"
+          >
+            Light
+          </button>
+          <input
+            class="file-input"
+            id="json-file"
+            type="file"
+            accept="application/json,.json"
+            aria-label="Choose a saved ci tower JSON file"
+          />
+          <label
+            class="import-button"
+            for="json-file"
+            title="Load a saved ci tower JSON snapshot"
+          >
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path
+                d="M10 12.7V3.5m0 0L6.7 6.8M10 3.5l3.3 3.3M4 11.8v3.7c0 .6.5 1 1 1h10c.6 0 1-.4 1-1v-3.7"
+                stroke="currentColor"
+                stroke-width="1.4"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span>Import JSON</span>
+          </label>
+        </div>
+      </header>
+
+      <main id="main">
+        <div class="status-row">
+          <div class="host-inline">
+            <span aria-hidden="true">🖥️</span
+            ><strong id="host-name">Waiting for feed</strong
+            ><span class="host-status" id="host-status">—</span>
+          </div>
+          <span class="status-time" id="updated-at">No snapshot loaded</span>
+        </div>
+
+        <p
+          class="feed-note"
+          id="feed-note"
+          role="status"
+          aria-live="polite"
+          hidden
+        ></p>
+
+        <section class="overview" aria-label="Current CI metrics">
+          <div class="metric" id="metric-active" data-tone="good">
+            <span class="metric-label"
+              ><span class="metric-emoji" aria-hidden="true">⚙️</span>In
+              flight</span
+            ><strong class="metric-value" id="active-count">—</strong>
+          </div>
+          <div class="metric" id="metric-queued" data-tone="warn">
+            <span class="metric-label"
+              ><span class="metric-emoji" aria-hidden="true">⏳</span
+              >Queued</span
+            ><strong class="metric-value" id="queued-count">—</strong>
+          </div>
+          <div class="metric" id="metric-failed" data-tone="bad">
+            <span class="metric-label"
+              ><span class="metric-emoji" aria-hidden="true">🔥</span>Failed ·
+              24h</span
+            ><strong class="metric-value" id="failed-count">—</strong>
+          </div>
+          <div class="metric" id="metric-topics" data-tone="neutral">
+            <span class="metric-label"
+              ><span class="metric-emoji" aria-hidden="true">🧩</span
+              >Topics</span
+            ><strong class="metric-value" id="topic-value">—</strong>
+          </div>
+          <div class="metric" id="metric-locks" data-tone="warn">
+            <span class="metric-label"
+              ><span class="metric-emoji" aria-hidden="true">🔒</span>Topic
+              locks</span
+            ><strong class="metric-value" id="lock-count">—</strong>
+          </div>
+        </section>
+
+        <section class="chart-grid" aria-label="Live CI charts">
+          <section
+            class="panel chart-panel trend-panel"
+            aria-labelledby="trend-heading"
+          >
+            <div class="chart-head">
+              <h2 id="trend-heading">
+                <span aria-hidden="true">📈</span> Run rhythm
+              </h2>
+              <span class="chart-meta" id="run-trend-summary"
+                >Last 24 hours</span
+              >
+            </div>
+            <svg
+              class="chart-svg"
+              id="run-trend"
+              viewBox="0 0 360 132"
+              role="img"
+              aria-label="CI runs started in the last 24 hours"
+            >
+              <g aria-hidden="true">
+                <line class="chart-gridline" x1="12" y1="24" x2="348" y2="24" />
+                <line class="chart-gridline" x1="12" y1="46" x2="348" y2="46" />
+                <line class="chart-gridline" x1="12" y1="68" x2="348" y2="68" />
+                <line class="chart-gridline" x1="12" y1="90" x2="348" y2="90" />
+              </g>
+              <g id="run-trend-bars" aria-hidden="true"></g>
+              <g id="run-trend-labels" aria-hidden="true"></g>
+            </svg>
+            <ul class="chart-legend" aria-label="Run states">
+              <li><span class="legend-swatch succeeded"></span>Passed</li>
+              <li><span class="legend-swatch failed"></span>Failed</li>
+              <li><span class="legend-swatch running"></span>Active</li>
+              <li><span class="legend-swatch queued"></span>Queued</li>
+              <li><span class="legend-swatch other"></span>Other</li>
+            </ul>
+          </section>
+
+          <section
+            class="panel chart-panel outcome-panel"
+            aria-labelledby="outcome-heading"
+          >
+            <div class="chart-head">
+              <h2 id="outcome-heading">
+                <span aria-hidden="true">🍩</span> Outcomes
+              </h2>
+              <span class="chart-meta" id="outcome-caption">All runs</span>
+            </div>
+            <div class="outcome-layout">
+              <svg
+                class="outcome-svg"
+                id="outcome-chart"
+                viewBox="0 0 120 120"
+                role="img"
+                aria-label="Run outcomes in the tower snapshot"
+              >
+                <circle class="outcome-track" cx="60" cy="60" r="44" />
+                <g id="outcome-segments" aria-hidden="true"></g>
+                <text class="outcome-total" id="outcome-total" x="60" y="58">
+                  0
+                </text>
+                <text class="outcome-label" x="60" y="73">RUNS</text>
+              </svg>
+              <ul class="chart-legend outcome-legend" id="outcome-legend"></ul>
+            </div>
+          </section>
+
+          <section
+            class="panel chart-panel stage-panel"
+            aria-labelledby="stage-heading"
+          >
+            <div class="chart-head">
+              <h2 id="stage-heading">
+                <span aria-hidden="true">🧱</span> Workspace stages
+              </h2>
+              <span class="chart-meta" id="stage-caption">Topics</span>
+            </div>
+            <div
+              class="stage-bar"
+              id="stage-bar"
+              role="img"
+              aria-label="Workspace stages are loading"
+            ></div>
+            <ul class="chart-legend stage-legend" id="stage-legend"></ul>
+          </section>
+        </section>
+
+        <div class="workbench">
+          <div class="primary-column">
+            <section class="panel" aria-labelledby="topics-title">
+              <header class="panel-head">
+                <div class="panel-heading">
+                  <p class="section-kicker">WORKSPACE RADAR</p>
+                  <h2 id="topics-title">
+                    <span aria-hidden="true">🧩</span> Topics &amp; workspaces
+                  </h2>
+                </div>
+                <span class="record-count" id="topic-count">— topics</span>
+              </header>
+              <div class="topic-controls">
+                <label class="search-wrap">
+                  <span class="sr-only">Filter topics and runs</span>
+                  <svg viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                    <circle
+                      cx="7.8"
+                      cy="7.8"
+                      r="5.2"
+                      stroke="currentColor"
+                      stroke-width="1.4"
+                    />
+                    <path
+                      d="m11.6 11.6 3.5 3.5"
+                      stroke="currentColor"
+                      stroke-width="1.4"
+                      stroke-linecap="round"
+                    />
+                  </svg>
+                  <input
+                    class="search-input"
+                    id="search-input"
+                    type="search"
+                    aria-label="Filter topics and runs"
+                    placeholder="Filter by topic, command, workspace…"
+                    autocomplete="off"
+                  />
+                </label>
+              </div>
+              <div
+                class="table-scroll"
+                tabindex="0"
+                aria-label="Scrollable topic table"
+              >
+                <table>
+                  <caption class="sr-only">
+                    CI topics and workspace status
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Workspace</th>
+                      <th scope="col">Stage</th>
+                      <th scope="col">Current change</th>
+                      <th scope="col">Behind</th>
+                    </tr>
+                  </thead>
+                  <tbody id="topics-body">
+                    <tr>
+                      <td class="empty-row" colspan="4">
+                        Waiting for the local tower snapshot.
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="panel run-panel" aria-labelledby="runs-title">
+              <header class="panel-head">
+                <div class="panel-heading">
+                  <p class="section-kicker">EXECUTION LOG</p>
+                  <h2 id="runs-title">
+                    <span aria-hidden="true">⚡</span> Recent CI runs
+                  </h2>
+                  <span class="panel-subtitle" id="runs-subtitle">— runs</span>
+                </div>
+                <div
+                  class="run-filter"
+                  role="group"
+                  aria-label="Filter runs by state"
+                >
+                  <button
+                    class="filter-button"
+                    type="button"
+                    data-run-filter="all"
+                    aria-pressed="true"
+                  >
+                    All
+                  </button>
+                  <button
+                    class="filter-button"
+                    type="button"
+                    data-run-filter="running"
+                    aria-pressed="false"
+                  >
+                    Active
+                  </button>
+                  <button
+                    class="filter-button"
+                    type="button"
+                    data-run-filter="failed"
+                    aria-pressed="false"
+                  >
+                    Failed
+                  </button>
+                  <button
+                    class="filter-button"
+                    type="button"
+                    data-run-filter="succeeded"
+                    aria-pressed="false"
+                  >
+                    Passed
+                  </button>
+                </div>
+              </header>
+              <div class="run-list" id="run-list">
+                <p class="empty-row">Waiting for the local tower snapshot.</p>
+              </div>
+              <div class="more-row" id="more-row" hidden>
+                <button class="more-button" id="more-button" type="button">
+                  Show older runs
+                </button>
+              </div>
+            </section>
+          </div>
+
+          <aside class="rail" aria-label="Host, locks, and trunk detail">
+            <section
+              class="panel host-panel"
+              aria-labelledby="host-panel-title"
+            >
+              <div class="rail-panel">
+                <p class="section-kicker">NIX HOST</p>
+                <h2 id="host-panel-title">
+                  <span aria-hidden="true">🖥️</span> Running generation
+                </h2>
+                <dl class="host-facts">
+                  <div>
+                    <dt>System</dt>
+                    <dd id="host-system">—</dd>
+                  </div>
+                  <div>
+                    <dt>Last activation</dt>
+                    <dd id="host-activated">—</dd>
+                  </div>
+                  <div>
+                    <dt>Store path</dt>
+                    <dd>
+                      <code class="store-path" id="host-generation">—</code>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Local release verification</dt>
+                    <dd id="verification-summary">—</dd>
+                    <ul class="verification-list" id="verification-list"></ul>
+                  </div>
+                </dl>
+              </div>
+            </section>
+
+            <section class="panel" aria-labelledby="locks-title">
+              <div class="rail-panel">
+                <p class="section-kicker">RESOURCE CONTROL</p>
+                <h2 id="locks-title">
+                  <span aria-hidden="true">🔒</span> Active locks
+                  <span class="record-count" id="check-lock-count"></span>
+                </h2>
+                <ul class="lock-list" id="lock-list">
+                  <li class="rail-empty">Waiting for tower data.</li>
+                </ul>
+              </div>
+            </section>
+
+            <section class="panel" aria-labelledby="trunk-title">
+              <div class="rail-panel">
+                <p class="section-kicker">TRUNK HISTORY</p>
+                <h2 id="trunk-title">
+                  <span aria-hidden="true">🪵</span> Latest changes
+                </h2>
+                <ol class="trunk-list" id="trunk-list">
+                  <li class="rail-empty">Waiting for tower data.</li>
+                </ol>
+              </div>
+            </section>
+          </aside>
+        </div>
+
+        <footer class="footer">
+          <span>Local only · read-only · refreshes every 15 seconds</span>
+          <span
+            >Start the feed from the repository root:
+            <code>node tools/ci-dashboard/server.mjs</code></span
+          >
+        </footer>
+        <div
+          class="sr-only"
+          id="announcement"
+          aria-live="polite"
+          aria-atomic="true"
+        ></div>
+      </main>
+    </div>
+
+    <script>
+      (() => {
+        const $ = (selector) => document.querySelector(selector);
+        const state = {
+          data: null,
+          fetchedAt: null,
+          stale: false,
+          error: null,
+          filter: "all",
+          query: "",
+          runLimit: 14,
+          imported: false,
+        };
+        const REFRESH_MS = 15_000;
+
+        function asList(value) {
+          if (Array.isArray(value)) return value;
+          if (value && typeof value === "object") return Object.values(value);
+          return [];
+        }
+
+        function escapeHTML(value) {
+          return String(value ?? "").replace(
+            /[&<>"']/g,
+            (character) =>
+              ({
+                "&": "&amp;",
+                "<": "&lt;",
+                ">": "&gt;",
+                '"': "&quot;",
+                "'": "&#39;",
+              })[character],
+          );
+        }
+
+        function stamp(value, options = {}) {
+          const number = Number(value);
+          if (!Number.isFinite(number) || number <= 0) return "—";
+          return new Intl.DateTimeFormat(undefined, {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            ...options,
+          }).format(new Date(number));
+        }
+
+        function durationFrom(value) {
+          const ms = Number(value);
+          if (!Number.isFinite(ms) || ms <= 0) return "—";
+          const seconds = Math.max(0, Math.floor((Date.now() - ms) / 1000));
+          if (seconds < 60) return "<1m ago";
+          if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+          if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+          return `${Math.floor(seconds / 86400)}d ago`;
+        }
+
+        function relativeAge() {
+          if (!state.fetchedAt) return "No snapshot loaded";
+          return `Snapshot ${durationFrom(state.fetchedAt)}`;
+        }
+
+        function setAnnouncement(message) {
+          $("#announcement").textContent = message;
+        }
+
+        function setNote(message, kind = "warning") {
+          const note = $("#feed-note");
+          note.textContent = message;
+          note.dataset.kind = kind;
+          note.hidden = !message;
+        }
+
+        function setConnection(label, connectionState) {
+          $("#connection-label").textContent = label;
+          $("#feed-state").dataset.state = connectionState;
+        }
+
+        function runState(run) {
+          const status = String(run?.state ?? "unknown").toLowerCase();
+          const code = run?.exit_code;
+          if (code !== null && code !== undefined && Number(code) !== 0)
+            return { key: "failed", label: "Failed", tone: "bad" };
+          if (["failed", "failure", "error", "errored"].includes(status))
+            return { key: "failed", label: "Failed", tone: "bad" };
+          if (["queued", "pending", "waiting"].includes(status))
+            return { key: "queued", label: "Queued", tone: "warn" };
+          if (["running", "working", "blocked"].includes(status))
+            return {
+              key: "running",
+              label: status === "blocked" ? "Blocked" : "Running",
+              tone: status === "blocked" ? "warn" : "good",
+            };
+          if (
+            Number(code) === 0 ||
+            [
+              "passed",
+              "success",
+              "succeeded",
+              "done",
+              "complete",
+              "completed",
+            ].includes(status)
+          )
+            return { key: "succeeded", label: "Passed", tone: "good" };
+          if (["cancelled", "canceled"].includes(status))
+            return { key: "other", label: "Cancelled", tone: "neutral" };
+          return {
+            key: "other",
+            label: status.replaceAll("_", " "),
+            tone: "neutral",
+          };
+        }
+
+        function topicState(topic) {
+          if (topic?.head?.conflict || asList(topic?.conflicts).length > 0)
+            return { label: "Conflict", tone: "bad" };
+          const stage = String(topic?.stage ?? "unknown").replaceAll("_", " ");
+          if (topic?.landed || stage === "landed")
+            return { label: "Landed", tone: "good" };
+          if (["blocked", "failed", "conflicted"].includes(stage))
+            return { label: stage, tone: "bad" };
+          if (["ready", "published", "review", "reviewing"].includes(stage))
+            return { label: stage, tone: "good" };
+          return { label: stage, tone: "neutral" };
+        }
+
+        function normalizeSnapshot(payload) {
+          const wrapped =
+            payload && payload.snapshot && payload.fetchedAt !== undefined;
+          const data = wrapped ? payload.snapshot : payload;
+          if (
+            !data ||
+            typeof data !== "object" ||
+            !data.host ||
+            !data.snapshot
+          ) {
+            throw new Error(
+              "This file does not look like a ci tower JSON snapshot.",
+            );
+          }
+          return {
+            data,
+            fetchedAt: wrapped
+              ? Number(payload.fetchedAt)
+              : Number(data.snapshot.taken_ms) || Date.now(),
+            stale: wrapped && Boolean(payload.stale),
+            error: wrapped ? payload.error : null,
+          };
+        }
+
+        function topicMatches(topic, query) {
+          if (!query) return true;
+          const haystack = [
+            topic.key,
+            topic.workspace,
+            topic.branch,
+            topic.stage,
+            topic.next,
+            topic.head?.title,
+            topic.head?.short,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          return haystack.includes(query);
+        }
+
+        function runMatches(run, query) {
+          if (!query) return true;
+          const haystack = [
+            run.id,
+            run.workspace,
+            run.source,
+            run.args,
+            run.summary,
+            asList(run.phases).map((phase) => phase?.msg),
+          ]
+            .flat()
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          return haystack.includes(query);
+        }
+
+        function topicRow(topic) {
+          const topicStatus = topicState(topic);
+          const title =
+            topic?.head?.title ||
+            topic?.head?.short ||
+            topic?.key ||
+            "Untitled change";
+          const workspace = topic?.workspace || topic?.key || "unknown";
+          const workspaceRoot = topic?.root || "";
+          const current = topic?.current
+            ? '<span class="current-label">Current</span>'
+            : "";
+          const behind = Number(topic?.behind ?? 0);
+          const detail = topic?.next
+            ? `<span class="head-meta">${escapeHTML(topic.next)}</span>`
+            : `<span class="head-meta">${escapeHTML(topic?.owner || "No owner")}</span>`;
+          return `<tr>
+          <td><div class="workspace-name"><strong title="${escapeHTML(workspaceRoot)}">${escapeHTML(workspace)}</strong>${current}${detail}</div></td>
+          <td><span class="state-tag ${topicStatus.tone}">${escapeHTML(topicStatus.label)}</span></td>
+          <td><span class="head-title" title="${escapeHTML(title)}">${escapeHTML(title)}</span><span class="head-meta">${escapeHTML(topic?.head?.short || "—")}</span></td>
+          <td><span class="behind" data-behind="${behind}">${behind === 0 ? "At trunk" : `${behind} behind`}</span></td>
+        </tr>`;
+        }
+
+        function phaseRows(phases) {
+          const rows = asList(phases);
+          if (!rows.length) return "";
+          return `<ul class="phase-list" aria-label="Run phases">${rows
+            .map((phase) => {
+              const phaseTime =
+                phase?.ended_ms && phase?.started_ms
+                  ? `${Math.max(0, Math.round((phase.ended_ms - phase.started_ms) / 1000))}s`
+                  : "—";
+              return `<li class="phase-item"><span class="phase-id">${escapeHTML(phase?.id || "phase")}</span><span class="phase-state">${escapeHTML(phase?.state || "unknown")} · ${escapeHTML(phaseTime)}</span><span>${escapeHTML(phase?.msg || "")}</span></li>`;
+            })
+            .join("")}</ul>`;
+        }
+
+        function runRow(run) {
+          const status = runState(run);
+          const args = asList(run?.args).map(String).join(" ") || "CI run";
+          const started = Number(run?.started_ms) || 0;
+          const ended = Number(run?.ended_ms) || 0;
+          const elapsed =
+            ended && started
+              ? `${Math.max(0, Math.round((ended - started) / 1000))}s`
+              : status.key === "running"
+                ? "in progress"
+                : "—";
+          const summary = asList(run?.summary);
+          const phaseMarkup = phaseRows(run?.phases);
+          const summaryMarkup = summary.length
+            ? `<ul class="summary-lines">${summary.map((line) => `<li>${escapeHTML(line)}</li>`).join("")}</ul>`
+            : "";
+          const workspace = run?.workspace || "local";
+          const runId = run?.id || "run";
+          return `<article class="run-row">
+          <div class="run-main">
+            <time class="run-time" datetime="${started ? new Date(started).toISOString() : ""}" title="${escapeHTML(stamp(started, { year: "numeric" }))}">${escapeHTML(durationFrom(started))}</time>
+            <div class="run-content">
+              <div class="run-title-line"><span class="run-title">${escapeHTML(args)}</span><span class="run-status ${status.tone}">${escapeHTML(status.label)}</span></div>
+              <div class="run-meta"><span>${escapeHTML(workspace)}</span><span>${escapeHTML(run?.source || "local")}</span><span>${escapeHTML(elapsed)}</span></div>
+            </div>
+          </div>
+          <details class="run-detail">
+            <summary>Run detail · ${escapeHTML(runId)}</summary>
+            <div class="detail-body">
+              <dl class="detail-grid">
+                <dt>Command</dt><dd><code>${escapeHTML(args)}</code></dd>
+                <dt>Started</dt><dd>${escapeHTML(stamp(started, { year: "numeric" }))}</dd>
+                <dt>Workspace</dt><dd><code>${escapeHTML(workspace)}</code></dd>
+                <dt>Exit code</dt><dd>${run?.exit_code === null || run?.exit_code === undefined ? "—" : escapeHTML(run.exit_code)}</dd>
+                ${run?.log ? `<dt>Log file</dt><dd><code>${escapeHTML(run.log)}</code></dd>` : ""}
+              </dl>
+              ${phaseMarkup}${summaryMarkup}
+            </div>
+          </details>
+        </article>`;
+        }
+
+        function topicLocks() {
+          const raw = state.data?.locks?.topics;
+          const locks = [];
+          for (const entry of asList(raw)) {
+            if (Array.isArray(entry)) {
+              for (const part of entry)
+                if (part && typeof part === "object" && !Array.isArray(part))
+                  locks.push(part);
+            } else if (entry && typeof entry === "object") {
+              locks.push(entry);
+            }
+          }
+          return locks;
+        }
+
+        function checkLocks() {
+          const raw = state.data?.locks?.checks;
+          if (Array.isArray(raw)) return raw;
+          if (
+            raw &&
+            typeof raw === "object" &&
+            ("pid" in raw || "unit" in raw || "workspace" in raw)
+          )
+            return [raw];
+          return asList(raw);
+        }
+
+        function renderTopics() {
+          const topics = asList(state.data?.snapshot?.topics)
+            .slice()
+            .sort(
+              (a, b) =>
+                Number(Boolean(b.current)) - Number(Boolean(a.current)) ||
+                String(a.workspace || "").localeCompare(
+                  String(b.workspace || ""),
+                ),
+            );
+          const filtered = topics.filter((topic) =>
+            topicMatches(topic, state.query),
+          );
+          $("#topic-count").textContent =
+            `${filtered.length} / ${topics.length} topics`;
+          $("#topics-body").innerHTML = filtered.length
+            ? filtered.map(topicRow).join("")
+            : '<tr><td class="empty-row" colspan="4">No topics match this filter.</td></tr>';
+        }
+
+        function renderRuns() {
+          const runs = asList(state.data?.runs)
+            .slice()
+            .sort(
+              (a, b) => Number(b.started_ms || 0) - Number(a.started_ms || 0),
+            );
+          const filtered = runs.filter((run) => {
+            const status = runState(run);
+            const matchesFilter =
+              state.filter === "all" ||
+              (state.filter === "running"
+                ? ["running", "queued"].includes(status.key)
+                : status.key === state.filter);
+            return matchesFilter && runMatches(run, state.query);
+          });
+          const visible = filtered.slice(0, state.runLimit);
+          $("#runs-subtitle").textContent =
+            `${filtered.length} / ${runs.length} runs`;
+          $("#run-list").innerHTML = visible.length
+            ? visible.map(runRow).join("")
+            : '<p class="empty-row">No runs match these filters.</p>';
+          $("#more-row").hidden = filtered.length <= visible.length;
+          $("#more-button").textContent =
+            `Show older runs · ${filtered.length - visible.length} more`;
+        }
+
+        function renderHost() {
+          const host = state.data?.host || {};
+          const generation = host.running || "—";
+          const releaseRecords = Object.entries(host.verified || {});
+          $("#host-name").textContent = host.hostname || "Unknown host";
+          $("#host-status").textContent = host.running
+            ? "RUNNING"
+            : "NO GENERATION";
+          $("#host-status").dataset.state = host.running ? "live" : "offline";
+          $("#host-system").textContent = host.hostname || "—";
+          $("#host-activated").textContent = host.activated_ms
+            ? `${stamp(host.activated_ms, { year: "numeric" })} · ${durationFrom(host.activated_ms)}`
+            : "No activation time reported";
+          $("#host-generation").textContent = generation;
+          $("#host-generation").title = generation;
+          $("#verification-summary").textContent = releaseRecords.length
+            ? `${releaseRecords.length} release record${releaseRecords.length === 1 ? "" : "s"} on this host`
+            : "No local release verification recorded";
+          $("#verification-list").innerHTML = releaseRecords.length
+            ? releaseRecords
+                .map(([release, value]) => {
+                  const verified =
+                    typeof value === "boolean"
+                      ? value
+                      : Boolean(
+                          value?.verified ??
+                            value?.ok ??
+                            value?.state === "verified",
+                        );
+                  return `<li><span>${escapeHTML(release)}</span><span class="state-tag ${verified ? "good" : "warn"}">${verified ? "Verified" : "Pending"}</span></li>`;
+                })
+                .join("")
+            : "";
+        }
+
+        function renderLocks() {
+          const locks = topicLocks();
+          const checks = checkLocks();
+          $("#lock-count").textContent = String(locks.length);
+          $("#check-lock-count").textContent = checks.length
+            ? `+ ${checks.length} check${checks.length === 1 ? "" : "s"}`
+            : "";
+          const items = [
+            ...checks.map((lock) => ({
+              ...lock,
+              lockLabel: lock.unit || "Check lock",
+            })),
+            ...locks.map((lock) => ({
+              ...lock,
+              lockLabel: lock.unit || "Topic lock",
+            })),
+          ];
+          $("#lock-list").innerHTML = items.length
+            ? items
+                .map((lock) => {
+                  const title = lock.topic || lock.lockLabel;
+                  const location = lock.workspace
+                    ? String(lock.workspace)
+                        .split("/")
+                        .filter(Boolean)
+                        .slice(-2)
+                        .join("/")
+                    : "workspace unknown";
+                  return `<li class="lock-item"><span class="lock-light" aria-hidden="true"></span><div><div class="lock-title">${escapeHTML(title)}</div><div class="lock-meta">${escapeHTML(lock.lockLabel)} · ${escapeHTML(location)} · since ${escapeHTML(durationFrom(lock.since_ms))}</div></div></li>`;
+                })
+                .join("")
+            : '<li class="rail-empty">No active CI locks.</li>';
+        }
+
+        function renderTrunk() {
+          const trunk = asList(state.data?.snapshot?.trunk)
+            .slice()
+            .sort((a, b) => Number(b.time_ms || 0) - Number(a.time_ms || 0))
+            .slice(0, 7);
+          $("#trunk-list").innerHTML = trunk.length
+            ? trunk
+                .map((change) => {
+                  const impact =
+                    asList(change.impact).join(" · ") ||
+                    asList(change.tags).join(" · ");
+                  return `<li class="trunk-item"><time class="trunk-date" datetime="${change.time_ms ? new Date(change.time_ms).toISOString() : ""}">${escapeHTML(stamp(change.time_ms, { year: undefined, month: "short", day: "numeric" }))}</time><div><span class="trunk-title">${escapeHTML(change.title || "Untitled change")}</span><span class="trunk-meta"><span>${escapeHTML(change.short || "—")}</span><span>${escapeHTML(change.author || "unknown")}</span>${impact ? `<span class="impact">${escapeHTML(impact)}</span>` : ""}</span></div></li>`;
+                })
+                .join("")
+            : '<li class="rail-empty">No trunk changes in this snapshot.</li>';
+        }
+
+        function renderMetrics() {
+          const runs = asList(state.data?.runs);
+          const statuses = runs.map(runState);
+          const active = statuses.filter(
+            (status) => status.key === "running",
+          ).length;
+          const reportedQueue = Number(state.data?.host?.queued);
+          const queued = Number.isFinite(reportedQueue)
+            ? Math.max(0, reportedQueue)
+            : statuses.filter((status) => status.key === "queued").length;
+          const failedDay = runs.filter(
+            (run) =>
+              runState(run).key === "failed" &&
+              Number(run.ended_ms || run.started_ms) >= Date.now() - 86_400_000,
+          ).length;
+          const locks = topicLocks().length;
+          const topics = asList(state.data?.snapshot?.topics).length;
+          $("#active-count").textContent = String(active);
+          $("#queued-count").textContent = String(queued);
+          $("#failed-count").textContent = String(failedDay);
+          $("#topic-value").textContent = String(topics);
+          $("#lock-count").textContent = String(locks);
+          $("#metric-active").dataset.tone = active ? "good" : "neutral";
+          $("#metric-queued").dataset.tone = queued ? "warn" : "neutral";
+          $("#metric-failed").dataset.tone = failedDay ? "bad" : "good";
+          $("#metric-topics").dataset.tone = topics ? "good" : "neutral";
+          $("#metric-locks").dataset.tone = locks ? "warn" : "neutral";
+        }
+
+        const chartRunKeys = [
+          "succeeded",
+          "failed",
+          "running",
+          "queued",
+          "other",
+        ];
+        const chartRunLabels = {
+          succeeded: "Passed",
+          failed: "Failed",
+          running: "Active",
+          queued: "Queued",
+          other: "Other",
+        };
+        const chartRunColors = {
+          succeeded: "var(--good)",
+          failed: "var(--bad)",
+          running: "var(--accent-strong)",
+          queued: "var(--warn)",
+          other: "var(--neutral)",
+        };
+
+        function renderRunTrend(runs) {
+          const interval = 4 * 60 * 60 * 1000;
+          const now = Date.now();
+          const start = now - 6 * interval;
+          const buckets = Array.from({ length: 6 }, (_, index) => ({
+            start: start + index * interval,
+            counts: Object.fromEntries(chartRunKeys.map((key) => [key, 0])),
+          }));
+          let total = 0;
+          for (const run of runs) {
+            const started = Number(run?.started_ms);
+            if (!Number.isFinite(started) || started < start || started > now)
+              continue;
+            const index = Math.min(5, Math.floor((started - start) / interval));
+            const key = runState(run).key;
+            buckets[index].counts[chartRunKeys.includes(key) ? key : "other"] +=
+              1;
+            total += 1;
+          }
+          const maxCount = Math.max(
+            1,
+            ...buckets.map((bucket) =>
+              chartRunKeys.reduce((sum, key) => sum + bucket.counts[key], 0),
+            ),
+          );
+          const baseY = 90;
+          const maxHeight = 64;
+          const bars = buckets
+            .map((bucket, index) => {
+              const x = 18 + index * 55;
+              const bucketTotal = chartRunKeys.reduce(
+                (sum, key) => sum + bucket.counts[key],
+                0,
+              );
+              let y = baseY;
+              const segments = chartRunKeys
+                .map((key) => {
+                  const count = bucket.counts[key];
+                  if (!count) return "";
+                  const height = (count / maxCount) * maxHeight;
+                  y -= height;
+                  return `<rect x="${x}" y="${y.toFixed(2)}" width="32" height="${height.toFixed(2)}" fill="${chartRunColors[key]}"><title>${chartRunLabels[key]}: ${count}</title></rect>`;
+                })
+                .join("");
+              const empty = bucketTotal
+                ? ""
+                : `<rect x="${x}" y="88" width="32" height="2" fill="var(--rule)"/>`;
+              return empty + segments;
+            })
+            .join("");
+          const labels = buckets
+            .map((_, index) => {
+              const x = 34 + index * 55;
+              return `<text class="chart-axis" x="${x}" y="108">${24 - index * 4}h</text>`;
+            })
+            .join("");
+          const intervalSummary = buckets
+            .map((bucket, index) => {
+              const count = chartRunKeys.reduce(
+                (sum, key) => sum + bucket.counts[key],
+                0,
+              );
+              return `${24 - index * 4} hours ago: ${count}`;
+            })
+            .join("; ");
+          $("#run-trend-bars").innerHTML = bars;
+          $("#run-trend-labels").innerHTML = labels;
+          $("#run-trend").setAttribute(
+            "aria-label",
+            `Last 24 hours: ${total} runs, grouped in six four-hour intervals. ${intervalSummary}.`,
+          );
+          $("#run-trend-summary").textContent = `${total} runs · 24h`;
+        }
+
+        function renderOutcomes(runs) {
+          const counts = Object.fromEntries(
+            chartRunKeys.map((key) => [key, 0]),
+          );
+          for (const run of runs) {
+            const key = runState(run).key;
+            counts[chartRunKeys.includes(key) ? key : "other"] += 1;
+          }
+          const total = runs.length;
+          const circumference = 2 * Math.PI * 44;
+          let offset = 0;
+          const segments = chartRunKeys
+            .map((key) => {
+              const count = counts[key];
+              if (!count || !total) return "";
+              const length = (circumference * count) / total;
+              const segment = `<circle class="outcome-segment ${key}" cx="60" cy="60" r="44" stroke-dasharray="${length.toFixed(2)} ${(circumference - length).toFixed(2)}" stroke-dashoffset="${(-offset).toFixed(2)}"><title>${chartRunLabels[key]}: ${count}</title></circle>`;
+              offset += length;
+              return segment;
+            })
+            .join("");
+          $("#outcome-segments").innerHTML = segments;
+          $("#outcome-total").textContent = String(total);
+          $("#outcome-caption").textContent = `${total} runs`;
+          $("#outcome-chart").setAttribute(
+            "aria-label",
+            `Run outcomes in the tower snapshot: ${chartRunKeys.map((key) => `${chartRunLabels[key]} ${counts[key]}`).join(", ")}.`,
+          );
+          $("#outcome-legend").innerHTML = chartRunKeys
+            .map(
+              (key) =>
+                `<li><span class="legend-swatch ${key}" aria-hidden="true"></span><span>${chartRunLabels[key]}</span><strong>${counts[key]}</strong></li>`,
+            )
+            .join("");
+        }
+
+        function renderStageMix(topics) {
+          const counts = new Map();
+          for (const topic of topics) {
+            const stage = String(topic?.stage || "unknown")
+              .replaceAll("_", " ")
+              .toLowerCase();
+            counts.set(stage, (counts.get(stage) || 0) + 1);
+          }
+          const stages = [...counts.entries()].sort(
+            (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
+          );
+          const shown = stages
+            .slice(0, 5)
+            .map(([label, count]) => ({ label, count }));
+          if (stages.length > 5)
+            shown.push({
+              label: "other",
+              count: stages.slice(5).reduce((sum, entry) => sum + entry[1], 0),
+            });
+          const total = topics.length;
+          const segments = shown
+            .map((stage, index) => {
+              const width = total ? (stage.count / total) * 100 : 0;
+              return `<span class="stage-segment stage-${index}" style="width:${width.toFixed(2)}%" title="${escapeHTML(stage.label)}: ${stage.count}"></span>`;
+            })
+            .join("");
+          const legend = shown
+            .map((stage, index) => {
+              const label =
+                stage.label.charAt(0).toUpperCase() + stage.label.slice(1);
+              return `<li><span class="legend-swatch stage-${index}" aria-hidden="true"></span><span class="stage-name">${escapeHTML(label)}</span><strong>${stage.count}</strong></li>`;
+            })
+            .join("");
+          const accessibleSummary = shown
+            .map((stage) => `${stage.label}: ${stage.count}`)
+            .join(", ");
+          $("#stage-bar").innerHTML = total
+            ? segments
+            : '<span class="stage-empty" aria-hidden="true"></span>';
+          $("#stage-bar").setAttribute(
+            "aria-label",
+            total
+              ? `Workspace stages across ${total} topics: ${accessibleSummary}.`
+              : "No topics in the tower snapshot.",
+          );
+          $("#stage-legend").innerHTML =
+            legend || '<li class="chart-meta">No topics</li>';
+          $("#stage-caption").textContent = `${total} topics`;
+        }
+
+        function renderCharts() {
+          const runs = asList(state.data?.runs);
+          renderRunTrend(runs);
+          renderOutcomes(runs);
+          renderStageMix(asList(state.data?.snapshot?.topics));
+        }
+
+        function updateAge() {
+          $("#updated-at").textContent = relativeAge();
+          if (state.fetchedAt)
+            $("#updated-at").title = stamp(state.fetchedAt, {
+              year: "numeric",
+              second: "2-digit",
+            });
+        }
+
+        function render() {
+          if (!state.data) return;
+          renderTopics();
+          renderRuns();
+          renderHost();
+          renderLocks();
+          renderTrunk();
+          renderMetrics();
+          renderCharts();
+          updateAge();
+          if (state.stale) {
+            setConnection("STALE SNAPSHOT", "stale");
+            setNote(
+              `The local feed could not refresh. Showing the last successful snapshot from ${relativeAge().replace("Snapshot ", "")}. ${state.error || ""}`.trim(),
+            );
+          } else {
+            setConnection(
+              state.imported ? "IMPORTED SNAPSHOT" : "LIVE SNAPSHOT",
+              "live",
+            );
+            setNote("");
+          }
+        }
+
+        async function refresh({ manual = false } = {}) {
+          const button = $("#refresh-button");
+          button.disabled = true;
+          button.classList.add("is-syncing");
+          try {
+            const response = await fetch("/api/tower", { cache: "no-store" });
+            const payload = await response.json();
+            if (!response.ok && !payload.snapshot)
+              throw new Error(
+                payload.error || `Local feed returned ${response.status}.`,
+              );
+            const normalized = normalizeSnapshot(payload);
+            state.data = normalized.data;
+            state.fetchedAt = normalized.fetchedAt;
+            state.stale = normalized.stale;
+            state.error = normalized.error;
+            state.imported = false;
+            render();
+            if (manual)
+              setAnnouncement(
+                state.stale
+                  ? "Refresh failed. Showing the last successful tower snapshot."
+                  : "Tower snapshot refreshed.",
+              );
+          } catch (error) {
+            if (state.data) {
+              state.stale = true;
+              state.error = error.message;
+              render();
+            } else {
+              setConnection("FEED UNAVAILABLE", "offline");
+              setNote(
+                `Cannot reach the local CI feed: ${error.message} Start it from the repository root with node tools/ci-dashboard/server.mjs, or import a saved ci tower JSON snapshot.`,
+                "error",
+              );
+            }
+            if (manual) setAnnouncement("Could not refresh the local CI feed.");
+          } finally {
+            button.disabled = false;
+            button.classList.remove("is-syncing");
+          }
+        }
+
+        function applyFilter(filter) {
+          state.filter = filter;
+          state.runLimit = 14;
+          document.querySelectorAll("[data-run-filter]").forEach((button) => {
+            button.setAttribute(
+              "aria-pressed",
+              String(button.dataset.runFilter === filter),
+            );
+          });
+          renderRuns();
+        }
+
+        function setTheme(theme) {
+          document.documentElement.dataset.theme = theme;
+          $("#theme-button").textContent = theme === "dark" ? "Light" : "Dark";
+          $("#theme-button").setAttribute(
+            "aria-label",
+            `Switch to ${theme === "dark" ? "light" : "dark"} theme`,
+          );
+          try {
+            localStorage.setItem("ci-dashboard-theme", theme);
+          } catch {}
+        }
+
+        $("#refresh-button").addEventListener("click", () =>
+          refresh({ manual: true }),
+        );
+        $("#theme-button").addEventListener("click", () =>
+          setTheme(
+            document.documentElement.dataset.theme === "dark"
+              ? "light"
+              : "dark",
+          ),
+        );
+        $("#search-input").addEventListener("input", (event) => {
+          state.query = event.currentTarget.value.trim().toLowerCase();
+          state.runLimit = 14;
+          renderTopics();
+          renderRuns();
+        });
+        document
+          .querySelectorAll("[data-run-filter]")
+          .forEach((button) =>
+            button.addEventListener("click", () =>
+              applyFilter(button.dataset.runFilter),
+            ),
+          );
+        $("#more-button").addEventListener("click", () => {
+          state.runLimit += 14;
+          renderRuns();
+        });
+        $("#json-file").addEventListener("change", async (event) => {
+          const file = event.currentTarget.files?.[0];
+          if (!file) return;
+          try {
+            const normalized = normalizeSnapshot(JSON.parse(await file.text()));
+            state.data = normalized.data;
+            state.fetchedAt = normalized.fetchedAt;
+            state.stale = false;
+            state.error = null;
+            state.imported = true;
+            render();
+            setAnnouncement(`Imported ${file.name}.`);
+          } catch (error) {
+            setNote(`Could not import ${file.name}: ${error.message}`, "error");
+            setAnnouncement("The selected file could not be imported.");
+          } finally {
+            event.currentTarget.value = "";
+          }
+        });
+
+        try {
+          const savedTheme = localStorage.getItem("ci-dashboard-theme");
+          if (savedTheme === "light" || savedTheme === "dark")
+            setTheme(savedTheme);
+        } catch {}
+        refresh();
+        setInterval(updateAge, 1000);
+        setInterval(() => {
+          if (!state.imported) refresh();
+        }, REFRESH_MS);
+      })();
+    </script>
+  </body>
+</html>
