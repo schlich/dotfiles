@@ -413,6 +413,11 @@
         }) deployHosts;
         machines = lib.mapAttrs (name: _: {
           imports = denFlake.nixosConfigurations.${name}.denModules;
+          # The same modules give the same package set, so take Den's rather
+          # than instantiating nixpkgs a second time: clan-machine-NAME
+          # evaluates both systems at once, and homelab's two package sets
+          # outgrew ci's 4 GiB evaluation budget (2026-10-16).
+          _module.args.pkgs = lib.mkForce denFlake.nixosConfigurations.${name}.pkgs;
           # Clan's zfs module gives every machine the install ISO's hostId,
           # recommended defaults or not; keep the one Den resolves (none
           # unless a host sets it).
