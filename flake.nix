@@ -644,6 +644,22 @@
               ${pkgs.nushell}/bin/nu --no-config-file ${src}/tests/agent.nu
               touch "$out"
             '';
+        # jev against a stub server: what reaches the wire, the
+        # TYPESAFE_BASE_URL override, and the credential filter.
+        nushell-jev =
+          pkgs.runCommand "nushell-jev-check"
+            {
+              nativeBuildInputs = [
+                pkgs.nushell
+                pkgs.python3
+              ];
+            }
+            ''
+              export HOME="$TMPDIR/home"
+              mkdir -p "$HOME"
+              ${pkgs.nushell}/bin/nu --no-config-file ${./tests/jev.nu} ${./jev/jev.nu} ${./jev/questions.nuon}
+              touch "$out"
+            '';
         nushell-parse =
           let
             # profile-drift.nu is a fragment the flake completes, so check

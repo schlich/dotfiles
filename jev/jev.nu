@@ -2,11 +2,18 @@
 
 # Command-line access to TypeSafe's Jev System One model.
 # Questions and thresholds live in the file named by JEV_QUESTIONS.
+# TYPESAFE_BASE_URL names another API root that serves /v1/systemone, as in
+# TypeSafe's SDKs, such as a local open decision model.
 
-const endpoint = "https://api.typesafe.ai/v1/systemone"
-# Mirrors programs.atuin.settings.history_filter: command lines that assign
-# credentials are never sent to the API.
-const credential_pattern = '\$env\.[A-Z0-9_]*(KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)[A-Z0-9_]*\s*='
+const default_base_url = "https://api.typesafe.ai"
+const systemone_path = "/v1/systemone"
+# Command lines that assign credentials are never sent to the API. This
+# matches Nushell's `$env.FOO_TOKEN = ...` as well as the `FOO_TOKEN=...`
+# prefix and `export FOO_TOKEN=...` forms that Bash and Nushell commands use,
+# and mirrors the filters in modules/tooling/ai/scripts/agent-trust.nu and
+# prefer-nushell-bash.nu. A credential passed inline, such as a token
+# argument, is not recognized.
+const credential_pattern = '(KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)[A-Z0-9_]*\s*='
 
 # Hook runners spawn jev with a socket for stdin, and Linux cannot reopen a
 # socket through /dev/stdin, so read `$in`, which requires `nu --stdin`.
@@ -42,9 +49,27 @@ def validated-key [key: string, source: string] {
     $parts.0
 }
 
+# The API root with any trailing slash removed, or "" when TYPESAFE_BASE_URL
+# is unset or empty.
+def base-url-override [] {
+    $env.TYPESAFE_BASE_URL? | default "" | str trim | str trim --right --char "/"
+}
+
+def endpoint [] {
+    let base = (base-url-override)
+    $"(if ($base | is-empty) { $default_base_url } else { $base })($systemone_path)"
+}
+
+# The TypeSafe key, or null when none should be sent. The key stored in the
+# keyring goes only to TypeSafe: with TYPESAFE_BASE_URL set, a key is sent
+# only when TYPESAFE_API_KEY is set, so pointing jev at another server never
+# hands it the stored key.
 def api-key [] {
     if ($env.TYPESAFE_API_KEY? | is-not-empty) {
         return (validated-key $env.TYPESAFE_API_KEY "the environment")
+    }
+    if (base-url-override | is-not-empty) {
+        return null
     }
     let manifest = ($env.JEV_SECRETSPEC_FILE? | default ($env.FILE_PWD | path join ".." "modules" "secretspec.toml"))
     let result = (^secretspec get --file $manifest --provider keyring --profile default --reason "Jev decision request" TYPESAFE_API_KEY | complete)
@@ -72,6 +97,8 @@ def record-usage [command: string, model: string, response: record] {
             at: (date now | format date "%Y-%m-%dT%H:%M:%S%:z")
             command: $command
             model: $model
+            # Lets a dashboard tell TypeSafe's billed usage from a local server's.
+            endpoint: (endpoint)
             status: $response.status
             input_tokens: ($usage.input_tokens? | default 0)
             output_tokens: ($usage.output_tokens? | default 0)
@@ -83,10 +110,12 @@ def record-usage [command: string, model: string, response: record] {
 # Evaluate `state` against typed questions and return the full response.
 # `command` names the caller in the usage ledger.
 def ask [state: any, questions: record, model: string, command: string] {
+    let key = (api-key)
+    let headers = if $key == null { {} } else { { Authorization: $"Bearer ($key)" } }
     let response = (
-        http post $endpoint { state: $state, model: $model, questions: $questions }
+        http post (endpoint) { state: $state, model: $model, questions: $questions }
             --content-type application/json
-            --headers { Authorization: $"Bearer (api-key)" }
+            --headers $headers
             --max-time 15sec
             --full
             --allow-errors
