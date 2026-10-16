@@ -385,7 +385,7 @@ window-rule {
 // over it instead (`session.nu peek`), and Mod+J/K or Mod+Alt+1..4 switch
 // agents.
 window-rule {
-  match app-id=r#"^t3code$"#
+  match app-id=r#"^com\.t3tools\.T3Code$"#
   default-column-width { proportion 0.4; }
   default-column-display "tabbed"
 }

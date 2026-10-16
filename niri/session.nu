@@ -47,7 +47,7 @@ const layouts = {
 # keeps each group tabbed automatically, and `stack-choices` (Mod+Alt+W)
 # gathers the focused window's choices on demand.
 const choice_groups = {
-  agents: '^t3code$'
+  agents: '^com\.t3tools\.T3Code$'
   # JJ and GitHub views of the workspace's repository; see `main vcs`.
   vcs: '^(jj-dashboard|niri\..+\.(jjui|gh-dash))$'
 }
