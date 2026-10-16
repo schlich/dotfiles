@@ -27,6 +27,12 @@ let
     };
   };
 
+  # Which properties failed and when. The tail of the log that follows holds
+  # only the last states, which for a long state can start below the name.
+  violations = ''
+    grep -E ' was violated:$|however at [0-9:.]+:$' "$TMPDIR/bombadil.log" | cut -c1-200 || true
+  '';
+
   # A check sees its specification and the shared keymap module, so editing
   # one specification reruns only its own check.
   specifications =
@@ -75,6 +81,7 @@ in
         --specification ${specifications specification}/${specification} \
         --output-path "$TMPDIR/trace" \
         -- ${lib.escapeShellArgs command} >"$TMPDIR/bombadil.log"; then
+        ${violations}
         tail -n 80 "$TMPDIR/bombadil.log"
         echo "Trace: $TMPDIR/trace (rebuild with --keep-failed to keep it)"
         exit 1
@@ -128,6 +135,7 @@ in
             --output-path "$TMPDIR/trace" \
             ${lib.escapeShellArg origin} \
             ${specifications specification}/${specification} >"$TMPDIR/bombadil.log" 2>&1; then
+            ${violations}
             tail -n 80 "$TMPDIR/bombadil.log"
             echo "Trace: $TMPDIR/trace (rebuild with --keep-failed to keep it)"
             exit 1

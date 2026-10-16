@@ -1434,7 +1434,10 @@
           const code = run?.exit_code;
           if (code !== null && code !== undefined && Number(code) !== 0)
             return { key: "failed", label: "Failed", tone: "bad" };
-          if (["failed", "failure", "error", "errored"].includes(status))
+          // A lost run ended without an exit code: it did not pass.
+          if (
+            ["failed", "failure", "error", "errored", "lost"].includes(status)
+          )
             return { key: "failed", label: "Failed", tone: "bad" };
           if (["queued", "pending", "waiting"].includes(status))
             return { key: "queued", label: "Queued", tone: "warn" };
@@ -1445,7 +1448,7 @@
               tone: status === "blocked" ? "warn" : "good",
             };
           if (
-            Number(code) === 0 ||
+            (code !== null && code !== undefined && Number(code) === 0) ||
             [
               "passed",
               "success",
@@ -1590,7 +1593,7 @@
             : "";
           const workspace = run?.workspace || "local";
           const runId = run?.id || "run";
-          return `<article class="run-row">
+          return `<article class="run-row" data-key="${escapeHTML(runId)}">
           <div class="run-main">
             <time class="run-time" datetime="${started ? new Date(started).toISOString() : ""}" title="${escapeHTML(stamp(started, { year: "numeric" }))}">${escapeHTML(durationFrom(started))}</time>
             <div class="run-content">
@@ -1723,9 +1726,19 @@
               : ["All clear", "good"];
           $("#runs-summary").textContent = summary[0];
           $("#runs-summary").className = `run-status ${summary[1]}`;
+          // Keep open details open across refreshes, as the Actions panel does.
+          const open = new Set(
+            [...document.querySelectorAll("#run-list details[open]")].map(
+              (details) => details.closest(".run-row")?.dataset.key,
+            ),
+          );
           $("#run-list").innerHTML = shown.length
             ? shown.map(runRow).join("")
             : '<p class="empty-row">Nothing running, and no unresolved failures in the last 24 hours.</p>';
+          document.querySelectorAll("#run-list .run-row").forEach((row) => {
+            if (open.has(row.dataset.key))
+              row.querySelector("details").open = true;
+          });
         }
 
         // The logs panel: every local run with a log, newest first, and a
@@ -1868,9 +1881,12 @@
             state.logNext = payload.next;
             state.logFinished = payload.finished;
             renderLogHead(payload);
-            // A finished log still has more to read when the last read was
-            // capped; keep reading until it is all here.
-            if (payload.next < payload.size) setTimeout(readLog, 0);
+            // A log still has more to read when the last read was capped;
+            // keep reading until it is all here. A read that returned
+            // nothing is waiting on a line still being written, which the
+            // next poll picks up.
+            if (payload.next < payload.size && payload.next > payload.from)
+              setTimeout(readLog, 0);
           } catch (error) {
             if (id === state.logRun && state.logNext === null)
               $("#log-text").textContent = `Log unavailable: ${error.message}`;

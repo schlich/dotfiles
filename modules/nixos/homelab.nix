@@ -23,6 +23,7 @@ let
     mkdir -p "$out/share/ci-dashboard"
     cp ${../../tools/ci-dashboard/index.html} "$out/share/ci-dashboard/index.html"
     cp ${../../tools/ci-dashboard/server.mjs} "$out/share/ci-dashboard/server.mjs"
+    cp ${../../tools/ci-dashboard/feeds.mjs} "$out/share/ci-dashboard/feeds.mjs"
   '';
 
   # Niri's own default config, minus its waybar autostart: homelab has no

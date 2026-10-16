@@ -1,0 +1,11 @@
+{
+  "name": "ci-dashboard",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "@hegeldev/hegel": "0.4.10"
+  }
+}

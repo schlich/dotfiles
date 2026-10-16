@@ -246,6 +246,7 @@
       bombadil = import ./lib/bombadil.nix { inherit lib pkgs; };
       iwe = import ./modules/tooling/knowledge/iwe-package.nix { inherit inputs lib pkgs; };
       marimohub = import ./modules/tooling/knowledge/marimohub-package.nix { inherit lib pkgs; };
+      ciDashboard = import ./tools/ci-dashboard/checks.nix { inherit lib pkgs; };
       workbench = import ./workbench { inherit pkgs lib iwe; };
       workbenchImages = lib.mapAttrs' (
         name: environment: lib.nameValuePair "workbench-image-${name}" environment.image
@@ -591,6 +592,8 @@
           PYTHONPATH=src python3 -m unittest discover -s tests -v
           touch "$out"
         '';
+        # Hegel properties of the CI dashboard's feed reductions.
+        ci-dashboard-feeds = ciDashboard.feeds;
         marimohub = marimohub;
         # One Markdown file as an IWE node and a marimo notebook: IWE
         # validates the corpus, marimo executes the demo in the Nix
@@ -771,14 +774,16 @@
       # Checks that report without gating a landing: GitHub Actions' nix-ci
       # workflow builds them after each push, and ci land leaves them out.
       # They cover disposable hosts, homelab with modules it has not adopted
-      # yet, the staged switch's revert in a VM, and Bombadil's exploration
-      # of Fieldwork.
+      # yet, the staged switch's revert in a VM, and Bombadil's explorations
+      # of Fieldwork and the CI dashboard.
       # Bombadil explores Fieldwork, a prototype whose bridge answers some
-      # requests with 4xx by design, so its findings report here first.
+      # requests with 4xx by design, so its findings report here first, as
+      # do the CI dashboard's until its exploration has a record.
       remoteChecks.${system} =
         remoteHostEvaluationChecks
         // import ./xr-workbench/bombadil-check.nix { inherit lib pkgs; }
         // {
+          ci-dashboard-bombadil = ciDashboard.exploration;
           deploy-revert = import ./tests/deploy-revert.nix { inherit pkgs; };
           marimohub-homelab-evaluation = marimohubHomelabEvaluationCheck;
           nixbot-homelab-evaluation = nixbotHomelabEvaluationCheck;

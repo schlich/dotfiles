@@ -1,8 +1,18 @@
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
-import { open, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import {
+  actionsRun,
+  asArray,
+  cachedFeed,
+  failedLogs,
+  jobLog,
+  summarizeActions,
+  summarizeJobs,
+  workflowHeader,
+} from "./feeds.mjs";
 
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.PORT ?? 4173);
@@ -17,20 +27,6 @@ const ACTIONS_CACHE_MS = 30_000;
 const COMMAND_TIMEOUT_MS = 20_000;
 const LOG_TIMEOUT_MS = 45_000;
 const MAX_OUTPUT_BYTES = 24 * 1024 * 1024;
-
-// Lines kept from each failed step's log, ending at its last error.
-const LOG_TAIL = 15;
-const LOG_TIMESTAMP = /^\d{4}-\d\d-\d\dT[\d:.]+Z ?/;
-// Terminal colors, which the page replaces with its own error highlighting.
-const LOG_ANSI = /\x1b\[[0-9;]*m/g;
-// Substitution and download progress, which buries a Nix build's error.
-const LOG_NOISE =
-  /^\s*(copying path '|downloading '|these \d+ paths? will be (fetched|built)|this path will be (fetched|built)|\/nix\/store\/\S+$)/;
-
-// A local run's log opens on its last 64 KiB, and each follow-up read returns
-// at most 256 KiB, so a long build log never arrives whole.
-const JOB_LOG_WINDOW = 64 * 1024;
-const JOB_LOG_CHUNK = 256 * 1024;
 
 function send(
   response,
@@ -125,142 +121,8 @@ async function collectTower() {
   return data;
 }
 
-// A feed collected at most once per `maxAgeMs`, which keeps serving its last
-// good data, marked stale, while collection fails.
-function cachedFeed(collect, maxAgeMs) {
-  let cache = null;
-  let pending = null;
-  return async () => {
-    if (cache && Date.now() - cache.fetchedAt < maxAgeMs) {
-      return {
-        snapshot: cache.data,
-        fetchedAt: cache.fetchedAt,
-        stale: false,
-        error: null,
-      };
-    }
-    if (!pending) {
-      pending = collect()
-        .then((data) => {
-          cache = { data, fetchedAt: Date.now() };
-          return cache;
-        })
-        .finally(() => {
-          pending = null;
-        });
-    }
-    try {
-      const current = await pending;
-      return {
-        snapshot: current.data,
-        fetchedAt: current.fetchedAt,
-        stale: false,
-        error: null,
-      };
-    } catch (error) {
-      if (cache) {
-        return {
-          snapshot: cache.data,
-          fetchedAt: cache.fetchedAt,
-          stale: true,
-          error: error.message,
-        };
-      }
-      throw error;
-    }
-  };
-}
-
-// GitHub Actions, reduced the way Fieldnotes' CI panel reduces them: each
-// workflow's verdict on main with its failure streak, and the latest failing
-// or running run of each live branch.
-
 function gh(path, timeoutMs) {
   return captureJSON("gh", ["api", path], timeoutMs);
-}
-
-function actionsRun(run, activePaths) {
-  const path = run.path || "";
-  const status = run.status || "";
-  const conclusion = run.conclusion ?? null;
-  let state = "failed";
-  if (status !== "completed") state = "running";
-  else if (conclusion === "success") state = "passed";
-  else if (["cancelled", "skipped", "neutral"].includes(conclusion))
-    state = "skipped";
-  return {
-    id: run.id || 0,
-    workflow: run.name || "workflow",
-    title: run.display_title || "",
-    status,
-    conclusion,
-    state,
-    created: run.created_at || null,
-    branch: run.head_branch || "",
-    sha: run.head_sha || "",
-    path,
-    url: run.html_url || "",
-    number: run.run_number || 0,
-    attempt: run.run_attempt || 1,
-    event: run.event || "",
-    // GitHub stops listing a workflow once its file leaves the default
-    // branch, but keeps showing that workflow's old runs.
-    retired: !activePaths.has(path),
-  };
-}
-
-// Superseded (cancelled) runs are ignored, since a newer push replaced them,
-// and so are runs on deleted branches, which nobody can fix any more.
-// `alive` of `null` keeps every branch.
-function summarizeActions(runs, alive) {
-  const history = new Map();
-  const branches = new Map();
-  for (const run of runs) {
-    if (run.state === "skipped") continue;
-    if (run.branch === "main") {
-      if (!history.has(run.workflow)) history.set(run.workflow, []);
-      history.get(run.workflow).push(run);
-    } else {
-      const key = `${run.workflow}\0${run.branch}`;
-      if (!branches.has(key)) branches.set(key, run);
-    }
-  }
-  const order = { failed: 0, running: 1, passed: 2 };
-  const main = [...history.entries()]
-    .map(([workflow, mainRuns]) => {
-      const latest = mainRuns[0];
-      let streak = 0;
-      while (streak < mainRuns.length && mainRuns[streak].state === "failed")
-        streak += 1;
-      return {
-        workflow,
-        // A workflow removed from main never runs again, so its last verdict
-        // is history rather than something to fix.
-        state: latest.retired ? "retired" : latest.state,
-        streak,
-        streakOpen: streak === mainRuns.length,
-        about: "",
-        run: latest,
-      };
-    })
-    .sort((a, b) => (order[a.state] ?? 3) - (order[b.state] ?? 3));
-  const others = [...branches.values()].filter(
-    (run) =>
-      ["failed", "running"].includes(run.state) &&
-      !run.retired &&
-      (alive === null || alive.has(run.branch)),
-  );
-  return { main, branches: others };
-}
-
-// The first sentence of a workflow file's top-level header comment.
-function workflowHeader(text) {
-  const comment = [];
-  for (const line of text.split("\n")) {
-    if (line.startsWith("#")) comment.push(line.replace(/^#+/, "").trim());
-    else if (comment.length || line.startsWith("jobs:")) break;
-  }
-  return comment.join(" ").split(". ")[0].replace(/\.$/, "");
 }
 
 // Workflow path -> { sha, about }.
@@ -286,46 +148,14 @@ async function workflowAbout(path, sha) {
 // Run id and attempt -> jobs of a finished run, which no longer change.
 const jobsCache = new Map();
 
-// The jobs that need a look (failed or still running) with their failed
-// steps, and a count of the rest by conclusion.
 async function runJobs(run) {
   const key = `${run.id}/${run.attempt}`;
   if (jobsCache.has(key)) return jobsCache.get(key);
-  const data = await gh(
-    `repos/${GITHUB_REPO}/actions/runs/${run.id}/jobs?per_page=100`,
+  const result = summarizeJobs(
+    await gh(`repos/${GITHUB_REPO}/actions/runs/${run.id}/jobs?per_page=100`),
   );
-  const jobs = [];
-  const quiet = {};
-  for (const job of asArray(data?.jobs)) {
-    const conclusion = job.conclusion ?? null;
-    if (["success", "skipped", "neutral"].includes(conclusion)) {
-      quiet[conclusion] = (quiet[conclusion] ?? 0) + 1;
-      continue;
-    }
-    jobs.push({
-      name: job.name || "job",
-      conclusion,
-      started: job.started_at || null,
-      completed: job.completed_at || null,
-      url: job.html_url || "",
-      failedSteps: asArray(job.steps)
-        .filter((step) => step.conclusion === "failure")
-        .map((step) => step.name),
-    });
-  }
-  const failing = ["failure", "timed_out", "startup_failure"];
-  jobs.sort(
-    (a, b) =>
-      Number(!failing.includes(a.conclusion)) -
-      Number(!failing.includes(b.conclusion)),
-  );
-  const result = { jobs, quiet };
   if (run.status === "completed") jobsCache.set(key, result);
   return result;
-}
-
-function asArray(value) {
-  return Array.isArray(value) ? value : [];
 }
 
 async function liveBranches() {
@@ -379,40 +209,6 @@ async function collectActions() {
   return { repo: GITHUB_REPO, ...state };
 }
 
-// Up to `LOG_TAIL` lines ending at the last `##[error]` marker, since the
-// end of a job's log is usually cleanup; the tail when there is no marker.
-function excerpt(lines) {
-  const kept = lines.filter((line) => !LOG_NOISE.test(line));
-  let end = kept.length;
-  for (let index = kept.length - 1; index >= 0; index -= 1) {
-    if (kept[index].includes("##[error]")) {
-      end = index + 1;
-      break;
-    }
-  }
-  return kept.slice(Math.max(0, end - LOG_TAIL), end);
-}
-
-// `gh run view --log-failed`, grouped by job and step.
-function failedLogs(log) {
-  const groups = new Map();
-  for (const line of log.split("\n")) {
-    if (!line) continue;
-    const [job = "", step = "", ...rest] = line.split("\t");
-    const key = `${job}\0${step}`;
-    if (!groups.has(key)) groups.set(key, { job, step, lines: [] });
-    groups
-      .get(key)
-      .lines.push(
-        rest.join("\t").replace(LOG_TIMESTAMP, "").replace(LOG_ANSI, ""),
-      );
-  }
-  return [...groups.values()].map((group) => ({
-    ...group,
-    lines: excerpt(group.lines),
-  }));
-}
-
 // Run id -> failed-step excerpts; a failed run's log never changes.
 const logCache = new Map();
 
@@ -426,47 +222,6 @@ async function runLog(id) {
   const steps = failedLogs(log);
   logCache.set(id, steps);
   return steps;
-}
-
-// Bytes of a local run's log from `from` on, or its last `JOB_LOG_WINDOW` when
-// `from` is absent. A read stops at the last complete line, so a line still
-// being written, or a character split across reads, arrives whole next time;
-// a finished run's unterminated last line is returned as it is.
-async function jobLog(path, from, finished) {
-  const file = await open(path, "r");
-  try {
-    const { size } = await file.stat();
-    // A log that shrank was replaced; read the new one from its start.
-    let start = from === null || from > size ? null : from;
-    const opening = start === null;
-    if (opening) start = Math.max(0, size - JOB_LOG_WINDOW);
-    const length = Math.min(JOB_LOG_CHUNK, size - start);
-    const buffer = Buffer.alloc(length);
-    const { bytesRead } = await file.read(buffer, 0, length, start);
-    let bytes = buffer.subarray(0, bytesRead);
-    let skipped = 0;
-    // A window that opens mid-line starts at the next one.
-    if (opening && start > 0) {
-      const first = bytes.indexOf(0x0a);
-      skipped = first === -1 ? bytes.length : first + 1;
-      bytes = bytes.subarray(skipped);
-    }
-    const atEnd = start + bytesRead >= size;
-    if (!(finished && atEnd)) {
-      const last = bytes.lastIndexOf(0x0a);
-      if (last !== -1) bytes = bytes.subarray(0, last + 1);
-      else if (bytesRead < JOB_LOG_CHUNK) bytes = bytes.subarray(0, 0);
-    }
-    return {
-      text: bytes.toString("utf8").replace(LOG_ANSI, ""),
-      from: start + skipped,
-      next: start + skipped + bytes.length,
-      size,
-      clipped: start + skipped > 0 && opening,
-    };
-  } finally {
-    await file.close();
-  }
 }
 
 const towerResponse = cachedFeed(collectTower, CACHE_MS);
