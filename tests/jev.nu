@@ -13,6 +13,10 @@ answers = {
     "failure_class": {"type": "choice", "choice": "typo_or_not_found", "confidence": 0.95},
     "needs_diagnosis": {"type": "noul", "noul": 0.1},
     "nushell_rewrite": {"type": "noul", "noul": 0.9},
+    "ending": {"type": "choice", "choice": "finished", "confidence": 0.9},
+    "delivery_only": {"type": "noul", "noul": 0.9},
+    "activation_step": {"type": "noul", "noul": 0.1},
+    "remaining_work": {"type": "score", "score": 0.2, "confidence": 0.9},
 }
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -137,6 +141,37 @@ def main [script: path, questions: path] {
     # bash-guard still judges an ordinary command through the override.
     let guard = (run-jev $script bash-guard { tool_name: Bash, tool_input: { command: "cat notes.txt | grep todo" } } $vars | get stdout | from json)
     $failures = ($failures | append (expect "bash-guard denies a rewritable pipeline" $guard.hookSpecificOutput.permissionDecision deny))
+
+    # session-triage reads the desktop app's metadata and Claude Code's
+    # transcripts, and sends Jev only a session's ending.
+    let meta_dir = ($tmp | path join sessions org account)
+    let transcripts = ($tmp | path join projects proj)
+    mkdir $meta_dir $transcripts
+    let session = {|id, archived| { sessionId: $"local_($id)", title: $id, cwd: $tmp, isArchived: $archived, lastActivityAt: 1790000000000 } }
+    do $session finished false | save ($meta_dir | path join local_finished.json)
+    do $session cleared false | save ($meta_dir | path join local_cleared.json)
+    do $session old true | save ($meta_dir | path join local_old.json)
+    let line = {|role, content| { type: $role, message: { content: $content } } | to json --raw }
+    [
+        (do $line user "Fix the hook")
+        (do $line assistant [{ type: text, text: "Fixed and landed.\nexport GITHUB_TOKEN=ghp_secret" }])
+    ] | str join "\n" | save ($transcripts | path join finished.jsonl)
+    (do $line user "<command-name>/clear</command-name>") | save ($transcripts | path join cleared.jsonl)
+    (do $line assistant "Archived work") | save ($transcripts | path join old.jsonl)
+    let triage_vars = ($vars | merge {
+        JEV_SESSION_METADATA_DIR: ($tmp | path join sessions)
+        JEV_TRANSCRIPT_DIR: ($tmp | path join projects)
+    })
+    let before = ((requests $log) | length)
+    let triage = (with-env $triage_vars { "" | ^$nu.current-exe --no-config-file --stdin $script session-triage --json | complete })
+    let rows = ($triage.stdout | from json)
+    $failures = ($failures | append (expect "session-triage skips archived sessions" ($rows | get session | sort) [local_cleared local_finished]))
+    $failures = ($failures | append (expect "a session without conversation is archived" ($rows | where session == local_cleared | get decision) [archive]))
+    $failures = ($failures | append (expect "a finished session is archived" ($rows | where session == local_finished | select decision reason) [{ decision: archive, reason: finished }]))
+    let triage_sent = ((requests $log) | skip $before)
+    $failures = ($failures | append (expect "only the session with a conversation reaches Jev" ($triage_sent | length) 1))
+    $failures = ($failures | append (expect "only the session's ending is sent" ($triage_sent.0.body.state.session | columns | sort) [folder last_assistant_message last_user_message stopped_mid_turn]))
+    $failures = ($failures | append (expect "credential assignments in a reply are withheld" ($triage_sent.0.body.state.session.last_assistant_message | str contains "ghp_secret") false))
 
     job kill $server_job
     rm -rf $tmp

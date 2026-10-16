@@ -81,4 +81,70 @@
       }
     }
   }
+  # `jev session-triage`: Jev reads how a Claude Code session ended; code
+  # checks what it names against jj, GitHub, and the system profile and
+  # decides. Tuned on 166 desktop sessions triaged by hand on 2026-10-16.
+  session_triage: {
+    # Characters of each message sent; Jev loses accuracy on long state.
+    max_user_chars: 800
+    max_reply_chars: 2500
+    # Recent replies scanned in code for change ids, releases, and PRs.
+    recent_replies: 5
+    parallel_requests: 6
+    # A session that waited on a job this long, with nothing in flight,
+    # has seen that job end.
+    job_settled_after: 1day
+    # A session left waiting on the user this long is stale once
+    # everything it names has landed.
+    stale_after: 7day
+    min_delivery_only: 0.5
+    min_activation: 0.7
+    # Remaining-work score below which a finished session, or any
+    # session that was not interrupted, is archived.
+    finished_max_remaining: 2.0
+    archive_max_remaining: 1.2
+    # At or above this the session is ongoing rather than close-out work.
+    ongoing_min_remaining: 3.3
+    questions: {
+      ending: {
+        type: choice
+        instructions: "How did the coding-agent session in `session` end? Judge from `session.last_assistant_message`, the agent's final reply, and `session.last_user_message`. `session.stopped_mid_turn` is true when the transcript ends on a user message or tool activity instead of a reply."
+        criteria: {
+          interrupted: "The session stopped partway through the task: it stopped mid-turn, or the final reply only narrates a step in progress without reporting an outcome"
+          waiting_on_job: "The final reply says a build, landing, deployment, or CI run was still running and the agent would report when it finished"
+          awaiting_decision: "The final reply asks the user to choose or approve something before work continues, such as whether to land, push, publish, delete, or which option to take"
+          awaiting_user_step: "The agent's part is done, and the final reply tells the user to run a command or do something by hand, such as a system switch, activation, deploy, login, restart, review, or account change"
+          open_discussion: "An exploration, design proposal, or diagnosis that has not reached a conclusion or decision"
+          finished: "The final reply reports the requested work as complete or answers the question; anything it offers beyond that is optional"
+        }
+      }
+      delivery_only: {
+        type: noul
+        instructions: "In the session in `session`, all the changes the agent set out to make are already written, and the only remaining steps are delivering them: publishing a branch, landing or merging it, opening or merging a pull request, activating, or switching the system."
+        criteria: {
+          "true": "Nothing remains to write or decide about the content; only publish, land, merge, activate, or switch steps are left, or nothing at all"
+          "false": "Some code, configuration, documentation, investigation, or a decision about the content itself is still unfinished"
+        }
+      }
+      activation_step: {
+        type: noul
+        instructions: "The final reply in `session.last_assistant_message` leaves the user a step that only applies already-delivered configuration to a running machine or app: a NixOS or system switch, nixos-rebuild, home-activate, logging out and back in, or restarting an application."
+        criteria: {
+          "true": "The step the user is left with is applying, switching, activating, re-logging in, or restarting"
+          "false": "The final reply leaves no such step, or the remaining step is something else, such as landing, merging, reviewing, deciding, or writing code"
+        }
+      }
+      remaining_work: {
+        type: score
+        instructions: "How much work remains for the task in the session in `session`, judging from its final reply?"
+        criteria: [
+          "Nothing remains"
+          "Only optional follow-ups the agent offered"
+          "A single command, click, or yes/no answer"
+          "A small task of a few steps"
+          "Substantial unfinished work"
+        ]
+      }
+    }
+  }
 }
