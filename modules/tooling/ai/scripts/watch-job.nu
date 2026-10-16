@@ -9,12 +9,17 @@
 # The watcher prints each one but `clear` as a line led by its state's glyph:
 #
 #   ▶ closures: Proving every NixOS closure unchanged
+#   ▶ switch/build 60%: build 10/20: home-manager-path
 #   ✓ preflight 40sec
 #   ✗ closures 2min 3sec: Closure of homelab changed
 #   ⏸ BLOCKED land: Waiting for approval
+#   ✓ Landed the topic
 #
-# A finished phase gives how long it took since its `working` report, and its
-# message only when that differs from the one it started with. Once a job has
+# A phase starts with its first `working` report; later ones only update it,
+# and show the report's progress when it gives one. A finished phase gives
+# how long it took since it started, and its message only when that differs
+# from the one it started with. A report without an id prints its message
+# after the glyph. Once a job has
 # reported, those lines tell its story, and the log adds only the lines that
 # match --alarm, as `⚠ ALARM: LINE`: trouble the job did not report, such as
 # an evaluator that died. Lines that match --ignore never print; by default
@@ -116,12 +121,21 @@ def status-reports [lines: list<string>]: nothing -> list<record> {
   | where {|report| ($report | describe) starts-with record and $report.state? not-in [null clear] }
 }
 
-# The `working` report each phase started with, by id, among `reports`,
-# added to those already known.
+# The first `working` report of each phase still open, by id, after
+# `reports`: a progress update keeps the phase's start, and a finished or
+# failed phase closes, so a retry starts it again.
 def phases [known: record, reports: list<record>]: nothing -> record {
   $reports
-  | where state == working and id? != null
-  | reduce --fold $known {|report, acc| $acc | upsert $report.id $report }
+  | where id? != null
+  | reduce --fold $known {|report, acc|
+    if $report.state == working {
+      if $report.id in $acc { $acc } else { $acc | insert $report.id $report }
+    } else if $report.state in [done error failed] {
+      $acc | reject --optional $report.id
+    } else {
+      $acc
+    }
+  }
 }
 
 # The last line in `lines` with any text, shortened for a notification.
@@ -140,11 +154,13 @@ def since [time: any]: nothing -> any {
 }
 
 # A report as one line: its state's glyph, its phase, how long a finished
-# phase took, and its message unless it only repeats the one it started with.
+# phase took or how far a running one is, and its message unless it only
+# repeats the one the phase started with.
 def report-line [report: record, started: any]: nothing -> string {
   let took = if $started == null or $report.state == working { null } else {
     try { ($report.time | into datetime) - ($started.time | into datetime) | whole-seconds } catch { null }
   }
+  let progress = if $report.state == working and $report.progress? != null { $"($report.progress)%" }
   let msg = if $report.state != working and $report.msg? == $started.msg? { null } else { $report.msg? }
   let head = match $report.state {
     working => '▶'
@@ -153,8 +169,8 @@ def report-line [report: record, started: any]: nothing -> string {
     blocked => '⏸ BLOCKED'
     _ => $"• ($report.state)"
   }
-  let phase = ([$head $report.id? $took] | compact | str join ' ')
-  if $msg == null { $phase } else { $"($phase): ($msg)" }
+  let phase = ([$head $report.id? $took $progress] | compact | str join ' ')
+  if $msg == null { $phase } else if $report.id? == null and $took == null and $progress == null { $"($phase) ($msg)" } else { $"($phase): ($msg)" }
 }
 
 # A quiet job's heartbeat: its latest phase and how long it has been in it,
@@ -240,8 +256,10 @@ def main [
         let new = (read-lines $status $seen.status --final=$final)
         let reports = (status-reports $new.lines)
         for report in $reports {
+          # The phase's start, read before a finished phase closes.
+          let start = ($started | get --optional ($report.id? | default ''))
+          $events = ($events | append (report-line $report $start))
           $started = (phases $started [$report])
-          $events = ($events | append (report-line $report ($started | get --optional ($report.id? | default ''))))
         }
         if ($reports | is-not-empty) { $latest = ($reports | last) }
         $seen.status = $new.offset
@@ -251,7 +269,9 @@ def main [
       $events = ($events | append ($logged | where {|line| $line =~ $wanted and $line !~ $ignore } | each {|line| $"($prefix)($line)" }))
       $last_line = (last-text $logged | default $last_line)
       if ($events | is-empty) and ((date now) - $last_event) >= $quiet_after and $outcome == null and $alive {
-        $events = [(heartbeat $latest ((date now) - $last_event) $last_line)]
+        # A running phase is timed from its start, not its latest update.
+        let phase = if $latest == null { null } else { $started | get --optional ($latest.id? | default '') | default $latest }
+        $events = [(heartbeat $phase ((date now) - $last_event) $last_line)]
       }
       $events | each { print $in } | ignore
       if ($events | is-not-empty) { $last_event = (date now) }

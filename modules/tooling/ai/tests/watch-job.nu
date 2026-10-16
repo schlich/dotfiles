@@ -57,22 +57,26 @@ def main [watch_job: path] {
 
   # A job that reports its status is followed by its reports, one line each:
   # its log lines, even ones the pattern matches, and its clear report print
-  # nothing. A finished phase says how long it took, and its message only
-  # when that is new.
+  # nothing. A progress update shows its percentage and keeps the phase's
+  # start, so a finished phase says how long it took since it first
+  # reported, and its message only when that is new. A report without an id
+  # prints its message after the glyph.
   let log = ($tmp | path join reported.log)
   job-log $log { ^sh -c r#'
     report() { printf '%s\n' "$1" >> "$PST_FILE"; }
     report '{"time":"2026-10-07T08:00:00-05:00","state":"working","id":"rebase","app":"ci","msg":"Rebasing"}'
     echo "=== a line the pattern matches"
     sleep 1
+    report '{"time":"2026-10-07T08:00:30-05:00","state":"working","id":"rebase","app":"ci","msg":"Rebasing 3/4","progress":75}'
     report '{"time":"2026-10-07T08:00:40-05:00","state":"done","id":"rebase","app":"ci","msg":"Rebasing"}'
     report '{"time":"2026-10-07T08:00:41-05:00","state":"blocked","id":"land","app":"ci","msg":"Waiting for approval"}'
     report '{"time":"2026-10-07T08:00:42-05:00","state":"done","id":"land","app":"ci","msg":"Landed jj-x on main"}'
+    report '{"time":"2026-10-07T08:00:42-05:00","state":"done","app":"ci","msg":"Landed the topic"}'
     report '{"time":"2026-10-07T08:00:42-05:00","state":"clear","app":"ci"}'
     echo "Landed jj-x on main."
   '# } | ignore
   let result = (do $watch $log 10sec)
-  $failures = ($failures | append (check "reported job prints its reports alone" $result.run ['^JOB: ' '^▶ rebase: Rebasing$' '^✓ rebase 40sec$' '^⏸ BLOCKED land: Waiting for approval$' '^✓ land: Landed jj-x on main$' '^✓ DONE exit 0 after \dsec$'] $result.took 5sec))
+  $failures = ($failures | append (check "reported job prints its reports alone" $result.run ['^JOB: ' '^▶ rebase: Rebasing$' '^▶ rebase 75%: Rebasing 3/4$' '^✓ rebase 40sec$' '^⏸ BLOCKED land: Waiting for approval$' '^✓ land: Landed jj-x on main$' '^✓ Landed the topic$' '^✓ DONE exit 0 after \dsec$'] $result.took 5sec))
 
   # Trouble a reporting job logs but does not report still reaches the
   # Monitor, as an alarm after the report it follows. An evaluator replacing
