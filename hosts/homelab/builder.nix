@@ -1,8 +1,8 @@
 # How the fleet reaches homelab as a remote builder. Tailscale SSH answers
 # port 22 on the tailnet address and never reads authorized_keys, so builds
-# go to OpenSSH on 2222.
+# go to OpenSSH on 2222. Clients reach it at
+# config.dotfiles.fleet.hosts.homelab.fqdn.
 {
-  hostName = "homelab.tail338351.ts.net";
   port = 2222;
   hostKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILtCmIzvRPo258IXL6rs+awqFQMVZiFnhYPTnWZf9lO4";
   user = "nix-builder";

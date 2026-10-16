@@ -20,6 +20,9 @@ let
     };
     # Colmena logs in as the everyday user and escalates with sudo.
     deploy.targetUser = "schlich";
+    # Every host joins the same tailnet; den/aspects/fleet-network.nix
+    # derives each one's address from it.
+    network.tailnet = "tail338351.ts.net";
     policy = {
       criticality = "workstation";
       autoDeploy = false;

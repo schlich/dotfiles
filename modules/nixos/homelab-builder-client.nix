@@ -6,7 +6,9 @@
 }:
 
 let
-  builder = import ../../hosts/homelab/builder.nix;
+  builder = import ../../hosts/homelab/builder.nix // {
+    hostName = config.dotfiles.fleet.hosts.homelab.fqdn;
+  };
   sshKey = "/root/.ssh/homelab-builder";
 in
 {

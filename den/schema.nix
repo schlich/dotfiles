@@ -135,6 +135,20 @@ let
     };
   };
 
+  networkType = types.submodule {
+    options = {
+      tailnet = mkOption {
+        type = types.str;
+        example = "tail0000.ts.net";
+        description = ''
+          The Tailscale MagicDNS suffix the host is reachable under, as
+          `<host>.<tailnet>`. den/aspects/fleet-network.nix hands it to the
+          host's modules.
+        '';
+      };
+    };
+  };
+
 in
 {
   config = {
@@ -155,6 +169,10 @@ in
             type = deployType;
             default = { };
             description = "How Colmena reaches this host, if it deploys it at all.";
+          };
+          network = mkOption {
+            type = networkType;
+            description = "Where the host sits on the network the fleet shares.";
           };
         };
       }

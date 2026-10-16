@@ -1,4 +1,5 @@
 {
+  config,
   inputs,
   lib,
   pkgs,
@@ -18,7 +19,7 @@ in
 
   services.nixbot = {
     enable = true;
-    domain = "homelab.tail338351.ts.net:${toString funnelPort}";
+    domain = "${config.dotfiles.fleet.fqdn}:${toString funnelPort}";
     inherit port;
     useHTTPS = true;
     nginx.enable = false;

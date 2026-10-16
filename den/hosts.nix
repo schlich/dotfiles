@@ -23,6 +23,7 @@ let
     ++ [
       den.aspects.system-files
       den.aspects.deploy-policy
+      den.aspects.fleet-network
     ]
     ++ platform;
 in

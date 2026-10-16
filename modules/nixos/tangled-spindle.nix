@@ -1,4 +1,5 @@
 {
+  config,
   inputs,
   pkgs,
   ...
@@ -58,7 +59,7 @@ in
       # verifies it against the spindle's reported owner. A repository DID
       # (such as dotfiles' did:plc:3ta3pjip7mu36b7dnznhoyri) cannot own one.
       owner = "did:plc:cnyy2sz5ddr4gls245vjgbrd";
-      hostname = "homelab.tail338351.ts.net";
+      hostname = config.dotfiles.fleet.fqdn;
       listenAddr = "127.0.0.1:6555";
       queueSize = 10;
       maxJobCount = 1;
