@@ -18,8 +18,6 @@ write a plan and link the plan instead.*
 
 [Plan the first feature](backlog/plan-first-feature.md)
 
-[Profile flake-check evaluation](backlog/profile-check-evaluation.md)
-
 ## Medium
 
 [Import the existing backlog](backlog/import-existing-backlog.md)
@@ -33,3 +31,5 @@ write a plan and link the plan instead.*
 [Capture the current architecture](backlog/capture-current-architecture.md)
 
 [Fill in the product doc](backlog/fill-product-doc.md)
+
+[Profile flake-check evaluation](backlog/profile-check-evaluation.md)

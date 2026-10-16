@@ -7,6 +7,20 @@
 
 let
   closureDiff = lib.getExe (import ../../lib/closure-diff.nix { inherit lib pkgs; });
+
+  # Ranks a flake's checks by evaluation time and memory, with a flamegraph
+  # each, to tune ci's local clearance; `workers N` measures a whole
+  # nix-eval-jobs run.
+  profileChecks = pkgs.writeShellApplication {
+    name = "nix-profile-checks";
+    text = ''
+      export PROFILE_CHECKS_TIME=${lib.getExe pkgs.time}
+      export PROFILE_CHECKS_FLAMEGRAPH=${pkgs.inferno}/bin/inferno-flamegraph
+      export PROFILE_CHECKS_EVAL_JOBS=${lib.getExe pkgs.nix-eval-jobs}
+      exec ${lib.getExe pkgs.nushell} --no-config-file ${../../tools/profile-checks.nu} "$@"
+    '';
+    meta.description = "Profile the evaluation time and memory of a flake's checks";
+  };
 in
 {
   nix.gc = {
@@ -25,6 +39,7 @@ in
     # Deploys the flake's colmenaHive: `colmena apply --on homelab`. The
     # binary-cached release; the colmena input supplies only makeHive.
     pkgs.colmena
+    profileChecks
     (pkgs.writeNuScriptBin "nix-suite" ''
       # One entry point for Nix validation, builds, and dependency inspection.
       # A raw string, so the apostrophe in "flake's" does not end it.
@@ -43,6 +58,12 @@ in
         treemap     Run nix-deps-treemap from its flake
         topology    Build this flake's nix-topology output
 
+      Evaluation profiling:
+        profile-checks [FLAKE]      Rank checks by eval time and memory, with
+                                    a flamegraph each (--only a,b; --no-profile)
+        profile-checks workers N    Evaluate all checks with N nix-eval-jobs
+                                    workers; report the unit's memory peak
+
       Package changes (dix):
         diff        From the running system to this checkout's system; from the
                     running system to one closure; or between two closures.
@@ -58,6 +79,8 @@ in
         nix-suite diff
         nix-suite diff /nix/var/nix/profiles/system-41-link /run/current-system
         nix-suite last 3
+        nix-suite profile-checks --only desktop-primary-evaluation
+        nix-suite profile-checks workers 2
       '#
       }
 
@@ -148,6 +171,7 @@ in
           }
           "diff" => (package-changes $args)
           "last" => (generation-changes ($args | get --optional 0 | default 1 | into int))
+          "profile-checks" => (^${lib.getExe profileChecks} ...$args)
           _ => {
             usage
             error make { msg: $"Unknown nix-suite command: ($command)" }
