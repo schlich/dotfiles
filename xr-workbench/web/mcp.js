@@ -64,7 +64,9 @@ async function showStep(step) {
   try {
     const response = await api(`mcp/diagram?step=${step}`);
     const blob = await response.blob();
-    if (request !== requestNumber) return false;
+    // A newer step owns the display and reports its own failure, so being
+    // superseded, such as by a click while the page starts, is no failure.
+    if (request !== requestNumber) return true;
     if (!(await surface.show(blob))) return false;
     const previous = $("diagram").dataset.url;
     const next = URL.createObjectURL(blob);
