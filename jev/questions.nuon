@@ -81,6 +81,30 @@
       }
     }
   }
+  # `jev classify-task`: quota-advisor's --jev labels for a task description.
+  # Explicit labels in the advisor's snapshot override these answers.
+  classify_task: {
+    questions: {
+      difficulty: {
+        type: choice
+        instructions: "How difficult is the task in `task`?"
+        criteria: {
+          low: "Routine, bounded task with an easy deterministic check"
+          medium: "Moderate investigation or implementation with several decisions"
+          high: "Deep or novel reasoning with substantial uncertainty"
+        }
+      }
+      error_cost: {
+        type: choice
+        instructions: "What is the cost of an incorrect result for `task`?"
+        criteria: {
+          low: "A wrong result is quickly noticed and cheap to correct"
+          medium: "A wrong result wastes meaningful time or requires review"
+          high: "A wrong result risks irreversible changes, sensitive data, or substantial harm"
+        }
+      }
+    }
+  }
   # `jev session-triage`: Jev reads how a Claude Code session ended; code
   # checks what it names against jj, GitHub, and the system profile and
   # decides. Tuned on 166 desktop sessions triaged by hand on 2026-10-16.

@@ -17,6 +17,8 @@ answers = {
     "delivery_only": {"type": "noul", "noul": 0.9},
     "activation_step": {"type": "noul", "noul": 0.1},
     "remaining_work": {"type": "score", "score": 0.2, "confidence": 0.9},
+    "difficulty": {"type": "choice", "choice": "medium", "confidence": 0.9},
+    "error_cost": {"type": "choice", "choice": "low", "confidence": 0.9},
 }
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -137,6 +139,15 @@ def main [script: path, questions: path] {
         $failures = ($failures | append (expect $"bash-guard asks the user about `($line)`" $guard.hookSpecificOutput.permissionDecision ask))
     }
     $failures = ($failures | append (expect "no credential line reached the server" ((requests $log) | length) $before))
+
+    # classify-task sends only the task, and never one that assigns a credential.
+    let before = ((requests $log) | length)
+    let labels = (run-jev $script classify-task { task: "Review a small Python change" } $vars)
+    $failures = ($failures | append (expect "classify-task returns the difficulty answer" ($labels.stdout | from json | get answers.difficulty.choice) "medium"))
+    $failures = ($failures | append (expect "classify-task sends only the task" ((requests $log) | last | get body.state) { task: "Review a small Python change" }))
+    let withheld = (run-jev $script classify-task { task: "export GITHUB_TOKEN=ghp_test and deploy" } $vars)
+    $failures = ($failures | append (expect "classify-task fails on a credential assignment" ($withheld.exit_code != 0) true))
+    $failures = ($failures | append (expect "the credential task never reached the server" ((requests $log) | length) ($before + 1)))
 
     # bash-guard still judges an ordinary command through the override.
     let guard = (run-jev $script bash-guard { tool_name: Bash, tool_input: { command: "cat notes.txt | grep todo" } } $vars | get stdout | from json)

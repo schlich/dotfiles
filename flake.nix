@@ -218,11 +218,14 @@
         '';
         meta.description = "Local IWSDK WebXR workbench for Nix, Nushell, and Jujutsu workflows";
       };
+      jev = import ./jev/package.nix { inherit pkgs; };
       quotaAdvisor = pkgs.writeShellApplication {
         name = "quota-advisor";
         runtimeInputs = [ pkgs.python3 ];
+        # --jev runs this repository's jev; QUOTA_ADVISOR_JEV overrides it.
         text = ''
           export PYTHONPATH=${./tools/quota-advisor/src}
+          export QUOTA_ADVISOR_JEV="''${QUOTA_ADVISOR_JEV:-${jev}/bin/jev}"
           exec python3 -m quota_advisor.cli "$@"
         '';
         meta.description = "Explainable Codex and Claude subscription pacing advisor";

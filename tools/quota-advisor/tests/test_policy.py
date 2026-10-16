@@ -5,52 +5,12 @@ from datetime import datetime
 from pathlib import Path
 
 from quota_advisor.policy import recommend
-from quota_advisor.jev import classify
 
 EXAMPLE = json.loads((Path(__file__).parents[1] / "example.json").read_text())
 NOW = datetime.fromisoformat("2026-09-29T07:45:00-05:00")
 
 
 class PolicyTest(unittest.TestCase):
-    def test_jev_request_and_typed_response(self):
-        class Reply:
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *args):
-                pass
-
-            def read(self):
-                return json.dumps(
-                    {
-                        "model": "typesafe/jev-1.13",
-                        "answers": {
-                            "difficulty": {
-                                "type": "choice",
-                                "choice": "medium",
-                                "probabilities": {"medium": 0.8},
-                            },
-                            "error_cost": {
-                                "type": "choice",
-                                "choice": "high",
-                                "probabilities": {"high": 0.7},
-                            },
-                        },
-                    }
-                ).encode()
-
-        def opener(request, timeout):
-            self.assertEqual(timeout, 15)
-            self.assertEqual(
-                json.loads(request.data)["state"], {"task": "Review migration"}
-            )
-            return Reply()
-
-        self.assertEqual(
-            classify("Review migration", api_key="test", opener=opener)["labels"],
-            {"difficulty": "medium", "error_cost": "high"},
-        )
-
     def test_switches_to_healthier_subscription(self):
         result = recommend(EXAMPLE, NOW)
         self.assertEqual(result["recommendation"]["tool"], "claude")

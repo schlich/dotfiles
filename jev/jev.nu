@@ -137,6 +137,22 @@ def "main ask" [
     ask $request.state $request.questions $model "ask" | to json
 }
 
+# Label a task's difficulty and error cost for quota-advisor. Reads `{task}`
+# JSON from stdin and prints the response JSON. A task that assigns a
+# credential is never sent, and every failure exits nonzero so the advisor
+# falls back to its offline policy.
+def "main classify-task" [] {
+    let task = ((parse-stdin $in).task? | default "")
+    if ($task | str trim | is-empty) {
+        error make { msg: "no task description on stdin" }
+    }
+    if $task =~ $credential_pattern {
+        error make { msg: "the task assigns a credential, so it is not sent to Jev" }
+    }
+    let config = (questions-config)
+    ask { task: $task } $config.classify_task.questions $config.model "classify-task" | to json
+}
+
 # Decide whether a failed terminal command deserves an agent. Reads a
 # `terminal.command.failed` event as JSON on stdin and prints a routing record.
 # Any failure to reach Jev routes to triage, preserving the previous behavior.
@@ -476,5 +492,5 @@ def "main session-triage" [
 }
 
 def main [] {
-    print "Usage: jev ask | jev triage-gate | jev bash-guard | jev session-triage"
+    print "Usage: jev ask | jev classify-task | jev triage-gate | jev bash-guard | jev session-triage"
 }
