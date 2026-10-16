@@ -360,7 +360,9 @@ parent/child chain only when the later change needs the earlier one to build,
 test, or make sense; make siblings when both changes are independently
 reviewable and can land independently. JJ provides this directly: `jj split`
 creates a parent/child pair by default, and `jj split --parallel` creates two
-sibling changes. After every split, set explicit descriptions, inspect `jj log`,
+sibling changes. When both changes touch one file, split by hunk with
+`jj-hunk split -r REV --query HUNKSET`, which needs no editor; the `jj` skill
+covers its query language. After every split, set explicit descriptions, inspect `jj log`,
 and repeat the classification if more than two changes remain. Create a
 checkpoint before splitting, as for other history surgery. Do not use the
 default parent/child shape just because it is convenient, and do not combine

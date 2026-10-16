@@ -42,6 +42,7 @@ jj restore --from <commit-id> <fileset> # Restore from another revision/commit
 
 jj split -r <rev> <paths> -m "text"   # Split into two revisions
 jj split --parallel -r <rev> <paths>   # Split into sibling revisions
+jj-hunk split -r <rev> --query '<hunkset>' "text"  # Split by hunk, not file (see below)
 jj absorb                             # Auto-squash changes into ancestor commits
 
 jj rebase -s <src> -o <dest>          # Rebase with descendants onto <dest>
@@ -131,6 +132,38 @@ the default. File proximity, a shared task, or touching the same subsystem is
 not enough to establish a dependency. After splitting, set descriptions and
 inspect `jj log` to confirm the graph; repeat the classification for any
 remaining mixed change.
+
+### 3a. Split hunks with `jj-hunk`, never `-i`
+
+Paths give `jj split` and `jj squash` whole files. When two deliverables
+share a file, use `jj-hunk`, which selects hunks without an interactive
+editor; workstations have it, servers such as homelab do not. Preview the
+selection, then apply it:
+
+```bash
+jj-hunk list -r <rev> --format text --query 'added(content:"timeout")'
+jj-hunk split -r <rev> --query 'added(content:"timeout")' "first part"
+jj-hunk squash -r <rev> --query 'changed(path:glob:"tests/**")'
+jj-hunk commit --query '<hunkset>' "message"   # working copy only
+```
+
+The selection goes into the first revision and the rest stays in the
+second, as with `jj split`. It has no `--parallel`: to make siblings, rebase
+the second revision onto the first's parent afterwards.
+
+- Hunkset predicates: `changed`, `added`, `removed`, `renamed`,
+  `mode_changed`, `binary_changed`, `all()`, `none()`, `id("hunk-...")`,
+  with `path:`, `file:` (whole added/removed files) and `content:`
+  arguments, combined with `|`, `&` and `~`. Patterns default to substring
+  for content and glob for paths; `regex:`, `exact:` and `glob:` override.
+- When a query cannot describe the selection, list the hunks with
+  `jj-hunk list -r <rev> --format json` and pass explicit indices or IDs with
+  `--spec-file spec.json` (`{"files": {"a.nix": {"hunks": [0]}},
+  "default": "reset"}`). Regenerate IDs after any change to the revision.
+- A hunk is a contiguous block: unrelated edits on adjacent lines land in
+  the same hunk and move together. Check both halves with `jj diff -r <rev>
+  --stat` after every split.
+- `jj-hunk --help` and `jj-hunk <command> --help` document the rest.
 
 ### 4. Quote revsets in shell
 

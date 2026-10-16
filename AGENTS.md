@@ -176,7 +176,9 @@
   files or were discovered in the same task.
 - JJ has this split built in: `jj split` (or `jj split -r <rev>`) creates a
   parent/child pair, while `jj split --parallel -r <rev>` creates siblings.
-  Use explicit descriptions for both resulting changes, verify the resulting
+  When both changes touch one file, split by hunk with
+  `jj-hunk split -r <rev> --query HUNKSET`, never with an interactive `-i`;
+  the `jj` skill covers its query language. Use explicit descriptions for both resulting changes, verify the resulting
   graph with `jj log`, and checkpoint before the split as with other history
   surgery. If more than two coherent changes are present, repeat the split
   and re-evaluate the dependency graph after each operation.

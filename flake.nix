@@ -107,6 +107,12 @@
       url = "github:iwe-org/iwe/iwe-v0.24.2";
       flake = false;
     };
+    # Built from its own lock file, without its flake's separate nixpkgs; bump
+    # the tag to update jj-hunk.
+    jj-hunk = {
+      url = "github:laulauland/jj-hunk/v0.5.1";
+      flake = false;
+    };
     iwe-skills = {
       url = "github:iwe-org/skills";
       flake = false;
