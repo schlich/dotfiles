@@ -4,7 +4,9 @@
 # to the Nushell MCP tool instead. Background runs (`run_in_background`) are
 # allowed, except for the long_jobs programs, which run as Nushell jobs in
 # the evaluate tool with a log in the scratchpad.
-# Allowed calls still pass through Jev and the normal permission prompt.
+# Calls this policy does not deny go to Jev (`jev bash-guard`), which denies
+# them or leaves them to the normal permission prompt; denied calls never
+# reach Jev.
 #
 # Every request is logged; review the log with `claude-bash-audit report`
 # and the bash-feedback skill, then tune this file or the agent instructions.

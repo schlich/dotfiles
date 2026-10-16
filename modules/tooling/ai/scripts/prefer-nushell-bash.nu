@@ -1,8 +1,9 @@
 #!/usr/bin/env -S nu --stdin
 
-# Deny Claude Code Bash calls that belong in the Nushell MCP tool, and log
-# every Bash request and outcome so denials can be reviewed with
-# `claude-bash-audit report` and turned into instruction or policy changes.
+# Deny Claude Code Bash calls that belong in the Nushell MCP tool, ask Jev
+# about the calls the policy leaves open, and log every Bash request and
+# outcome so denials can be reviewed with `claude-bash-audit report` and
+# turned into instruction or policy changes.
 
 # Mirrors jev's credential filter: such command lines are not logged verbatim.
 const credential_pattern = '(KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)[A-Z0-9_]*\s*='
@@ -147,7 +148,28 @@ def classify [command: string, background: bool, policy: record] {
   }
 }
 
-def pre-tool-use [payload: record, policy: record] {
+# Pass a call the policy deferred to `jev bash-guard` and print its decision.
+# Running Jev only here, not as a hook of its own, keeps a model call off the
+# calls the policy denies and keeps Jev's reason from replacing the policy's:
+# Claude Code shows the agent one reason when two hooks deny.
+def ask-jev [payload: record, jev: string] {
+  let result = (try {
+    $payload | to json --raw | run-external $jev "bash-guard" | complete
+  } catch {|err|
+    { exit_code: null, stdout: "", stderr: $err.msg }
+  })
+  let output = (try { $result.stdout | from json } catch { null })
+  if $result.exit_code != 0 or not ($output | describe | str starts-with "record") {
+    let detail = ($result.stderr | lines | where {|line| $line | str trim | is-not-empty } | get -o 0 | default "no decision on stdout")
+    decide "ask" $"Jev could not judge this Bash call: ($detail). Confirm before running it."
+    return
+  }
+  if ($output | is-not-empty) {
+    print ($output | to json --raw)
+  }
+}
+
+def pre-tool-use [payload: record, policy: record, jev: string] {
   let command = (extract-command $payload)
   let background = ((tool-input $payload) | get -o run_in_background | default false) == true
   let verdict = (classify $command $background $policy)
@@ -163,16 +185,20 @@ def pre-tool-use [payload: record, policy: record] {
     }
   )
 
-  # Stay silent on "defer" so Jev and the normal permission flow decide.
+  # On "defer", Jev decides, or without Jev the normal permission flow.
   if $verdict.decision == "deny" {
     decide "deny" $verdict.reason
+  } else if ($jev | is-not-empty) {
+    ask-jev $payload $jev
   }
 }
 
 def main [
   --policy: path # bash-policy.nuon; defaults to the file beside this script's source
+  --jev: string # Jev executable that judges deferred calls; CLAUDE_BASH_JEV overrides it, and empty skips Jev
 ] {
   let input = $in
+  let jev_command = ($env.CLAUDE_BASH_JEV? | default ($jev | default ""))
   let parsed = (try {
     let payload = (parse-payload $input)
     let policy = (open ($policy | default ($env.FILE_PWD | path join ".." "bash-policy.nuon")))
@@ -190,6 +216,6 @@ def main [
   match ($parsed.payload.hook_event_name? | default "PreToolUse") {
     "PostToolUse" => { append-log (base-entry $parsed.payload "ran") }
     "PostToolUseFailure" => { append-log (base-entry $parsed.payload "failed") }
-    _ => { pre-tool-use $parsed.payload $parsed.policy }
+    _ => { pre-tool-use $parsed.payload $parsed.policy $jev_command }
   }
 }

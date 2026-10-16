@@ -90,29 +90,6 @@ let
     } $out/hooks/hooks.json
   '';
   jev = import ../../../jev/package.nix { inherit pkgs; };
-  jevBashGuard = pkgs.runCommand "claude-code-jev-bash-guard" { } ''
-    install -Dm644 ${
-      pkgs.writers.writeJSON "plugin.json" {
-        name = "jev-bash-guard";
-        description = "Ask Jev to route Claude Code Bash commands through Nushell or user confirmation.";
-      }
-    } $out/.claude-plugin/plugin.json
-    install -Dm644 ${
-      pkgs.writers.writeJSON "hooks.json" {
-        hooks.PreToolUse = [
-          {
-            matcher = "Bash";
-            hooks = [
-              {
-                type = "command";
-                command = "${jev}/bin/jev bash-guard";
-              }
-            ];
-          }
-        ];
-      }
-    } $out/hooks/hooks.json
-  '';
   # Learn from your permission-dialog answers which kinds of tool call you
   # approve, and answer the dialog for classes promoted in trust-policy.nuon.
   agentTrustSource =
@@ -176,9 +153,12 @@ let
         { Authorization: $"Bearer ($token)" } | to json --raw | print
     }
   '';
-  # Deny foreground Bash outside bash-policy.nuon and log every request and
-  # outcome; the bash-feedback skill reviews the log with claude-bash-audit,
-  # and a Stop hook starts it when a session logs a new use case.
+  # Deny foreground Bash outside bash-policy.nuon, ask Jev about the calls the
+  # policy leaves open, and log every request and outcome. One hook decides
+  # each call, so the agent sees the reason of the guard that decided it and
+  # Jev runs only on calls the policy defers. The bash-feedback skill reviews
+  # the log with claude-bash-audit, and a Stop hook starts it when a session
+  # logs a new use case.
   preferNushellGuard =
     let
       hook = {
@@ -186,7 +166,7 @@ let
         hooks = [
           {
             type = "command";
-            command = "${pkgs.nushell}/bin/nu --stdin ${./scripts/prefer-nushell-bash.nu} --policy ${./bash-policy.nuon}";
+            command = "${pkgs.nushell}/bin/nu --stdin ${./scripts/prefer-nushell-bash.nu} --policy ${./bash-policy.nuon} --jev ${jev}/bin/jev";
           }
         ];
       };
@@ -195,7 +175,7 @@ let
       install -Dm644 ${
         pkgs.writers.writeJSON "plugin.json" {
           name = "prefer-nushell";
-          description = "Deny foreground Bash so shell work defaults to the nushell MCP tool, and log every Bash request.";
+          description = "Deny foreground Bash so shell work defaults to the nushell MCP tool, ask Jev about the rest, and log every Bash request.";
         }
       } $out/.claude-plugin/plugin.json
       install -Dm644 ${
@@ -345,7 +325,6 @@ in
       } "${agentSource}/trunk-triage.agent.md"
     );
     plugins.jj-guard = jjGuard;
-    plugins.jev-bash-guard = jevBashGuard;
     plugins.prefer-nushell = preferNushellGuard;
     plugins.agent-trust = agentTrust;
     plugins.nushell-display = nushellDisplay;
@@ -392,7 +371,7 @@ in
           node ${./tests/pretooluse-hooks.mjs} \
             jj-guard=${jjGuard} \
             prefer-nushell=${preferNushellGuard} \
-            jev-bash-guard=${jevBashGuard} \
+            jev=${jev} \
             agent-trust=${agentTrust} \
             copilot-guard=${../../../copilot/plugins/jj-flake-vigilance}
           touch "$out"

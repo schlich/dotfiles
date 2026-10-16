@@ -22,9 +22,18 @@ const plugins = Object.fromEntries(
   }),
 );
 
-function hookCommand(name) {
+function hookCommand(name, extraEnv = {}) {
   const dir = plugins[name];
   if (!dir) throw new Error(`no plugin directory given for ${name}`);
+  const env = {
+    ...process.env,
+    COPILOT_PLUGIN_ROOT: dir,
+    ...hookEnv[name],
+    ...extraEnv,
+  };
+  // Jev is not a hook of its own: prefer-nushell runs `jev bash-guard` on
+  // the calls its policy defers.
+  if (name === "jev") return { command: `${dir}/bin/jev bash-guard`, env };
   // Claude Code plugins keep hooks/hooks.json; Copilot plugins keep hooks.json.
   const file = existsSync(join(dir, "hooks", "hooks.json"))
     ? join(dir, "hooks", "hooks.json")
@@ -40,10 +49,30 @@ function hookCommand(name) {
   )?.command;
   const command = claude ?? copilot;
   if (!command) throw new Error(`${name} declares no Bash PreToolUse command`);
-  return { command, env: { ...process.env, COPILOT_PLUGIN_ROOT: dir } };
+  return { command, env };
 }
 
 const scratch = mkdtempSync(join(tmpdir(), "pretooluse-hooks-"));
+
+// prefer-nushell asks Jev about the calls its policy defers. A stub stands in
+// for the network model: it records each payload it is sent and answers with
+// JEV_STUB_DECISION (default ask), or fails when that is `fail`.
+const jevStub = join(scratch, "jev-stub");
+const jevCalls = join(scratch, "jev-calls.jsonl");
+writeFileSync(
+  jevStub,
+  `#!/bin/sh
+payload=$(cat)
+printf '%s\\n' "$payload" >> "$JEV_STUB_CALLS"
+decision=\${JEV_STUB_DECISION:-ask}
+if [ "$decision" = fail ]; then echo "stub Jev failed" >&2; exit 3; fi
+printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"%s","permissionDecisionReason":"Jev stub ran %s"}}\\n' "$decision" "$1"
+`,
+  { mode: 0o755 },
+);
+const hookEnv = {
+  "prefer-nushell": { CLAUDE_BASH_JEV: jevStub, JEV_STUB_CALLS: jevCalls },
+};
 
 // The Stop hook that raises never-reviewed Bash use cases.
 function stopCommand() {
@@ -112,7 +141,8 @@ const copilotPayload = (command) =>
   JSON.stringify({ toolName: "bash", toolArgs: { command } });
 
 // `decision`: null means the hook stays silent; `stderr` is a required prefix
-// for the one-line diagnostic, or null when stderr must be empty.
+// for the one-line diagnostic, or null when stderr must be empty; `env` adds
+// to the hook's environment; `jev` marks a call prefer-nushell sends to Jev.
 const cases = [
   {
     hook: "jj-guard",
@@ -248,14 +278,51 @@ const cases = [
   },
   {
     hook: "prefer-nushell",
-    name: "defers another background command",
+    name: "leaves another background command to Jev",
     stdin: claudePayload("cargo build --release", "Bash", { background: true }),
-    decision: null,
+    decision: "ask",
+    reason: /^Jev stub ran bash-guard$/,
+    jev: true,
   },
   {
     hook: "prefer-nushell",
-    name: "defers sudo nix",
+    name: "leaves sudo nix to Jev",
     stdin: claudePayload("sudo nix store gc", "Bash", { background: true }),
+    decision: "ask",
+    reason: /^Jev stub/,
+    jev: true,
+  },
+  {
+    hook: "prefer-nushell",
+    name: "passes on Jev's denial",
+    stdin: claudePayload("cargo test", "Bash", { background: true }),
+    env: { JEV_STUB_DECISION: "deny" },
+    decision: "deny",
+    reason: /^Jev stub/,
+    jev: true,
+  },
+  {
+    hook: "prefer-nushell",
+    name: "asks when Jev fails",
+    stdin: claudePayload("cargo check", "Bash", { background: true }),
+    env: { JEV_STUB_DECISION: "fail" },
+    decision: "ask",
+    reason: /^Jev could not judge this Bash call: stub Jev failed\./,
+    jev: true,
+  },
+  {
+    hook: "prefer-nushell",
+    name: "asks when Jev is missing",
+    stdin: claudePayload("cargo doc", "Bash", { background: true }),
+    env: { CLAUDE_BASH_JEV: join(scratch, "missing-jev") },
+    decision: "ask",
+    reason: /^Jev could not judge this Bash call/,
+  },
+  {
+    hook: "prefer-nushell",
+    name: "stays silent on a deferred call without Jev",
+    stdin: claudePayload("cargo fmt", "Bash", { background: true }),
+    env: { CLAUDE_BASH_JEV: "" },
     decision: null,
   },
   {
@@ -273,9 +340,11 @@ const cases = [
   },
   {
     hook: "prefer-nushell",
-    name: "defers sudo",
+    name: "leaves sudo to Jev",
     stdin: claudePayload("sudo nixos-rebuild switch --flake .#asus"),
-    decision: null,
+    decision: "ask",
+    reason: /^Jev stub/,
+    jev: true,
   },
   {
     hook: "prefer-nushell",
@@ -294,7 +363,9 @@ const cases = [
     hook: "prefer-nushell",
     name: "exempts jev",
     stdin: claudePayload("jev bash-guard"),
-    decision: null,
+    decision: "ask",
+    reason: /^Jev stub/,
+    jev: true,
   },
   {
     hook: "prefer-nushell",
@@ -302,7 +373,9 @@ const cases = [
     stdin: claudePayload(
       "iwe create note --strict --content - <<'EOF'\n# Note\n\nsort the imports first\nEOF",
     ),
-    decision: null,
+    decision: "ask",
+    reason: /^Jev stub/,
+    jev: true,
   },
   {
     hook: "prefer-nushell",
@@ -317,29 +390,29 @@ const cases = [
     decision: "ask",
     stderr: "prefer-nushell: ",
   },
-  // Jev cases stop before the network request.
+  // `jev bash-guard` itself; these cases stop before the network request.
   {
-    hook: "jev-bash-guard",
+    hook: "jev",
     name: "ignores other tools",
     stdin: claudePayload("ls", "Read"),
     empty: true,
   },
   {
-    hook: "jev-bash-guard",
+    hook: "jev",
     name: "withholds credentials",
     stdin: claudePayload('$env.GITHUB_TOKEN = "x"'),
     decision: "ask",
     reason: /credential/,
   },
   {
-    hook: "jev-bash-guard",
+    hook: "jev",
     name: "asks on blank command",
     stdin: claudePayload("   "),
     decision: "ask",
     reason: /could not be inspected/,
   },
   {
-    hook: "jev-bash-guard",
+    hook: "jev",
     name: "asks on malformed JSON",
     stdin: "[",
     decision: "ask",
@@ -420,6 +493,7 @@ const results = await Promise.all(
         testCase.stdin,
         transport.mode,
         transport.delay,
+        hookCommand(testCase.hook, testCase.env),
       ),
     })),
   ),
@@ -436,7 +510,8 @@ for (const { testCase, transport, result } of results) {
     console.log(`     stderr: ${JSON.stringify(result.stderr)}`);
   }
 }
-// Every well-formed prefer-nushell payload appends one log line.
+// Every well-formed prefer-nushell payload appends one log line; a malformed
+// one only reports on stderr.
 const logPath = join(
   process.env.HOME,
   ".local",
@@ -445,8 +520,7 @@ const logPath = join(
   "bash-requests.jsonl",
 );
 const expectedLines = results.filter(
-  ({ testCase }) =>
-    testCase.hook === "prefer-nushell" && testCase.decision !== "ask",
+  ({ testCase }) => testCase.hook === "prefer-nushell" && !testCase.stderr,
 ).length;
 const logged = existsSync(logPath)
   ? readFileSync(logPath, "utf8").trim().split("\n").map(JSON.parse)
@@ -462,6 +536,29 @@ if (logged.length === expectedLines) {
 if (!logged.some((entry) => entry.event === "ran")) {
   failures += 1;
   console.log("FAIL prefer-nushell: PostToolUse was not logged as ran");
+}
+// Jev sees each deferred call once per transport and nothing the policy
+// denied, so a denial never costs a model call or loses its reason to Jev's.
+const jevExpected = results
+  .filter(({ testCase }) => testCase.jev)
+  .map(({ testCase }) => JSON.parse(testCase.stdin).tool_input.command)
+  .sort();
+const jevAsked = (
+  existsSync(jevCalls)
+    ? readFileSync(jevCalls, "utf8").trim().split("\n").map(JSON.parse)
+    : []
+)
+  .map((payload) => payload.tool_input?.command)
+  .sort();
+if (JSON.stringify(jevAsked) === JSON.stringify(jevExpected)) {
+  console.log(
+    `ok   prefer-nushell: asks Jev about only the ${jevExpected.length} deferred calls`,
+  );
+} else {
+  failures += 1;
+  console.log(
+    `FAIL prefer-nushell: Jev was asked about ${JSON.stringify(jevAsked)}, expected ${JSON.stringify(jevExpected)}`,
+  );
 }
 
 // The Stop hook reads the log written above, so these run in order: the
@@ -791,6 +888,6 @@ for (const [name, id, expected] of [
   report(`agent-trust: ${name}`, problems, result);
 }
 
-const total = results.length + 2 + stopCases.length + trustTotal;
+const total = results.length + 3 + stopCases.length + trustTotal;
 console.log(`${total - failures}/${total} hook cases passed`);
 process.exit(failures === 0 ? 0 : 1);

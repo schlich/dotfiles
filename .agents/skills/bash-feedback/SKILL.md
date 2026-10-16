@@ -6,9 +6,10 @@ description: Review the log of Claude Code Bash requests and turn repeated use c
 # Bash feedback loop
 
 Claude Code's prefer-nushell hook denies foreground Bash unless
-`modules/tooling/ai/bash-policy.nuon` allows it, and logs every Bash request
-and its outcome. Denials show where the agent instructions fall short. Calls
-that were allowed show which uses of Bash are legitimate. This skill reviews
+`modules/tooling/ai/bash-policy.nuon` allows it, asks Jev about the calls
+the policy defers, and logs every Bash request and its outcome. Denials show
+where the agent instructions fall short. Calls that were allowed show which
+uses of Bash are legitimate. This skill reviews
 the unreviewed part of the log and changes the dotfiles repository so the
 next session needs Bash less often.
 

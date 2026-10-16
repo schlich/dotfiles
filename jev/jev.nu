@@ -154,9 +154,10 @@ def "main triage-gate" [] {
     } | to json -r
 }
 
-# Classify Claude Code Bash tool calls before execution. Reads a PreToolUse
-# event from stdin and emits a Claude Code hook decision as JSON. Any Jev
-# failure is converted into an explicit user confirmation request.
+# Classify Claude Code Bash tool calls before execution. The prefer-nushell
+# hook pipes in each PreToolUse event its policy defers, and this emits a
+# Claude Code hook decision as JSON. Any Jev failure is converted into an
+# explicit user confirmation request.
 def bash-ask [reason: string] {
     {
         hookSpecificOutput: {
