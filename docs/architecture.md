@@ -101,6 +101,10 @@ a graphical workstation.
 The typed aspect policy registry records risk and reviewer domains in Den
 aspect metadata. CI evaluates every declared host, checks the Home Manager
 activation graph, and runs the independent desktop configuration checks.
+Hosts whose `policy.criticality` is `disposable` evaluate in the flake's
+`remoteChecks` instead of `checks`, as do evaluations of homelab with modules
+it has not adopted yet: GitHub Actions reports them after each push without
+blocking, and `ci land` leaves them out.
 
 No activation is implied by evaluation or builds. A system or home activation
 requires an explicit operator decision after the generated output has been

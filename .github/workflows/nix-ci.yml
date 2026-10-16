@@ -210,6 +210,20 @@ jobs:
         with:
           path: ~/.cache/nix
           key: ${{ steps.fetcher-cache.outputs.cache-primary-key }}
+  remote-checks:
+    # The flake's remoteChecks, such as disposable hosts' evaluations, report
+    # here without blocking: no required status needs this job, and ci land
+    # builds only checks.
+    name: remote checks (non-blocking)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+      - uses: DeterminateSystems/determinate-nix-action@v3.21.9
+      - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
+      - name: Build remote checks
+        run: >-
+          nix --accept-flake-config run --inputs-from . nixpkgs#nix-fast-build -- --no-nom --skip-cached --flake .#remoteChecks.x86_64-linux
   checks:
     # The single required status, so adding or renaming a flake check never
     # requires a branch protection change.

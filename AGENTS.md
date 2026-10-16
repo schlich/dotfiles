@@ -266,7 +266,7 @@
 - Avoid hostname conditionals. Add a typed profile field and a reusable aspect when a capability is genuinely shared.
 - The `master` aspect resolves host facts into behavior. Prefer extending a focused aspect over expanding a catch-all module.
 - Inspect the pinned Den API before using schema, aspect, policy, or output features: read it with the Nix MCP server's `flake-inputs` action (`type: ls` or `read`, `query: "den:PATH"`), which resolves the revision in `flake.lock`.
-- Every declared host must evaluate. Keep policy and aspect metadata machine-readable so affected hosts, risk, checks, and reviewer domains can be identified.
+- Every declared host must evaluate. A host whose `policy.criticality` is `disposable` evaluates in `remoteChecks`, which GitHub Actions reports without blocking a landing, as do previews of a host with modules it has not adopted yet; every other host gates it through `checks`. Keep policy and aspect metadata machine-readable so affected hosts, risk, checks, and reviewer domains can be identified.
 - Do not silently alter boot, storage, filesystem, encryption, swap, or security configuration. These are high-risk changes and generated hardware files remain host-local.
 - Never put plaintext secrets in the repository or Nix store. Preserve encrypted inputs and recovery paths.
 - Do not automatically switch the current system. Build and evaluate first; any `nixos-rebuild test` or activation remains a deliberate manual operation.

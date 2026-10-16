@@ -284,18 +284,29 @@
       # input, one check per host: all of them in one evaluator came within
       # 0.3 GiB of ci's 6 GiB evaluation budget. headless-system already
       # evaluates and builds asus-headless, and colmena-hive-NAME evaluates
-      # each deployed host.
-      denHostEvaluationChecks =
-        lib.mapAttrs'
-          (
-            name: host:
-            lib.nameValuePair "den-host-${name}" (
-              pkgs.writeText "den-host-${name}" (
-                builtins.unsafeDiscardStringContext "${name}: ${host.config.networking.hostName}: ${host.config.system.build.toplevel.drvPath}\n"
-              )
-            )
+      # each deployed host. Disposable hosts are left to remoteChecks.
+      denHostEvaluationChecksFor = lib.mapAttrs' (
+        name: host:
+        lib.nameValuePair "den-host-${name}" (
+          pkgs.writeText "den-host-${name}" (
+            builtins.unsafeDiscardStringContext "${name}: ${host.config.networking.hostName}: ${host.config.system.build.toplevel.drvPath}\n"
           )
-          (removeAttrs denFlake.nixosConfigurations ([ "asus-headless" ] ++ builtins.attrNames deployHosts));
+        )
+      );
+      denHostEvaluationChecks = denHostEvaluationChecksFor (
+        removeAttrs denFlake.nixosConfigurations (
+          [ "asus-headless" ] ++ builtins.attrNames deployHosts ++ builtins.attrNames remoteCheckHosts
+        )
+      );
+      # Hosts whose inventory policy marks them disposable still have to
+      # evaluate, but GitHub Actions checks them after each push without
+      # blocking: ci land builds only `checks`.
+      remoteCheckHosts = lib.filterAttrs (
+        _: host: host.policy.criticality == "disposable"
+      ) denEval.config.den.hosts.${system};
+      remoteHostEvaluationChecks = denHostEvaluationChecksFor (
+        builtins.intersectAttrs remoteCheckHosts denFlake.nixosConfigurations
+      );
       # The workstation with only its primary terminal, editor, and agent
       # desktop client; CI builds this closure, and colmena-hive-asus
       # evaluates the full one.
@@ -525,7 +536,6 @@
           touch "$out"
         '';
         marimohub = marimohub;
-        marimohub-homelab-evaluation = marimohubHomelabEvaluationCheck;
         # One Markdown file as an IWE node and a marimo notebook: IWE
         # validates the corpus, marimo executes the demo in the Nix
         # environment its frontmatter names, an editor save keeps the IWE
@@ -559,7 +569,6 @@
               python tests/rendered.py "$TMPDIR/demo.html" ${workbenchDemo.name}
               touch "$out"
             '';
-        nixbot-homelab-evaluation = nixbotHomelabEvaluationCheck;
         den-inventory-tests =
           pkgs.runCommand "den-inventory-tests"
             {
@@ -682,6 +691,15 @@
       }
       // colmenaHiveChecks
       // denHostEvaluationChecks;
+
+      # Checks that report without gating a landing: GitHub Actions' nix-ci
+      # workflow builds them after each push, and ci land leaves them out.
+      # They cover disposable hosts and homelab with modules it has not
+      # adopted yet.
+      remoteChecks.${system} = remoteHostEvaluationChecks // {
+        marimohub-homelab-evaluation = marimohubHomelabEvaluationCheck;
+        nixbot-homelab-evaluation = nixbotHomelabEvaluationCheck;
+      };
     };
   nixConfig = {
     extra-substituters = [
