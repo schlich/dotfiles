@@ -64,6 +64,7 @@ in
       "$left"
       "$right"
     ];
+    ui.diff-editor = "meld";
     fix.tools.nixfmt = {
       command = [
         "nixfmt"
@@ -103,6 +104,7 @@ in
   home.packages = [
     git
     jj
+    pkgs.meld
     ci.jj-describe
     ci.ci
     (pkgs.writeNuScriptBin "jj-dashboard" (builtins.readFile ../../jj/dashboard.nu))
