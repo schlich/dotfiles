@@ -27,10 +27,17 @@ let
     };
   };
 
-  specifications = lib.fileset.toSource {
-    root = ../tests/bombadil;
-    fileset = ../tests/bombadil;
-  };
+  # A check sees its specification and the shared keymap module, so editing
+  # one specification reruns only its own check.
+  specifications =
+    specification:
+    lib.fileset.toSource {
+      root = ../tests/bombadil;
+      fileset = lib.fileset.unions [
+        ../tests/bombadil/keymap.ts
+        (../tests/bombadil + "/${specification}")
+      ];
+    };
 in
 {
   inherit package;
@@ -65,7 +72,7 @@ in
         --exit-on-violation \
         --time-limit ${timeLimit} \
         --quiescence-timeout-ms 20 \
-        --specification ${specifications}/${specification} \
+        --specification ${specifications specification}/${specification} \
         --output-path "$TMPDIR/trace" \
         -- ${lib.escapeShellArgs command} >"$TMPDIR/bombadil.log"; then
         tail -n 80 "$TMPDIR/bombadil.log"
@@ -75,4 +82,62 @@ in
       tail -n 3 "$TMPDIR/bombadil.log"
       touch "$out"
     '';
+
+  # Explores the page at `origin` in headless Chromium for `timeLimit` and
+  # fails on the first property violation. `setup` starts the server; any
+  # other attribute, such as pnpmDeps, goes to the derivation.
+  browserCheck =
+    {
+      name,
+      specification,
+      origin,
+      timeLimit ? "2m",
+      setup ? "",
+      nativeBuildInputs ? [ ],
+      ...
+    }@args:
+    pkgs.stdenvNoCC.mkDerivation (
+      removeAttrs args [
+        "specification"
+        "origin"
+        "timeLimit"
+        "setup"
+      ]
+      // {
+        name = "bombadil-${name}";
+        nativeBuildInputs = nativeBuildInputs ++ [
+          package
+          pkgs.chromium
+        ];
+        buildPhase = ''
+          runHook preBuild
+          export HOME="$TMPDIR/home"
+          mkdir -p "$HOME/.cache" "$HOME/.config" "$HOME/.local" "$HOME/.pki"
+          export XDG_CONFIG_HOME="$HOME/.config" XDG_CACHE_HOME="$HOME/.cache"
+          export FONTCONFIG_FILE=${pkgs.makeFontsConf { fontDirectories = [ pkgs.freefont_ttf ]; }}
+          # Bombadil's client for Chromium's debugger loads root certificates
+          # and cannot start with the sandbox's placeholder file.
+          export SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt
+          export CHROME=${lib.getExe pkgs.chromium}
+          ${setup}
+          if ! bombadil browser test \
+            --headless \
+            --no-sandbox \
+            --exit-on-violation \
+            --time-limit ${timeLimit} \
+            --output-path "$TMPDIR/trace" \
+            ${lib.escapeShellArg origin} \
+            ${specifications specification}/${specification} >"$TMPDIR/bombadil.log" 2>&1; then
+            tail -n 80 "$TMPDIR/bombadil.log"
+            echo "Trace: $TMPDIR/trace (rebuild with --keep-failed to keep it)"
+            exit 1
+          fi
+          tail -n 3 "$TMPDIR/bombadil.log"
+          runHook postBuild
+        '';
+        installPhase = ''
+          touch "$out"
+        '';
+      }
+    );
 }

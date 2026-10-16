@@ -724,17 +724,23 @@
       # Checks that report without gating a landing: GitHub Actions' nix-ci
       # workflow builds them after each push, and ci land leaves them out.
       # They cover disposable hosts, homelab with modules it has not adopted
-      # yet, and the staged switch's revert in a VM.
-      remoteChecks.${system} = remoteHostEvaluationChecks // {
-        deploy-revert = import ./tests/deploy-revert.nix { inherit pkgs; };
-        marimohub-homelab-evaluation = marimohubHomelabEvaluationCheck;
-        nixbot-homelab-evaluation = nixbotHomelabEvaluationCheck;
-        # The system closures build after landing. A revision whose closure
-        # fails to build can land, but no host activates it: a switch builds
-        # the closure before it stages anything.
-        desktop-primary = denAsusPrimary.config.system.build.toplevel;
-        headless-system = denFlake.nixosConfigurations.asus-headless.config.system.build.toplevel;
-      };
+      # yet, the staged switch's revert in a VM, and Bombadil's exploration
+      # of Fieldwork.
+      # Bombadil explores Fieldwork, a prototype whose bridge answers some
+      # requests with 4xx by design, so its findings report here first.
+      remoteChecks.${system} =
+        remoteHostEvaluationChecks
+        // import ./xr-workbench/bombadil-check.nix { inherit lib pkgs; }
+        // {
+          deploy-revert = import ./tests/deploy-revert.nix { inherit pkgs; };
+          marimohub-homelab-evaluation = marimohubHomelabEvaluationCheck;
+          nixbot-homelab-evaluation = nixbotHomelabEvaluationCheck;
+          # The system closures build after landing. A revision whose closure
+          # fails to build can land, but no host activates it: a switch builds
+          # the closure before it stages anything.
+          desktop-primary = denAsusPrimary.config.system.build.toplevel;
+          headless-system = denFlake.nixosConfigurations.asus-headless.config.system.build.toplevel;
+        };
     };
   nixConfig = {
     extra-substituters = [
