@@ -235,6 +235,7 @@
         ${builtins.readFile ./tools/profile-drift.nu}
       '';
       lib = nixpkgs.lib;
+      bombadil = import ./lib/bombadil.nix { inherit lib pkgs; };
       iwe = import ./modules/tooling/knowledge/iwe-package.nix { inherit inputs lib pkgs; };
       marimohub = import ./modules/tooling/knowledge/marimohub-package.nix { inherit lib pkgs; };
       workbench = import ./workbench { inherit pkgs lib iwe; };
@@ -469,6 +470,8 @@
         default = pkgs.mkShellNoCC {
           packages = with pkgs; [
             bat
+            # Replays and inspects the keymap checks' traces (tests/bombadil).
+            bombadil.package
             claude-code
             colmena
             d2
