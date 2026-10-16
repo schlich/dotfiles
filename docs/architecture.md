@@ -88,8 +88,11 @@ Repository-wide formatting and the future nix-unit test surface are provided
 by [Checkmate](https://github.com/denful/checkmate). Format locally with:
 
 ```text
-nix run github:denful/checkmate#fmt --override-input target path:. -- --on-unmatched warn --excludes '.agents/**' --excludes '.codex/**'
+nix run github:denful/checkmate#fmt --override-input target path:. -- --on-unmatched warn --excludes '.agents/**' --excludes '.codex/**' --excludes 'workbench/knowledge/**' --excludes 'docs/project/**'
 ```
+
+`docs/project/` is an IWE graph: `iwe normalize` formats it, and Checkmate's
+Markdown formatter would flatten its YAML frontmatter.
 
 ## Safety boundaries
 

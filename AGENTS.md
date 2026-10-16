@@ -300,6 +300,26 @@
   plugins, hooks, and plugin-bundled agent definitions under `copilot/`, and
   wire client exposure through `modules/tooling/ai/`.
 
+## Project memory
+
+`docs/project/` is this repository's project graph, vendored from
+[iwe-org/dev-workspace](https://github.com/iwe-org/dev-workspace): product,
+plans, features, bugs, specs, architecture, and releases as an IWE graph under
+`docs/project/data/`. Its operating manual is `docs/project/AGENTS.md`; run
+`iwe` commands from `docs/project/`, where keys start at `data/`.
+
+- At the start of a session that plans, builds, or ships repository work, read
+  `docs/project/data/product.md` and the active plans in
+  `docs/project/data/plans.md`, then follow `docs/project/AGENTS.md` to record
+  the state change before the session ends.
+- Its workflow skills (setup, explore, plan, implement, verify, ship, weekly)
+  stay in `docs/project/.claude/skills/`: they are specific to this graph, so
+  they are deliberately not provider-neutral skills under `.agents/skills/`.
+- The IWE root is `docs/project/`, not `docs/`, so `iwe normalize` never
+  rewrites the loose notes beside it in `docs/`.
+- `iwe schema validate` and a no-op `iwe normalize` in `docs/project/` gate any
+  change to the graph.
+
 ## Configuration factory architecture
 
 - Host files and `den/inventory.nix` describe facts; reusable behavior belongs in focused Den aspects.
