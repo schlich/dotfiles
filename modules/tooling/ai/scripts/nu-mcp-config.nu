@@ -8,8 +8,9 @@ $env.NU_MCP_OUTPUT_LIMIT = 50kb
 # Run a closure as a background job the harness can follow: both output
 # streams of its external commands go to LOG, the outcome to `LOG.done.nuon`,
 # its OSC 7501 reports (osc7501.nu's PST_FILE) to `LOG.status.jsonl`, and
-# this Nushell's pid and the job's cross.stream topic to `LOG.job.nuon`, so a
-# watcher can tell a lost job from a slow one and wake the moment it ends.
+# this Nushell's pid, the job's cross.stream topic, and what it runs where
+# since when to `LOG.job.nuon`, so a watcher can name the job, tell a lost
+# job from a slow one, and wake the moment it ends.
 # Follow it with a Monitor running `watch-job LOG`.
 #
 # The log takes only text, written as the commands produce it, so the closure
@@ -30,7 +31,9 @@ def job-log [
   for suffix in [done.nuon status.jsonl seen] { rm --force $"($log).($suffix)" }
   "" | save --force $log
   let topic = $"job.(random uuid)"
-  { pid: $nu.pid, topic: $topic } | save --force $"($log).job.nuon"
+  # The closure's source, on one line, is what the watcher's JOB line runs.
+  let label = (view source $task | str trim --char '{' | str trim --char '}' | str replace --all --regex '\s+' ' ' | str trim | str substring 0..<120)
+  { pid: $nu.pid, topic: $topic, task: $label, cwd: $cwd, started: (date now) } | save --force $"($log).job.nuon"
   job-event $"($topic).start" { log: $log, cwd: $cwd, pid: $nu.pid }
   let id = (job spawn --description ($log | path basename) {
     let outcome = try {

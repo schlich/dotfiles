@@ -49,26 +49,30 @@ def main [watch_job: path] {
   mut failures = []
 
   # The job's done event wakes the watcher long before the next heartbeat.
+  # The JOB line names what a job-log job runs, where, and since when.
   let log = ($tmp | path join job.log)
   job-log $log { ^sh -c 'echo "=== build"; sleep 1; echo "error: boom"; exit 3' } | ignore
   let result = (do $watch $log 10sec)
-  $failures = ($failures | append (check "job-log job ends at its done event" $result.run ['^=== build$' '^error: boom$' '^DONE: \{exit_code: 3, error: '] $result.took 5sec))
+  $failures = ($failures | append (check "job-log job ends at its done event" $result.run [r#'^JOB: \^sh -c 'echo "=== build"; .*' · .+ · since \d\d:\d\d$'# '^=== build$' '^error: boom$' '^✗ DONE exit 3 after \dsec: '] $result.took 5sec))
 
-  # A job that reports its status is followed by its reports, as NUON
-  # records without their timestamps: its log lines, even ones the pattern
-  # matches, and its clear report print nothing.
+  # A job that reports its status is followed by its reports, one line each:
+  # its log lines, even ones the pattern matches, and its clear report print
+  # nothing. A finished phase says how long it took, and its message only
+  # when that is new.
   let log = ($tmp | path join reported.log)
   job-log $log { ^sh -c r#'
     report() { printf '%s\n' "$1" >> "$PST_FILE"; }
     report '{"time":"2026-10-07T08:00:00-05:00","state":"working","id":"rebase","app":"ci","msg":"Rebasing"}'
     echo "=== a line the pattern matches"
     sleep 1
-    report '{"time":"2026-10-07T08:00:01-05:00","state":"done","id":"land","app":"ci","msg":"Landed jj-x on main"}'
-    report '{"time":"2026-10-07T08:00:01-05:00","state":"clear","app":"ci"}'
+    report '{"time":"2026-10-07T08:00:40-05:00","state":"done","id":"rebase","app":"ci","msg":"Rebasing"}'
+    report '{"time":"2026-10-07T08:00:41-05:00","state":"blocked","id":"land","app":"ci","msg":"Waiting for approval"}'
+    report '{"time":"2026-10-07T08:00:42-05:00","state":"done","id":"land","app":"ci","msg":"Landed jj-x on main"}'
+    report '{"time":"2026-10-07T08:00:42-05:00","state":"clear","app":"ci"}'
     echo "Landed jj-x on main."
   '# } | ignore
   let result = (do $watch $log 10sec)
-  $failures = ($failures | append (check "reported job prints its reports alone" $result.run ['^STATUS: \{state: working, id: rebase, app: ci, msg: Rebasing\}$' '^STATUS: \{state: done, id: land, app: ci, msg: "Landed jj-x on main"\}$' '^DONE: \{exit_code: 0\}$'] $result.took 5sec))
+  $failures = ($failures | append (check "reported job prints its reports alone" $result.run ['^JOB: ' '^▶ rebase: Rebasing$' '^✓ rebase 40sec$' '^⏸ BLOCKED land: Waiting for approval$' '^✓ land: Landed jj-x on main$' '^✓ DONE exit 0 after \dsec$'] $result.took 5sec))
 
   # Trouble a reporting job logs but does not report still reaches the
   # Monitor, as an alarm after the report it follows. An evaluator replacing
@@ -82,7 +86,7 @@ def main [watch_job: path] {
     echo "error: evaluation worker 411987 was killed by signal 9"
   '# } | ignore
   let result = (do $watch $log 10sec)
-  $failures = ($failures | append (check "reported job raises alarms" $result.run ['^STATUS: \{state: working, id: clearance, app: ci, msg: "Waiting for local flake checks"\}$' '^ALARM: error: evaluation worker 411987 was killed by signal 9$' '^DONE: \{exit_code: 0\}$'] $result.took 5sec))
+  $failures = ($failures | append (check "reported job raises alarms" $result.run ['^JOB: ' '^▶ clearance: Waiting for local flake checks$' '^⚠ ALARM: error: evaluation worker 411987 was killed by signal 9$' '^✓ DONE exit 0 after \dsec$'] $result.took 5sec))
 
   # A job quiet for longer than --quiet-after gets a heartbeat naming its
   # phase and last log line, once per quiet period.
@@ -97,7 +101,7 @@ def main [watch_job: path] {
     let run = (^timeout 30 nu --no-config-file $watch_job $log --interval 200ms --quiet-after 1sec | complete)
     { run: $run, took: ((date now) - $started) }
   })
-  $failures = ($failures | append (check "quiet job gets a heartbeat" $result.run ['^STATUS: \{state: working, id: build, app: ci, msg: Building\}$' '^STILL: \{quiet: "1sec", phase: Building, phase_for: "[12]sec", last_line: "building desktop-primary"\}$' '^DONE: \{exit_code: 0\}$'] $result.took 5sec))
+  $failures = ($failures | append (check "quiet job gets a heartbeat" $result.run ['^JOB: ' '^▶ build: Building$' '^⋯ STILL build [12]sec, quiet 1sec: building desktop-primary$' '^✓ DONE exit 0 after \dsec$'] $result.took 5sec))
 
   # Without a store the watcher reads on a timer, and a line written in two
   # parts is read once it is whole.
@@ -106,12 +110,13 @@ def main [watch_job: path] {
     job-log $log { ^sh -c 'printf "=== offline\nbuil"; sleep 1; printf "ding failed\n"' } | ignore
     do $watch $log 300ms
   })
-  $failures = ($failures | append (check "job without a store polls" $result.run ['^=== offline$' '^building failed$' '^DONE: \{exit_code: 0\}$'] $result.took 5sec))
+  $failures = ($failures | append (check "job without a store polls" $result.run ['^JOB: ' '^=== offline$' '^building failed$' '^✓ DONE exit 0 after \dsec$'] $result.took 5sec))
 
-  # A ci MCP job names its topic in meta.json and records its exit code.
+  # A ci MCP job names its command, workspace, start, and topic in
+  # meta.json and records its exit code.
   let dir = ($tmp | path join jobs 20261007T000000-land-0a1b2c)
   mkdir $dir
-  { pid: $nu.pid, topic: job.ci-test } | to json | save ($dir | path join meta.json)
+  { args: [land --clearance local], workspace: /home/u/dotfiles, pid: $nu.pid, started: (date now | format date '%Y-%m-%dT%H:%M:%S%z'), topic: job.ci-test } | to json | save ($dir | path join meta.json)
   "" | save ($dir | path join log)
   job spawn {
     sleep 500ms
@@ -121,7 +126,7 @@ def main [watch_job: path] {
     ^xs append $store job.ci-test.done --meta '{"outcome": {"exit_code": 0}}' | complete | ignore
   } | ignore
   let result = (do $watch ($dir | path join log) 10sec)
-  $failures = ($failures | append (check "ci MCP job ends at its done event" $result.run ['^=== ci land$' '^DONE: \{exit_code: 0\}$'] $result.took 5sec))
+  $failures = ($failures | append (check "ci MCP job ends at its done event" $result.run ['^JOB: ci land --clearance local · dotfiles · since \d\d:\d\d$' '^=== ci land$' '^✓ DONE exit 0 after \dsec$'] $result.took 5sec))
 
   # A follow that fails as it starts still leaves the files read every
   # interval: this xs answers `version` and refuses everything else.
@@ -134,14 +139,14 @@ def main [watch_job: path] {
   { pid: $nu.pid, topic: job.refused-test } | save $"($log).job.nuon"
   job spawn { sleep 1sec; { exit_code: 0 } | save $"($log).done.nuon" } | ignore
   let result = (with-env { PATH: ($env.PATH | prepend $bin) } { do $watch $log 300ms })
-  $failures = ($failures | append (check "follow refused as it starts" $result.run ['^=== refused follow$' '^DONE: \{exit_code: 0\}$'] $result.took 5sec))
+  $failures = ($failures | append (check "follow refused as it starts" $result.run ['^JOB: refused.log$' '^=== refused follow$' '^✓ DONE exit 0$'] $result.took 5sec))
 
   # An owner that is gone without a result means the job was lost.
   let log = ($tmp | path join lost.log)
   "" | save $log
   { pid: 4194305, topic: job.lost-test } | save $"($log).job.nuon"
   let result = (do $watch $log 300ms)
-  $failures = ($failures | append (check "lost owner" $result.run ['^DONE: \{state: lost, owner: 4194305\}$'] $result.took 5sec))
+  $failures = ($failures | append (check "lost owner" $result.run ['^JOB: lost.log$' '^✗ DONE lost: owner 4194305 exited without a result$'] $result.took 5sec))
 
   job kill $server
   rm --recursive --force $tmp

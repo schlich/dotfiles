@@ -155,27 +155,29 @@ script, use valid Nushell syntax.
   completion notice. When the harness provides the Monitor tool, start one
   for every job as soon as it is spawned, running `watch-job LOG` with
   `timeout_ms` at its maximum. The Monitor is the job's task in the panel
-  and on the Fieldnotes wallpaper. Within two seconds it emits a
-  `STATUS: {state, id, msg, ...}` NUON record for each OSC 7501 report,
-  such as `ci`'s phases, landing, releases, and retries, and a final
-  `DONE: {...}` record with the outcome as soon as the job ends, or
-  `DONE: {state: lost}` when the Nushell that ran the job has exited. A
-  reporting job's log still raises `ALARM: LINE` for trouble it did not
-  report, such as an evaluator that died; only a job that writes no reports,
-  such as a bare `nix build`, falls back to log lines that match its
-  pattern. After five quiet minutes, and every five after that, a
-  `STILL: {quiet, phase, phase_for, last_line}` heartbeat says where the
-  job is. If the Monitor expires before `DONE`,
-  start the same command again; it resumes where the last one stopped.
-  Without Monitor, check the done marker before reporting.
+  and on the Fieldnotes wallpaper. Its lines are written for a narrow
+  panel. It starts with `JOB: COMMAND · WORKSPACE · since HH:MM`. Within
+  two seconds of each OSC 7501 report, such as `ci`'s phases, landing,
+  releases, and retries, it prints one line led by the report's state:
+  `▶ ID: MSG` when a phase starts, `✓ ID DURATION` when it finishes,
+  `✗ ID DURATION: MSG` when it fails, and `⏸ BLOCKED ID: MSG`. It ends
+  with `✓ DONE exit 0 after DURATION` or `✗ DONE exit N after DURATION: ERROR` as soon as the job ends, or `✗ DONE lost: ...` when the process
+  that ran the job has exited. A reporting job's log still raises
+  `⚠ ALARM: LINE` for trouble it did not report, such as an evaluator
+  that died; only a job that writes no reports, such as a bare
+  `nix build`, falls back to log lines that match its pattern. After five
+  quiet minutes, and every five after that, a `⋯ STILL PHASE DURATION, quiet DURATION: LAST LINE` heartbeat says where the job is. If the
+  Monitor expires before `DONE`, start the same command again; it resumes
+  where the last one stopped. Without Monitor, check the done marker
+  before reporting.
 
 - When a ci MCP tool returns `state: running`, follow it the same way
   instead of polling `job` in a loop: start a Monitor running `watch-job`
   on the result's `log_path`, and read the final record with `job` once
   `DONE` arrives.
 
-- A `STATUS` record with `state: blocked`, or a `DONE` with a nonzero
-  `exit_code` or `state: lost`, needs the user: tell them, and send a push
+- A `⏸ BLOCKED` line, or a `✗ DONE` with a nonzero exit or `lost`, needs
+  the user: tell them, and send a push
   notification when the harness offers one. An `ALARM` line may be
   recoverable: tell the user what it says, without a push unless the job
   then fails. An evaluator replacing a worker that outgrew its memory
@@ -224,10 +226,12 @@ The Monitor tool's card shows its command the same way. Start that command
 with a `# comment` title line too, and keep the logic out of it: call plain
 `watch-job LOG` rather than writing a poll loop, `tail -f`, or a `grep`
 filter inline. Do not pass `--pattern` for a `ci` job: its status reports
-already carry each milestone and failure as a record. A job that needs a
-milestone it does not report should gain a `pst report` call, not a regex.
-The Monitor's `description`, such as `ci land for desktop-ssh`, labels
-the task panel entry and every notification, so name the job and its target.
+already carry each milestone and failure. A job that needs a milestone it
+does not report should gain a `pst report` call, not a regex. The
+Monitor's `description` labels the task panel entry and every
+notification, and the panel cuts it after about 30 characters, so lead
+with the target and keep it short, such as `desktop-ssh: ci land`.
+The watcher's `JOB:` line already shows the full command and workspace.
 
 Before a group of shell calls, give the user a short commentary readout
 naming the operation and its target, such as checking JJ status in the
