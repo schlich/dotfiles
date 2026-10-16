@@ -47,7 +47,7 @@ const layouts = {
 # keeps each group tabbed automatically, and `stack-choices` (Mod+Alt+W)
 # gathers the focused window's choices on demand.
 const choice_groups = {
-  agents: '^(ai\.opencode\.desktop|codex-desktop)$'
+  agents: '^t3code$'
   # JJ and GitHub views of the workspace's repository; see `main vcs`.
   vcs: '^(jj-dashboard|niri\..+\.(jjui|gh-dash))$'
 }
@@ -551,7 +551,7 @@ def next-tab-in-group [windows: list, group: string] {
 # agents are single-window apps, so the stack is not per workspace: it follows
 # focus, gathered into one tabbed column here, docking any peek. When the
 # stack already has focus, switch to its next tab, or while peeking, float the
-# next agent instead; with no agent open, start OpenCode.
+# next agent instead; with no agent open, start T3 Code.
 def "main agents" [] {
   let workspace = (focused-workspace)
   let all = (niri-json windows)
@@ -566,7 +566,7 @@ def "main agents" [] {
   }
   let agents = ($all | where {|window| (named-group $window.app_id?) == "agents" } | sort-by id)
   if ($agents | is-empty) {
-    niri-action spawn -- opencode-desktop
+    niri-action spawn -- t3code-desktop
     return
   }
   let target = (workspace-ref $workspace)
@@ -643,7 +643,7 @@ def "main peek" [group: string = "agents", --next] {
   let members = (group-members (niri-json windows) $group)
   if ($members | is-empty) {
     if $group == "agents" {
-      niri-action spawn -- opencode-desktop
+      niri-action spawn -- t3code-desktop
     }
     return
   }

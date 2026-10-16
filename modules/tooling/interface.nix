@@ -76,8 +76,7 @@ in
       desktopAgent = mkOption {
         type = types.enum [
           "claude"
-          "codex"
-          "opencode"
+          "t3code"
         ];
         description = "Primary agent desktop client.";
       };

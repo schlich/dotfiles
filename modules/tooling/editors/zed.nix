@@ -80,6 +80,9 @@ in
         "!basedpyright"
       ];
 
+      # External agents run the vendors' own harnesses, which sign in with
+      # the Claude and ChatGPT subscriptions (`/login` in a new thread).
+      agent_servers.claude-acp.type = "registry";
       agent_servers.codex-acp = {
         type = "registry";
         favorite_config_option_values.collaboration_mode = [ "default" ];
@@ -91,8 +94,10 @@ in
           allow_unsandboxed = true;
           allow_fs_write_all = true;
         };
+        # Zed's own agent uses the ChatGPT subscription (Sign in with OpenAI)
+        # rather than Zed's hosted models.
         default_model = {
-          provider = "zed.dev";
+          provider = "openai-subscribed";
           model = "gpt-5.6-sol";
           enable_thinking = true;
           effort = "medium";

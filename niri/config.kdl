@@ -379,14 +379,13 @@ window-rule {
   default-window-height { proportion 0.8; }
 }
 
-// Desktop coding agents (OpenCode autostarts) are a choice group, so
+// Desktop coding agents (T3 Code autostarts) are a choice group, so
 // `session.nu watch-choices` keeps them in one tabbed column beside the work,
 // Mod+A brings that column to the focused workspace, Mod+Shift+A floats one
 // over it instead (`session.nu peek`), and Mod+J/K or Mod+Alt+1..4 switch
 // agents.
 window-rule {
-  match app-id=r#"^ai\.opencode\.desktop$"#
-  match app-id=r#"^codex-desktop$"#
+  match app-id=r#"^t3code$"#
   default-column-width { proportion 0.4; }
   default-column-display "tabbed"
 }
@@ -652,11 +651,11 @@ binds {
     // hold. Mod+G focuses this workspace's VCS stack (Git/GitHub), opening it
     // if needed; again switches between its JJ and GitHub tabs.
     Mod+G hotkey-overlay-title="VCS stack: JJ / GitHub" { spawn-sh "exec niri-desk vcs"; }
-    // Mod+A brings the coding agents' stack here, starting OpenCode if none is
+    // Mod+A brings the coding agents' stack here, starting T3 Code if none is
     // open; again switches between agents. Mod+Shift+A peeks instead: it
     // floats the last used agent over this workspace without reflowing its
     // columns, and again docks it back. While peeking, Mod+A swaps agents.
-    Mod+A hotkey-overlay-title="Agents stack: OpenCode / Codex" { spawn-sh "exec niri-desk agents"; }
+    Mod+A hotkey-overlay-title="Agents stack: T3 Code" { spawn-sh "exec niri-desk agents"; }
     Mod+Shift+A hotkey-overlay-title="Peek at an agent" { spawn-sh "exec niri-desk peek agents"; }
     // Mod+N opens this workspace's notes: its hub in ~/kb, or the index
     // outside the nine places. Mod+Shift+N captures a new note into today's

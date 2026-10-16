@@ -21,7 +21,7 @@
         terminal = "ghostty";
         editor = "zed";
         ai = "opencode";
-        desktopAgent = "opencode";
+        desktopAgent = "t3code";
       };
     };
   };

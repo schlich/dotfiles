@@ -1,5 +1,4 @@
 {
-  config,
   inputs,
   pkgs,
   ...
@@ -26,12 +25,6 @@ in
     package = codex;
     inherit skills;
     context = ./global-agent-instructions.md;
-  };
-
-  programs.codexDesktopLinux = {
-    enable = config.dotfiles.alternates || config.dotfiles.primary.desktopAgent == "codex";
-    # The desktop launcher must use the same configured wrapper as the CLI.
-    cliPackage = codex;
   };
 
   home.file = {
