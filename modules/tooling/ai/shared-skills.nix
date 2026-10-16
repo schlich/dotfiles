@@ -7,6 +7,10 @@
   bash-feedback = ../../../.agents/skills/bash-feedback;
   ci = inputs.ci.lib.skills.ci;
   datastar = ../../../.agents/skills/datastar;
+  jj = ../../../.agents/skills/jj;
+  nushell = ../../../.agents/skills/nushell;
+  nushell-plugin-builder = ../../../.agents/skills/nushell/plugin-builder;
+  nushell-text-processing = ../../../.agents/skills/nushell/text-processing;
   rlm = ../../../.agents/skills/rlm;
   typesafe-ai = "${inputs.typesafe-skills}/skills/typesafe-ai";
   modern-web-guidance = "${inputs.modern-web-guidance}/skills/modern-web-guidance";
