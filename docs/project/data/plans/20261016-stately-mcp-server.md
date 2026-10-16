@@ -12,6 +12,8 @@ sources:
 - id: mcp-module
   resource: ../../../../modules/tooling/ai/common.nix
   title: Shared MCP server configuration
+stage: done
+completed: 2026-10-16
 ---
 
 # Add Stately MCP server
@@ -42,8 +44,8 @@ dotfiles product's runtime behavior.
 
 ## Verification
 
-Format the flake and validate this project graph. Do not run flake builds or
-tests unless the user requests them.
+- `nix fmt` and project graph normalization/schema validation passed.
+- `ci land` completed local flake clearance with all 20 checks passing on asus.
 
 ## Out of scope
 

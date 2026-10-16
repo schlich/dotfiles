@@ -16,6 +16,8 @@ flat. Group with `##` headings once it outgrows a single list.*
 
 [Reactive CI and Nix dashboard](features/ci-nix-dashboard.md)
 
+[Stately MCP tools](features/stately-mcp.md)
+
 [Streamed flake-check progress](features/flake-check-progress.md)
 
 [Traces of ci landings](features/ci-traces.md)

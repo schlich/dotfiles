@@ -17,10 +17,9 @@ moves them.*
 
 ## Active
 
-[Add Stately MCP server](plans/20261016-stately-mcp-server.md)
-
 ## Done
 
+[Add Stately MCP server](plans/20261016-stately-mcp-server.md)
 [Build a reactive CI and Nix dashboard](plans/20261016-ci-nix-dashboard.md)
 
 ## Cancelled

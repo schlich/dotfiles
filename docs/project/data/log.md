@@ -6,6 +6,8 @@ to the current day's group.
 
 ## 2026-10-16
 
+- **Delivery**: Added Stately's hosted MCP server to shared AI client
+  configuration; it is available on `main`.
 - **Delivery**: [Reactive CI and Nix dashboard](features/ci-nix-dashboard.md)
   implemented and deployed to homelab with tailnet-only HTTPS access; the live
   `/api/tower` feed returned fresh data.
