@@ -70,6 +70,11 @@
       url = "github:numtide/llm-agents.nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # Upstream packages Atuin 18.24; nixpkgs still ships 18.23.
+    atuin = {
+      url = "github:atuinsh/atuin/v18.24.0";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     # Upstream packages OpenCode 2; nixpkgs still ships 1.x.
     opencode = {
       url = "github:anomalyco/opencode/v2.0.30";

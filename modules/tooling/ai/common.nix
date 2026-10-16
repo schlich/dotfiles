@@ -8,6 +8,7 @@
 
 let
   iwe = import ../knowledge/iwe-package.nix { inherit inputs lib pkgs; };
+  atuin = import ../../programs/atuin-package.nix { inherit inputs pkgs; };
   kbRoot = "${config.home.homeDirectory}/kb";
   xs = inputs.xs.packages.${pkgs.stdenv.hostPlatform.system}.default;
   # iwec serves the workspace in its working directory.
@@ -135,7 +136,7 @@ in
       ''
         export HOME="$TMPDIR/home"
         mkdir -p "$HOME"
-        nu ${./tests/atuin-mcp.nu} ${lib.getExe mcpLegacyHandshake} ${lib.getExe pkgs.atuin}
+        nu ${./tests/atuin-mcp.nu} ${lib.getExe mcpLegacyHandshake} ${lib.getExe atuin}
         touch "$out"
       '';
 }

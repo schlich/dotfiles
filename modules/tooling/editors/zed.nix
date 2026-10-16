@@ -8,6 +8,7 @@
 
 let
   skills = import ../ai/shared-skills.nix { inherit inputs; };
+  atuin = import ../../programs/atuin-package.nix { inherit inputs pkgs; };
   # $EDITOR callers (jj, Nushell's Ctrl+O, Yazi) need the editor to block
   # until the file closes. Without a graphical session, such as over SSH or
   # on a TTY, Zed cannot open a window, so Helix takes over there.
@@ -55,7 +56,7 @@ in
         args = [ "--mcp" ];
       };
       context_servers.atuin = {
-        command = "${pkgs.atuin}/bin/atuin";
+        command = "${atuin}/bin/atuin";
         args = [ "mcp" ];
       };
 

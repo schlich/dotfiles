@@ -9,8 +9,9 @@ let
   wrapWithConfig = import ../../lib/wrap-with-config.nix { inherit lib pkgs; };
   toml = pkgs.formats.toml { };
 
+  atuinPackage = import ./atuin-package.nix { inherit inputs pkgs; };
   atuin = wrapWithConfig {
-    package = pkgs.atuin;
+    package = atuinPackage;
     # The daemon that `autostart` launches inherits the variable.
     env.ATUIN_CONFIG_DIR = "${pkgs.linkFarm "atuin-config" [
       {
@@ -81,7 +82,7 @@ let
   atuinNushellConfig = pkgs.runCommandLocal "atuin-nushell-config.nu" { } ''
     export HOME="$TMPDIR/home"
     mkdir -p "$HOME"
-    ${pkgs.atuin}/bin/atuin init nu \
+    ${atuinPackage}/bin/atuin init nu \
       | ${pkgs.gnused}/bin/sed '0,/name: atuin$/{s/name: atuin$/name: atuin_search/}' \
       | ${pkgs.gnused}/bin/sed '0,/name: atuin$/{s/name: atuin$/name: atuin_up/}' \
       > "$out"
@@ -89,7 +90,7 @@ let
   atuinPtyProxyNushellConfig = pkgs.runCommandLocal "atuin-pty-proxy-nushell-config.nu" { } ''
     export HOME="$TMPDIR/home"
     mkdir -p "$HOME"
-    ${pkgs.atuin}/bin/atuin pty-proxy init nu > "$out"
+    ${atuinPackage}/bin/atuin pty-proxy init nu > "$out"
   '';
 in
 
@@ -100,6 +101,11 @@ in
   # config.nu sources Atuin's init scripts below, so Home Manager's atuin
   # module is not needed.
   home.packages = [ atuin ];
+
+  dotfiles.nixpkgsWatch.atuin = {
+    inherit (atuinPackage) version;
+    reason = "use pkgs.atuin where modules/programs/atuin-package.nix is imported (shell.nix, tooling/ai/common.nix, tooling/editors/zed.nix), delete that file, and drop the atuin input";
+  };
 
   programs.carapace = {
     enable = true;
