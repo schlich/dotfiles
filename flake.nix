@@ -314,9 +314,33 @@
       remoteCheckHosts = lib.filterAttrs (
         _: host: host.policy.criticality == "disposable"
       ) denEval.config.den.hosts.${system};
-      remoteHostEvaluationChecks = denHostEvaluationChecksFor (
-        builtins.intersectAttrs remoteCheckHosts denFlake.nixosConfigurations
+      # tests/den-config.nix, one check per group, run while the check
+      # evaluates; a failure names each test with what it got and expected.
+      denConfigTests = import ./tests/den-config.nix {
+        inherit lib;
+        inherit (denFlake) nixosConfigurations;
+        hosts = denEval.config.den.hosts.${system};
+      };
+      denConfigTestChecksFor = lib.mapAttrs' (
+        group: tests:
+        let
+          failures = lib.runTests tests;
+        in
+        lib.nameValuePair "den-config-tests-${group}" (
+          pkgs.writeText "den-config-tests-${group}" (
+            assert lib.assertMsg (failures == [ ])
+              "den-config-tests-${group} failed:\n${lib.generators.toPretty { } failures}";
+            lib.concatMapStrings (test: "${test}\n") (builtins.attrNames tests)
+          )
+        )
       );
+      denConfigTestChecks = denConfigTestChecksFor (
+        removeAttrs denConfigTests (builtins.attrNames remoteCheckHosts)
+      );
+      # A disposable host's configuration tests go with its evaluation.
+      remoteHostEvaluationChecks =
+        denHostEvaluationChecksFor (builtins.intersectAttrs remoteCheckHosts denFlake.nixosConfigurations)
+        // denConfigTestChecksFor (builtins.intersectAttrs remoteCheckHosts denConfigTests);
       # The workstation with only its primary terminal, editor, and agent
       # desktop client; CI builds this closure after landing, and
       # colmena-hive-asus evaluates the full one.
@@ -722,7 +746,8 @@
             '';
       }
       // colmenaHiveChecks
-      // denHostEvaluationChecks;
+      // denHostEvaluationChecks
+      // denConfigTestChecks;
 
       # Checks that report without gating a landing: GitHub Actions' nix-ci
       # workflow builds them after each push, and ci land leaves them out.

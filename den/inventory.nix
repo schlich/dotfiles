@@ -59,6 +59,7 @@ let
       xr = true;
       remote = true;
     };
+    # tests/den-config.nix tests that each probe has something to watch.
     policy.healthChecks = [
       "niri-config"
       "home-manager-nixos"
@@ -127,6 +128,7 @@ let
           criticality = "critical";
           # The canary: it stages each landing of main on its own, before
           # anyone switches a workstation, and reverts one that breaks these.
+          # tests/den-config.nix tests what each one watches.
           autoDeploy = true;
           healthChecks = [
             "ssh"
