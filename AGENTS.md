@@ -94,6 +94,9 @@
   source change. Home-only activation is separate; `home.packages` is
   system-owned here and is covered by the toplevel comparison. See
   `docs/architecture.md` for the full policy.
+- `generation` says which system and Home Manager generation a host runs,
+  which commit each came from, and whether `main` has moved past it. Use it
+  to answer what a host is running before proposing a switch or activation.
 - Home Manager is embedded in the `asus` NixOS configuration. Do not use the
   standalone `home-manager switch` workflow for this repository. Use
   `home-activate` for a home-only activation without `sudo`. This does not

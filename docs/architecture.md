@@ -130,6 +130,31 @@ without a password. The unit builds the host from Tangled's `main` at a pinned
 revision, never from a working copy, skips the switch when that toplevel is
 already active, and records the result in `/var/lib/nixos-switch-main`.
 
+## Which commit a generation came from
+
+A store path does not name the commit that produced it, and this repository
+keeps it that way: `system.configurationRevision` would stamp the revision
+into the closure, so every landing would change every host's system, a
+declared refactor could no longer prove it changes nothing, and the policy
+above would call for a generation per commit. The pairing is recorded beside
+the generation instead:
+
+- `nixos-switch-main` appends a line to
+  `/var/lib/nixos-switch-main/generations.jsonl` for each switch that becomes
+  the boot default (`deployed`) and for each later revision whose system is
+  already running (`unchanged`). One store path therefore maps to the revision
+  that introduced it and the newest one still producing it.
+- `home-activate` builds the working copy, which may hold edits `main` lacks,
+  so it appends the JJ change, commit, and whether that commit has landed to
+  `~/.local/state/home-activate/generations.jsonl`.
+
+`generation` reads both: the running, booted, and boot-default system
+generations, the revision behind the running one, whether Tangled's `main` has
+moved past it, and whether Home Manager runs the generation the system embeds
+or one `home-activate` built since. `generation --line` is a one-line form for
+a status bar, and `--json` the full record. A host switched another way, such
+as by Colmena or `nixos-rebuild`, shows its source as unrecorded.
+
 ## Staged switches and reverts
 
 The landing checks prove that a revision evaluates and builds, not that a host

@@ -70,6 +70,8 @@ pkgs.testers.runNixOSTest {
         machine.succeed(f'test "$(readlink -f /nix/var/nix/profiles/system)" = {healthy}')
         machine.fail("systemctl is-active --quiet nixos-switch-main-deadman.timer")
         reverts("length == 1")
+        machine.succeed(f"jq --exit-status '.outcome == \"deployed\" and .toplevel == \"{healthy}\"' /var/lib/nixos-switch-main/generations.jsonl")
+        machine.succeed("generation --json --offline | jq --exit-status '.source != null and .system.generation == .system.boot_default'")
 
     with subtest("the dead-man timer reverts a switch whose watch died"):
         machine.succeed(f'systemd-run --unit=staged-switch --setenv=PATH="$PATH" "$(command -v nixos-switch-main)" apply {base}')

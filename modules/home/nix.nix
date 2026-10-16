@@ -157,8 +157,39 @@ in
     '')
     (pkgs.writeNuScriptBin "home-activate" ''
       # Build and activate the Home Manager configuration embedded in NixOS.
+      # It builds the working copy, which may hold edits main lacks, so it
+      # records the change each generation came from for `generation`.
+      const repo = "/home/schlich/dotfiles"
+
+      # The change whose files the build reads: an empty working-copy change
+      # adds nothing to its parent. Asking JJ also snapshots the working copy,
+      # so the commit matches what is built.
+      def working-change [] {
+        let template = 'change_id.short(8) ++ "\n" ++ commit_id.short(12) ++ "\n" ++ if(self.contained_in("::trunk()"), "true", "false") ++ "\n" ++ description.first_line()'
+        let result = (^jj -R $repo log --no-graph -r 'coalesce(@ ~ empty(), @-)' -T $template | complete)
+        if $result.exit_code != 0 { return {} }
+        let fields = ($result.stdout | lines)
+        { change: $fields.0, commit: $fields.1, landed: ($fields.2 == "true"), description: ($fields.3? | default "") }
+      }
+
+      def record [activation: string, change: record] {
+        let state = ($env.XDG_STATE_HOME? | default ($env.HOME | path join .local state))
+        let link = (^readlink ($state | path join nix profiles home-manager) | complete | get stdout | str trim)
+        let entry = {
+          at: (date now | format date '%+')
+          activation: $activation
+          generation: ($link | parse --regex '-(?<n>\d+)-link$' | get n | each { into int } | get 0?)
+        } | merge $change
+        let log = ($state | path join home-activate)
+        try {
+          mkdir $log
+          $"($entry | to json --raw)\n" | save --append ($log | path join generations.jsonl)
+        }
+      }
+
       def main [] {
-        let flake = "path:/home/schlich/dotfiles#nixosConfigurations.${osConfig.networking.hostName}.config.home-manager.users.schlich.home.activationPackage"
+        let change = (working-change)
+        let flake = $"path:($repo)#nixosConfigurations.${osConfig.networking.hostName}.config.home-manager.users.schlich.home.activationPackage"
         let activation = (^/run/current-system/sw/bin/nix build --no-link --print-out-paths $flake | str trim)
 
         if ($activation | is-empty) {
@@ -166,6 +197,7 @@ in
         }
 
         run-external $"($activation)/activate" -- --driver-version 1
+        record $activation $change
       }
     '')
   ];

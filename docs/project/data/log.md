@@ -12,6 +12,9 @@ to the current day's group.
 - **Onboarding**: Filled Users, Constraints, and Authoring rules in
   [product](product.md) from the setup interview and removed the example
   documents.
+- **Architecture**: Recorded
+  [generation provenance](architecture/generation-provenance.md): hosts log
+  which commit produced each generation beside it, not in the closure.
 
 ## 2026-08-01
 

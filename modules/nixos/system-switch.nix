@@ -116,6 +116,18 @@ let
   deployReverts = pkgs.writers.writeNuBin "deploy-reverts" (
     builtins.readFile ../../deploy/reverts.nu
   );
+  # Names the running generation's commit from the log the switch keeps,
+  # and asks Tangled whether main has moved past it.
+  generation = wrapWithConfig {
+    package = pkgs.writers.writeNuBin "generation" (builtins.readFile ../../deploy/generation.nu);
+    env = {
+      DEPLOY_REPO = repo;
+      PATH = lib.makeBinPath [
+        pkgs.coreutils
+        pkgs.git
+      ];
+    };
+  };
 
   # The manual and the automatic switch share one lock, so they never stage
   # two systems at once; the automatic one gives way. flock takes its
@@ -253,6 +265,7 @@ in
       systemSwitch
       switchMain
       deployReverts
+      generation
     ];
 
     # Apply landed main without sudo: the system-switch command starts this

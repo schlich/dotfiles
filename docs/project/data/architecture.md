@@ -18,3 +18,5 @@ rejected are as valuable as the one you picked.*
 [Configuration factory](architecture/configuration-factory.md)
 
 [Local CI tower dashboard feed](architecture/ci-nix-dashboard.md)
+
+[Generation provenance](architecture/generation-provenance.md)

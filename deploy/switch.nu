@@ -323,6 +323,38 @@ def revert [cfg: record, pending: record, phase: string, breached: list] {
     $entry
 }
 
+# The newest system profile generation that points at a store path.
+def profile-generation [toplevel: string] {
+    ls --long /nix/var/nix/profiles
+    | where type == symlink and target == $toplevel
+    | each {|link| $link.name | path basename | parse --regex '^system-(?<n>\d+)-link$' }
+    | flatten
+    | get --optional n
+    | default []
+    | each { into int }
+    | sort
+    | last 1
+    | get 0?
+}
+
+# Pair a store path with the revision that produced it. The commit stays out
+# of the closure, where it would change the system on every landing, so this
+# log is how `generation` names the source of the running system. An
+# `unchanged` line records a later revision that produced the same system.
+def record-generation [cfg: record, meta: record, toplevel: string, outcome: string] {
+    let entry = {
+        at: (date now | format date '%+')
+        host: $cfg.host
+        outcome: $outcome
+        rev: ($meta.rev? | default '')
+        release: ($meta.release? | default '')
+        subject: ($meta.subject? | default '')
+        toplevel: $toplevel
+        generation: (profile-generation $toplevel)
+    }
+    try { $"($entry | to json --raw)\n" | save --append (state-file $cfg generations.jsonl) }
+}
+
 # Make a candidate that passed its watch the boot default. A revert by the
 # dead-man timer while this run was stalled wins: the candidate is no
 # longer active, so it is not committed.
@@ -337,6 +369,7 @@ def commit [cfg: record, pending: record] {
     status $cfg working switch/commit "Making it the boot default"
     ^nix-env --profile /nix/var/nix/profiles/system --set $pending.candidate
     ^$"($pending.candidate)/bin/switch-to-configuration" boot
+    record-generation $cfg $pending $pending.candidate deployed
     rm --force $file
     status $cfg done switch/commit "Made it the boot default"
 }
@@ -462,6 +495,7 @@ def main [
 
     if $candidate == (active) {
         print "That configuration is already active; no generation created."
+        record-generation $cfg $meta $candidate unchanged
         save-last $cfg ($state | merge { outcome: active, exit_code: 0 })
         status $cfg done switch "That configuration is already active; no generation created"
         return
