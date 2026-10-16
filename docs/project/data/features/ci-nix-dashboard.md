@@ -1,7 +1,7 @@
 ---
 type: feature
 description: An interactive local and homelab-tailnet view of CI topics, runs, Nix generation, and trunk activity.
-stage: accepted
+stage: implemented
 generated:
   by: codex/gpt-6-luna
   at: 2026-10-16T18:24:00Z

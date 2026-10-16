@@ -17,8 +17,8 @@ moves them.*
 
 ## Active
 
-[Build a reactive CI and Nix dashboard](plans/20261016-ci-nix-dashboard.md)
-
 ## Done
+
+[Build a reactive CI and Nix dashboard](plans/20261016-ci-nix-dashboard.md)
 
 ## Cancelled

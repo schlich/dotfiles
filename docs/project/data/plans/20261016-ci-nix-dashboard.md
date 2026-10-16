@@ -9,6 +9,8 @@ sources:
 - id: ci-flake-input
   resource: flake.nix
   title: CI tool input and package
+stage: done
+completed: 2026-10-16
 ---
 
 # Build a reactive CI and Nix dashboard
@@ -43,7 +45,7 @@ narrow layouts and exercise the primary controls in the browser.
 - [x] Review live data, controls, errors, and narrow layout in a browser.
 - [x] Package the dashboard and add a homelab systemd service using the live JJ
   checkout.
-- [ ] Deploy the service after delivery approval; verify the tailnet-only HTTPS
+- [x] Deploy the service after delivery approval; verify the tailnet-only HTTPS
   endpoint.
 
 ## Spec changes
@@ -55,6 +57,10 @@ Accepted feature:
 
 Use the local tower feed and a browser review. Repository instructions prohibit
 build and test validation unless explicitly requested.
+
+Homelab deployment on 2026-10-16 committed `306bdb9cadad` after all five health
+checks passed. The HTTPS dashboard returned 200, and `/api/tower` returned fresh
+data (`stale: false`) over the tailnet-only Serve route.
 
 ## Out of scope
 
