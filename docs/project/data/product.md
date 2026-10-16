@@ -28,7 +28,7 @@ A single Nix flake that declares every machine and user environment the author
 runs: NixOS systems and Home Manager homes for a personal fleet, built from
 Den's feature-first aspect graph. A host is a short list of typed facts and
 aspects; Den resolves those into NixOS and Home Manager module graphs, and the
-flake exposes the resulting configurations, checks, and Colmena deployments
+flake exposes the resulting configurations, checks, and Clan deployments
 (`docs/architecture.md`). It also carries the author's agent tooling — skills,
 MCP servers, hooks, and the `ci` landing workflow — so the same repository
 configures the agents that change it (`AGENTS.md`).
@@ -54,8 +54,8 @@ Not for:
 All hosts are `x86_64-linux` NixOS (`den/inventory.nix`).
 
 - **asus** — the AMD laptop workstation: Niri desktop, development, XR, and
-  remote tooling; deployed in place with `colmena apply-local`, with a 45-second
-  staged-switch watch.
+  remote tooling; deployed in place with `clan machines update`, with a
+  45-second staged-switch watch.
 - **asus-usb** — the same workstation profile on removable media; `disposable`,
   so it evaluates in `remoteChecks` rather than the landing gate.
 - **asus-headless** — the asus hardware as a server with no desktop.
@@ -71,7 +71,7 @@ macOS, and non-NixOS Linux.
 ## Stack
 
 - **Nix flake** on nixpkgs (via FlakeHub), Home Manager, Den v0.18 for host
-  composition, Colmena for push deployment, impermanence, and the Niri flake
+  composition, Clan for push deployment, impermanence, and the Niri flake
   (`flake.nix`).
 - **Nushell** for scripts, deploy logic (`deploy/switch.nu`), and the `ci`
   workflow; Jujutsu for version control on Tangled.

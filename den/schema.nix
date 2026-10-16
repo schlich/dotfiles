@@ -124,24 +124,24 @@ let
       enable = mkOption {
         type = types.bool;
         default = false;
-        description = "Whether Colmena deploys this host (flake output colmenaHive).";
+        description = "Whether Clan deploys this host (a machine of flake output clan).";
       };
       targetHost = mkOption {
         type = types.nullOr types.str;
         default = null;
         example = "homelab";
         description = ''
-          SSH destination Colmena pushes to, resolved through the user's ssh
-          configuration. null deploys only on the host itself with
-          `colmena apply-local`.
+          SSH destination Clan pushes to, resolved through the user's ssh
+          configuration. null deploys only on the host itself, over ssh to
+          localhost.
         '';
       };
       targetUser = mkOption {
         type = types.str;
         default = "root";
         description = ''
-          SSH user Colmena logs in as; any other user activates through
-          non-interactive sudo on the host.
+          SSH user Clan logs in as; any other user activates through sudo on
+          the host.
         '';
       };
     };
@@ -185,7 +185,7 @@ in
           deploy = mkOption {
             type = deployType;
             default = { };
-            description = "How Colmena reaches this host, if it deploys it at all.";
+            description = "How Clan reaches this host, if it deploys it at all.";
           };
           network = mkOption {
             type = networkType;

@@ -83,11 +83,12 @@
   same watch. That timer is configuration, not an agent action; it does not
   authorize an agent to switch any host. A revert there reaches asus as a
   desktop notification; `deploy-reverts --all` on asus lists it.
-- Colmena can push a landed `main` to a host instead
-  (`colmena apply --config path:. --on homelab`); it is the same system, and
+- Clan can push a landed `main` to a host instead
+  (`clan machines update homelab --flake path:.`); it is the same system, and
   the same rules apply: deploy only when the user asks, and only landed
-  changes except for `test` or `dry-activate`. Hosts opt in with
-  `deploy.enable` in `den/inventory.nix`.
+  changes. Clan has no `test` or `dry-activate` goal: every update becomes
+  the boot default without the staged watch, so keep it for recovery. Hosts
+  opt in with `deploy.enable` in `den/inventory.nix`.
 - Create a NixOS generation only when the candidate
   `system.build.toplevel` store path differs from the active
   `/run/current-system` target. If they match, do not switch merely to record a
@@ -103,7 +104,7 @@
   apply system-owned changes, including `home.packages` because
   `home-manager.useUserPackages = true`.
 - Every activation prints dix's package and version changes from the running
-  system (`modules/nixos/closure-diff.nix`), so `system-switch` and Colmena
+  system (`modules/nixos/closure-diff.nix`), so `system-switch` and Clan
   output include them. When offering `system-switch`, mention the notable
   changes if a build already exists; `nix-suite diff` builds this checkout's
   system and shows them, but it is a build, so run it only when the user asks.

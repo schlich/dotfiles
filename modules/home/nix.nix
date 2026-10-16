@@ -1,4 +1,5 @@
 {
+  inputs,
   lib,
   osConfig,
   pkgs,
@@ -36,9 +37,9 @@ in
   };
   fonts.fontconfig.enable = true;
   home.packages = [
-    # Deploys the flake's colmenaHive: `colmena apply --on homelab`. The
-    # binary-cached release; the colmena input supplies only makeHive.
-    pkgs.colmena
+    # Deploys the flake's clan: `clan machines update homelab`. From the
+    # clan-core input, so the CLI matches the lib that builds the clan.
+    inputs.clan-core.packages.${pkgs.stdenv.hostPlatform.system}.clan-cli
     profileChecks
     (pkgs.writeNuScriptBin "nix-suite" ''
       # One entry point for Nix validation, builds, and dependency inspection.

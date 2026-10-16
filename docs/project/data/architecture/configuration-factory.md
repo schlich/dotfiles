@@ -24,7 +24,7 @@ defaults, hardware, a workstation profile, host overrides) into one record of
 `profile`, `policy`, `deploy`, and `users` facts, and validates it before
 evaluation. `den/hosts.nix` then selects explicit aspects from `den/aspects/`,
 and Den's host and user pipeline resolves them into the module graph that
-`nixosConfigurations`, `checks`, and `colmenaHive` share.
+`nixosConfigurations`, `checks`, and Clan's machines share.
 
 ``` text
 typed inventory -> host aspect composition -> Den host/user pipeline

@@ -25,7 +25,7 @@ let
       opencodeServer = false;
       crossStream = false;
     };
-    # Colmena logs in as the everyday user and escalates with sudo.
+    # Clan logs in as the everyday user and escalates with sudo.
     deploy.targetUser = "schlich";
     # Every host joins the same tailnet; den/aspects/fleet-network.nix
     # derives each one's address from it.
@@ -75,7 +75,7 @@ let
           jjCiWebhook = true;
           nixObservability = true;
         };
-        # Deployed in place with `colmena apply-local`.
+        # Deployed in place: `clan machines update asus` over ssh to localhost.
         deploy.enable = true;
         # Switched by hand at its keyboard, so the watch needs only enough
         # samples (3 at 15s) to revert a breach on its own.
@@ -148,7 +148,7 @@ let
     host
     // {
       # Keep the module list Den resolved for the host beside the
-      # evaluated configuration, so colmenaHive (flake.nix) deploys exactly
+      # evaluated configuration, so Clan's machines (flake.nix) are exactly
       # what nixosConfigurations builds.
       instantiate =
         args:

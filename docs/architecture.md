@@ -153,7 +153,7 @@ generations, the revision behind the running one, whether Tangled's `main` has
 moved past it, and whether Home Manager runs the generation the system embeds
 or one `home-activate` built since. `generation --line` is a one-line form for
 a status bar, and `--json` the full record. A host switched another way, such
-as by Colmena or `nixos-rebuild`, shows its source as unrecorded.
+as by Clan or `nixos-rebuild`, shows its source as unrecorded.
 
 ## Staged switches and reverts
 
@@ -201,20 +201,27 @@ reverts over ssh (`deploy-reverts notify homelab`) and keeps them under
 `~/.local/state/deploy-reverts`, where `deploy-reverts --all` includes them.
 The den-policy check lets a host deploy itself only with health checks to
 watch, and inventory validation also requires review and rollback for a
-critical one. `colmena apply` to homelab activates without the watch, so keep
-it for `test`, `dry-activate`, or recovery.
-Colmena pushes the same systems over ssh instead of having the host pull
-them. `colmenaHive` deploys each host whose inventory sets `deploy.enable`,
-from the module list Den resolved for it, and a `colmena-hive-<host>` check
-per node fails if its system differs from `nixosConfigurations`. Tags come from the
-host's profile and policy (`workstation`, `server`, `critical`, `niri`), and
-`allowApplyAll` is off, so a deploy names its hosts:
-`colmena apply --config path:. --on homelab` from a workspace at landed
-`main`, or `colmena apply-local --config path:. --sudo` on asus. Remote
-activation logs in as `deploy.targetUser`; homelab uses root, which its
-Tailscale SSH admits, because sudo there asks for a password over Tailscale
-SSH. Any other user needs non-interactive sudo on the target. Deploying from an unlanded topic skips the landing gate, so
-reserve it for `test` or `dry-activate` goals.
+critical one. A Clan update to homelab activates without the watch and makes
+the new system the boot default at once (`switch-to-configuration boot`, then
+`switch`); Clan has no `test` or `dry-activate` goal, so keep it for recovery.
+Clan pushes the same systems over ssh instead of having the host pull them.
+The flake's `clan` output has a machine for each host whose inventory sets
+`deploy.enable`, and `clan machines update` builds that host's
+`nixosConfigurations` entry, the system CI checks. Clan's own machine imports
+the module list Den resolved for the host with Clan's recommended defaults
+off, and a `clan-machine-<host>` check fails if it differs from
+`nixosConfigurations`, so Clan's vars and settings describe the deployed
+system. Tags come from the host's profile and policy (`workstation`,
+`server`, `critical`, `niri`; `clan machines list --tags server`), and every
+machine requires an explicit update, so a deploy names its hosts:
+`clan machines update homelab --flake path:.` from a workspace at landed
+`main`. It builds on the deploying machine and copies the closure. Activation
+logs in as `deploy.targetUser`; homelab uses root, which its Tailscale SSH
+admits, because sudo there asks for a password over Tailscale SSH. Any other
+user escalates with sudo on the target. asus has no `deploy.targetHost`, so
+`clan machines update asus` reaches it over ssh to localhost. Deploying from
+an unlanded topic skips the landing gate, and Clan offers no preview goal to
+reserve it for, so do not.
 Home Manager-only changes use `home-activate` when
 they leave the NixOS toplevel unchanged. In this repository,
 `home-manager.useUserPackages = true`, so changes to `home.packages` are

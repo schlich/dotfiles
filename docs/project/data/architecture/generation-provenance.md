@@ -42,7 +42,7 @@ a status bar, and `--json` gives the full record.
   with every host's system unchanged, and the generation policy still creates a
   generation only when the system's store path changes.
 - Only switches through `nixos-switch-main` are recorded. A host switched by
-  Colmena or `nixos-rebuild` shows its source as unrecorded.
+  Clan or `nixos-rebuild` shows its source as unrecorded.
 - `main` being `ahead` means this host has not been switched to or checked
   against it. Whether the newer revision changes this host's system is known
   only after a switch evaluates it.

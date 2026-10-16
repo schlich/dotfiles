@@ -116,7 +116,7 @@ runs:
     # This check evaluates the full workstation, the largest host, so its
     # fetcher cache serves the rest; anything missing is fetched as before.
     - name: Save the Nix fetcher cache
-      if: inputs.check == 'colmena-hive-asus' && steps.fetcher-cache.outputs.cache-hit != 'true'
+      if: inputs.check == 'clan-machine-asus' && steps.fetcher-cache.outputs.cache-hit != 'true'
       uses: actions/cache/save@v6
       with:
         path: ~/.cache/nix

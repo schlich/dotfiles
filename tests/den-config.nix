@@ -143,7 +143,7 @@ perHost
 // {
   # Facts of the evaluated inventory, with the schema's defaults filled in.
   fleet = {
-    # Colmena deploys every other target over ssh; asus applies itself.
+    # Clan deploys every other target over ssh; asus applies itself.
     testOnlyAsusDeploysInPlace = {
       expr = builtins.attrNames (
         lib.filterAttrs (_: host: host.deploy.enable && host.deploy.targetHost == null) hosts

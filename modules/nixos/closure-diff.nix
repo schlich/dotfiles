@@ -8,7 +8,7 @@ in
 
   # Every activation prints which packages and versions change, however it
   # was started: system-switch's nixos-switch-main unit (whose journal
-  # system-switch prints), Colmena, or nixos-rebuild. Activation runs before
+  # system-switch prints), Clan, or nixos-rebuild. Activation runs before
   # /run/current-system moves, so that link is still the outgoing system. At
   # boot the link does not exist yet, and an unchanged system prints nothing.
   # dry-activate skips it: its preview is the service changes, and the switch

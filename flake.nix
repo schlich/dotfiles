@@ -10,12 +10,11 @@
     den = {
       url = "github:denful/den/v0.18.0";
     };
-    # Pushes Den's hosts over ssh (colmenaHive below), alongside
-    # system-switch, which pulls Tangled's main on the host itself.
-    colmena = {
-      url = "github:zhaofengli/colmena";
+    # Pushes Den's hosts over ssh (clan below), alongside system-switch,
+    # which pulls Tangled's main on the host itself.
+    clan-core = {
+      url = "https://git.clan.lol/clan/clan-core/archive/main.tar.gz";
       inputs.nixpkgs.follows = "nixpkgs";
-      inputs.stable.follows = "nixpkgs";
     };
     impermanence = {
       url = "github:nix-community/impermanence";
@@ -294,7 +293,7 @@
       # Keep every host derivation evaluated without adding its closure as an
       # input, one check per host: all of them in one evaluator came within
       # 0.3 GiB of 6 GiB, far past ci's 4 GiB evaluation budget.
-      # colmena-hive-NAME evaluates each deployed host. Disposable hosts are
+      # clan-machine-NAME evaluates each deployed host. Disposable hosts are
       # left to remoteChecks.
       denHostEvaluationChecksFor = lib.mapAttrs' (
         name: host:
@@ -344,7 +343,7 @@
         // denConfigTestChecksFor (builtins.intersectAttrs remoteCheckHosts denConfigTests);
       # The workstation with only its primary terminal, editor, and agent
       # desktop client; CI builds this closure after landing, and
-      # colmena-hive-asus evaluates the full one.
+      # clan-machine-asus evaluates the full one.
       denAsusPrimary = denAsus.extendModules {
         modules = [ { home-manager.users.schlich.dotfiles.alternates = false; } ];
       };
@@ -377,61 +376,66 @@
           }).config.system.build.toplevel.drvPath
         }\n"
       );
-      # Colmena pushes Den's hosts over ssh. Each node re-evaluates the module
-      # list Den resolved for the host (den/inventory.nix keeps it as
-      # denModules), and the inventory's typed deploy and profile facts supply
-      # the target and tags, so `colmena apply --on @server` needs no
-      # hostname lists here.
+      # Clan pushes Den's hosts over ssh. `clan machines update NAME` builds
+      # this flake's nixosConfigurations.NAME, the system CI checks and
+      # system-switch activates; Clan's own machine for each host, which
+      # supplies its vars and deploy settings, imports the module list Den
+      # resolved for it (den/inventory.nix keeps it as denModules). The
+      # inventory's typed deploy and profile facts supply the target and
+      # tags, so no hostname lists live here.
       deployHosts = lib.filterAttrs (_: host: host.deploy.enable) denEval.config.den.hosts.${system};
-      colmenaHive = inputs.colmena.lib.makeHive (
-        {
-          meta = {
-            nixpkgs = import nixpkgs { inherit system; };
-            specialArgs = { inherit inputs; };
-            # Name the hosts with --on; nothing deploys the whole fleet at once.
-            allowApplyAll = false;
+      clan = inputs.clan-core.lib.clan {
+        inherit (inputs) self;
+        meta.name = "dotfiles";
+        specialArgs = { inherit inputs; };
+        inventory.machines = lib.mapAttrs (_: host: {
+          deploy = {
+            # A host with no target applies itself, over ssh to localhost.
+            targetHost = "${host.deploy.targetUser}@${
+              if host.deploy.targetHost == null then "localhost" else host.deploy.targetHost
+            }";
+            # Build where the deploy runs and copy the closure over.
+            buildHost = "localhost";
           };
-        }
-        // lib.mapAttrs (name: host: {
-          imports = denFlake.nixosConfigurations.${name}.denModules ++ [
-            # What nixpkgs' flake lib.nixosSystem adds and Colmena's direct
-            # eval-config.nix call lacks: the flake's version and revision,
-            # and its source path.
-            {
-              system.nixos.versionSuffix = nixpkgs.lib.trivial.versionSuffix;
-              system.nixos.revision = nixpkgs.lib.trivial.revisionWithDefault null;
-              nixpkgs.flake.source = nixpkgs.outPath;
-            }
-          ];
-          deployment = {
-            inherit (host.deploy) targetHost targetUser;
-            allowLocalDeployment = host.deploy.targetHost == null;
-            tags = lib.unique (
-              [
-                host.profile.role
-                host.policy.criticality
-              ]
-              ++ lib.optional (host.profile.desktop != "none") host.profile.desktop
-            );
+          tags = lib.unique (
+            [
+              host.profile.role
+              host.policy.criticality
+            ]
+            ++ lib.optional (host.profile.desktop != "none") host.profile.desktop
+          );
+        }) deployHosts;
+        machines = lib.mapAttrs (name: _: {
+          imports = denFlake.nixosConfigurations.${name}.denModules;
+          # Clan's zfs module gives every machine the install ISO's hostId,
+          # recommended defaults or not; keep the one Den resolves (none
+          # unless a host sets it).
+          networking.hostId = lib.mkOverride 999 null;
+          clan.core = {
+            # Clan's recommended defaults (networkd, mDNS, nix settings,
+            # debugging tools) would change the system Den builds.
+            enableRecommendedDefaults = false;
+            # Name the machines; nothing deploys the whole fleet at once.
+            deployment.requireExplicitUpdate = true;
           };
-        }) deployHosts
-      );
-      # Colmena must deploy the system nixosConfigurations builds, which is
-      # what CI checks and system-switch activates. Comparing them evaluates
-      # each host twice, so every host gets its own check: all of them in one
-      # evaluator outgrew ci's 4 GiB evaluation budget.
-      colmenaHiveChecks = lib.mapAttrs' (
+        }) deployHosts;
+      };
+      # Clan's machine must be the system nixosConfigurations builds, or its
+      # vars and settings describe a system that is never deployed. Comparing
+      # them evaluates each host twice, so every host gets its own check: all
+      # of them in one evaluator outgrew ci's 4 GiB evaluation budget.
+      clanMachineChecks = lib.mapAttrs' (
         name: _:
         let
-          fromHive = colmenaHive.toplevel.${name}.drvPath;
+          fromClan = clan.config.nixosConfigurations.${name}.config.system.build.toplevel.drvPath;
           fromDen = denFlake.nixosConfigurations.${name}.config.system.build.toplevel.drvPath;
         in
-        lib.nameValuePair "colmena-hive-${name}" (
-          pkgs.writeText "colmena-hive-${name}" (
+        lib.nameValuePair "clan-machine-${name}" (
+          pkgs.writeText "clan-machine-${name}" (
             assert lib.assertMsg (
-              fromHive == fromDen
-            ) "colmenaHive.${name} (${fromHive}) differs from nixosConfigurations.${name} (${fromDen})";
-            builtins.unsafeDiscardStringContext "${name}: ${fromHive}\n"
+              fromClan == fromDen
+            ) "Clan's machine ${name} (${fromClan}) differs from nixosConfigurations.${name} (${fromDen})";
+            builtins.unsafeDiscardStringContext "${name}: ${fromClan}\n"
           )
         )
       ) deployHosts;
@@ -449,8 +453,10 @@
     {
       tests.systems.${system} = import ./tests.nix { inherit lib; };
 
+      # Den's systems, not Clan's: the clan CLI deploys these.
       nixosConfigurations = denFlake.nixosConfigurations;
-      inherit colmenaHive;
+      inherit (clan.config) clanInternals;
+      clan = clan.config;
       den = denEval.config.den;
       gen-inspect = inputs.gen-inspect.lib;
 
@@ -501,7 +507,8 @@
             # Replays and inspects the keymap checks' traces (tests/bombadil).
             bombadil.package
             claude-code
-            colmena
+            # The CLI must match the clan-core lib that builds `clan` above.
+            inputs.clan-core.packages.${system}.clan-cli
             d2
             difftastic
             fd
@@ -746,7 +753,7 @@
               touch "$out"
             '';
       }
-      // colmenaHiveChecks
+      // clanMachineChecks
       // denHostEvaluationChecks
       // denConfigTestChecks;
 
