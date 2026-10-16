@@ -25,6 +25,11 @@ let
   # shell; with xs it announces its jobs on cross.stream.
   ciMcp = inputs.ci.packages.${pkgs.stdenv.hostPlatform.system}.ci-mcp.override { inherit xs; };
   sudoplz = pkgs.callPackage ./sudoplz.nix { };
+  # Hides the 2026-07-28 MCP handshake from servers that claim it but
+  # answer tools/list without its required fields (atuin 18.21 and 18.23).
+  mcpLegacyHandshake = pkgs.writers.writePython3Bin "mcp-legacy-handshake" { } (
+    builtins.readFile ./scripts/mcp-legacy-handshake.py
+  );
 in
 {
   home.packages = [
@@ -72,9 +77,14 @@ in
           "--mcp"
         ];
       };
+      # Remove the wrapper once tests/atuin-mcp.nu finds that atuin answers
+      # the 2026-07-28 tools/list with ttlMs and cacheScope.
       atuin = {
-        command = "atuin";
-        args = [ "mcp" ];
+        command = lib.getExe mcpLegacyHandshake;
+        args = [
+          "atuin"
+          "mcp"
+        ];
       };
       # The personal knowledge base, for agents working in other repositories.
       kb.command = "${kbMcp}/bin/kb-mcp";
@@ -109,6 +119,23 @@ in
         export HOME="$TMPDIR/home"
         mkdir -p "$HOME"
         nu --config ${./scripts/nu-mcp-config.nu} ${./tests/watch-job.nu} ${./scripts/watch-job.nu}
+        touch "$out"
+      '';
+
+  # Claude Code's 2026-07-28 handshake reaches atuin's tools through
+  # mcp-legacy-handshake.
+  dotfiles.tooling.checks.atuin-mcp =
+    pkgs.runCommand "atuin-mcp-check"
+      {
+        nativeBuildInputs = [
+          pkgs.nushell
+          pkgs.coreutils
+        ];
+      }
+      ''
+        export HOME="$TMPDIR/home"
+        mkdir -p "$HOME"
+        nu ${./tests/atuin-mcp.nu} ${lib.getExe mcpLegacyHandshake} ${lib.getExe pkgs.atuin}
         touch "$out"
       '';
 }
