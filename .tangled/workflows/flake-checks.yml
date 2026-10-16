@@ -26,5 +26,7 @@ steps:
   # nix-fast-build starts one evaluator per CPU by default, and each system
   # evaluation grows to about 4 GiB, which exhausts the guest's memory. Two
   # evaluators that restart at 3 GiB keep evaluation well inside it.
+  # Stream one event per check evaluation/build so the job log shows which
+  # attributes are making progress, including checks that were already cached.
   - name: "Build flake checks"
-    command: "nix --accept-flake-config run --inputs-from . nixpkgs#nix-fast-build -- --no-nom --skip-cached --eval-workers 2 --eval-max-memory-size 3072 --flake .#checks.x86_64-linux"
+    command: "nix --accept-flake-config run --inputs-from . nixpkgs#nix-fast-build -- --stream-json-lines --skip-cached --eval-workers 2 --eval-max-memory-size 3072 --flake .#checks.x86_64-linux"
