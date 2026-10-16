@@ -59,8 +59,13 @@ let
     asus = [
       asusHardware
       personalWorkstation
-      # Deployed in place with `colmena apply-local`.
-      { deploy.enable = true; }
+      {
+        # Deployed in place with `colmena apply-local`.
+        deploy.enable = true;
+        # Switched by hand at its keyboard, so the watch needs only enough
+        # samples (3 at 15s) to revert a breach on its own.
+        policy.watchDuration = 45;
+      }
     ];
 
     asus-headless = [

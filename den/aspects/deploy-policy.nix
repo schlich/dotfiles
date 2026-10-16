@@ -32,6 +32,9 @@ in
           # and nobody is at its keyboard to notice them.
           // lib.optionalAttrs (host.policy.criticality == "critical") {
             watch.duration = 300;
+          }
+          // lib.optionalAttrs (host.policy.watchDuration != null) {
+            watch.duration = host.policy.watchDuration;
           };
         }
       )
