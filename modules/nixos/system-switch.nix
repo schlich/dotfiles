@@ -102,6 +102,9 @@ in
     description = "Switch to the NixOS configuration on Tangled's main";
     wants = [ "network-online.target" ];
     after = [ "network-online.target" ];
+    # The switch runs inside this unit, so a configuration that changes it
+    # must not stop it mid-switch: the new definition applies on the next run.
+    restartIfChanged = false;
     path = [
       config.nix.package
       config.system.build.nixos-rebuild
