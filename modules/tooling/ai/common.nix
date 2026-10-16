@@ -96,6 +96,9 @@ in
       kb.command = "${kbMcp}/bin/kb-mcp";
       # The `ci` trunk workflow as tools, in the client's working directory.
       ci.command = "${ciMcp}/bin/ci-mcp";
+      # Stately's hosted HTTP MCP server provides access to state-machine
+      # design tools; authentication is handled by the MCP client.
+      stately.url = "https://mcp.stately.ai/mcp";
     }
     // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
       # metavr ships binaries only for macOS and Windows, not Linux.
