@@ -108,7 +108,9 @@ blocking, and `ci land` leaves them out.
 
 No activation is implied by evaluation or builds. A system or home activation
 requires an explicit operator decision after the generated output has been
-reviewed.
+reviewed. The one standing decision is the canary: a host whose
+`policy.autoDeploy` is set stages each landing of `main` on its own (see
+below).
 
 ## NixOS generation policy
 
@@ -159,6 +161,20 @@ one that would have caught the most frequent cause (see
 `docs/ci-failure-review.md`). `tests/deploy-revert.nix`, in `remoteChecks`, runs
 a broken candidate, a healthy one, and a killed watch through the real script
 in a VM.
+
+homelab is the canary. Its inventory sets `policy.autoDeploy`, so the
+`nixos-switch-main-auto` timer looks at `main` every five minutes and stages
+each new landing through the same watch, so a landing usually reaches it
+before a workstation switches. It takes each revision once: one it deployed or
+rejected waits for `main` to move, and `system-switch` there retries a rejected
+one on request. A manual switch and the timer share a lock, and the timer
+skips its turn while the lock is held. asus's notifier fetches homelab's new
+reverts over ssh (`deploy-reverts notify homelab`) and keeps them under
+`~/.local/state/deploy-reverts`, where `deploy-reverts --all` includes them.
+The den-policy check lets a host deploy itself only with health checks to
+watch, and inventory validation also requires review and rollback for a
+critical one. `colmena apply` to homelab activates without the watch, so keep
+it for `test`, `dry-activate`, or recovery.
 Colmena pushes the same systems over ssh instead of having the host pull
 them. `colmenaHive` deploys each host whose inventory sets `deploy.enable`,
 from the module list Den resolved for it, and a `colmena-hive-<host>` check

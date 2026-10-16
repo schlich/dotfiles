@@ -147,8 +147,20 @@ in
 
   testInventoryPolicyGuardScalesWithDeclaredHosts = {
     expr = builtins.all (
-      host: !host.policy.autoDeploy && host.policy.requireReview && host.policy.rollback
+      host:
+      host.policy.requireReview
+      && host.policy.rollback
+      && (!host.policy.autoDeploy || host.policy.healthChecks != [ ])
     ) (builtins.attrValues hosts);
     expected = true;
+  };
+
+  # Workstations fetch a canary's revert reports over ssh, so a canary needs
+  # a destination to fetch them from.
+  testCanariesHaveADeployTarget = {
+    expr = builtins.attrNames (
+      lib.filterAttrs (_: host: host.policy.autoDeploy && (host.deploy.targetHost or null) == null) hosts
+    );
+    expected = [ ];
   };
 }

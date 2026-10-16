@@ -407,7 +407,8 @@
             nativeBuildInputs = [ pkgs.jq ];
           }
           ''
-            jq --exit-status 'length > 0 and all(.[]; .policy.autoDeploy == false and .policy.requireReview == true and .policy.rollback == true)' ${denInventory}
+            # A host may deploy itself only with health checks to watch.
+            jq --exit-status 'length > 0 and all(.[]; .policy.requireReview == true and .policy.rollback == true and (.policy.autoDeploy == false or (.policy.healthChecks | length) > 0))' ${denInventory}
             touch "$out"
           '';
     in

@@ -101,6 +101,9 @@ let
         };
         policy = {
           criticality = "critical";
+          # The canary: it stages each landing of main on its own, before
+          # anyone switches a workstation, and reverts one that breaks these.
+          autoDeploy = true;
           healthChecks = [
             "ssh"
             "tailscale"

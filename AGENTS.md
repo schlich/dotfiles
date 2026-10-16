@@ -78,6 +78,11 @@
   reverts, read that report and `deploy-reverts`, and propose the pre-deploy
   check that would have caught the regression (`docs/ci-failure-review.md`).
   Do not retry a reverted revision without the user's approval.
+- homelab is the canary: its inventory policy sets `autoDeploy`, so its own
+  `nixos-switch-main-auto` timer stages each landing of `main` through the
+  same watch. That timer is configuration, not an agent action; it does not
+  authorize an agent to switch any host. A revert there reaches asus as a
+  desktop notification; `deploy-reverts --all` on asus lists it.
 - Colmena can push a landed `main` to a host instead
   (`colmena apply --config path:. --on homelab`); it is the same system, and
   the same rules apply: deploy only when the user asks, and only landed
@@ -293,7 +298,7 @@
 - Every declared host must evaluate. A host whose `policy.criticality` is `disposable` evaluates in `remoteChecks`, which GitHub Actions reports without blocking a landing, as do previews of a host with modules it has not adopted yet; every other host gates it through `checks`. Keep policy and aspect metadata machine-readable so affected hosts, risk, checks, and reviewer domains can be identified.
 - Do not silently alter boot, storage, filesystem, encryption, swap, or security configuration. These are high-risk changes and generated hardware files remain host-local.
 - Never put plaintext secrets in the repository or Nix store. Preserve encrypted inputs and recovery paths.
-- Do not automatically switch the current system. Build and evaluate first; any `nixos-rebuild test` or activation remains a deliberate manual operation.
+- Do not automatically switch the current system. Build and evaluate first; any `nixos-rebuild test` or activation remains a deliberate manual operation. The canary's own deployment timer (`policy.autoDeploy`) is the only exception, and enabling it for another host is a policy change for the user to request.
 - The architecture and safe recovery flow are documented in `docs/architecture.md`.
 
 Repository checks are `nix fmt` and `nix flake check --no-build path:.`. The
