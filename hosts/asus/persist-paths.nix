@@ -292,6 +292,7 @@
       ".local/state/gh"
       ".local/state/herdr"
       ".local/state/home-manager"
+      ".local/state/jev"
       ".local/state/jj-ci"
       ".local/state/marimo"
       ".local/state/niri"

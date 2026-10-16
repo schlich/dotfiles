@@ -402,11 +402,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1791377867,
-        "narHash": "sha256-1IiWNhW53yunqi+/PRsU74MxLzEFQDeW8n8eTs+Turs=",
+        "lastModified": 1792120511,
+        "narHash": "sha256-f5/ykd9Us3HpW7XNCNe7OyJdHAzoaOBhzmEXMc3NAmg=",
         "owner": "schlich",
         "repo": "fieldnotes",
-        "rev": "58e6662113504f33900aa81bfb3b6399341070e1",
+        "rev": "43c7b1208eb0729ec696775ff79690190a5c850b",
         "type": "github"
       },
       "original": {

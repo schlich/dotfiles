@@ -54,8 +54,35 @@ def api-key [] {
     validated-key $result.stdout "secretspec"
 }
 
+def usage-log [] {
+    let state = ($env.XDG_STATE_HOME? | default ($env.HOME | path join ".local" "state"))
+    $env.JEV_USAGE_LOG? | default ($state | path join "jev" "usage.jsonl")
+}
+
+# TypeSafe reports token usage per response and has no account usage API,
+# so append each response to a ledger that dashboards such as Fieldnotes sum.
+# A ledger that cannot be written never fails the request.
+def record-usage [command: string, model: string, response: record] {
+    let body = $response.body
+    let usage = if ($body | describe | str starts-with "record") { $body.usage? | default {} } else { {} }
+    try {
+        let path = (usage-log)
+        mkdir ($path | path dirname)
+        let entry = {
+            at: (date now | format date "%Y-%m-%dT%H:%M:%S%:z")
+            command: $command
+            model: $model
+            status: $response.status
+            input_tokens: ($usage.input_tokens? | default 0)
+            output_tokens: ($usage.output_tokens? | default 0)
+        }
+        $"($entry | to json -r)\n" | save --append $path
+    }
+}
+
 # Evaluate `state` against typed questions and return the full response.
-def ask [state: any, questions: record, model: string] {
+# `command` names the caller in the usage ledger.
+def ask [state: any, questions: record, model: string, command: string] {
     let response = (
         http post $endpoint { state: $state, model: $model, questions: $questions }
             --content-type application/json
@@ -64,6 +91,7 @@ def ask [state: any, questions: record, model: string] {
             --full
             --allow-errors
     )
+    record-usage $command $model $response
     if $response.status != 200 {
         error make { msg: $"Jev request failed with HTTP ($response.status): ($response.body | to json -r)" }
     }
@@ -77,7 +105,7 @@ def "main ask" [
 ] {
     let request = (parse-stdin $in)
     let model = ($model | default (questions-config).model)
-    ask $request.state $request.questions $model | to json
+    ask $request.state $request.questions $model "ask" | to json
 }
 
 # Decide whether a failed terminal command deserves an agent. Reads a
@@ -101,7 +129,7 @@ def "main triage-gate" [] {
         exit_code: $exit_code
     }
     let response = (try {
-        { ok: (ask $state $gate.questions $config.model) }
+        { ok: (ask $state $gate.questions $config.model "triage-gate") }
     } catch {|err|
         { error: $err.msg }
     })
@@ -160,7 +188,7 @@ def bash-guard [input: any] {
         cwd: ($event.cwd? | default "" | str replace $env.HOME "~")
     }
     let result = (try {
-        { response: (ask $state $guard.questions $config.model) }
+        { response: (ask $state $guard.questions $config.model "bash-guard") }
     } catch {|err|
         { error: $err.msg }
     })
