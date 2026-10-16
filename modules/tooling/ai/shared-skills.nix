@@ -5,6 +5,7 @@
   autoresearch = "${inputs.autoresearch}/.agents/skills/autoresearch";
   marimo-pair = "${inputs.marimo-pair}/skills/marimo-pair";
   bash-feedback = ../../../.agents/skills/bash-feedback;
+  big-pics-little-words = "${inputs.bro}/skills/big-pics-little-words";
   ci = inputs.ci.lib.skills.ci;
   datastar = ../../../.agents/skills/datastar;
   rlm = ../../../.agents/skills/rlm;

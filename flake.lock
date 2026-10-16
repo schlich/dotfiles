@@ -84,6 +84,22 @@
         "type": "github"
       }
     },
+    "bro": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1792090659,
+        "narHash": "sha256-chKC0GRd1bNve+PVwIGTYeTjV25EbAai6VqS/eNgiLk=",
+        "owner": "backnotprop",
+        "repo": "bro",
+        "rev": "3737bf2b3e5ef8f44639ebf6e6bbbf821b3edfb9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "backnotprop",
+        "repo": "bro",
+        "type": "github"
+      }
+    },
     "bun2nix": {
       "inputs": {
         "flake-parts": [
@@ -1551,6 +1567,7 @@
         "ai-usagebar": "ai-usagebar",
         "archify": "archify",
         "autoresearch": "autoresearch",
+        "bro": "bro",
         "ci": "ci",
         "codex-desktop-linux": "codex-desktop-linux",
         "colmena": "colmena",

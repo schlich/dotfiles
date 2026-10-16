@@ -94,6 +94,10 @@
       url = "github:typesafe-ai/skills";
       flake = false;
     };
+    bro = {
+      url = "github:backnotprop/bro";
+      flake = false;
+    };
     autoresearch = {
       url = "github:uditgoenka/autoresearch";
       flake = false;
