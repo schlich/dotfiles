@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Create a named checkpoint before risky operations
 # Usage: jj-checkpoint [NAME]
-# Later restore with: jj op restore <op-id>
+# Later undo your own operations since it with: jj op revert <op-id>
 # NAME defaults to "checkpoint"
 
 set -euo pipefail
@@ -12,7 +12,10 @@ name="${1:-checkpoint}"
 op_id=$(jj op log -n1 --no-graph -T 'self.id().short(12)')
 
 echo "📍 Checkpoint '$name' at operation: $op_id"
-echo "   Restore with: jj op restore $op_id"
+echo "   Undo: list the operations after it with 'jj op log', then"
+echo "   'jj op revert <op-id>' each of yours, newest first."
+echo "   Do not 'jj op restore $op_id': the operation log is shared, so it"
+echo "   also rewinds other workspaces' work since then."
 echo ""
 echo "   Current state:"
 jj log -r @ -n1 -T 'change_id.shortest(8) ++ " " ++ description.first_line()'

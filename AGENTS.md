@@ -142,8 +142,16 @@
 - Start work with `jj status`, `jj diff`, and `jj log`. Preserve unrelated
   working-copy changes.
 - Before risky history operations (`jj rebase`, `jj squash`, `jj abandon`,
-  `jj split`, or `jj op restore`), create a checkpoint with
+  or `jj split`), create a checkpoint with
   `.agents/skills/jj/scripts/jj-checkpoint`.
+- Undo only your own operations. For a `ci` recovery point, run
+  `ci recover ID`: it reverts just the operations that `ci` command tagged.
+  Otherwise revert each of your operations since the checkpoint, newest
+  first, with `jj op revert OP`. The operation log is shared by every
+  workspace, so `jj op restore` rewinds other sessions' dispatches and
+  landings too; on 2026-10-16 it undid a concurrent dispatch. Use it only as
+  a last resort, and only with the user's approval while other workspaces
+  are active.
 - Tangled (`tangled` remote) hosts `main` and every topic branch. GitHub
   (`origin`) mirrors `main` and can clear a landing with
   `ci land --clearance github`. Never merge a GitHub pull request: squash and

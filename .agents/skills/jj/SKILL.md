@@ -175,10 +175,19 @@ Helper scripts in `scripts/`. Add to PATH or invoke directly.
 
 ## Recovery
 
+The operation log is shared by every workspace of the repository, so undo
+only the operations you made:
+
 ```bash
-jj op log              # Find operation before problem
-jj op restore <op-id>  # Restore the WHOLE repository (history included) to that state
+ci recover ID          # A ci recovery point: reverts only the ops that ci command tagged
+jj op log              # Otherwise find your operations since the checkpoint
+jj op revert <op-id>   # and revert each one, newest first
 ```
+
+`jj op restore <op-id>` rewinds the whole repository, every workspace
+included, so it also undoes other sessions' dispatches and landings made
+since then. Use it only as a last resort, and ask the user first while
+other workspaces are active.
 
 ## References
 
