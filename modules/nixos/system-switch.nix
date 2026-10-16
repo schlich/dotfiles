@@ -264,6 +264,13 @@ in
 
     dotfiles.deploy.probes = builtinProbes;
 
+    # ssh-keyscan deliberately disconnects before authentication. Repeated
+    # health checks otherwise accumulate noauth penalties and make a healthy
+    # sshd reject its own probe. Keep remote-client penalties enabled.
+    services.openssh.settings.PerSourcePenaltyExemptList = lib.mkIf (
+      config.services.openssh.enable && builtins.elem "ssh" checks
+    ) "127.0.0.1/32";
+
     environment.systemPackages = [
       systemSwitch
       switchMain

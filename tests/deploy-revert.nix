@@ -50,6 +50,10 @@ pkgs.testers.runNixOSTest {
     healthy = machine.succeed(f"readlink -f {base}/specialisation/healthy").strip()
     broken = machine.succeed(f"readlink -f {base}/specialisation/broken").strip()
 
+    with subtest("repeated local SSH probes do not penalize the health checker"):
+        for _ in range(20):
+            machine.succeed("ssh-keyscan -T 3 -p 22 127.0.0.1 > /tmp/health-keys 2>/dev/null; test -s /tmp/health-keys")
+
     with subtest("a candidate that breaks a health check is reverted"):
         machine.fail(f"nixos-switch-main apply {broken}")
         assert current() == base, "the broken candidate is still active"
@@ -73,6 +77,9 @@ pkgs.testers.runNixOSTest {
         assert current() == base, "the staged candidate is not active"
         machine.succeed("systemctl kill --signal=KILL staged-switch.service")
         machine.wait_until_succeeds(f'test "$(readlink -f /run/current-system)" = {healthy}', timeout=120)
+        # The symlink changes during activation, before rollback has finished
+        # writing its report and clearing the pending switch.
+        machine.wait_until_succeeds("test ! -e /var/lib/nixos-switch-main/pending.nuon", timeout=120)
         reverts('length == 2 and .[1].phase == "deadman" and .[1].restored')
         machine.wait_for_unit("sshd.service")
   '';
