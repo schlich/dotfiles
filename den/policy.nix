@@ -50,6 +50,13 @@
         "deployment"
       ];
     };
+    deployment = {
+      risk = "high";
+      reviewers = [
+        "deployment"
+        "nix"
+      ];
+    };
     storage = {
       risk = "critical";
       reviewers = [

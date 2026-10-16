@@ -124,6 +124,41 @@ the root `nixos-switch-main` unit, which polkit lets the primary user start
 without a password. The unit builds the host from Tangled's `main` at a pinned
 revision, never from a working copy, skips the switch when that toplevel is
 already active, and records the result in `/var/lib/nixos-switch-main`.
+
+## Staged switches and reverts
+
+The landing checks prove that a revision evaluates and builds, not that a host
+runs it well, so `nixos-switch-main` (`deploy/switch.nu`) stages every switch
+and undoes one that breaks the host:
+
+1. It activates the candidate with `switch-to-configuration test`, which leaves
+   the boot default alone, and arms a dead-man timer.
+1. It watches the host for `dotfiles.deploy.watch.duration` seconds (180, or
+   300 on a critical host). Every sample checks for units that failed since the
+   switch, the journal's error rate against its rate before the switch, restart
+   loops, and each probe that the host's `policy.healthChecks` names (`ssh`,
+   `tailscale`, `niri-config`, `home-manager-nixos`). A probe also fails when it
+   answers slower than its latency budget. A check that fails three samples in
+   a row breaches the watch.
+1. A healthy candidate becomes the boot default (`switch-to-configuration boot`).
+   A breach, a failed activation, or a watch that never decides (the dead-man
+   timer) reactivates the previous system and rejects the revision. A reboot at
+   any point before the commit boots the previous system.
+
+The running system's settings judge the candidate, so a candidate cannot
+weaken its own watch. Each revert, and each revision that fails to evaluate or
+build, appends a line to `/var/lib/nixos-switch-main/reverts.jsonl` with a
+Markdown report beside it under `reports/`: the breached checks, newly failed
+units, restart loops, and journal errors, plus who landed the revision. Reports
+quote the journal, so only `wheel` reads them. A workstation's
+`deploy-revert-notify` user timer announces each new revert once and offers to
+open an agent on its report. `deploy-reverts` lists the log and tallies the
+checks that caused reverts. That tally is the feedback loop: each revert marks
+a regression the pre-deploy checks missed, and the next check to write is the
+one that would have caught the most frequent cause (see
+`docs/ci-failure-review.md`). `tests/deploy-revert.nix`, in `remoteChecks`, runs
+a broken candidate, a healthy one, and a killed watch through the real script
+in a VM.
 Colmena pushes the same systems over ssh instead of having the host pull
 them. `colmenaHive` deploys each host whose inventory sets `deploy.enable`,
 from the module list Den resolved for it, and a `colmena-hive-<host>` check

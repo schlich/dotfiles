@@ -288,6 +288,7 @@
       ".local/state/codex-desktop"
       ".local/state/codex-jj-sessions"
       ".local/state/comma"
+      ".local/state/deploy-reverts"
       ".local/state/fieldnotes"
       ".local/state/gh"
       ".local/state/herdr"

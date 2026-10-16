@@ -698,9 +698,10 @@
 
       # Checks that report without gating a landing: GitHub Actions' nix-ci
       # workflow builds them after each push, and ci land leaves them out.
-      # They cover disposable hosts and homelab with modules it has not
-      # adopted yet.
+      # They cover disposable hosts, homelab with modules it has not adopted
+      # yet, and the staged switch's revert in a VM.
       remoteChecks.${system} = remoteHostEvaluationChecks // {
+        deploy-revert = import ./tests/deploy-revert.nix { inherit pkgs; };
         marimohub-homelab-evaluation = marimohubHomelabEvaluationCheck;
         nixbot-homelab-evaluation = nixbotHomelabEvaluationCheck;
         # The system closures build after landing. A revision whose closure

@@ -20,7 +20,10 @@ let
     [ (builtins.head behavior) ]
     ++ services
     ++ builtins.tail behavior
-    ++ [ den.aspects.system-files ]
+    ++ [
+      den.aspects.system-files
+      den.aspects.deploy-policy
+    ]
     ++ platform;
 in
 

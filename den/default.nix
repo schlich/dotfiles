@@ -10,6 +10,7 @@
     ./aspects/workstation.nix
     ./aspects/server.nix
     ./aspects/system-files.nix
+    ./aspects/deploy-policy.nix
     ./aspects/wsl.nix
     ./aspects/desktop-niri.nix
     ./aspects/laptop.nix

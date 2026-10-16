@@ -72,6 +72,12 @@
   polkit lets the user start, and prints the switch's output and any failed
   units. Run it only when the user asks to switch; never start it on your
   own. Unlanded changes cannot be switched to this way.
+- The switch is staged: the new system runs without becoming the boot default
+  while the host's health checks are watched, and a breach reverts it and
+  writes a report under `/var/lib/nixos-switch-main/reports/`. When a switch
+  reverts, read that report and `deploy-reverts`, and propose the pre-deploy
+  check that would have caught the regression (`docs/ci-failure-review.md`).
+  Do not retry a reverted revision without the user's approval.
 - Colmena can push a landed `main` to a host instead
   (`colmena apply --config path:. --on homelab`); it is the same system, and
   the same rules apply: deploy only when the user asks, and only landed

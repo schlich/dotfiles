@@ -27,6 +27,23 @@ Choose a mechanism that fits the code and risk. When no additional model,
 property, concurrency, or transaction guarantee would help, record why and
 still add a focused regression check when practical.
 
+## Deployment reverts
+
+A staged switch that breaches its health watch is a CI failure that happened
+after landing: every pre-land check passed, and the host still broke. Each one
+leaves a report under `/var/lib/nixos-switch-main/reports/` and a line in the
+revert log (`docs/architecture.md` describes the staged switch). Treat it like
+a failing run:
+
+1. Read the report's breached checks and journal errors, and fill in the record
+   below.
+1. Add the pre-deploy check that would have caught it: a flake check, or an
+   assertion in `tests/deploy-revert.nix` when the regression shows only on a
+   running system.
+1. Run `deploy-reverts --all` on a workstation to see which checks cause the
+   most reverts across the hosts. The most frequent one is the gap to close
+   next.
+
 ## Failure record
 
 - **Failing job/check:**

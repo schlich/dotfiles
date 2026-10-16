@@ -77,7 +77,7 @@ let
       autoDeploy = mkOption {
         type = types.bool;
         default = false;
-        description = "Whether a future deployment workflow may deploy automatically.";
+        description = "Whether the host stages each landing of main on its own (modules/nixos/system-switch.nix).";
       };
       requireReview = mkOption {
         type = types.bool;
@@ -92,7 +92,7 @@ let
       healthChecks = mkOption {
         type = types.listOf types.str;
         default = [ ];
-        description = "Named checks a future deployment workflow should run.";
+        description = "Named probes a staged switch watches besides failed units, journal errors, and restart loops.";
       };
     };
   };
