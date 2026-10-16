@@ -63,6 +63,18 @@ let
     };
   };
 
+  # One switch per long-running service; den/profile.nix maps each to the
+  # aspect that runs it.
+  servicesType = types.submodule {
+    options = lib.mapAttrs (_: description: lib.mkEnableOption description) {
+      jjCiWebhook = "the jj-ci webhook listener, published through Tailscale Funnel";
+      nixObservability = "the local OpenTelemetry viewer for Nix traces";
+      paseo = "the Paseo daemon";
+      opencodeServer = "the OpenCode HTTP server";
+      crossStream = "the system cross.stream service, for hosts without the Home Manager one";
+    };
+  };
+
   policyType = types.submodule {
     options = {
       criticality = mkOption {
@@ -159,6 +171,11 @@ in
             type = profileType;
             default = { };
             description = "Typed facts used by the master host resolver.";
+          };
+          services = mkOption {
+            type = servicesType;
+            default = { };
+            description = "The long-running services the host runs.";
           };
           policy = mkOption {
             type = policyType;

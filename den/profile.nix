@@ -44,12 +44,50 @@ let
     amd = [ "gpu-amd" ];
   };
 
+  # The long-running services a host runs, from its `services` facts. A list
+  # for the same reason as flagAspects.
+  serviceAspects = [
+    {
+      service = "jjCiWebhook";
+      aspect = "jj-ci-webhook";
+    }
+    {
+      service = "nixObservability";
+      aspect = "nix-observability";
+    }
+    {
+      service = "paseo";
+      aspect = "paseo";
+    }
+    {
+      service = "opencodeServer";
+      aspect = "opencode-server";
+    }
+    {
+      service = "crossStream";
+      aspect = "cross-stream";
+    }
+  ];
+
   behaviorAspects =
     profile:
     roleAspects.${profile.role}
     ++ desktopAspects.${profile.desktop}
     ++ lib.concatMap ({ flag, aspect }: lib.optional profile.${flag} aspect) flagAspects
     ++ gpuAspects.${profile.gpu} or [ ];
+
+  selectedServices =
+    services:
+    lib.concatMap ({ service, aspect }: lib.optional services.${service} aspect) serviceAspects;
+
+  # Services sit right after the first behavior aspect (base or workstation)
+  # so package order, and with it every closure, stays stable.
+  hostAspects =
+    { profile, services, ... }:
+    let
+      behavior = behaviorAspects profile;
+    in
+    [ (builtins.head behavior) ] ++ selectedServices services ++ builtins.tail behavior;
 
   hostErrors =
     {
@@ -82,5 +120,11 @@ let
     if errors == [ ] then true else throw (lib.concatStringsSep "; " errors);
 in
 {
-  inherit behaviorAspects hostErrors validateHost;
+  inherit
+    behaviorAspects
+    selectedServices
+    hostAspects
+    hostErrors
+    validateHost
+    ;
 }

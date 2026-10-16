@@ -56,6 +56,53 @@ in
     ];
   };
 
+  testServicesFollowTheFirstBehaviorAspect = {
+    expr = profileTools.hostAspects {
+      profile = {
+        role = "server";
+        desktop = "none";
+        gpu = "none";
+        portable = false;
+        development = false;
+        xr = false;
+        secrets = false;
+        remote = true;
+      };
+      services = {
+        jjCiWebhook = false;
+        nixObservability = false;
+        paseo = true;
+        opencodeServer = false;
+        crossStream = true;
+      };
+    };
+    expected = [
+      "base"
+      "paseo"
+      "cross-stream"
+      "server"
+      "headless"
+      "remote"
+    ];
+  };
+
+  testInventoryServicesSelectTheirAspects = {
+    expr = lib.mapAttrs (_: host: profileTools.selectedServices host.services) hosts;
+    expected = {
+      asus = [
+        "jj-ci-webhook"
+        "nix-observability"
+      ];
+      asus-headless = [ ];
+      asus-usb = [ ];
+      homelab = [
+        "paseo"
+        "opencode-server"
+        "cross-stream"
+      ];
+    };
+  };
+
   testServerMaySelectAGraphicalDesktop = {
     expr = profileTools.hostErrors {
       name = "desktop-server";

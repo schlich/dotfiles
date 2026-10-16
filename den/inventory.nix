@@ -18,6 +18,13 @@ let
       secrets = false;
       remote = false;
     };
+    services = {
+      jjCiWebhook = false;
+      nixObservability = false;
+      paseo = false;
+      opencodeServer = false;
+      crossStream = false;
+    };
     # Colmena logs in as the everyday user and escalates with sudo.
     deploy.targetUser = "schlich";
     # Every host joins the same tailnet; den/aspects/fleet-network.nix
@@ -63,6 +70,10 @@ let
       asusHardware
       personalWorkstation
       {
+        services = {
+          jjCiWebhook = true;
+          nixObservability = true;
+        };
         # Deployed in place with `colmena apply-local`.
         deploy.enable = true;
         # Switched by hand at its keyboard, so the watch needs only enough
@@ -99,6 +110,11 @@ let
           desktop = "niri";
           gpu = "intel";
           remote = true;
+        };
+        services = {
+          paseo = true;
+          opencodeServer = true;
+          crossStream = true;
         };
         deploy = {
           enable = true;

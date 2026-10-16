@@ -2,24 +2,13 @@
 let
   profileTools = import ./profile.nix { inherit lib; };
 
-  # Every host is composed the same way: its profile's behavior aspects, with
-  # host services kept right after the first one (base or workstation) so
-  # package order stays stable, then what every host needs, then its
-  # platform. Hardware and storage remain platform-local.
+  # Every host is composed the same way: the aspects its profile and
+  # services facts select (den/profile.nix), then what every host needs,
+  # then its platform. Hardware and storage remain platform-local.
   hostIncludes =
     name:
-    {
-      services ? [ ],
-      platform,
-    }:
-    let
-      behavior = map (aspect: den.aspects.${aspect}) (
-        profileTools.behaviorAspects den.hosts.x86_64-linux.${name}.profile
-      );
-    in
-    [ (builtins.head behavior) ]
-    ++ services
-    ++ builtins.tail behavior
+    { platform }:
+    map (aspect: den.aspects.${aspect}) (profileTools.hostAspects den.hosts.x86_64-linux.${name})
     ++ [
       den.aspects.system-files
       den.aspects.deploy-policy
@@ -30,10 +19,6 @@ in
 
 {
   den.aspects.asus.includes = hostIncludes "asus" {
-    services = [
-      den.aspects.jj-ci-webhook
-      den.aspects.nix-observability
-    ];
     platform = [
       den.aspects.asus-platform
       den.aspects.asus-storage
@@ -55,11 +40,6 @@ in
   };
 
   den.aspects.homelab.includes = hostIncludes "homelab" {
-    services = [
-      den.aspects.paseo
-      den.aspects.opencode-server
-      den.aspects.cross-stream
-    ];
     platform = [ den.aspects.homelab-platform ];
   };
 
