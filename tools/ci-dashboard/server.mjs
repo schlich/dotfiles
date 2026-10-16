@@ -9,12 +9,23 @@ const PORT = Number(process.env.PORT ?? 4173);
 const DEFAULT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const ROOT = resolve(process.env.CI_REPO ?? DEFAULT_ROOT);
 const PAGE = resolve(dirname(fileURLToPath(import.meta.url)), "index.html");
+const GITHUB_REPO = process.env.CI_GITHUB_REPO ?? "schlich/dotfiles";
 const CACHE_MS = 7_000;
+// Fieldnotes polls GitHub every 30 seconds too, which keeps both well inside
+// the API's hourly limit.
+const ACTIONS_CACHE_MS = 30_000;
 const COMMAND_TIMEOUT_MS = 20_000;
+const LOG_TIMEOUT_MS = 45_000;
 const MAX_OUTPUT_BYTES = 24 * 1024 * 1024;
 
-let cache = null;
-let pending = null;
+// Lines kept from each failed step's log, ending at its last error.
+const LOG_TAIL = 15;
+const LOG_TIMESTAMP = /^\d{4}-\d\d-\d\dT[\d:.]+Z ?/;
+// Terminal colors, which the page replaces with its own error highlighting.
+const LOG_ANSI = /\x1b\[[0-9;]*m/g;
+// Substitution and download progress, which buries a Nix build's error.
+const LOG_NOISE =
+  /^\s*(copying path '|downloading '|these \d+ paths? will be (fetched|built)|this path will be (fetched|built)|\/nix\/store\/\S+$)/;
 
 function send(
   response,
@@ -33,11 +44,16 @@ function send(
   response.end(body);
 }
 
-function collectTower() {
+function capture(command, args, timeoutMs = COMMAND_TIMEOUT_MS) {
+  const name = `${command} ${args[0]}`;
   return new Promise((resolvePromise, rejectPromise) => {
-    const child = spawn("ci", ["tower", ".", "--json"], {
+    const child = spawn(command, args, {
       cwd: ROOT,
-      env: process.env,
+      env: {
+        ...process.env,
+        GH_NO_UPDATE_NOTIFIER: "1",
+        GH_PROMPT_DISABLED: "1",
+      },
       stdio: ["ignore", "pipe", "pipe"],
     });
     const stdout = [];
@@ -46,8 +62,8 @@ function collectTower() {
     let settled = false;
     const timeout = setTimeout(() => {
       child.kill("SIGTERM");
-      fail(new Error(`ci tower exceeded ${COMMAND_TIMEOUT_MS / 1000}s`));
-    }, COMMAND_TIMEOUT_MS);
+      fail(new Error(`${name} exceeded ${timeoutMs / 1000}s`));
+    }, timeoutMs);
 
     function fail(error) {
       if (settled) return;
@@ -60,7 +76,7 @@ function collectTower() {
       bytes += chunk.length;
       if (bytes > MAX_OUTPUT_BYTES) {
         child.kill("SIGTERM");
-        fail(new Error("ci tower output exceeded the 24 MiB safety limit"));
+        fail(new Error(`${name} output exceeded the 24 MiB safety limit`));
         return;
       }
       stdout.push(chunk);
@@ -74,65 +90,357 @@ function collectTower() {
         const detail = Buffer.concat(stderr).toString("utf8").trim();
         fail(
           new Error(
-            detail || `ci tower exited ${code ?? signal ?? "without a status"}`,
+            detail || `${name} exited ${code ?? signal ?? "without a status"}`,
           ),
         );
         return;
       }
-      try {
-        const data = JSON.parse(Buffer.concat(stdout).toString("utf8"));
-        if (!data || typeof data !== "object" || !data.host || !data.snapshot) {
-          throw new Error(
-            "ci tower returned JSON without host and snapshot data",
-          );
-        }
-        settled = true;
-        resolvePromise(data);
-      } catch (error) {
-        fail(new Error(`Unable to parse ci tower JSON: ${error.message}`));
-      }
+      settled = true;
+      resolvePromise(Buffer.concat(stdout).toString("utf8"));
     });
   });
 }
 
-async function towerResponse() {
-  const now = Date.now();
-  if (cache && now - cache.fetchedAt < CACHE_MS) {
-    return {
-      snapshot: cache.data,
-      fetchedAt: cache.fetchedAt,
-      stale: false,
-      error: null,
-    };
-  }
-  if (!pending) {
-    pending = collectTower()
-      .then((data) => {
-        cache = { data, fetchedAt: Date.now() };
-        return cache;
-      })
-      .finally(() => {
-        pending = null;
-      });
-  }
+async function captureJSON(command, args, timeoutMs) {
+  const text = await capture(command, args, timeoutMs);
   try {
-    const current = await pending;
-    return {
-      snapshot: current.data,
-      fetchedAt: current.fetchedAt,
-      stale: false,
-      error: null,
-    };
+    return JSON.parse(text);
   } catch (error) {
-    if (cache) {
+    throw new Error(
+      `Unable to parse ${command} ${args[0]} JSON: ${error.message}`,
+    );
+  }
+}
+
+async function collectTower() {
+  const data = await captureJSON("ci", ["tower", ".", "--json"]);
+  if (!data || typeof data !== "object" || !data.host || !data.snapshot) {
+    throw new Error("ci tower returned JSON without host and snapshot data");
+  }
+  return data;
+}
+
+// A feed collected at most once per `maxAgeMs`, which keeps serving its last
+// good data, marked stale, while collection fails.
+function cachedFeed(collect, maxAgeMs) {
+  let cache = null;
+  let pending = null;
+  return async () => {
+    if (cache && Date.now() - cache.fetchedAt < maxAgeMs) {
       return {
         snapshot: cache.data,
         fetchedAt: cache.fetchedAt,
-        stale: true,
-        error: error.message,
+        stale: false,
+        error: null,
       };
     }
-    throw error;
+    if (!pending) {
+      pending = collect()
+        .then((data) => {
+          cache = { data, fetchedAt: Date.now() };
+          return cache;
+        })
+        .finally(() => {
+          pending = null;
+        });
+    }
+    try {
+      const current = await pending;
+      return {
+        snapshot: current.data,
+        fetchedAt: current.fetchedAt,
+        stale: false,
+        error: null,
+      };
+    } catch (error) {
+      if (cache) {
+        return {
+          snapshot: cache.data,
+          fetchedAt: cache.fetchedAt,
+          stale: true,
+          error: error.message,
+        };
+      }
+      throw error;
+    }
+  };
+}
+
+// GitHub Actions, reduced the way Fieldnotes' CI panel reduces them: each
+// workflow's verdict on main with its failure streak, and the latest failing
+// or running run of each live branch.
+
+function gh(path, timeoutMs) {
+  return captureJSON("gh", ["api", path], timeoutMs);
+}
+
+function actionsRun(run, activePaths) {
+  const path = run.path || "";
+  const status = run.status || "";
+  const conclusion = run.conclusion ?? null;
+  let state = "failed";
+  if (status !== "completed") state = "running";
+  else if (conclusion === "success") state = "passed";
+  else if (["cancelled", "skipped", "neutral"].includes(conclusion))
+    state = "skipped";
+  return {
+    id: run.id || 0,
+    workflow: run.name || "workflow",
+    title: run.display_title || "",
+    status,
+    conclusion,
+    state,
+    created: run.created_at || null,
+    branch: run.head_branch || "",
+    sha: run.head_sha || "",
+    path,
+    url: run.html_url || "",
+    number: run.run_number || 0,
+    attempt: run.run_attempt || 1,
+    event: run.event || "",
+    // GitHub stops listing a workflow once its file leaves the default
+    // branch, but keeps showing that workflow's old runs.
+    retired: !activePaths.has(path),
+  };
+}
+
+// Superseded (cancelled) runs are ignored, since a newer push replaced them,
+// and so are runs on deleted branches, which nobody can fix any more.
+// `alive` of `null` keeps every branch.
+function summarizeActions(runs, alive) {
+  const history = new Map();
+  const branches = new Map();
+  for (const run of runs) {
+    if (run.state === "skipped") continue;
+    if (run.branch === "main") {
+      if (!history.has(run.workflow)) history.set(run.workflow, []);
+      history.get(run.workflow).push(run);
+    } else {
+      const key = `${run.workflow}\0${run.branch}`;
+      if (!branches.has(key)) branches.set(key, run);
+    }
+  }
+  const order = { failed: 0, running: 1, passed: 2 };
+  const main = [...history.entries()]
+    .map(([workflow, mainRuns]) => {
+      const latest = mainRuns[0];
+      let streak = 0;
+      while (streak < mainRuns.length && mainRuns[streak].state === "failed")
+        streak += 1;
+      return {
+        workflow,
+        // A workflow removed from main never runs again, so its last verdict
+        // is history rather than something to fix.
+        state: latest.retired ? "retired" : latest.state,
+        streak,
+        streakOpen: streak === mainRuns.length,
+        about: "",
+        run: latest,
+      };
+    })
+    .sort((a, b) => (order[a.state] ?? 3) - (order[b.state] ?? 3));
+  const others = [...branches.values()].filter(
+    (run) =>
+      ["failed", "running"].includes(run.state) &&
+      !run.retired &&
+      (alive === null || alive.has(run.branch)),
+  );
+  return { main, branches: others };
+}
+
+// The first sentence of a workflow file's top-level header comment.
+function workflowHeader(text) {
+  const comment = [];
+  for (const line of text.split("\n")) {
+    if (line.startsWith("#")) comment.push(line.replace(/^#+/, "").trim());
+    else if (comment.length || line.startsWith("jobs:")) break;
+  }
+  return comment.join(" ").split(". ")[0].replace(/\.$/, "");
+}
+
+// Workflow path -> { sha, about }.
+const aboutCache = new Map();
+
+async function workflowAbout(path, sha) {
+  // Dependabot and Copilot runs have no file in the repository.
+  if (!path.startsWith(".github/workflows/")) return "managed by GitHub";
+  const cached = aboutCache.get(path);
+  if (cached && cached.sha === sha) return cached.about;
+  try {
+    const data = await gh(`repos/${GITHUB_REPO}/contents/${path}?ref=${sha}`);
+    const about = workflowHeader(
+      Buffer.from(data?.content ?? "", "base64").toString("utf8"),
+    );
+    aboutCache.set(path, { sha, about });
+    return about;
+  } catch {
+    return cached?.about ?? "";
+  }
+}
+
+// Run id and attempt -> jobs of a finished run, which no longer change.
+const jobsCache = new Map();
+
+// The jobs that need a look (failed or still running) with their failed
+// steps, and a count of the rest by conclusion.
+async function runJobs(run) {
+  const key = `${run.id}/${run.attempt}`;
+  if (jobsCache.has(key)) return jobsCache.get(key);
+  const data = await gh(
+    `repos/${GITHUB_REPO}/actions/runs/${run.id}/jobs?per_page=100`,
+  );
+  const jobs = [];
+  const quiet = {};
+  for (const job of asArray(data?.jobs)) {
+    const conclusion = job.conclusion ?? null;
+    if (["success", "skipped", "neutral"].includes(conclusion)) {
+      quiet[conclusion] = (quiet[conclusion] ?? 0) + 1;
+      continue;
+    }
+    jobs.push({
+      name: job.name || "job",
+      conclusion,
+      started: job.started_at || null,
+      completed: job.completed_at || null,
+      url: job.html_url || "",
+      failedSteps: asArray(job.steps)
+        .filter((step) => step.conclusion === "failure")
+        .map((step) => step.name),
+    });
+  }
+  const failing = ["failure", "timed_out", "startup_failure"];
+  jobs.sort(
+    (a, b) =>
+      Number(!failing.includes(a.conclusion)) -
+      Number(!failing.includes(b.conclusion)),
+  );
+  const result = { jobs, quiet };
+  if (run.status === "completed") jobsCache.set(key, result);
+  return result;
+}
+
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+async function liveBranches() {
+  try {
+    const names = await capture("gh", [
+      "api",
+      "--paginate",
+      `repos/${GITHUB_REPO}/branches?per_page=100`,
+      "--jq",
+      ".[].name",
+    ]);
+    return new Set(names.split(/\s+/).filter(Boolean));
+  } catch {
+    return null;
+  }
+}
+
+async function collectActions() {
+  const [runsData, workflowsData, alive] = await Promise.all([
+    gh(`repos/${GITHUB_REPO}/actions/runs?per_page=40`),
+    gh(`repos/${GITHUB_REPO}/actions/workflows`),
+    liveBranches(),
+  ]);
+  const active = new Set(
+    asArray(workflowsData?.workflows)
+      .filter((workflow) => workflow.state === "active")
+      .map((workflow) => workflow.path),
+  );
+  const runs = asArray(runsData?.workflow_runs).map((run) =>
+    actionsRun(run, active),
+  );
+  const state = summarizeActions(runs, alive);
+  await Promise.all([
+    ...state.main.map(async (verdict) => {
+      verdict.about = await workflowAbout(
+        verdict.run.path,
+        verdict.run.sha || "main",
+      );
+    }),
+    // Only failing and running runs show their jobs, as in Fieldnotes.
+    ...[...state.main.map((verdict) => verdict.run), ...state.branches]
+      .filter((run) => ["failed", "running"].includes(run.state) && run.id)
+      .map(async (run) => {
+        try {
+          Object.assign(run, await runJobs(run));
+        } catch (error) {
+          run.jobsError = error.message;
+        }
+      }),
+  ]);
+  return { repo: GITHUB_REPO, ...state };
+}
+
+// Up to `LOG_TAIL` lines ending at the last `##[error]` marker, since the
+// end of a job's log is usually cleanup; the tail when there is no marker.
+function excerpt(lines) {
+  const kept = lines.filter((line) => !LOG_NOISE.test(line));
+  let end = kept.length;
+  for (let index = kept.length - 1; index >= 0; index -= 1) {
+    if (kept[index].includes("##[error]")) {
+      end = index + 1;
+      break;
+    }
+  }
+  return kept.slice(Math.max(0, end - LOG_TAIL), end);
+}
+
+// `gh run view --log-failed`, grouped by job and step.
+function failedLogs(log) {
+  const groups = new Map();
+  for (const line of log.split("\n")) {
+    if (!line) continue;
+    const [job = "", step = "", ...rest] = line.split("\t");
+    const key = `${job}\0${step}`;
+    if (!groups.has(key)) groups.set(key, { job, step, lines: [] });
+    groups
+      .get(key)
+      .lines.push(
+        rest.join("\t").replace(LOG_TIMESTAMP, "").replace(LOG_ANSI, ""),
+      );
+  }
+  return [...groups.values()].map((group) => ({
+    ...group,
+    lines: excerpt(group.lines),
+  }));
+}
+
+// Run id -> failed-step excerpts; a failed run's log never changes.
+const logCache = new Map();
+
+async function runLog(id) {
+  if (logCache.has(id)) return logCache.get(id);
+  const log = await capture(
+    "gh",
+    ["run", "view", id, "-R", GITHUB_REPO, "--log-failed"],
+    LOG_TIMEOUT_MS,
+  );
+  const steps = failedLogs(log);
+  logCache.set(id, steps);
+  return steps;
+}
+
+const towerResponse = cachedFeed(collectTower, CACHE_MS);
+const actionsResponse = cachedFeed(collectActions, ACTIONS_CACHE_MS);
+
+async function sendFeed(request, response, feed) {
+  try {
+    const body = JSON.stringify(await feed());
+    send(response, 200, request.method === "HEAD" ? "" : body);
+  } catch (error) {
+    send(
+      response,
+      503,
+      JSON.stringify({
+        snapshot: null,
+        fetchedAt: null,
+        stale: false,
+        error: error.message,
+      }),
+    );
   }
 }
 
@@ -144,20 +452,26 @@ const server = createServer(async (request, response) => {
   }
 
   if (url.pathname === "/api/tower") {
+    await sendFeed(request, response, towerResponse);
+    return;
+  }
+
+  if (url.pathname === "/api/actions") {
+    await sendFeed(request, response, actionsResponse);
+    return;
+  }
+
+  if (url.pathname === "/api/actions/log") {
+    const id = url.searchParams.get("run") ?? "";
+    if (!/^\d+$/.test(id)) {
+      send(response, 400, JSON.stringify({ error: "Expected a numeric run." }));
+      return;
+    }
     try {
-      const body = JSON.stringify(await towerResponse());
+      const body = JSON.stringify({ steps: await runLog(id), error: null });
       send(response, 200, request.method === "HEAD" ? "" : body);
     } catch (error) {
-      send(
-        response,
-        503,
-        JSON.stringify({
-          snapshot: null,
-          fetchedAt: null,
-          stale: false,
-          error: error.message,
-        }),
-      );
+      send(response, 502, JSON.stringify({ steps: [], error: error.message }));
     }
     return;
   }

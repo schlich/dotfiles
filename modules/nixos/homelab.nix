@@ -115,8 +115,10 @@ in
   # The browser feed is local-only; Tailscale Serve publishes it on a
   # separate HTTPS port for tailnet devices, leaving the existing public
   # Funnel on 443 untouched.
+  # Its CI panel reads GitHub Actions through gh, which authenticates with the
+  # token in schlich's ~/.config/gh/hosts.yml, as Fieldnotes does.
   systemd.services.ci-dashboard = {
-    description = "Read-only CI tower dashboard";
+    description = "Read-only CI dashboard";
     wantedBy = [ "multi-user.target" ];
     serviceConfig = {
       Type = "simple";
@@ -124,8 +126,9 @@ in
       WorkingDirectory = "/home/schlich/dotfiles";
       Environment = [
         "CI_REPO=/home/schlich/dotfiles"
+        "CI_GITHUB_REPO=schlich/dotfiles"
         "HOME=/home/schlich"
-        "PATH=${ciPackage}/bin:/run/current-system/sw/bin"
+        "PATH=${ciPackage}/bin:${pkgs.gh}/bin:/run/current-system/sw/bin"
         "PORT=4173"
       ];
       ExecStart = "${pkgs.nodejs}/bin/node ${ciDashboard}/share/ci-dashboard/server.mjs";

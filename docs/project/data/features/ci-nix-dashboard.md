@@ -26,6 +26,11 @@ generation running on the host that provides the dashboard.
 - On homelab, NixOS runs the packaged server as `schlich`, reading the
   `/home/schlich/dotfiles` JJ checkout. The service stays bound to loopback and
   Tailscale Serve exposes HTTPS on port 8443 to tailnet devices.
+- Its lead CI panel shows what Fieldnotes' CI panel shows, from GitHub Actions
+  through `gh`: each workflow's verdict on main with its failure streak, and the
+  latest failing or running run of each live branch. A row's detail lists its
+  failing or running jobs and, for a failed run, the lines before each failed
+  step's last error.
 - The dashboard summarizes host generation and release verification, topic state
   and locks, recent CI runs and phases, and trunk history.
 - The first screen is information-dense: five live KPIs, a 24-hour run

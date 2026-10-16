@@ -932,6 +932,68 @@
         font: 10px/1.45 var(--mono);
         overflow-wrap: anywhere;
       }
+      .actions-panel {
+        margin: 0 0 12px;
+      }
+      .actions-panel .feed-note {
+        margin: 0;
+      }
+      .run-title a {
+        color: inherit;
+        text-decoration: none;
+      }
+      .run-title a:hover,
+      .run-title a:focus-visible {
+        text-decoration: underline;
+      }
+      .run-about {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 11px;
+        overflow-wrap: anywhere;
+      }
+      .job-list {
+        display: grid;
+        gap: 5px;
+        margin: 10px 0 0;
+        padding: 0;
+        list-style: none;
+        font: 10px/1.45 var(--mono);
+      }
+      .job-list .job-name.bad {
+        color: var(--bad);
+      }
+      .job-list .job-name.warn {
+        color: var(--warn);
+      }
+      .job-list .job-took,
+      .job-list .job-quiet {
+        color: var(--faint);
+      }
+      .job-list .job-step {
+        padding-left: 14px;
+        color: var(--bad);
+      }
+      .log-block {
+        margin: 10px 0 0;
+      }
+      .log-block h3 {
+        margin: 0 0 4px;
+        color: var(--bad);
+        font: 600 10px/1.4 var(--mono);
+      }
+      .log-block pre {
+        margin: 0 0 8px;
+        padding: 8px 10px;
+        overflow-x: auto;
+        color: var(--muted);
+        background: var(--panel);
+        font: 10px/1.45 var(--mono);
+        white-space: pre;
+      }
+      .log-block .log-error {
+        color: var(--bad);
+      }
       .more-row {
         display: flex;
         justify-content: center;
@@ -1342,7 +1404,7 @@
             class="toolbar-button primary"
             id="refresh-button"
             type="button"
-            title="Fetch a fresh tower snapshot"
+            title="Fetch fresh GitHub Actions results and a tower snapshot"
           >
             <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
               <path
@@ -1406,6 +1468,27 @@
           aria-live="polite"
           hidden
         ></p>
+
+        <section class="panel actions-panel" aria-labelledby="actions-title">
+          <header class="panel-head">
+            <div class="panel-heading">
+              <p class="section-kicker">GITHUB ACTIONS</p>
+              <h2 id="actions-title">
+                <span aria-hidden="true">🚦</span> CI /
+                <span id="actions-repo">schlich/dotfiles</span>
+              </h2>
+              <span class="panel-subtitle" id="actions-subtitle"
+                >Each workflow's verdict on main, and failing or running runs on
+                live branches</span
+              >
+            </div>
+            <span class="run-status neutral" id="actions-summary">Waiting</span>
+          </header>
+          <p class="feed-note actions-note" id="actions-note" hidden></p>
+          <div class="run-list" id="actions-list">
+            <p class="empty-row">Waiting for GitHub Actions.</p>
+          </div>
+        </section>
 
         <section class="overview" aria-label="Current CI metrics">
           <div class="metric" id="metric-active" data-tone="good">
@@ -1743,6 +1826,12 @@
           query: "",
           runLimit: 14,
           imported: false,
+          actions: null,
+          actionsError: null,
+          actionsStale: false,
+          actionsFetchedAt: null,
+          // Run id -> failed-step excerpts, or a promise while one loads.
+          logs: new Map(),
         };
         const REFRESH_MS = 15_000;
 
@@ -2155,6 +2244,238 @@
             : '<li class="rail-empty">No trunk changes in this snapshot.</li>';
         }
 
+        // GitHub Actions, as Fieldnotes' CI panel shows them.
+        const actionsTones = {
+          failed: "bad",
+          running: "warn",
+          passed: "good",
+          retired: "neutral",
+        };
+
+        function ago(iso) {
+          return durationFrom(Date.parse(iso));
+        }
+
+        function verdictLabel(verdict) {
+          if (verdict.state === "retired") return "retired";
+          if (verdict.state === "failed" && verdict.streak > 1)
+            return `failing ×${verdict.streak}${verdict.streakOpen ? "+" : ""}`;
+          if (verdict.state === "running")
+            return `running ${ago(verdict.run.created).replace(" ago", "")}`;
+          return `${verdict.state} ${ago(verdict.run.created)}`;
+        }
+
+        function jobsMarkup(run) {
+          if (run.jobsError)
+            return `<p class="summary-lines">Jobs unavailable: ${escapeHTML(run.jobsError)}</p>`;
+          if (!run.jobs) return "";
+          const rows = run.jobs.map((job) => {
+            const took =
+              job.started && job.completed
+                ? `${Math.max(0, Math.round((Date.parse(job.completed) - Date.parse(job.started)) / 1000))}s`
+                : "running";
+            const tone = job.conclusion === null ? "warn" : "bad";
+            const marker = job.conclusion === null ? "●" : "✗";
+            const steps = job.failedSteps
+              .map((step) => `<li class="job-step">↳ ${escapeHTML(step)}</li>`)
+              .join("");
+            return `<li><span class="job-name ${tone}">${marker} ${escapeHTML(job.name)}</span> <span class="job-took">${escapeHTML(took)}</span></li>${steps}`;
+          });
+          const quiet = Object.entries(run.quiet || {})
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([name, count]) => `${count} ${name}`)
+            .join(", ");
+          if (quiet)
+            rows.push(`<li class="job-quiet">${escapeHTML(quiet)}</li>`);
+          return rows.length
+            ? `<ul class="job-list" aria-label="Jobs">${rows.join("")}</ul>`
+            : "";
+        }
+
+        function logMarkup(id) {
+          const entry = state.logs.get(id);
+          if (!entry || entry instanceof Promise)
+            return '<p class="summary-lines">Loading the failed steps…</p>';
+          if (entry.error)
+            return `<p class="summary-lines">Log unavailable: ${escapeHTML(entry.error)}</p>`;
+          if (!entry.steps.length)
+            return '<p class="summary-lines">GitHub returned no failed-step log.</p>';
+          return entry.steps
+            .map((step) => {
+              const lines = step.lines
+                .map((line) =>
+                  /##\[error\]|error/i.test(line)
+                    ? `<span class="log-error">${escapeHTML(line)}</span>`
+                    : escapeHTML(line),
+                )
+                .join("\n");
+              return `<h3>${escapeHTML(step.job)} ▸ ${escapeHTML(step.step)}</h3><pre>${lines}</pre>`;
+            })
+            .join("");
+        }
+
+        async function loadLog(id) {
+          if (state.logs.has(id)) return;
+          const pending = fetch(
+            `/api/actions/log?run=${encodeURIComponent(id)}`,
+            { cache: "no-store" },
+          )
+            .then((response) => response.json())
+            .catch((error) => ({ steps: [], error: error.message }));
+          state.logs.set(id, pending);
+          state.logs.set(id, await pending);
+          const block = document.querySelector(`[data-log-run="${id}"]`);
+          if (block) block.innerHTML = logMarkup(id);
+        }
+
+        function actionsRow({
+          key,
+          title,
+          state: rowState,
+          label,
+          lines,
+          run,
+          verdict,
+        }) {
+          const tone = actionsTones[rowState] || "neutral";
+          const titleMarkup = run.url
+            ? `<a href="${escapeHTML(run.url)}" target="_blank" rel="noopener noreferrer">${escapeHTML(title)}</a>`
+            : escapeHTML(title);
+          const fields = [
+            ["Workflow", run.workflow],
+            ["File", run.path || "—"],
+            ...(verdict
+              ? [
+                  ["About", verdict.about || "—"],
+                  ["On main", verdictLabel(verdict)],
+                ]
+              : []),
+            ["Branch", run.branch],
+            ["Commit", run.sha.slice(0, 12) || "—"],
+            ["Title", run.title || "—"],
+            [
+              "Run",
+              `#${run.number}, attempt ${run.attempt}, from ${run.event || "unknown"}`,
+            ],
+            ["Started", stamp(Date.parse(run.created), { year: "numeric" })],
+            ["Result", run.conclusion || run.status || "—"],
+          ];
+          const log =
+            run.state === "failed" && run.id
+              ? `<div class="log-block" data-log-run="${run.id}">${logMarkup(String(run.id))}</div>`
+              : "";
+          return `<article class="run-row" data-key="${escapeHTML(key)}">
+          <div class="run-main">
+            <time class="run-time" datetime="${escapeHTML(run.created || "")}" title="${escapeHTML(stamp(Date.parse(run.created), { year: "numeric" }))}">${escapeHTML(ago(run.created))}</time>
+            <div class="run-content">
+              <div class="run-title-line"><span class="run-title">${titleMarkup}</span><span class="run-status ${tone}">${escapeHTML(label)}</span></div>
+              ${lines.map((line) => `<div class="run-about">${escapeHTML(line)}</div>`).join("")}
+            </div>
+          </div>
+          <details class="run-detail" ${log ? `data-run="${run.id}"` : ""}>
+            <summary>Run detail · #${escapeHTML(run.number)}</summary>
+            <div class="detail-body">
+              <dl class="detail-grid">${fields.map(([name, value]) => `<dt>${escapeHTML(name)}</dt><dd>${escapeHTML(value)}</dd>`).join("")}</dl>
+              ${jobsMarkup(run)}${log}
+            </div>
+          </details>
+        </article>`;
+        }
+
+        function renderActions() {
+          const data = state.actions;
+          if (data) $("#actions-repo").textContent = data.repo;
+          const note = $("#actions-note");
+          const problem = state.actionsError
+            ? state.actionsStale || data
+              ? `GitHub could not refresh; showing results from ${durationFrom(state.actionsFetchedAt)}. ${state.actionsError}`
+              : `Cannot read GitHub Actions: ${state.actionsError}`
+            : "";
+          note.textContent = problem;
+          note.dataset.kind = data ? "warning" : "error";
+          note.hidden = !problem;
+          if (!data) return;
+          const open = new Set(
+            [...document.querySelectorAll("#actions-list details[open]")].map(
+              (details) => details.closest(".run-row")?.dataset.key,
+            ),
+          );
+          const rows = [
+            ...data.main.map((verdict) => {
+              const run = verdict.run;
+              const source = run.path.split("/").pop() || run.path;
+              return {
+                key: `main/${verdict.workflow}`,
+                title: `${verdict.workflow} on main`,
+                state: verdict.state,
+                label: verdictLabel(verdict),
+                lines: [
+                  verdict.about ? `${verdict.about} · ${source}` : source,
+                  verdict.state === "retired"
+                    ? `Removed from main; last run ${run.state} ${ago(run.created)}`
+                    : `↳ ${run.title}`,
+                ],
+                run,
+                verdict,
+              };
+            }),
+            ...data.branches.map((run) => ({
+              key: `${run.branch}/${run.workflow}`,
+              title: `${run.workflow} on ${run.branch}`,
+              state: run.state,
+              label:
+                run.state === "running"
+                  ? `running ${ago(run.created).replace(" ago", "")}`
+                  : `${run.state} ${ago(run.created)}`,
+              lines: [`↳ ${run.title}`],
+              run,
+            })),
+          ];
+          $("#actions-list").innerHTML = rows.length
+            ? rows.map(actionsRow).join("")
+            : '<p class="empty-row">No recent workflow runs.</p>';
+          document.querySelectorAll("#actions-list .run-row").forEach((row) => {
+            const details = row.querySelector("details");
+            if (open.has(row.dataset.key)) details.open = true;
+            details.addEventListener("toggle", () => {
+              if (details.open && details.dataset.run)
+                loadLog(details.dataset.run);
+            });
+            if (details.open && details.dataset.run)
+              loadLog(details.dataset.run);
+          });
+          const states = rows.map((row) => row.state);
+          const failing = states.filter((value) => value === "failed").length;
+          const summary = failing
+            ? [`CI ${failing} failing`, "bad"]
+            : states.includes("running")
+              ? ["CI running", "warn"]
+              : states.length
+                ? ["CI passing", "good"]
+                : ["No runs", "neutral"];
+          $("#actions-summary").textContent = summary[0];
+          $("#actions-summary").className = `run-status ${summary[1]}`;
+        }
+
+        async function refreshActions() {
+          try {
+            const response = await fetch("/api/actions", { cache: "no-store" });
+            const payload = await response.json();
+            if (!payload.snapshot)
+              throw new Error(
+                payload.error || `Local feed returned ${response.status}.`,
+              );
+            state.actions = payload.snapshot;
+            state.actionsFetchedAt = payload.fetchedAt;
+            state.actionsStale = payload.stale;
+            state.actionsError = payload.error;
+          } catch (error) {
+            state.actionsError = error.message;
+            state.actionsStale = Boolean(state.actions);
+          }
+          renderActions();
+        }
+
         function renderMetrics() {
           const runs = asList(state.data?.runs);
           const statuses = runs.map(runState);
@@ -2473,9 +2794,10 @@
           } catch {}
         }
 
-        $("#refresh-button").addEventListener("click", () =>
-          refresh({ manual: true }),
-        );
+        $("#refresh-button").addEventListener("click", () => {
+          refresh({ manual: true });
+          refreshActions();
+        });
         $("#theme-button").addEventListener("click", () =>
           setTheme(
             document.documentElement.dataset.theme === "dark"
@@ -2526,9 +2848,11 @@
             setTheme(savedTheme);
         } catch {}
         refresh();
+        refreshActions();
         setInterval(updateAge, 1000);
         setInterval(() => {
           if (!state.imported) refresh();
+          refreshActions();
         }, REFRESH_MS);
       })();
     </script>
