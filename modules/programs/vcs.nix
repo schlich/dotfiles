@@ -31,6 +31,8 @@ let
   };
 in
 {
+  imports = [ ./ci.nix ];
+
   # Other modules reach the wrapped git through this option.
   programs.git.package = git;
   programs.git.settings = {
@@ -108,7 +110,7 @@ in
     jj
     pkgs.meld
     ci.jj-describe
-    ci.ci
+    config.dotfiles.ci.package
     (pkgs.writeNuScriptBin "jj-dashboard" (builtins.readFile ../../jj/dashboard.nu))
     (pkgs.writeNuScriptBin "tangled-init" (builtins.readFile ../../jj/tangled-init.nu))
     ci.context-status

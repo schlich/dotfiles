@@ -22,9 +22,12 @@ let
       exec ${iwe}/bin/iwec --transport stdio
     }
   '';
-  # The ci input's MCP server, which starts the same `ci` launcher as the
-  # shell; with xs it announces its jobs on cross.stream.
-  ciMcp = inputs.ci.packages.${pkgs.stdenv.hostPlatform.system}.ci-mcp.override { inherit xs; };
+  # The ci input's MCP server, which starts the same `ci` as the shell; with
+  # xs it announces its jobs on cross.stream.
+  ciMcp = inputs.ci.packages.${pkgs.stdenv.hostPlatform.system}.ci-mcp.override {
+    inherit xs;
+    ci = config.dotfiles.ci.package;
+  };
   sudoplz = pkgs.callPackage ./sudoplz.nix { };
   # Hides the 2026-07-28 MCP handshake from servers that claim it but
   # answer tools/list without its required fields (atuin 18.21 and 18.23).
@@ -33,6 +36,8 @@ let
   );
 in
 {
+  imports = [ ../../programs/ci.nix ];
+
   home.packages = [
     # The jj, nix and chrome-devtools servers start through npx and uvx.
     pkgs.nodejs

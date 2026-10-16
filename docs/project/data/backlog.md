@@ -18,9 +18,13 @@ write a plan and link the plan instead.*
 
 [Plan the first feature](backlog/plan-first-feature.md)
 
+[Profile flake-check evaluation](backlog/profile-check-evaluation.md)
+
 ## Medium
 
 [Import the existing backlog](backlog/import-existing-backlog.md)
+
+[Show landing times over time](backlog/ci-times-view.md)
 
 ## Low
 

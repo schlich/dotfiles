@@ -18,5 +18,6 @@ renames this file to the version number and starts a fresh one.*
 ## Added
 
 - [Reactive CI and Nix dashboard](../features/ci-nix-dashboard.md)
+- [Traces of ci landings](../features/ci-traces.md)
 
 ## Fixed
