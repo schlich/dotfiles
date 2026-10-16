@@ -277,6 +277,16 @@ decisions, how-tos, and personal notes.
   configuration layer. Codex Desktop rewrites `$CODEX_HOME/config.toml`, so
   static Codex defaults belong on its wrapped package; Home Manager can still
   manage non-mutating skills and context files.
+- When nixpkgs lacks a package or ships an older version than a task needs,
+  run `npr <attribute>` (add `--days 60` for a slow-moving package) before
+  proposing a workaround such as an extra flake input, an overlay, an
+  override, or a version pin, and before answering when an update will reach
+  nixpkgs. It lists that package's recent nixpkgs pull requests and which
+  channels each has reached. Report the result: an update already in
+  `nixpkgs-unstable` or `nixos-unstable` usually means updating the nixpkgs
+  input is the fix, and an open pull request may make waiting better than a
+  workaround. Only titles starting with `<attribute>:` are the package's own
+  pull requests; the search also returns pull requests that merely mention it.
 
 # Jujutsu
 

@@ -89,6 +89,21 @@
   apply system-owned changes, including `home.packages` because
   `home-manager.useUserPackages = true`.
 
+## Workarounds for nixpkgs
+
+- When this repository takes a package from another flake input, builds it
+  itself, or overrides it because nixpkgs lags or lacks it, declare
+  `dotfiles.nixpkgsWatch.<attribute>` in the same module, with `version` set
+  to the version the workaround provides and `reason` naming what to remove.
+  Remove the entry with the workaround. `modules/home/nixpkgs-watch.nix`
+  documents the option.
+- A build warning starting "nixpkgs now ships" means the locked nixpkgs has
+  caught up: propose removing that workaround as its own topic.
+- `nixpkgs-watch` prints the last daily npr report (open pull requests, ones
+  that reached unstable, failures); `nixpkgs-watch check` refreshes it. Read
+  it when the user asks about a watched package or before updating the
+  nixpkgs input.
+
 ## Privileged command approval
 
 - When a command needs elevated privileges, request tool-level escalation with

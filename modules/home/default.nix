@@ -5,6 +5,7 @@
 {
   imports = [
     ./nix.nix
+    ./nixpkgs-watch.nix
     ./retired-files.nix
     ./session.nix
   ];

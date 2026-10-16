@@ -298,6 +298,7 @@
       ".local/state/niri"
       ".local/state/nix"
       ".local/state/nix-output-monitor"
+      ".local/state/nixpkgs-watch"
       ".local/state/noctalia"
       ".local/state/openai-codex"
       ".local/state/opencode"

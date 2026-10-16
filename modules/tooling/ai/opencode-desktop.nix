@@ -72,4 +72,10 @@ lib.mkIf (config.dotfiles.alternates || config.dotfiles.primary.desktopAgent == 
 
   xdg.configFile."autostart/opencode-desktop.desktop".source =
     "${opencode-desktop}/share/applications/ai.opencode.desktop.desktop";
+
+  # The CLI's bumps carry the version; pkgs.opencode-desktop follows them.
+  dotfiles.nixpkgsWatch.opencode = {
+    inherit (opencode) version;
+    reason = "use pkgs.opencode-desktop in modules/tooling/ai/opencode-desktop.nix and drop the opencode input with its build overrides";
+  };
 }

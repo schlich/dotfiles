@@ -147,6 +147,12 @@
       url = "github:Mic92/nixbot";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # Which nixpkgs pull requests touch a package and which channels they
+    # reached; modules/home/nixpkgs-watch.nix runs it. Not in nixpkgs.
+    npr = {
+      url = "github:manic-systems/npr";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     # The `pst` Nushell module (OSC 7501 program status) that ci reports its
     # phases with and the shell imports; the ci input follows it.
     osc7501-nu = {
