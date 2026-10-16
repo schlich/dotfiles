@@ -328,15 +328,20 @@ in
     plugins.prefer-nushell = preferNushellGuard;
     plugins.agent-trust = agentTrust;
     plugins.nushell-display = nushellDisplay;
-    # Draw each Nushell evaluation as a card titled by its `# comment`, and
-    # stream a `job-log` job's log into its card and its Monitor's.
-    plugins.nushell-cards = ./claude-plugins/nushell-cards;
     plugins.context-status = contextStatusHandoff;
     plugins.background-tasks = backgroundTasks;
     plugins.prefer-nix-mcp = preferNixMcp;
     # IWE memory: inert outside a workspace whose root has a MEMORY.md policy.
     plugins.iwe = "${inputs.iwe-skills}";
   };
+
+  # Draw each Nushell evaluation as a card titled by its `# comment`, and
+  # stream a `job-log` job's log into its card and its Monitor's. Claude Code
+  # loads a plugin folder under ~/.claude/skills, as programs.claude-code.plugins
+  # places them, but that option links each top-level entry to the store on
+  # its own, which leaves the `types` contract outside the plugin's folder and
+  # gets the plugin refused. Link the folder whole instead.
+  home.file.".claude/skills/nushell-cards".source = ./claude-plugins/nushell-cards;
 
   # Claude Code only reads keybindings.json, so it can be managed. The
   # terminal takes Ctrl+Enter for fullscreen, so Alt+Enter also sends now.
