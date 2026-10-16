@@ -1,7 +1,8 @@
 name: nix-ci
-# Build every flake check and verify formatting for topic branches, pull
-# requests, and main. Impact declarations live in the landing machine's ci
-# log, so `ci land` classifies the topic there rather than here.
+# Build every flake check and verify formatting for topic branches and pull
+# requests; main, which `ci land` already cleared, builds only remoteChecks.
+# Impact declarations live in the landing machine's ci log, so `ci land`
+# classifies the topic there rather than here.
 on:
   pull_request:
   # `ci land --gate github` pushes the topic branch and waits for these
@@ -16,10 +17,17 @@ permissions:
   id-token: write
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Landings reach main every few minutes and a run with the system closures
+  # takes most of an hour, so cancelling left main without a finished run.
+  # On main the running build finishes; GitHub keeps only the newest pending
+  # push, so the next run covers the latest landing.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 jobs:
   checkmate:
     name: Checkmate formatting and unit-test skeleton
+    # Only `ci land` pushes main, after Prek and its local clearance passed
+    # that exact commit, so a push to main skips the checks again here.
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -81,6 +89,8 @@ jobs:
   check:
     name: flake check (${{ matrix.check }})
     needs: discover
+    # ci land's local clearance already built these on main's exact commit.
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -119,13 +129,16 @@ jobs:
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
+      # A push to main skips the matrix, which ci land cleared before pushing.
       - name: Require every flake check to pass
         env:
           DISCOVER: ${{ needs.discover.result }}
           CHECK: ${{ needs.check.result }}
+          LANDED: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: |
-          echo "discover: $DISCOVER, checks: $CHECK"
-          [[ "$DISCOVER" == success && "$CHECK" == success ]]
+          echo "discover: $DISCOVER, checks: $CHECK, landed main: $LANDED"
+          [[ "$DISCOVER" == success ]]
+          [[ "$CHECK" == success || ( "$LANDED" == true && "$CHECK" == skipped ) ]]
   failure-review:
     name: CI failure architecture review
     needs: [checkmate, discover, check, checks]
