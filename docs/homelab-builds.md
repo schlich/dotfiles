@@ -54,13 +54,68 @@ After the Funnel fix is built and explicitly approved for activation on
 homelab:
 
 1. Publish a topic with `ci dispatch` when delivery is requested.
-1. Start `flake-checks.yml` manually on that topic's `jj-*` branch in Tangled.
+1. Start `flake-checks.yml` on the dispatched commit, as described in
+   [Starting a spindle run](#starting-a-spindle-run).
 1. Inspect the step logs for that exact commit. Require a passing full check
    set before adopting spindle clearance routinely.
 1. Deliver with `ci land --clearance spindle`. If trunk moves and landing
-   rewrites the head, start another workflow for the new commit; clearance
-   for the old commit cannot clear the new one.
+   rewrites the head, start another run for the new commit; clearance for
+   the old commit cannot clear the new one.
 1. Use `ci park` only after landing succeeds. System activation is separate.
+
+## Starting a spindle run
+
+Pushes never start `flake-checks.yml`, because its `when` accepts only manual
+triggers. Tangled's web interface cannot start one either. As of 2026-10-16,
+the signed-in pipelines and commit pages on tangled.org have no control for
+it. In the pinned `tangled` input, the appview sends
+`sh.tangled.ci.triggerPipeline` in only two cases. Retrying an existing
+pipeline replays that pipeline's own commit. "Run CI" on a fork-based pull
+request sends a `pull_request` trigger, which this workflow ignores.
+
+The spindle accepts the call directly. Its `sh.tangled.ci.triggerPipeline`
+procedure, given a `manual` trigger, runs the named workflows at any commit
+the knot has. A manual run skips every `when` constraint, so the workflow's
+`branch` list does not limit which commits can run. The call needs a
+service-auth token from the spindle owner's PDS, issued for the spindle's DID
+(`did:web:homelab.tail338351.ts.net`), and the token needs the owner's app
+password. The user therefore runs this step; an agent cannot.
+
+Run this from the topic's workspace after `ci dispatch`, while `@` is still
+the commit that `ci status` reports as published:
+
+```nu
+let pds = "https://tngl.sh"
+let spindle = "homelab.tail338351.ts.net"
+let password = (input --suppress-output "App password for schlich.tngl.sh: ")
+let session = (
+  http post --content-type application/json
+    $"($pds)/xrpc/com.atproto.server.createSession"
+    {identifier: "schlich.tngl.sh", password: $password}
+)
+let token = (
+  http get --headers {Authorization: $"Bearer ($session.accessJwt)"}
+    $"($pds)/xrpc/com.atproto.server.getServiceAuth?aud=did:web:($spindle)&lxm=sh.tangled.ci.triggerPipeline"
+  | get token
+)
+let sha = (jj log --no-graph -r @ -T commit_id)
+(
+  http post --content-type application/json
+    --headers {Authorization: $"Bearer ($token)"}
+    $"https://($spindle)/xrpc/sh.tangled.ci.triggerPipeline"
+    {
+      repo: "did:plc:3ta3pjip7mu36b7dnznhoyri"
+      trigger: {"$type": "sh.tangled.ci.trigger#manual", sha: $sha}
+      workflows: ["flake-checks.yml"]
+    }
+)
+```
+
+The response gives the new pipeline's AT-URI. Its record key is the pipeline
+ID in `https://tangled.org/schlich.tngl.sh/dotfiles/pipelines/ID/workflow/flake-checks.yml`.
+This call is built from the pinned source and has not yet been run against
+homelab. If the spindle refuses it, keep local clearance; spindle clearance
+has no other entry point until Tangled adds one.
 
 The workflow limits evaluation to two workers at 3072 MiB each. The local
 clearance implementation records that a large Den evaluation may need about

@@ -1,8 +1,11 @@
 name: Nix flake checks
-# Runs only when started by hand. `ci land` gates on the same command built
+# Runs only on a manual trigger. `ci land` gates on the same command built
 # locally by default; on every push, the homelab spindle's serial queue filled
-# with 30-minute cold-store timeouts and never passed a run. Start it manually
-# on a `jj-*` branch before `ci land --gate spindle`.
+# with 30-minute cold-store timeouts and never passed a run. tangled.org has no
+# control that starts a manual run. Before `ci land --clearance spindle`, start
+# one with the spindle's triggerPipeline call in docs/homelab-builds.md
+# ("Starting a spindle run"). A manual run skips `when`, so `branch` below does
+# not restrict it.
 when:
   - event: ["manual"]
     branch: ["main", "jj-*"]
