@@ -61,6 +61,7 @@ const page = extract((state) => {
   const since = perf.now() - 3000;
   return {
     load: perf.timeOrigin,
+    visibility: doc.visibilityState,
     feed: one("#feed-state")?.dataset.state ?? "",
     label: text("#connection-label"),
     note: {
@@ -160,6 +161,13 @@ const holds = (check: (current: Page) => boolean) => () =>
 // until one arrives.
 const shown = (check: (current: Page) => boolean) =>
   holds((current) => current.feed === "offline" || check(current));
+
+// The exploration never sends the dashboard behind another tab. A hidden page
+// draws no frames, so every later quiescence check and click would time out
+// while the page sits idle, untested, for the rest of the run.
+export const dashboardStaysInFront = always(
+  holds(({ visibility }) => visibility === "visible"),
+);
 
 // The feed indicator and its label agree (L1420-1429).
 export const feedStateLabelled = always(
@@ -405,6 +413,15 @@ const clickable = extract((state) => {
 export const clicks = actions(() =>
   (clickable.current ?? []).map((target) => ({ Click: target })),
 );
+// Whether the focused element is one the clicks leave alone, which Enter or
+// Space would press all the same: a GitHub link, which opens a new tab in
+// front of the dashboard, or the file input.
+const focusLeavesPage = extract(
+  (state) =>
+    state.document.activeElement?.matches(
+      "a[target=_blank], input[type=file]",
+    ) ?? false,
+);
 
 const chooseLogFilter = registerCustomAction(
   "chooseLogFilter",
@@ -430,8 +447,16 @@ export const pageActions = weighted([
     ),
   ],
   [10, actions(() => [0, 0.5, 1].map((fraction) => scrollLog(fraction)))],
-  // Tab, Enter, Space, and Esc reach summaries and buttons from the keyboard.
-  [20, actions(() => [9, 13, 32, 27].map((code) => ({ PressKey: { code } })))],
+  // Tab, Enter, Space, and Esc reach summaries and buttons from the keyboard;
+  // only Tab and Esc while focus is on what the clicks leave alone.
+  [
+    20,
+    actions(() =>
+      (focusLeavesPage.current ? [9, 27] : [9, 13, 32, 27]).map((code) => ({
+        PressKey: { code },
+      })),
+    ),
+  ],
 ]);
 export const pageMoves = weighted([
   [30, scroll],

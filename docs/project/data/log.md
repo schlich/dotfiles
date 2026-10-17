@@ -6,6 +6,9 @@ to the current day's group.
 
 ## 2026-10-16
 
+- **Bug**:
+  [The CI dashboard's exploration hid the page behind a GitHub tab](bugs/ci-dashboard-exploration-hides-the-page.md);
+  its keyboard actions no longer press links that open new tabs.
 - **Delivery**: Added Stately's hosted MCP server to shared AI client
   configuration; it is available on `main`.
 - **Delivery**: [Reactive CI and Nix dashboard](features/ci-nix-dashboard.md)

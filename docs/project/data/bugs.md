@@ -13,3 +13,5 @@ generated:
 Fix. No `status` means open; `status: done` means fixed, `status: cancelled`
 means closed without a fix. Bugs stay listed here either way — the status chip
 tells them apart.*
+
+[Bug: the CI dashboard's exploration hides the page behind a GitHub tab](bugs/ci-dashboard-exploration-hides-the-page.md)
