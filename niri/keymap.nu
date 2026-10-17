@@ -1,13 +1,15 @@
 # An emoji keyboard of the niri binds (Mod+Slash, `niri-desk keymap`).
 #
 # Reads the `binds { }` block of config.kdl, groups binds into layers by their
-# modifiers, and draws one layer at a time as an ANSI keyboard: the main block,
-# the navigation cluster, and the numpad that holds the Johnny Decimal grid.
-# Each bound key shows the emoji of its action from keymap-emoji.nuon, and a
-# legend below names every bind of the layer, including mouse and media binds
-# that have no keycap. A key bound twice in one layer shows 💥.
+# modifiers, and draws one layer per `tui` page as an ANSI keyboard: the main
+# block, the navigation cluster, and the numpad that holds the Johnny Decimal
+# grid. Each bound key shows the emoji of its action from keymap-emoji.nuon,
+# and a legend below names every bind of the layer, including mouse and media
+# binds that have no keycap. A key bound twice in one layer shows 💥.
 #
-# Tab or the arrows switch layers, a digit picks one, and q or Esc closes.
+# A digit or [ ] picks a layer, the arrows move through its legend, / filters
+# every layer's legend by title, and q or Esc closes (Esc first leaves the
+# filter).
 #
 # `niri-keymap hints` is the always-on counterpart: it names the focus context
 # (the bar's mode) and the few binds that matter there, for the status bar.
@@ -40,8 +42,6 @@ const style = {
   bound: { fg: "#e6e6e6", bg: "#3b4252" }
   free: { fg: "#5c6370", bg: "#23272e" }
   held: { fg: "#1d2021", bg: "#e5c07b", attr: b }
-  tab: { fg: "#7f8490" }
-  active: { fg: "#1d2021", bg: "#61afef", attr: b }
 }
 
 def paint [name: string, text: string] {
@@ -147,40 +147,59 @@ def render-keyboard [keys: list, layer: list, mods: list] {
   } | flatten
 }
 
-def render-legend [layer: list, width: int] {
-  let column = 38
-  let count = ([1 ($width // $column)] | math max)
-  let entries = (
-    $layer | sort-by sym | each {|bind|
-      let key = ($bind.key | str replace 'WheelScroll' 'Wheel')
-      let text = $"($key | fill --width 6) ($bind.title)" | str substring --grapheme-clusters 0..<($column - 4)
-      $"($bind.emoji) ($text | fill --width ($column - 3))"
-    }
-  )
-  let height = (($entries | length) / $count | math ceil)
-  0..<$height | each {|row|
-    0..<$count | each {|col| $entries | get --optional ($col * $height + $row) | default '' } | str join
+def keymap-layers [config: path] {
+  let binds = (load-binds $config (open $emoji_file))
+  layer-names $binds | each {|name|
+    let layer = ($binds | where layer == $name)
+    { name: $name, mods: $layer.0.mods, binds: $layer }
   }
 }
 
-def render [layers: list, index: int, keys: list] {
-  let current = ($layers | get $index)
-  let width = (term size).columns
-  let tabs = (
-    $layers | enumerate | each {|l|
-      paint (if $l.index == $index { 'active' } else { 'tab' }) $" ($l.index + 1) ($l.item.name) "
-    } | str join ' '
-  )
-  let needed = ($keys | get 0 | get cols | math sum)
-  [
-    $tabs
-    (paint frame "Tab/←→ switch layer · 1-9 pick · q/Esc close")
-    ''
-    ...(render-keyboard $keys $current.binds $current.mods)
-    ''
-    ...(if $width < $needed { [(paint frame $"Widen the window to ($needed) columns to see the whole keyboard.") ''] } else { [] })
-    ...(render-legend $current.binds $width)
-  ] | str join "\n"
+# The overlay as a `tui` value: a page per layer, so tui's own 1-9 and [ ]
+# switch layers (a hook cannot move a highlight or change the page). The
+# keyboard is a preview of the legend's highlighted bind, titled with its
+# chord and painted to the pane's $env.TUI_WIDTH. The search box sits in the
+# chrome, so one query filters the legend of every page.
+#
+# tui 0.116 appends a generic tail to the status bar; its `focus:` field is
+# the only mode indicator a hook-free TUI can show, so the legends are named
+# normal-N and the search box filter, and `page:` names the layer.
+def keymap-tui [layers: list, keys: list] {
+  let needed = ($keys | each { get cols | math sum } | math max)
+  $layers | enumerate | reduce --fold (
+    tui label --title "niri keymap"
+    | tui search --id filter --bind / --columns [title] --placeholder "/ filter binds by title"
+  ) {|layer, ui|
+    let number = $layer.index + 1
+    let current = $layer.item
+    let legend = $"normal-($number)"
+    let rows = (
+      $current.binds | sort-by sym | each {|bind|
+        {
+          name: ($bind.mods | append $bind.key | str join '+')
+          key: $"($bind.emoji) ($bind.key | str replace 'WheelScroll' 'Wheel')"
+          title: $bind.title
+        }
+      }
+    )
+    $ui | tui tab $"($number) ($current.name)" [
+      (
+        tui split --vertical --sizes [15 1fr] [
+          (
+            tui preview --from $legend {|bind|
+              let width = ($env.TUI_WIDTH? | default $needed)
+              [
+                (if $width < $needed { paint frame $"Widen the window to ($needed) columns to see the whole keyboard." } else { '' })
+                ...(render-keyboard $keys $current.binds $current.mods)
+              ] | str join "\n"
+            }
+          )
+          ($rows | tui table --id $legend --columns [key title])
+        ]
+      )
+    ]
+  }
+  | tui label --status "1-9 [ ] layer · ↑↓ bind · / filter, Esc back · q/Esc close"
 }
 
 # The file niri loads: $NIRI_CONFIG, else the user's config.kdl if there is
@@ -252,25 +271,5 @@ def "main hints" [--once, config?: path] {
 
 def main [config?: path] {
   let config = ($config | default (default-config))
-  let emoji = (open $emoji_file)
-  let binds = (load-binds $config $emoji)
-  let layers = (layer-names $binds | each {|name|
-    let layer = ($binds | where layer == $name)
-    { name: $name, mods: $layer.0.mods, binds: $layer }
-  })
-  let keys = (parse-rows)
-
-  mut index = 0
-  loop {
-    print --no-newline $"(ansi clear_screen)(ansi home)(render $layers $index $keys)"
-    let event = (input listen --types [key])
-    let count = ($layers | length)
-    match [$event.code ($event.modifiers | is-not-empty)] {
-      ['q' _] | ['esc' _] => { break }
-      ['backtab' _] | ['left' _] | ['tab' true] => { $index = ($index + $count - 1) mod $count }
-      ['tab' _] | ['right' _] => { $index = ($index + 1) mod $count }
-      [$digit _] if ($digit =~ '^[1-9]$') and ($digit | into int) <= $count => { $index = ($digit | into int) - 1 }
-      _ => {}
-    }
-  }
+  keymap-tui (keymap-layers $config) (parse-rows) | tui run | ignore
 }
