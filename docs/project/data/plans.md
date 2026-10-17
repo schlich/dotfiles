@@ -17,6 +17,7 @@ moves them.*
 
 ## Active
 
+[Add OpenCode desktop client](plans/20261017-add-opencode-desktop.md)
 [Run MCP-NixOS with Nix](plans/20261016-mcp-nixos-nix-launch.md)
 [Adopt Home Manager mutable settings for app-owned config](plans/20261017-mutable-settings.md)
 

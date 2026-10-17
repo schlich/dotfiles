@@ -29,6 +29,7 @@
     ../../../modules/tooling/ai/plugins.nix
     ../../../modules/tooling/ai/t3code.nix
     ../../../modules/tooling/ai/opencode.nix
+    ../../../modules/tooling/ai/opencode-desktop.nix
     ../../../modules/tooling/ai/claude-desktop.nix
     ../../../modules/tooling/ai/codex.nix
     ../../../modules/tooling/ai/copilot.nix
