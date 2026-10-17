@@ -114,6 +114,7 @@ in
     xdg-user-dirs
     bubblewrap
     antigravity-cli
+    eilmeldung
     acreomApp
     handyApp
     super-productivity
