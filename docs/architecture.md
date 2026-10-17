@@ -75,7 +75,7 @@ with the app's writable runtime configuration.
 
 These stay in Home Manager:
 
-- Agent clients (Claude Code, Codex, Copilot, OpenCode, Zed): their
+- Agent clients (Claude Code, Codex, Copilot, OpenCode): their
   configuration directories are runtime state.
 - GnuPG: `GNUPGHOME` also holds the keys.
 - gh's `config.yml` and `hosts.yml`, which gh writes itself.

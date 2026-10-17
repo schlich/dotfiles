@@ -31,7 +31,7 @@
       home.backupFileExtension = "hm-backup";
       dotfiles.primary = {
         terminal = "ghostty";
-        editor = "zed";
+        editor = "helix";
         ai = "opencode";
         desktopAgent = "t3code";
       };
