@@ -29,8 +29,12 @@ let
         ];
       };
       nix = {
-        command = "uvx";
-        args = [ "mcp-nixos" ];
+        command = "nix";
+        args = [
+          "run"
+          "github:utensils/mcp-nixos"
+          "--"
+        ];
       };
       nushell = {
         command = "nu";
