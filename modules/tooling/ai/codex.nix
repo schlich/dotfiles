@@ -38,6 +38,11 @@ in
         input = "path";
         supports_ssh = false;
       };
+      # The wrapper's `secretspec run` puts STITCH_API_KEY in Codex's environment.
+      mcp_servers.stitch = {
+        url = "https://stitch.googleapis.com/mcp";
+        env_http_headers."X-Goog-Api-Key" = "STITCH_API_KEY";
+      };
     };
     inherit skills;
     context = ./global-agent-instructions.md;
