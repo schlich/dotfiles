@@ -153,6 +153,17 @@ let
         { Authorization: $"Bearer ($token)" } | to json --raw | print
     }
   '';
+  stitchMcpHeaders = pkgs.writeNuScriptBin "claude-stitch-mcp-headers" ''
+    def main [] {
+        let result = (^${pkgs.secretspec}/bin/secretspec get --file ${../../secretspec.toml} --provider keyring --profile default --reason "Claude Code Stitch MCP connection" STITCH_API_KEY | complete)
+        let key = ($result.stdout | str trim)
+        if $result.exit_code != 0 or ($key | is-empty) {
+            print --stderr "STITCH_API_KEY is not available from secretspec."
+            exit 1
+        }
+        { X-Goog-Api-Key: $key } | to json --raw | print
+    }
+  '';
   # Deny foreground Bash outside bash-policy.nuon, ask Jev about the calls the
   # policy leaves open, and log every request and outcome. One hook decides
   # each call, so the agent sees the reason of the guard that decided it and
@@ -312,6 +323,11 @@ in
         X-MCP-Toolsets = "repos,issues,pull_requests,actions";
       };
       headersHelper = "${githubMcpHeaders}/bin/claude-github-mcp-headers";
+    };
+    mcpServers.stitch = {
+      type = "http";
+      url = "https://stitch.googleapis.com/mcp";
+      headersHelper = "${stitchMcpHeaders}/bin/claude-stitch-mcp-headers";
     };
     settings = { };
     context = ./global-agent-instructions.md;

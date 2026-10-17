@@ -78,6 +78,13 @@ in
         oauth = false;
         headers.Authorization = "Bearer {env:GITHUB_TOKEN}";
       };
+      mcp.stitch = {
+        type = "remote";
+        url = "https://stitch.googleapis.com/mcp";
+        enabled = true;
+        oauth = false;
+        headers.X-Goog-Api-Key = "{env:STITCH_API_KEY}";
+      };
       server.hostname = "localhost";
       # Bill the GitHub Copilot and ChatGPT subscriptions only; both sign in
       # with `opencode auth login`. Anthropic forbids Claude plan sign-in here.
