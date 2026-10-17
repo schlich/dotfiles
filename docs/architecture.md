@@ -234,7 +234,10 @@ The flake's `clan` output has a machine for each host whose inventory sets
 the module list Den resolved for the host with Clan's recommended defaults
 off, and a `clan-machine-<host>` check fails if it differs from
 `nixosConfigurations`, so Clan's vars and settings describe the deployed
-system. Tags come from the host's profile and policy (`workstation`,
+system. Comparing the two evaluates the host twice, which made homelab's the
+largest check, close to `ci`'s 6 GiB evaluation budget, so that check is a remote check that
+GitHub Actions reports without gating a landing; `den-host-<host>` gates the
+host's own evaluation. Tags come from the host's profile and policy (`workstation`,
 `server`, `critical`, `niri`; `clan machines list --tags server`), and every
 machine requires an explicit update, so a deploy names its hosts:
 `clan machines update homelab --flake path:.` from a workspace at landed

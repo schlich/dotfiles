@@ -311,9 +311,8 @@
       );
       # Keep every host derivation evaluated without adding its closure as an
       # input, one check per host: all of them in one evaluator came within
-      # 0.3 GiB of 6 GiB, far past ci's 4 GiB evaluation budget.
-      # clan-machine-NAME evaluates each deployed host. Disposable hosts are
-      # left to remoteChecks.
+      # 0.3 GiB of 6 GiB, the whole of ci's evaluation budget. Disposable
+      # hosts are left to remoteChecks.
       denHostEvaluationChecksFor = lib.mapAttrs' (
         name: host:
         lib.nameValuePair "den-host-${name}" (
@@ -323,9 +322,7 @@
         )
       );
       denHostEvaluationChecks = denHostEvaluationChecksFor (
-        removeAttrs denFlake.nixosConfigurations (
-          builtins.attrNames deployHosts ++ builtins.attrNames remoteCheckHosts
-        )
+        removeAttrs denFlake.nixosConfigurations (builtins.attrNames remoteCheckHosts)
       );
       # Hosts whose inventory policy marks them disposable still have to
       # evaluate, but GitHub Actions checks them after each push without
@@ -362,7 +359,7 @@
         // denConfigTestChecksFor (builtins.intersectAttrs remoteCheckHosts denConfigTests);
       # The workstation with only its primary terminal, editor, and agent
       # desktop client; CI builds this closure after landing, and
-      # clan-machine-asus evaluates the full one.
+      # den-host-asus evaluates the full one.
       denAsusPrimary = denAsus.extendModules {
         modules = [ { home-manager.users.schlich.dotfiles.alternates = false; } ];
       };
@@ -449,8 +446,10 @@
       };
       # Clan's machine must be the system nixosConfigurations builds, or its
       # vars and settings describe a system that is never deployed. Comparing
-      # them evaluates each host twice, so every host gets its own check: all
-      # of them in one evaluator outgrew ci's 4 GiB evaluation budget.
+      # them evaluates each host twice, which made homelab's comparison the
+      # largest check: 4.8 GiB under nix-eval-jobs against ci's 6 GiB
+      # evaluation budget (2026-10-16). So the comparison reports in
+      # remoteChecks and den-host-NAME gates each deployed host's evaluation.
       clanMachineChecks = lib.mapAttrs' (
         name: _:
         let
@@ -804,20 +803,21 @@
               touch "$out"
             '';
       }
-      // clanMachineChecks
       // denHostEvaluationChecks
       // denConfigTestChecks;
 
       # Checks that report without gating a landing: GitHub Actions' nix-ci
       # workflow builds them after each push, and ci land leaves them out.
-      # They cover disposable hosts, homelab with modules it has not adopted
-      # yet, the staged switch's revert in a VM, and Bombadil's explorations
-      # of Fieldwork and the CI dashboard.
+      # They cover disposable hosts, Clan's machines against the systems they
+      # deploy, homelab with modules it has not adopted yet, the staged
+      # switch's revert in a VM, and Bombadil's explorations of Fieldwork and
+      # the CI dashboard.
       # Bombadil explores Fieldwork, a prototype whose bridge answers some
       # requests with 4xx by design, so its findings report here first, as
       # do the CI dashboard's until its exploration has a record.
       remoteChecks.${system} =
         remoteHostEvaluationChecks
+        // clanMachineChecks
         // import ./xr-workbench/bombadil-check.nix { inherit lib pkgs; }
         // {
           ci-dashboard-bombadil = ciDashboard.exploration;
