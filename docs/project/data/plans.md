@@ -3,8 +3,8 @@ type: hub
 description: Implementation plans, migrations, and design proposals, one document per unit of work.
 stage: living
 generated:
-  by: human:author
-  at: 2026-08-01T00:00:00Z
+  by: codex/gpt-6-luna
+  at: 2026-10-17T02:35:00Z
 ---
 
 # 🗺️ Plans
@@ -18,6 +18,7 @@ moves them.*
 ## Active
 
 [Run MCP-NixOS with Nix](plans/20261016-mcp-nixos-nix-launch.md)
+[Adopt Home Manager mutable settings for app-owned config](plans/20261017-mutable-settings.md)
 
 ## Done
 

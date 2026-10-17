@@ -41,6 +41,8 @@ in
 
   programs.opencode = {
     enable = true;
+    # Keep OpenCode's own config writable while applying these defaults.
+    mutableSettings = true;
     package = pkgs.writeNuScriptBin "opencode" ''
       def --wrapped main [...args] {
         ^${pkgs.secretspec}/bin/secretspec run --file ${../../secretspec.toml} --provider keyring --profile default --reason "OpenCode invocation" -- ${opencode}/bin/opencode ...$args

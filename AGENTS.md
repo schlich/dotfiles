@@ -44,13 +44,14 @@
   `nobody`. `docs/architecture.md` has the placement rules and the remaining
   inventory.
 - Treat application-owned, self-mutating configuration as runtime state. Do
-  not manage such files with `home.file`, `xdg.configFile`, or a Home Manager
-  `programs.*.settings` option. When the application supports it, couple
-  immutable defaults to the package with a wrapper or command-line override;
-  otherwise use the application's system-level configuration layer. In
-  particular, Codex Desktop rewrites `$CODEX_HOME/config.toml`, so static
-  Codex defaults belong on its wrapped package, while Home Manager may still
-  manage non-mutating skills and context files.
+  not link those files directly from the Nix store. When the locked Home
+  Manager module supports `mutableSettings`, use it to apply declared defaults
+  through that module's supported merge or overlay while keeping app-owned
+  files writable. Otherwise couple immutable defaults to the package with a
+  wrapper or command-line override, or use the application's system-level
+  configuration layer. Codex 0.2.0 and later supports this merge; keep
+  `programs.codex.mutableSettings` enabled for its declared defaults. Home
+  Manager may still manage non-mutating skills and context files.
 - Use `path:` flake references for local work so new files are included without
   Git staging. For example, `nix build path:.#OUTPUT`. This includes ignored
   files as well; keep generated output and plaintext secrets outside that root.

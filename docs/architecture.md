@@ -33,17 +33,19 @@ workstations add the desktop home (`user-desktop`: terminals, editors, agent
 clients, desktop apps and their user services, plus the rest of
 `modules/programs`).
 
-## Configuration ships with the package
+## Application configuration placement
 
 Home Manager links generated files into `$HOME`, and those links cause most of
-this repository's activation trouble. Programs rewrite them in place (Copilot's
-`config.json`), Claude Desktop's sandbox rejects them (it shows the store target
-of `~/.ssh/config` as owned by `nobody`), and orphaned generations override the
-host's configuration (homelab). A program that reads its configuration from an
-environment variable or a flag gets that configuration on its executable
-instead. `lib/wrap-with-config.nix` sets the variables and leading flags, and
-`dotfiles.retiredHomeFiles` makes evaluation fail if Home Manager links a
-replaced path again.
+this repository's activation trouble. Programs rewrite them in place, Claude
+Desktop's sandbox rejects them (it shows the store target of `~/.ssh/config` as
+owned by `nobody`), and orphaned generations override the host's configuration
+(homelab). Keep app-owned files writable. When the locked Home Manager module
+supports `mutableSettings`, use its merge or overlay behavior to apply declared
+defaults without replacing app-owned files. Otherwise, when a program reads
+configuration from an environment variable or flag, pass that configuration on
+its executable instead. `lib/wrap-with-config.nix`
+sets the variables and leading flags, and `dotfiles.retiredHomeFiles` makes
+evaluation fail if Home Manager links a replaced path again.
 
 Choose the path the wrapper names by how long the program runs:
 
@@ -56,10 +58,12 @@ Choose the path the wrapper names by how long the program runs:
 
 Do not move a program that agents run to `/etc`: the Claude Desktop sandbox
 shows no host `/etc/ssh` or `/etc/gitconfig`, while `/nix/store` and
-`/etc/profiles/per-user` stay visible. Where Home Manager still adds shell
-integration, keep `programs.<name>.enable` with the wrapped `package` and no
-`settings`, after checking at the locked revision that the module writes no
-file without settings.
+`/etc/profiles/per-user` stay visible. Where Home Manager adds shell
+integration but cannot safely manage an app's settings, keep
+`programs.<name>.enable` with the wrapped `package` and no `settings`, after
+checking at the locked revision that the module writes no file without
+settings. For modules with `mutableSettings`, declarative settings can coexist
+with the app's writable runtime configuration.
 
 These stay in Home Manager:
 

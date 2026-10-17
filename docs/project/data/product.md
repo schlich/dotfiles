@@ -3,8 +3,8 @@ type: tracker
 description: What the dotfiles configuration is, who it serves, and the rules every plan and spec derives from.
 stage: living
 generated:
-  by: claude-code/opus-5.5
-  at: 2026-10-16T16:52:00Z
+  by: codex/gpt-6-luna
+  at: 2026-10-17T02:35:00Z
 sources:
 - id: flake
   resource: flake.nix
@@ -98,9 +98,12 @@ From `docs/architecture.md`:
   differs from `/run/current-system`.
 - Hardware, storage, boot, encryption, and generated machine files stay under
   `hosts/`; reusable aspects never infer or rewrite them.
-- Programs that rewrite their own configuration keep it as runtime state, not
-  Home Manager links; configuration that can ride on the executable ships with
-  the package through `lib/wrap-with-config.nix`.
+- Programs that rewrite their own configuration keep it as writable runtime
+  state, not direct Home Manager links. When the locked Home Manager module
+  supports `mutableSettings`, use its merge or overlay behavior to apply
+  declarative defaults without replacing app-owned files; otherwise
+  configuration that can ride on the executable ships with the package through
+  `lib/wrap-with-config.nix`.
 - Programs that agents run must keep their configuration visible inside the
   Claude Desktop sandbox: `/nix/store` and `/etc/profiles/per-user`, not `/etc`.
 

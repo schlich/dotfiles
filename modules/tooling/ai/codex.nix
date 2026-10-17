@@ -6,15 +6,20 @@
 
 let
   skills = import ./shared-skills.nix { inherit inputs; };
-  # Codex Desktop writes to $CODEX_HOME/config.toml. Keep static settings on
-  # the executable instead of letting Home Manager manage that mutable file.
+  # Codex Desktop writes to $CODEX_HOME/config.toml. Home Manager merges these
+  # defaults into the writable file during activation, preserving app settings.
   # The session hook claims a free workspace, the default checkout included,
   # so launching never creates one.
-  codex = pkgs.writeNuScriptBin "codex" ''
-    def --wrapped main [...args] {
-      ^${pkgs.secretspec}/bin/secretspec run --file ${../../secretspec.toml} --provider keyring --profile default --reason "Codex invocation" -- ${pkgs.codex}/bin/codex --config 'desktop.git-pr-watch-auto-merge=false' --config 'desktop.custom_file_handlers.jj-dashboard={label = "JJ dashboard", command = "jj-dashboard", icon = "${../../../jj/icon.svg}", input = "path", supports_ssh = false}' ...$args
-    }
-  '';
+  codex =
+    (pkgs.writeNuScriptBin "codex" ''
+      def --wrapped main [...args] {
+        ^${pkgs.secretspec}/bin/secretspec run --file ${../../secretspec.toml} --provider keyring --profile default --reason "Codex invocation" -- ${pkgs.codex}/bin/codex ...$args
+      }
+    '').overrideAttrs
+      (_: {
+        # Home Manager checks the package version before enabling mutable settings.
+        version = pkgs.codex.version;
+      });
 in
 
 {
@@ -23,6 +28,17 @@ in
   programs.codex = {
     enable = true;
     package = codex;
+    mutableSettings = true;
+    settings = {
+      desktop.git-pr-watch-auto-merge = false;
+      desktop.custom_file_handlers."jj-dashboard" = {
+        label = "JJ dashboard";
+        command = "jj-dashboard";
+        icon = "${../../../jj/icon.svg}";
+        input = "path";
+        supports_ssh = false;
+      };
+    };
     inherit skills;
     context = ./global-agent-instructions.md;
   };
