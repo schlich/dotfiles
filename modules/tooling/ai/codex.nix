@@ -20,6 +20,20 @@ let
         # Home Manager checks the package version before enabling mutable settings.
         version = pkgs.codex.version;
       });
+  # Codex Desktop ships in nixpkgs as `chatgpt`. Its launcher runs the app under
+  # `secretspec run` so the app-server it starts gets keys such as
+  # STITCH_API_KEY. Its desktop entry runs `chatgpt` from PATH, so this one wins.
+  codexDesktop = pkgs.symlinkJoin {
+    name = "codex-desktop-${pkgs.chatgpt.version}";
+    paths = [
+      (pkgs.writeNuScriptBin "chatgpt" ''
+        def --wrapped main [...args] {
+          ^${pkgs.secretspec}/bin/secretspec run --file ${../../secretspec.toml} --provider keyring --profile default --reason "Codex Desktop" -- ${pkgs.chatgpt}/bin/chatgpt ...$args
+        }
+      '')
+      pkgs.chatgpt
+    ];
+  };
 in
 
 {
@@ -47,6 +61,8 @@ in
     inherit skills;
     context = ./global-agent-instructions.md;
   };
+
+  home.packages = [ codexDesktop ];
 
   home.file = {
     ".codex/agents/jj-trunk-triage.toml".text = ''
