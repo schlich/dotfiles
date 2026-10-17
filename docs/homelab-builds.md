@@ -15,13 +15,14 @@ Keep local clearance as the default until a fresh spindle run passes.
 - Spindle imports completed guest outputs into the host store. Harmonia
   serves them back to subsequent guests and signs them with the existing
   host-local key. This reuse also preserves completed work from timed-out runs.
-- Harmonia listens on loopback. The workstation cannot currently use it as
-  a network substituter. Imported outputs are unrooted and subject to GC;
-  this is a reusable cache, not permanent artifact storage.
+- Harmonia answers on the tailnet, and every other host substitutes from it
+  and builds on homelab (`homelab-cache-client.nix`,
+  `homelab-builder-client.nix`). Imported outputs are unrooted and subject
+  to GC; this is a reusable cache, not permanent artifact storage.
 - `ci land --clearance spindle` already waits for passing workflows on the
   exact commit being landed. Pushes do not start this repository's workflow.
-- The nixbot module is evaluated with placeholder App IDs by a flake check;
-  it is not imported into homelab's deployed host configuration.
+- homelab imports nixbot, which stays off until `hosts/homelab/nixbot.nix`
+  names its GitHub App; [nixbot.md](nixbot.md) has the steps to go live.
 
 ## Live findings, 2026-10-02
 

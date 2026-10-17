@@ -362,17 +362,20 @@
       denAsusPrimary = denAsus.extendModules {
         modules = [ { home-manager.users.schlich.dotfiles.alternates = false; } ];
       };
-      # homelab with the nixbot module, before the host imports it; the App
-      # IDs are placeholders until the GitHub App exists.
+      # homelab with nixbot running, before hosts/homelab/nixbot.nix names
+      # the GitHub App; the IDs are placeholders until it does.
       nixbotHomelabEvaluationCheck = pkgs.writeText "nixbot-homelab-evaluation" (
         builtins.unsafeDiscardStringContext "${
           (denFlake.nixosConfigurations.homelab.extendModules {
             modules = [
-              ./modules/nixos/nixbot.nix
               {
-                services.nixbot.github = {
-                  appId = 0;
-                  oauthId = "placeholder";
+                services.nixbot = {
+                  enable = lib.mkForce true;
+                  github = {
+                    appId = lib.mkDefault 0;
+                    oauthId = lib.mkDefault "placeholder";
+                    oauthSecretFile = lib.mkDefault "/var/lib/nixbot-secrets/github-oauth-secret";
+                  };
                 };
               }
             ];

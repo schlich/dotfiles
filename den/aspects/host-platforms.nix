@@ -22,6 +22,7 @@
       ../../modules/nixos/homelab.nix
       ../../modules/nixos/homelab-cache.nix
       ../../modules/nixos/homelab-builder.nix
+      ../../modules/nixos/nixbot.nix
       ../../modules/nixos/tangled-spindle.nix
       ../../modules/nixos/tangled-knot.nix
     ];
