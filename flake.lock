@@ -1034,6 +1034,27 @@
         "url": "https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"
       }
     },
+    "iets": {
+      "inputs": {
+        "crane": "crane",
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1791957523,
+        "narHash": "sha256-4SZ32g0TH3VjJg+NIVGkbbV8L5WyjYG3fo4kLSsiObw=",
+        "owner": "numtide",
+        "repo": "iets",
+        "rev": "b60b601a730744c3ba04980067c7e5a0162f3412",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "iets",
+        "type": "github"
+      }
+    },
     "home-manager": {
       "inputs": {
         "nixpkgs": [
@@ -1853,6 +1874,7 @@
         "grill-me": "grill-me",
         "hegel-skill": "hegel-skill",
         "home-manager": "home-manager",
+        "iets": "iets",
         "impermanence": "impermanence",
         "iwe": "iwe",
         "iwe-skills": "iwe-skills",

@@ -22,6 +22,7 @@ moves them.*
 
 ## Done
 
+[Integrate iets as the NixOS client](plans/20261018-iets-nixos-client.md)
 [Add Stately MCP server](plans/20261016-stately-mcp-server.md)
 [Build a reactive CI and Nix dashboard](plans/20261016-ci-nix-dashboard.md)
 [Test the CI dashboard with Hegel and Bombadil](plans/20261016-ci-dashboard-property-tests.md)
