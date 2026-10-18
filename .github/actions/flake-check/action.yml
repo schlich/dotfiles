@@ -12,7 +12,7 @@ runs:
   using: composite
   steps:
     # Only the desktop closure outgrows the runner's free disk.
-    - uses: hustcer/setup-nu@v3.28
+    - uses: hustcer/setup-nu@95cd3bfe252450ef7d35dd9a7ddecf3484341134 # v3.28
       with:
         version: "0.116.0"
     - name: Start freeing runner disk space
@@ -40,32 +40,32 @@ runs:
               | where {|text| $text != "" }
               | str join "\n"
             if ($removal_output | is-not-empty) {
-              $removal_output | save --append $log_file
+              $"($removal_output)\n" | save --append $log_file
             }
             if ($removals | any {|result| $result.exit_code != 0 }) {
               error make {msg: "Runner disk cleanup could not remove all paths."}
             }
             let apt = (^sudo apt-get clean | complete)
-            if ($apt.stdout | is-not-empty) { $apt.stdout | save --append $log_file }
-            if ($apt.stderr | is-not-empty) { $apt.stderr | save --append $log_file }
+            if ($apt.stdout | is-not-empty) { $"($apt.stdout)\n" | save --append $log_file }
+            if ($apt.stderr | is-not-empty) { $"($apt.stderr)\n" | save --append $log_file }
             if $apt.exit_code != 0 {
               error make {msg: "Runner disk cleanup failed at apt-get clean."}
             }
             let docker = (^sudo docker system prune --all --force | complete)
-            if ($docker.stdout | is-not-empty) { $docker.stdout | save --append $log_file }
-            if ($docker.stderr | is-not-empty) { $docker.stderr | save --append $log_file }
+            if ($docker.stdout | is-not-empty) { $"($docker.stdout)\n" | save --append $log_file }
+            if ($docker.stderr | is-not-empty) { $"($docker.stderr)\n" | save --append $log_file }
             if $docker.exit_code != 0 {
               error make {msg: "Runner disk cleanup failed at docker system prune."}
             }
             let disk = (^df -h | complete)
-            if ($disk.stdout | is-not-empty) { $disk.stdout | save --append $log_file }
-            if ($disk.stderr | is-not-empty) { $disk.stderr | save --append $log_file }
+            if ($disk.stdout | is-not-empty) { $"($disk.stdout)\n" | save --append $log_file }
+            if ($disk.stderr | is-not-empty) { $"($disk.stderr)\n" | save --append $log_file }
             if $disk.exit_code != 0 {
               error make {msg: "Could not report runner disk usage."}
             }
             0
           } catch {|err|
-            $err.msg | save --append $log_file
+            $"($err.msg)\n" | save --append $log_file
             1
           }
           $"($cleanup_status)" | save --force $status_file
@@ -116,7 +116,7 @@ runs:
         '# 
         $wrapper_source | save --force $wrapper
         ^chmod +x $wrapper
-        $"NIX_FAST_BUILD_NIX=($wrapper)" | save --append $env.GITHUB_ENV
+        $"NIX_FAST_BUILD_NIX=($wrapper)\n" | save --append $env.GITHUB_ENV
     # --skip-cached replaces path filtering: an unchanged check is already
     # in the binary cache, so it passes without being downloaded or rebuilt.
     - name: Build ${{ inputs.check }}

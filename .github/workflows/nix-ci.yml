@@ -36,7 +36,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: hustcer/setup-nu@v3.28
+      - uses: hustcer/setup-nu@95cd3bfe252450ef7d35dd9a7ddecf3484341134 # v3.28
         with:
           version: "0.116.0"
       - uses: DeterminateSystems/determinate-nix-action@v3.21.9
@@ -103,7 +103,7 @@ jobs:
       remote: ${{ steps.checks.outputs.remote }}
     steps:
       - uses: actions/checkout@v6
-      - uses: hustcer/setup-nu@v3.28
+      - uses: hustcer/setup-nu@95cd3bfe252450ef7d35dd9a7ddecf3484341134 # v3.28
         with:
           version: "0.116.0"
       - uses: DeterminateSystems/determinate-nix-action@v3.21.9
@@ -121,10 +121,11 @@ jobs:
             print --stderr $remote.stderr
             exit $remote.exit_code
           }
-          [
+          let output = [
             $"checks=($checks.stdout | str trim)"
             $"remote=($remote.stdout | str trim)"
-          ] | str join "\n" | save --append $env.GITHUB_OUTPUT
+          ] | str join "\n"
+          $"($output)\n" | save --append $env.GITHUB_OUTPUT
   check:
     name: flake check (${{ matrix.check }})
     needs: discover
@@ -168,7 +169,7 @@ jobs:
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
-      - uses: hustcer/setup-nu@v3.28
+      - uses: hustcer/setup-nu@95cd3bfe252450ef7d35dd9a7ddecf3484341134 # v3.28
         with:
           version: "0.116.0"
       # A push to main skips the matrix, which ci land cleared before pushing.
@@ -191,7 +192,7 @@ jobs:
     if: ${{ always() && failure() }}
     runs-on: ubuntu-latest
     steps:
-      - uses: hustcer/setup-nu@v3.28
+      - uses: hustcer/setup-nu@95cd3bfe252450ef7d35dd9a7ddecf3484341134 # v3.28
         with:
           version: "0.116.0"
       - name: Add failure review prompts to the run summary
@@ -208,4 +209,5 @@ jobs:
             "- **Architecture:** What design change would make the invalid state harder to represent or the guarantee easier to verify? Record why the chosen mechanism fits."
             ""
             "These are options to assess, not mandatory technologies. Choose the smallest applicable durable guarantee; explain when none adds value. See [CI failure review guide](../blob/main/docs/ci-failure-review.md)."
+            ""
           ] | str join "\n" | save --append $env.GITHUB_STEP_SUMMARY
