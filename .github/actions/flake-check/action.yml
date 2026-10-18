@@ -125,7 +125,7 @@ runs:
         CHECK: ${{ inputs.check }}
       shell: nu --no-config-file {0}
       run: |
-        ^nix --accept-flake-config run --inputs-from . nixpkgs#nix-fast-build -- --no-nom --skip-cached --flake $".#($env.SET).x86_64-linux" --select $"checks: {{ inherit (checks) ($env.CHECK); }}"
+        ^nix --accept-flake-config run --inputs-from . nixpkgs#nix-fast-build -- --no-nom --skip-cached --flake $".#($env.SET).x86_64-linux" --select $"checks: { inherit (checks) ($env.CHECK); }"
     # This check evaluates the full workstation, the largest host, so its
     # fetcher cache serves the rest; anything missing is fetched as before.
     - name: Save the Nix fetcher cache
