@@ -14,11 +14,6 @@
       owner = "denful";
       repo = "den";
     };
-    gc = {
-      automatic = true;
-      dates = "weekly";
-      options = "--delete-older-than 14d";
-    };
     optimise = {
       automatic = true;
       dates = [ "weekly" ];
@@ -43,6 +38,20 @@
     MemoryMax = "75%";
     MemorySwapMax = "4G";
     OOMPolicy = "continue";
+  };
+  # nh wraps nix with nom's build tree, dix's package diff, and a
+  # confirmation before activation. `nh os switch` applies the working copy
+  # directly, so `system-switch` stays the staged way to apply `main`.
+  # Its weekly `nh clean all` replaces nix.gc: it keeps the newest generations
+  # of every profile, not just recent ones, so a quiet fortnight cannot
+  # collect every rollback target.
+  programs.nh = {
+    enable = true;
+    clean = {
+      enable = true;
+      dates = "weekly";
+      extraArgs = "--keep 5 --keep-since 14d";
+    };
   };
   nixpkgs.config.allowUnfree = true;
   # The JJ fix tool and `ci`'s preflight run nixfmt from PATH on any host.

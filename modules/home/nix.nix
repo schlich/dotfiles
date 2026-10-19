@@ -1,4 +1,5 @@
 {
+  config,
   inputs,
   lib,
   osConfig,
@@ -26,10 +27,17 @@ let
   };
 in
 {
-  nix.gc = {
-    automatic = true;
-    dates = "weekly";
-    options = "--delete-older-than 14d";
+  # The system's `nh clean all` (modules/nixos/core.nix) also collects this
+  # user's profiles, so Home Manager runs no collector of its own. Installing
+  # nh in the user profile too puts its Nushell completions, which nixpkgs
+  # ships in share/nushell/vendor/autoload, where Nushell finds them.
+  programs.nh = {
+    enable = true;
+    inherit (osConfig.programs.nh) package;
+    # `nh os` defaults to this checkout as a `path:` flake, so new files count
+    # without Git staging. Home Manager is embedded in the system, so there
+    # is no `nh home` target; `home-activate` remains the home-only path.
+    flake = "path:${config.home.homeDirectory}/dotfiles";
   };
   accounts.email.accounts.personal = {
     address = "ty.schlich@gmail.com";

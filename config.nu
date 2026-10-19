@@ -10,7 +10,8 @@ $env.config.cursor_shape.helix_select = "underscore"
 
 alias lg = lazygit
 alias hm = home-manager
-alias nrb = sudo nixos-rebuild --flake /home/nixos/dotfiles#asus
+# nh finds the flake through NH_FLAKE and the host by its name.
+alias nrb = nh os switch
 alias nixfmt = nix fmt
 
 # source ~/.config/nushell/completions/niri.nu

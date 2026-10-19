@@ -124,7 +124,6 @@ in
     nodejs
     ty
     wget
-    nh
     nix-tree
     nix-du
     nix-output-monitor
