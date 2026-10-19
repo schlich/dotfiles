@@ -19,6 +19,8 @@ answers = {
     "remaining_work": {"type": "score", "score": 0.2, "confidence": 0.9},
     "difficulty": {"type": "choice", "choice": "medium", "confidence": 0.9},
     "error_cost": {"type": "choice", "choice": "low", "confidence": 0.9},
+    "kind": {"type": "choice", "choice": "rule", "confidence": 0.9},
+    "durable": {"type": "noul", "noul": 0.8},
 }
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -183,6 +185,27 @@ def main [script: path, questions: path] {
     $failures = ($failures | append (expect "only the session with a conversation reaches Jev" ($triage_sent | length) 1))
     $failures = ($failures | append (expect "only the session's ending is sent" ($triage_sent.0.body.state.session | columns | sort) [folder last_assistant_message last_user_message stopped_mid_turn]))
     $failures = ($failures | append (expect "credential assignments in a reply are withheld" ($triage_sent.0.body.state.session.last_assistant_message | str contains "ghp_secret") false))
+
+    # distill-candidates sends each user message with the reply before it.
+    do $session rules false | save ($meta_dir | path join local_rules.json)
+    [
+        (do $line user "Always use jj, never git.")
+        (do $line assistant [{ type: text, text: "Noted.\nexport GITHUB_TOKEN=ghp_secret" }])
+        (do $line user "<command-name>/clear</command-name>")
+        (do $line user "Also\nexport NPM_TOKEN=npm_secret\nprefer Nushell.")
+    ] | str join "\n" | save ($transcripts | path join rules.jsonl)
+    let before = ((requests $log) | length)
+    let distill = (with-env $triage_vars { "" | ^$nu.current-exe --no-config-file --stdin $script distill-candidates local_rules --json | complete })
+    let candidates = ($distill.stdout | from json)
+    $failures = ($failures | append (expect "distill-candidates keeps durable rules" ($candidates | select index kind durable) [
+        { index: 0, kind: rule, durable: 0.8 }
+        { index: 3, kind: rule, durable: 0.8 }
+    ]))
+    let distill_sent = ((requests $log) | skip $before)
+    $failures = ($failures | append (expect "one request per user message, slash commands skipped" ($distill_sent | length) 2))
+    $failures = ($failures | append (expect "only the message, prior reply, and folder are sent" ($distill_sent.0.body.state | columns | sort) [folder message previous_reply]))
+    $failures = ($failures | append (expect "credential lines are withheld from distill requests" ($distill_sent | to json | str contains "_secret") false))
+    $failures = ($failures | append (expect "distill asks the distill questions" ($distill_sent.0.body.questions | columns | sort) [durable kind]))
 
     job kill $server_job
     rm -rf $tmp

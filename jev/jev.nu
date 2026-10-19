@@ -491,6 +491,70 @@ def "main session-triage" [
     if $json { $rows | to json } else { $rows | select decision session title ending reason | table --index false }
 }
 
+# Shortlist what a session's user said that is worth keeping in the
+# knowledge base. Each user message goes to Jev with the reply it answered;
+# code keeps the durable ones of the kinds the config names.
+
+# User messages with prose, each with the assistant reply just before it.
+def user-turns [messages: list] {
+    $messages
+    | enumerate
+    | where {|row| $row.item.role == user and $row.item.text != "" }
+    | each {|row|
+        let before = ($messages | take $row.index | where {|m| $m.role == assistant and $m.text != "" } | last 1 | get -o 0.text | default "")
+        { index: $row.index, text: $row.item.text, previous_reply: $before }
+    }
+}
+
+def distill-session [session: record, config: record, model: string] {
+    let turns = (user-turns (transcript-messages $session.transcript))
+    $turns | each {|turn|
+        let state = {
+            message: (withhold-credentials (clip $turn.text $config.max_user_chars))
+            previous_reply: (withhold-credentials (clip $turn.previous_reply $config.max_reply_chars))
+            folder: ($session.cwd | str replace $env.HOME "~")
+        }
+        let row = { session: $session.id, title: $session.title, index: $turn.index, text: (clip $turn.text $config.max_user_chars) }
+        let response = (try { { ok: (ask $state $config.questions $model "distill") } } catch {|err| { error: $err.msg } })
+        if ($response.error? != null) {
+            $row | merge { kind: null, durable: null, error: $response.error }
+        } else {
+            let answers = $response.ok.answers
+            $row | merge { kind: $answers.kind.choice, durable: $answers.durable.noul, error: null }
+        }
+    }
+}
+
+# Shortlist durable rules, corrections, preferences, and decisions from
+# recent Claude Code sessions for /iwe:distill. Sends each user message and
+# the reply before it, never credential assignments. Messages Jev could not
+# judge are listed with their error, so nothing is silently dropped.
+def "main distill-candidates" [
+    ...sessions: string # Session ids (local_...); defaults to sessions active within --since
+    --since: duration = 7day # How far back to look when no ids are given
+    --include-archived # Also read archived sessions
+    --json # Print JSON instead of a table
+] {
+    let all_config = (questions-config)
+    let config = $all_config.distill
+    let found = (desktop-sessions ($include_archived or ($sessions | is-not-empty)))
+    let chosen = if ($sessions | is-empty) {
+        $found | where {|s| $s.last_at > ((date now) - $since) }
+    } else {
+        $found | where id in $sessions
+    }
+    let rows = ($chosen | par-each --threads $config.parallel_requests {|session|
+        distill-session $session $config $all_config.model
+    } | flatten)
+    let kept = (
+        $rows
+        | where {|row| $row.error != null or ($row.kind in $config.keep_kinds and $row.durable >= $config.min_durable) }
+        # Unjudged messages first, then the most durable, in transcript order.
+        | sort-by {|row| -1 * ($row.durable | default 2.0) } session index
+    )
+    if $json { $kept | to json } else { $kept | select session index kind durable text error | table --index false }
+}
+
 def main [] {
-    print "Usage: jev ask | jev classify-task | jev triage-gate | jev bash-guard | jev session-triage"
+    print "Usage: jev ask | jev classify-task | jev triage-gate | jev bash-guard | jev session-triage | jev distill-candidates"
 }

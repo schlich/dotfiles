@@ -242,4 +242,38 @@
       }
     }
   }
+  # `jev distill-candidates`: which things the user said in a session are
+  # worth offering to /iwe:distill. Code keeps `keep_kinds` at or above
+  # `min_durable`; the user still chooses what is written.
+  distill: {
+    max_user_chars: 1500
+    max_reply_chars: 1500
+    parallel_requests: 6
+    min_durable: 0.6
+    keep_kinds: [rule correction preference decision fact]
+    questions: {
+      kind: {
+        type: choice
+        instructions: "What kind of statement is the user's message in `message`? `previous_reply` is the agent reply it answers, for context only; judge the user's words."
+        criteria: {
+          rule: "States how agents should always or never work, such as a convention, policy, or requirement"
+          correction: "Corrects something the agent did or claimed, and says what is right instead"
+          preference: "Expresses a lasting taste or choice, such as a tool, style, layout, or way of being informed"
+          decision: "Settles a design or project choice between alternatives"
+          fact: "Gives a fact about the user's machines, accounts, projects, or environment that the agent could not look up"
+          task_request: "Asks for a specific piece of work or answer in this session"
+          acknowledgement: "Approves, thanks, or tells the agent to continue, with nothing else to keep"
+          other: "Anything else"
+        }
+      }
+      durable: {
+        type: noul
+        instructions: "What the user says in `message` would still matter to a future agent session weeks later or in a different repository."
+        criteria: {
+          "true": "It is a standing rule, preference, correction, decision, or fact that outlives this task"
+          "false": "It only concerns the current task, a one-off detail, or chat"
+        }
+      }
+    }
+  }
 }

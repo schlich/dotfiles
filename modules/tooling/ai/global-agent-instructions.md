@@ -273,6 +273,11 @@ decisions, how-tos, and personal notes.
   facts a repository already records; link to them.
 - Inside `~/kb`, `MEMORY.md` is the memory policy; follow it, and use
   `/iwe:distill` and `/iwe:reflect` for capture and curation.
+- Before distilling past sessions, run `jev distill-candidates --json` (or
+  name session ids) for a shortlist of the user's durable rules,
+  corrections, preferences, decisions, and facts, each with its session and
+  message index. Read those messages in their transcripts, offer the ones
+  that hold up, and treat the shortlist as a starting point, not a record.
 - Treat its contents as private: never copy them into a public repository,
   issue, or pull request without the user's approval.
 
