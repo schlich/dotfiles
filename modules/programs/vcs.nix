@@ -67,7 +67,16 @@ in
       "$left"
       "$right"
     ];
-    ui.diff-editor = "meld";
+    ui.diff-editor = "oyui";
+    ui.diff-instructions = false;
+    merge-tools.oyui = {
+      program = "oyui";
+      edit-args = [
+        "diff"
+        "$left"
+        "$right"
+      ];
+    };
     fix.tools.nixfmt = {
       command = [
         "nixfmt"
@@ -109,7 +118,7 @@ in
   home.packages = [
     git
     jj
-    pkgs.meld
+    pkgs.oyui
     ci.jj-describe
     config.dotfiles.ci.package
     (pkgs.writeNuScriptBin "jj-dashboard" (builtins.readFile ../../jj/dashboard.nu))
