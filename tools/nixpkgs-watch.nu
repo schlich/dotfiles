@@ -7,8 +7,10 @@
 #   nixpkgs-watch check --notify   the same as desktop notifications (the timer)
 #
 # The wrapper sets NIXPKGS_WATCH_STATUS (each entry with the version the
-# locked nixpkgs ships, written at build time), NIXPKGS_WATCH_NPR and
-# NIXPKGS_WATCH_NOTIFY.
+# locked nixpkgs ships, written at build time), NIXPKGS_WATCH_NPR,
+# NIXPKGS_WATCH_NOTIFY, and NIXPKGS_WATCH_JEV with NIXPKGS_WATCH_QUESTIONS,
+# which let Jev judge the pull requests that only mention a package. Without
+# the last two, those are ignored as before.
 
 const channels = [nixpkgs-unstable nixos-unstable]
 
@@ -54,6 +56,46 @@ export def own-prs [package: string]: list<record> -> list<record> {
   | each {|pr| $pr | insert landed ($pr.reached | any {|branch| $branch in $channels }) }
 }
 
+# The rest of npr's results, minus backports: pull requests that mention the
+# package without being its own, such as a rename, a treewide change, or a
+# dependency's update.
+export def other-prs [package: string]: list<record> -> list<record> {
+  where {|pr| not ($pr.title | str starts-with $"($package):") and not ($pr.title | str starts-with "[Backport") }
+  | each {|pr| $pr | insert landed ($pr.reached | any {|branch| $branch in $channels }) }
+}
+
+# Each other pull request with `related`, Jev's probability from its title
+# that it bears on the workaround. A verdict in the seen list is reused, so
+# each pull request is asked about once; one Jev could not give stays null
+# and is asked again next run.
+def judge-related [entry: record, prs: list<record>, seen: list<record>]: nothing -> list<record> {
+  let config = (open $env.NIXPKGS_WATCH_QUESTIONS).nixpkgs_watch
+  $prs | each {|pr|
+    let known = ($seen | where key == $"($entry.package)#($pr.number)" | get --optional 0.related)
+    let related = if $known != null { $known } else {
+      let request = {
+        state: { pr: ($pr | select title status), workaround: ($entry | select package reason) }
+        questions: $config.questions
+      }
+      let run = ($request | to json --raw | run-external $env.NIXPKGS_WATCH_JEV ask | complete)
+      if $run.exit_code == 0 { ($run.stdout | from json).answers.bears_on_workaround.noul } else { null }
+    }
+    $pr | insert related $related
+  }
+}
+
+# A related pull request seen for the first time, or reaching unstable.
+export def related-events [entry: record, related: list<record>, seen: list<record>]: nothing -> list<record> {
+  $related | each {|pr|
+    let before = ($seen | where key == $"($entry.package)#($pr.number)" | get --optional 0)
+    if $before == null {
+      { package: $entry.package, kind: related, text: $"#($pr.number) may bear on the workaround \(($pr.status)\): ($pr.title)" }
+    } else if $pr.landed and not $before.landed {
+      { package: $entry.package, kind: landed, text: $"#($pr.number) reached ($pr.reached | where {|b| $b in $channels } | str join ', '): ($pr.title). Check whether it ends the workaround: ($entry.reason)" }
+    }
+  } | compact
+}
+
 # What is new since the last run: a pull request opened, one reaching the
 # unstable channels, or the locked nixpkgs now shipping what the workaround
 # provides.
@@ -78,9 +120,10 @@ export def events [entry: record, prs: list<record>, seen: list<record>]: nothin
 
 # The seen list after this run: every pull request's state and each ready
 # version, so a change is reported once.
-export def remember [entry: record, prs: list<record>]: nothing -> list<record> {
+export def remember [entry: record, prs: list<record>, judged: list<record> = []]: nothing -> list<record> {
   $prs
   | each {|pr| { key: $"($entry.package)#($pr.number)", status: $pr.status, landed: $pr.landed } }
+  | append ($judged | where related != null | each {|pr| { key: $"($entry.package)#($pr.number)", status: $pr.status, landed: $pr.landed, related: $pr.related } })
   | append (if $entry.ready { [{ key: $"($entry.package)@($entry.nixpkgs)", status: ready, landed: true }] } else { [] })
 }
 
@@ -101,6 +144,7 @@ def show [report: record] {
           "drop workaround": (if $entry.ready { "yes" } else { "" })
           "open PRs": (do $prs $entry.open)
           "in unstable": (do $prs $entry.landed)
+          related: (do $prs ($entry.related? | default []))
           error: ($entry.error | default "")
         }
       }
@@ -134,6 +178,8 @@ def "main check" [
   let previous_errors = if ($report_file | path exists) {
     open $report_file | get entries | where error != null | select package error
   } else { [] }
+  let use_jev = ($env.NIXPKGS_WATCH_JEV? | is-not-empty) and ($env.NIXPKGS_WATCH_QUESTIONS? | is-not-empty)
+  let min_related = if $use_jev { (open $env.NIXPKGS_WATCH_QUESTIONS).nixpkgs_watch.min_related } else { 1.0 }
 
   let results = (
     open $env.NIXPKGS_WATCH_STATUS
@@ -141,12 +187,17 @@ def "main check" [
     | each {|item|
         let entry = $item.entry
         let run = (^$env.NIXPKGS_WATCH_NPR --days $days $entry.package | complete)
-        let prs = if $run.exit_code == 0 { $run.stdout | parse-npr | own-prs $entry.package } else { [] }
+        let found = if $run.exit_code == 0 { $run.stdout | parse-npr } else { [] }
+        let prs = ($found | own-prs $entry.package)
+        let judged = if $use_jev { judge-related $entry ($found | other-prs $entry.package) $seen } else { [] }
+        let related = ($judged | where related != null | where related >= $min_related)
         {
           entry: $entry
           prs: $prs
+          judged: $judged
+          related: $related
           error: (if $run.exit_code != 0 { $run.stderr | str trim | lines | last })
-          events: (if $run.exit_code == 0 { events $entry $prs $seen } else { [] })
+          events: (if $run.exit_code == 0 { events $entry $prs $seen | append (related-events $entry $related $seen) } else { [] })
         }
       }
   )
@@ -154,7 +205,7 @@ def "main check" [
   # A failed search keeps what was seen, so its changes still show next time.
   let failed = ($results | where error != null | get entry.package)
   let kept = ($seen | where {|row| ($row.key | split row --regex '[#@]' | first) in $failed })
-  $results | where error == null | each {|r| remember $r.entry $r.prs } | flatten | append $kept | save --force $seen_file
+  $results | where error == null | each {|r| remember $r.entry $r.prs $r.judged } | flatten | append $kept | save --force $seen_file
 
   let events = ($results | get events | flatten)
   let report = {
@@ -164,6 +215,7 @@ def "main check" [
       $r.entry | select package version nixpkgs ready reason | merge {
         open: ($r.prs | where status == open | get number)
         landed: ($r.prs | where landed | get number)
+        related: ($r.related | get number)
         error: $r.error
       }
     })

@@ -1,6 +1,6 @@
-# nixpkgs-watch against npr's real output format, with npr and notify-send
-# replaced by stubs:
-#   nu --no-config-file tests/nixpkgs-watch.nu tools/nixpkgs-watch.nu
+# nixpkgs-watch against npr's real output format, with npr, notify-send, and
+# jev replaced by stubs:
+#   nu --no-config-file tests/nixpkgs-watch.nu tools/nixpkgs-watch.nu jev/questions.nuon
 
 # One PR block as npr renders it: ANSI colours and an OSC 8 link on the number.
 def npr-pr [title: string, status: string, number: int, reached?: string] {
@@ -21,7 +21,7 @@ def expect [name: string, actual: any, expected: any] {
   }
 }
 
-def main [script: path] {
+def main [script: path, questions: path] {
   let script = ($script | path expand)
   let tmp = (mktemp --directory)
   mut failures = []
@@ -108,6 +108,72 @@ def main [script: path] {
 
   let shown = (with-env { HOME: $tmp, XDG_STATE_HOME: ($tmp | path join state) } { ^nu --no-config-file $script | complete })
   $failures = ($failures | append (expect "the report prints" ($shown.exit_code == 0 and ($shown.stdout | str contains opencode)) true))
+
+  # With jev, the pull requests that only mention the package are judged.
+  # The stub records each request and calls a title that renames opencode
+  # related; it fails while JEV_FAIL is set.
+  let calls = ($tmp | path join jev-calls)
+  let jev = ($tmp | path join jev)
+  [
+    "#!/bin/sh"
+    "if [ -n \"$JEV_FAIL\" ]; then echo 'Jev request failed with HTTP 503' >&2; exit 1; fi"
+    "req=$(cat)"
+    $"printf '%s\\n' \"$req\" >> ($calls)"
+    "case \"$req\" in"
+    "  *'\"title\":\"treewide: rename'*) p=0.9 ;;"
+    "  *) p=0.2 ;;"
+    "esac"
+    "printf '{\"answers\":{\"bears_on_workaround\":{\"type\":\"noul\",\"noul\":%s}}}' \"$p\""
+  ] | str join "\n" | save $jev
+  ^chmod +x $jev
+  let judged_check = {|state, fail|
+    with-env {
+      HOME: $tmp
+      XDG_STATE_HOME: $state
+      NIXPKGS_WATCH_STATUS: $status
+      NIXPKGS_WATCH_NPR: $npr
+      NIXPKGS_WATCH_NOTIFY: $notify
+      NIXPKGS_WATCH_JEV: $jev
+      NIXPKGS_WATCH_QUESTIONS: ($questions | path expand)
+      FAIL: ""
+      JEV_FAIL: $fail
+    } { ^nu --no-config-file $script check --notify | complete }
+  }
+  let jev_calls = {|| if ($calls | path exists) { open --raw $calls | lines | each { from json } } else { [] } }
+  [
+    (npr-pr "opencode: 2.0.16 -> 2.1.0" open 503)
+    (npr-pr "opencode-desktop: init at 2.0.16" open 504)
+    (npr-pr "[Backport release-26.05] python3Packages.foo: rename opencode" merged 505 "nixos-unstable")
+    (npr-pr "treewide: rename opencode-unwrapped to opencode" merged 506 "nixpkgs-unstable")
+  ] | str join "\n" | save --force $fixture
+  rm --force $notes
+
+  let jev_state = ($tmp | path join jev-state)
+  let run = (do $judged_check $jev_state "")
+  $failures = ($failures | append (expect "a check with jev exits cleanly" $run.exit_code 0))
+  $failures = ($failures | append (expect "jev judges other PRs but not backports" (do $jev_calls | get state.pr.title) ["opencode-desktop: init at 2.0.16" "treewide: rename opencode-unwrapped to opencode"]))
+  $failures = ($failures | append (expect "jev sees the PR and the workaround" (do $jev_calls | get 0.state | columns | sort) [pr workaround]))
+  let report = (open ($jev_state | path join nixpkgs-watch report.json))
+  $failures = ($failures | append (expect "the report lists related PRs" ($report.entries.0.related) [506]))
+  $failures = ($failures | append (expect "own PRs stay as they were" ($report.entries.0.open) [503]))
+
+  do $judged_check $jev_state "" | ignore
+  $failures = ($failures | append (expect "verdicts are reused on the next run" (do $jev_calls | length) 2))
+  let seen = (open ($jev_state | path join nixpkgs-watch seen.json))
+  $failures = ($failures | append (expect "the seen list keeps each verdict" ($seen | where key in ["opencode#504" "opencode#506"] | get related) [0.2 0.9]))
+
+  # A failed jev keeps nothing, so the pull request is asked about again.
+  let retry_state = ($tmp | path join retry-state)
+  rm --force $calls
+  let failed = (do $judged_check $retry_state "1")
+  $failures = ($failures | append (expect "a jev failure does not fail the check" $failed.exit_code 0))
+  $failures = ($failures | append (expect "a jev failure reports nothing related" (open ($retry_state | path join nixpkgs-watch report.json) | get entries.0.related) []))
+  do $judged_check $retry_state "" | ignore
+  $failures = ($failures | append (expect "unjudged PRs are asked again" (do $jev_calls | length) 2))
+  rm --force $notes
+  do $judged_check $retry_state "" | ignore
+  let retried = (with-env { HOME: $tmp, XDG_STATE_HOME: $retry_state } { open ($retry_state | path join nixpkgs-watch report.json) })
+  $failures = ($failures | append (expect "the retried run finds the related PR" ($retried.entries.0.related) [506]))
 
   rm --recursive $tmp
   if ($failures | is-not-empty) {

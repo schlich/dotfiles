@@ -125,7 +125,9 @@
 - A build warning starting "nixpkgs now ships" means the locked nixpkgs has
   caught up: propose removing that workaround as its own topic.
 - `nixpkgs-watch` prints the last daily npr report (open pull requests, ones
-  that reached unstable, failures); `nixpkgs-watch check` refreshes it. Read
+  that reached unstable, failures, and `related` ones that only mention the
+  package but that Jev judged, from the title, to bear on the workaround);
+  `nixpkgs-watch check` refreshes it. Read
   it when the user asks about a watched package or before updating the
   nixpkgs input.
 

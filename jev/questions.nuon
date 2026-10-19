@@ -159,6 +159,23 @@
       }
     }
   }
+  # `nixpkgs-watch check`: whether a pull request npr found for a watched
+  # package, but which is not titled as that package's own, bears on the
+  # workaround. Each pull request is judged once, from its title.
+  nixpkgs_watch: {
+    # At or above this the pull request is reported and notified.
+    min_related: 0.7
+    questions: {
+      bears_on_workaround: {
+        type: noul
+        instructions: "The nixpkgs pull request titled `pr.title` could make the workaround in `workaround.reason` for the package `workaround.package` unnecessary, for example by adding, renaming, updating, or fixing that package or the dependency the workaround exists for."
+        criteria: {
+          "true": "The pull request changes the package itself, a renamed or split attribute of it, or what the workaround works around"
+          "false": "The pull request only mentions the package in passing, touches unrelated packages, or is a mass change that leaves it as it was"
+        }
+      }
+    }
+  }
   # `jev session-triage`: Jev reads how a Claude Code session ended; code
   # checks what it names against jj, GitHub, and the system profile and
   # decides. Tuned on 166 desktop sessions triaged by hand on 2026-10-16.

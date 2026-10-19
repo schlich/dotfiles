@@ -38,12 +38,17 @@ let
     }
   ) cfg;
 
+  # Judges the pull requests that only mention a watched package.
+  jev = import ../../jev/package.nix { inherit pkgs; };
+
   nixpkgsWatch = pkgs.writeShellApplication {
     name = "nixpkgs-watch";
     text = ''
       export NIXPKGS_WATCH_STATUS=${pkgs.writeText "nixpkgs-watch.json" (builtins.toJSON status)}
       export NIXPKGS_WATCH_NPR=${npr}/bin/npr
       export NIXPKGS_WATCH_NOTIFY=${pkgs.libnotify}/bin/notify-send
+      export NIXPKGS_WATCH_JEV=${jev}/bin/jev
+      export NIXPKGS_WATCH_QUESTIONS=${../../jev/questions.nuon}
       exec ${lib.getExe pkgs.nushell} --no-config-file ${../../tools/nixpkgs-watch.nu} "$@"
     '';
     meta.description = "Report nixpkgs pull requests for the packages this home works around";
@@ -91,7 +96,7 @@ in
           ''
             export HOME="$TMPDIR/home"
             mkdir -p "$HOME"
-            nu --no-config-file ${../../tests/nixpkgs-watch.nu} ${../../tools/nixpkgs-watch.nu}
+            nu --no-config-file ${../../tests/nixpkgs-watch.nu} ${../../tools/nixpkgs-watch.nu} ${../../jev/questions.nuon}
             touch "$out"
           '';
     }
