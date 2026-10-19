@@ -8,7 +8,7 @@
 
 let
   app = import ../../hosts/homelab/nixbot.nix;
-  # Tailscale Funnel terminates TLS; 443 stays free for the Tangled spindle.
+  # Tailscale Funnel terminates TLS on this port.
   funnelPort = 8443;
   port = 8010;
   # Provisioned by hand on the host, never in the repository or the store:
@@ -29,7 +29,7 @@ in
     evalSystems = [ "x86_64-linux" ];
     # A Den host evaluation peaks near 6 GiB, the budget `ci land` gives its
     # local clearance; nix-eval-jobs restarts a worker past it. One worker
-    # and two builds leave room for the spindle's guest on a 15 GiB host.
+    # and two builds leave room for offloaded builds on a 15 GiB host.
     evalWorkerCount = 1;
     evalMaxMemorySize = 6144;
     buildConcurrency = 2;
@@ -56,8 +56,8 @@ in
   systemd.tmpfiles.rules = [ "d ${secretsDir} 0700 root root -" ];
 
   # GitHub delivers the App's webhooks to https://${domain}/webhooks/github
-  # only through this Funnel. Like the spindle's, it needs a one-time
-  # `tailscale up` and the tailnet's funnel node attribute, and retries while
+  # only through this Funnel. It needs a one-time `tailscale up` and the
+  # tailnet's funnel node attribute, and retries while
   # tailscaled's backend is not ready at boot.
   systemd.services.nixbot-funnel = lib.mkIf config.services.nixbot.enable {
     description = "Tailscale Funnel for nixbot";

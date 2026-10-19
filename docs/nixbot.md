@@ -53,7 +53,5 @@ Tangled backend, and its polling mode watches only the default branch.
 ## Memory
 
 homelab has 8 CPUs and about 15 GiB of memory. nixbot's evaluation takes up
-to 6 GiB and its PostgreSQL a little more, and the spindle's guest takes
-10 GiB while a workflow runs. A spindle run and a nixbot evaluation at once
-can exhaust the host; retire the spindle, or start it only while nixbot is
-idle.
+to 6 GiB and its PostgreSQL a little more, which leaves room for the builds
+the fleet offloads to homelab.

@@ -4,8 +4,8 @@ let
   cache = import ../../hosts/homelab/cache.nix;
 in
 {
-  # Harmonia serves homelab's whole store: its own system, what spindle guests
-  # build, and anything else built here. The secret half of the signing key
+  # Harmonia serves homelab's whole store: its own system, what the fleet
+  # offloads to its builder, and anything else built here. The secret half of the signing key
   # was generated on the host and never enters the repository or the store;
   # to rotate it, rerun this on homelab and replace publicKey in
   # hosts/homelab/cache.nix with what it prints:
@@ -24,8 +24,8 @@ in
 
   systemd.tmpfiles.rules = [ "d /var/lib/harmonia-secrets 0700 root root -" ];
 
-  # Spindle guests reach the cache on loopback and the fleet over the tailnet;
-  # the LAN and the router never see the port.
+  # The fleet reaches the cache over the tailnet; the LAN and the router never
+  # see the port.
   networking.firewall.interfaces.${config.services.tailscale.interfaceName}.allowedTCPPorts = [
     cache.port
   ];

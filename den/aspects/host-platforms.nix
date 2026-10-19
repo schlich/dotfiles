@@ -24,7 +24,6 @@
       ../../modules/nixos/homelab-builder.nix
       ../../modules/nixos/homelab-grpc-store.nix
       ../../modules/nixos/nixbot.nix
-      ../../modules/nixos/tangled-spindle.nix
       ../../modules/nixos/tangled-knot.nix
     ];
   };

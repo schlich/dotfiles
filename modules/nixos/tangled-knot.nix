@@ -7,9 +7,9 @@
 
 let
   # The knot's hostname is also its did:web identity, and tangled.org reaches
-  # it over HTTPS on 443. This host's own tailnet name already gives 443 to
-  # the spindle, so the knot joins the tailnet as its own node, `knot`, and
-  # takes 443 on that name through Funnel.
+  # it over HTTPS on 443. The knot joins the tailnet as its own node, `knot`,
+  # and takes 443 on that name through Funnel, which keeps its did:web
+  # identity independent of homelab's own tailnet name.
   hostname = "knot.${config.dotfiles.fleet.tailnet}";
   listenAddr = "127.0.0.1:5555";
   # homelab's OpenSSH holds 22 and 2222, and the second tailscaled forwards

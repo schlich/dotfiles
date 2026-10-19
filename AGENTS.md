@@ -259,15 +259,11 @@
   `main@tangled`, proves a declared refactor leaves every closure unchanged,
   builds every flake check at that exact commit on the local machine, and only
   then fast-forwards `main` and tags releases. Never push `main` any other way.
-  `--clearance spindle` or `--clearance github` waits for that CI on the exact head
-  instead.
-- The spindle runs `.tangled/workflows` only on a manual trigger; pushes do
-  not start it, and tangled.org has no control that does. The only way in is
-  the spindle's authenticated `triggerPipeline` call in
-  `docs/homelab-builds.md`, which needs the user's app password, so an agent
-  cannot start a run. Never wait for a spindle run before landing unless the
-  user has started one for that exact commit. The
-  flake-checks workflow and the local clearance run the same command: it builds
+  `--clearance github` waits for GitHub Actions on the exact head instead.
+- GitHub Actions (`.github/workflows/nix-ci.yml`) is the remote CI: every
+  push of `main` or a `jj-*` topic branch to the GitHub mirror starts it.
+  There is no Tangled spindle. The nix-ci workflow and the local clearance
+  run the same check set: each builds
   every attribute of `checks.x86_64-linux` and skips checks whose outputs are
   already cached. Those checks evaluate every host but build no system
   closure: the headless and primary desktop closures are `remoteChecks`,
