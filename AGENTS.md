@@ -135,6 +135,10 @@
 - In a shell without a terminal, such as Claude Code's Bash tool, use
   `sudo -A`: `SUDO_ASKPASS` points at sudoplz, which shows the command in a
   dialog and supplies the stored password only on approval.
+- Inside the Claude desktop app's sandbox, no-new-privileges defeats
+  `sudo`; use `run0 --background= /absolute/path/COMMAND` instead, which
+  polkit approves in a dialog. Absolute paths are required: the transient
+  unit's `PATH` lacks the NixOS system profile.
 - Never pass a sudo password through chat, command arguments, stdin, or
   environment variables. If inline escalation is unavailable, tell the user
   to run the command themselves or enable approval handling in the client.

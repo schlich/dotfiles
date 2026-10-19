@@ -123,10 +123,16 @@ script, use valid Nushell syntax.
     `nix-dev`.
 
 - Inside the Claude desktop app, `sudo` always fails because the app's
-  sandbox sets the no-new-privileges flag. Do not attempt privileged
-  commands there; give the user the command to run in their own terminal.
-  The exception is a NixOS switch in the dotfiles repository: when the user
-  asks for one, run `system-switch`, which needs no sudo and works there.
+  bubblewrap sandbox sets the no-new-privileges flag, which defeats setuid.
+  Run a privileged command there as
+  `run0 --background= /absolute/path/to/COMMAND ...args` instead: run0 asks
+  systemd over D-Bus to start the command as a transient unit outside the
+  sandbox, and polkit shows the user an approval dialog. The unit gets
+  systemd's default `PATH`, which on NixOS lacks the system profile, so give
+  the program's absolute path (`/run/current-system/sw/bin/...`, or the
+  result of `which`); a bare name fails with exit code 203. `--background=`
+  stops run0 tinting the output. For a NixOS switch in the dotfiles
+  repository, still run `system-switch` when the user asks for one.
 
 - Elsewhere, run a privileged command as `sudo -A COMMAND` in Bash. Bash
   has no terminal for a password prompt, so `-A` asks sudoplz instead: it
