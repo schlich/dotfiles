@@ -1,21 +1,20 @@
-#!/usr/bin/env bash
+#!/usr/bin/env nu
 # Create a named checkpoint before risky operations
 # Usage: jj-checkpoint [NAME]
 # Later undo your own operations since it with: jj op revert <op-id>
-# NAME defaults to "checkpoint"
 
-set -euo pipefail
+# Record the current operation ID before risky history edits.
+def main [
+  name: string = "checkpoint" # Label printed with the checkpoint
+] {
+  let op_id = (^jj op log -n1 --no-graph -T 'self.id().short(12)')
 
-name="${1:-checkpoint}"
-
-# Get current operation ID
-op_id=$(jj op log -n1 --no-graph -T 'self.id().short(12)')
-
-echo "📍 Checkpoint '$name' at operation: $op_id"
-echo "   Undo: list the operations after it with 'jj op log', then"
-echo "   'jj op revert <op-id>' each of yours, newest first."
-echo "   Do not 'jj op restore $op_id': the operation log is shared, so it"
-echo "   also rewinds other workspaces' work since then."
-echo ""
-echo "   Current state:"
-jj log -r @ -n1 -T 'change_id.shortest(8) ++ " " ++ description.first_line()'
+  print $"📍 Checkpoint '($name)' at operation: ($op_id)"
+  print "   Undo: list the operations after it with 'jj op log', then"
+  print "   'jj op revert <op-id>' each of yours, newest first."
+  print $"   Do not 'jj op restore ($op_id)': the operation log is shared, so it"
+  print "   also rewinds other workspaces' work since then."
+  print ""
+  print "   Current state:"
+  ^jj log -r @ -n1 -T 'change_id.shortest(8) ++ " " ++ description.first_line()'
+}
