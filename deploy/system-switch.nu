@@ -302,9 +302,10 @@ def main [
     }
 
     let state = ($env.DEPLOY_STATE | path join last.nuon)
-    mut last = null
-    if ($state | path exists) {
-        $last = (open $state)
+    # A `mut` initialised to null is typed as nothing, so assigning the record
+    # later fails; bind it once instead.
+    let last = if ($state | path exists) { open $state } else { null }
+    if $last != null {
         print $last
         if ($last.report? | is-not-empty) {
             print $"Revert report: ($last.report)"
