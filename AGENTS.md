@@ -105,13 +105,22 @@
 - `generation` says which system and Home Manager generation a host runs,
   which commit each came from, and whether `main` has moved past it. Use it
   to answer what a host is running before proposing a switch or activation.
-- Home Manager runs standalone, apart from the system: `system-switch` and
-  Clan never apply it. Apply a home with `nh home switch`, which builds
-  `homeConfigurations."$USER@$HOSTNAME"` from this checkout (`NH_FLAKE`) and
-  needs no `sudo`; prefer `home-activate`, which runs it and records the
-  change each generation came from for `generation`. The same approval rule
-  applies: activate a home only when the user asks. `home.packages` install
-  into `~/.nix-profile`, not `/etc/profiles/per-user`.
+- Home Manager runs standalone, apart from the system, so applying a change
+  is two steps: `system-switch` for the system, then the home. Clan and a
+  plain `system-switch` never apply a home. Apply a home with
+  `nh home switch`, which builds `homeConfigurations."$USER@$HOSTNAME"` from
+  this checkout (`NH_FLAKE`) and needs no `sudo`; prefer `home-activate`,
+  which runs it and records the change each generation came from for
+  `generation`. `system-switch --with-home` does both from landed main: after
+  a successful switch it activates the home from the same commit. The same
+  approval rule applies to each step: activate a home only when the user
+  asks, and pass `--with-home` only when they asked for the home too.
+  `home.packages` install into `~/.nix-profile`, not `/etc/profiles/per-user`.
+- `system-switch` refuses to start when the running system still embeds the
+  user's Home Manager and main's standalone home is not active yet, because
+  that switch would remove every user package (as on asus on 2026-10-19).
+  Relay its message and ask the user whether to run
+  `system-switch --with-home` or `home-activate` first.
 - Every activation prints dix's package and version changes from the running
   system (`modules/nixos/closure-diff.nix`), so `system-switch` and Clan
   output include them. When offering `system-switch`, mention the notable

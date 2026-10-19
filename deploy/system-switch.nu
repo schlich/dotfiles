@@ -12,6 +12,17 @@
 #
 # The journal is read through the user manager, which writes it to a file
 # under ~/.cache, so this also works inside the Claude desktop app's sandbox.
+#
+# A system that stops embedding Home Manager takes the user's packages with
+# it: on 2026-10-19 the first asus switch after the home went standalone
+# emptied /etc/profiles/per-user, and nothing had populated ~/.nix-profile.
+# So before starting the unit, a running system that still activates this
+# user's home is checked against main: when main builds that home as
+# homeConfigurations."USER@HOST" and it is not the active home generation,
+# this stops unless --with-home asks to activate that home, from the commit
+# the switch deployed, once the switch succeeds. DEPLOY_REPO, DEPLOY_HOST,
+# DEPLOY_GIT, and DEPLOY_NIX name main's repository, the host, and the git
+# and nix this uses.
 
 const BIN = '/run/current-system/sw/bin'
 const APP = 'nixos-switch-main'
@@ -77,7 +88,127 @@ def build-report [build: record]: nothing -> record {
     { state: working, id: switch/build, app: $APP, msg: ($parts | str join '; '), progress: $progress }
 }
 
-def main [] {
+def home-name [] { $"($env.USER)@($env.DEPLOY_HOST)" }
+
+def home-state [] { $env.XDG_STATE_HOME? | default ($env.HOME | path join .local state) }
+
+def home-profile [] { home-state | path join nix profiles home-manager }
+
+# The store path the user's Home Manager profile points at, or null.
+def running-home [] {
+    let profile = (home-profile)
+    if ($profile | path exists) { ^readlink --canonicalize $profile | str trim } else { null }
+}
+
+# Whether the running system still activates this user's home through the
+# Home Manager NixOS module, whose unit it names after the user.
+def embedded-home [] {
+    $"/run/current-system/etc/systemd/system/home-manager-($env.USER).service" | path exists
+}
+
+def flake-at [rev: string] { $"git+($env.DEPLOY_REPO)?ref=main&rev=($rev)" }
+
+def main-rev [] {
+    let result = (^$env.DEPLOY_GIT ls-remote $env.DEPLOY_REPO refs/heads/main | complete)
+    let rev = ($result.stdout | lines | get 0? | default '' | split row "\t" | first | str trim)
+    if $result.exit_code != 0 or ($rev | is-empty) {
+        error make { msg: $"Could not resolve main on ($env.DEPLOY_REPO): ($result.stderr | str trim)" }
+    }
+    $rev
+}
+
+# The activation package `rev` builds as this user's standalone home, or
+# null when that revision has none for this user and host.
+def standalone-home [rev: string] {
+    let flake = (flake-at $rev)
+    let name = (home-name)
+    let has = (^$env.DEPLOY_NIX eval --json $"($flake)#homeConfigurations" --apply $"homes: homes ? \"($name)\"" | complete)
+    if $has.exit_code != 0 {
+        error make { msg: $"Could not evaluate homeConfigurations at ($rev | str substring 0..11): ($has.stderr | lines | last 20 | str join "\n")" }
+    }
+    if ($has.stdout | str trim) != 'true' { return null }
+    let installable = $"($flake)#homeConfigurations.\"($name)\".activationPackage"
+    let out = (^$env.DEPLOY_NIX eval --raw $"($installable).outPath" | complete)
+    if $out.exit_code != 0 {
+        error make { msg: $"Could not evaluate ($name)'s home at ($rev | str substring 0..11): ($out.stderr | lines | last 20 | str join "\n")" }
+    }
+    { installable: $installable, path: ($out.stdout | str trim) }
+}
+
+# What switching to main would take from this user: null when the running
+# system no longer embeds their home, when main does not build it
+# standalone, or when main's standalone home is already the active one.
+def home-gap [] {
+    if not (embedded-home) { return null }
+    let rev = (main-rev)
+    let home = (standalone-home $rev)
+    if $home == null or (running-home) == $home.path { return null }
+    { rev: $rev, home: $home }
+}
+
+def gap-message [gap: record] {
+    let short = ($gap.rev | str substring 0..11)
+    [
+        $"Not switching: main at ($short) runs Home Manager standalone, as homeConfigurations.\"(home-name)\", while the running system still activates ($env.USER)'s home, and main's home is not the active generation."
+        "Switching alone would drop every Home Manager package (jj, ci, nh, home-activate, ...) from PATH."
+        "Either:"
+        "  system-switch --with-home    # switch, then activate main's home from the same commit"
+        $"  home-activate                # first, from ~/dotfiles at main \(($short)\), then system-switch"
+    ] | str join "\n"
+}
+
+# Record a home this command activated where `generation` reads
+# home-activate's records.
+def record-home [rev: string, activation: string] {
+    let link = (^readlink (home-profile) | complete | get stdout | str trim)
+    let log = ($env.DEPLOY_STATE | path join generations.jsonl)
+    let subject = (try { open --raw $log | lines | where $it != '' | each { from json } | where rev == $rev | last | get subject } catch { '' })
+    let entry = {
+        at: (date now | format date '%+')
+        activation: $activation
+        generation: ($link | parse --regex '-(?<n>\d+)-link$' | get n | each { into int } | get 0?)
+        via: system-switch
+        change: null
+        commit: ($rev | str substring 0..11)
+        landed: true
+        description: $subject
+    }
+    let dir = (home-state | path join home-activate)
+    try {
+        mkdir $dir
+        $"($entry | to json --raw)\n" | save --append ($dir | path join generations.jsonl)
+    }
+}
+
+# Activate this user's standalone home from the commit the switch deployed.
+def activate-home [last] {
+    if $last == null or ($last.rev? | is-empty) {
+        error make { msg: "The switch recorded no revision, so no home was activated; run home-activate." }
+    }
+    let short = ($last.rev | str substring 0..11)
+    let home = (standalone-home $last.rev)
+    if $home == null {
+        print $"main at ($short) builds no standalone home for (home-name); none activated."
+        return
+    }
+    if (running-home) == $home.path {
+        print $"(home-name)'s home from ($short) is already active."
+        return
+    }
+    print $"Activating (home-name)'s home from main at ($short)..."
+    let out = (^$env.DEPLOY_NIX build --no-link --print-out-paths $home.installable | str trim)
+    ^$"($out)/activate"
+    record-home $last.rev $out
+}
+
+def main [
+    --with-home # after a successful switch, activate this user's standalone home from the same commit
+] {
+    let gap = (home-gap)
+    if $gap != null and not $with_home {
+        error make { msg: (gap-message $gap) }
+    }
+
     let since = (date now | format date '%Y-%m-%d %H:%M:%S')
     let status_file = ($env.DEPLOY_STATE | path join status.jsonl)
     let previous = (show InvocationID)
@@ -193,10 +324,11 @@ def main [] {
         if $last.exit_code? != 0 {
             error make { msg: $"(unit) ended with outcome ($last.outcome? | default unknown)" }
         }
-        return
+    } else {
+        let result = (show Result)
+        if $result != 'success' {
+            error make { msg: $"(unit) failed: ($result)" }
+        }
     }
-    let result = (show Result)
-    if $result != 'success' {
-        error make { msg: $"(unit) failed: ($result)" }
-    }
+    if $with_home { activate-home $last }
 }

@@ -142,12 +142,18 @@ let
 
   # Start the unit and follow its journal and step reports as it runs. It
   # lives here, not in Home Manager, so hosts without Home Manager (homelab)
-  # get it too.
+  # get it too, and it still runs after a switch emptied the user's profile.
+  # Before switching it asks main whether the user's standalone home is
+  # active yet, with this system's git and nix rather than the profile's.
   systemSwitch = wrapWithConfig {
     package = pkgs.writers.writeNuBin "system-switch" (builtins.readFile ../../deploy/system-switch.nu);
     env = {
       DEPLOY_UNIT = unit;
       DEPLOY_STATE = stateDir;
+      DEPLOY_REPO = repo;
+      DEPLOY_HOST = host;
+      DEPLOY_GIT = lib.getExe pkgs.git;
+      DEPLOY_NIX = lib.getExe' (config.iets.classic.nix or config.nix.package) "nix";
     };
   };
 in

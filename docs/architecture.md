@@ -32,7 +32,9 @@ user on that host. `den/inventory.nix` builds each home from its host's
 package set and passes the evaluated system as `osConfig`, so home modules
 still read system facts; `den/aspects/home-manager-host.nix` adds the overlays
 those homes need to exactly those hosts. No system embeds or activates a
-home, so `system-switch` and Clan never change one. Every such user gets the
+home, so applying a change is two steps, the system and then the home, and
+Clan and a plain `system-switch` change only the system (see "Applying a
+home" below). Every such user gets the
 shell home (`user-shell`: Nushell, its
 prompt and history tools, git, jj, ssh and the command-line tools), and
 workstations add the desktop home (`user-desktop`: terminals, editors, agent
@@ -140,6 +142,33 @@ without a password. The unit builds the host from Tangled's `main` at a pinned
 revision, never from a working copy, skips the switch when that toplevel is
 already active, and records the result in `/var/lib/nixos-switch-main`.
 
+## Applying a home
+
+The system and the home are separate generations, so a change that touches
+both is applied in two steps: `system-switch` for the system, then
+`home-activate` (or `nh home switch`) for the home. A system switch never
+removes a standalone home's packages, which live in `~/.nix-profile`.
+
+The one exception was the move to a standalone home. A system that still
+embeds Home Manager carries the user's packages in
+`/etc/profiles/per-user/USER`, and the first switch to a system without it
+removes them all. On 2026-10-19 that emptied asus's PATH of jj, ci, nh and
+`home-activate` itself, because `~/.nix-profile` had never been activated.
+`system-switch` therefore checks before it starts the unit: when the running
+system still has the Home Manager NixOS module's `home-manager-USER` unit and
+main builds `homeConfigurations."USER@HOST"`, that home's activation package
+must already be the user's active Home Manager generation. Otherwise it
+stops and names both ways forward:
+
+- `system-switch --with-home` switches and, once the switch succeeds,
+  builds that home from the commit the switch deployed, runs its `activate`
+  as the user, and records it for `generation`. Asking for it is the
+  approval for both activations.
+- `home-activate` from `~/dotfiles` at main, then `system-switch`.
+
+`--with-home` also works on any later switch, to apply both steps from
+landed main at once. Without it, `system-switch` changes only the system.
+
 ## Which commit a generation came from
 
 A store path does not name the commit that produced it, and this repository
@@ -157,11 +186,15 @@ the generation instead:
 - `home-activate` runs `nh home switch` on the working copy, which may hold
   edits `main` lacks, so it appends the JJ change, commit, and whether that
   commit has landed to `~/.local/state/home-activate/generations.jsonl`.
+  `system-switch --with-home` appends the landed commit it activated to the
+  same log.
 
 `generation` reads both: the running, booted, and boot-default system
 generations, the revision behind the running one, whether Tangled's `main` has
-moved past it, and the running Home Manager generation with the change
-`home-activate` built it from (unrecorded after a bare `nh home switch`). `generation --line` is a one-line form for
+moved past it, and the running Home Manager generation with the change or
+commit it was built from (unrecorded after a bare `nh home switch` or a
+hand-run `activate`). The system and the home are applied separately, so
+their commits may differ. `generation --line` is a one-line form for
 a status bar, and `--json` the full record. A host switched another way, such
 as by Clan or `nixos-rebuild`, shows its source as unrecorded.
 
@@ -260,7 +293,8 @@ user escalates with sudo on the target. asus has no `deploy.targetHost`, so
 an unlanded topic skips the landing gate, and Clan offers no preview goal to
 reserve it for, so do not.
 Home Manager changes, `home.packages` included, never change the NixOS
-toplevel: the home is standalone, and `nh home switch` (or `home-activate`)
-applies it on each host apart from the system. A landing therefore reaches a
-host's home only when someone switches that home there; the canary's timer
-and Clan update systems alone.
+toplevel: the home is standalone, and `nh home switch` (or `home-activate`, or
+`system-switch --with-home`) applies it on each host apart from the system. A
+landing therefore reaches a host's home only when someone switches that home
+there; the canary's timer and Clan update systems alone, and neither runs the
+check `system-switch` makes before a system stops embedding a home.

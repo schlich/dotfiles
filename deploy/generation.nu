@@ -5,7 +5,11 @@
 # landing would warrant a generation. Instead nixos-switch-main pairs each
 # store path it deploys or finds already running with its revision in
 # generations.jsonl, and home-activate keeps the same record for each
-# standalone Home Manager generation it builds from a working copy.
+# standalone Home Manager generation it builds from a working copy, as does
+# `system-switch --with-home` for the home it activates from landed main.
+#
+# Home Manager is standalone: a plain system switch never changes the home,
+# so the two may come from different commits, and each shows its own.
 
 const SYSTEM = '/nix/var/nix/profiles/system'
 
@@ -69,7 +73,8 @@ def main-state [rows: list] {
 }
 
 # The running standalone Home Manager generation, and the change it came
-# from when home-activate built it; a bare `nh home switch` leaves none.
+# from when home-activate or `system-switch --with-home` built it; a bare
+# `nh home switch` leaves none.
 def home [] {
     let profile = (home-state | path join nix profiles home-manager)
     let running = (resolve $profile)
@@ -78,8 +83,8 @@ def home [] {
     {
         generation: (generation-of $profile $running)
         path: $running
-        origin: (if $activated != null { 'home-activate' } else { 'unrecorded' })
-        source: (if $activated == null { null } else { $activated | reject activation })
+        origin: (if $activated != null { $activated.via? | default 'home-activate' } else { 'unrecorded' })
+        source: (if $activated == null { null } else { $activated | reject activation --optional via })
     }
 }
 
@@ -94,6 +99,7 @@ def summary [report: record] {
     let home = if $report.home == null { '' } else {
         let from = match $report.home.origin {
             'home-activate' => $" from ($report.home.source.change)(if $report.home.source.landed { '' } else { ' unlanded' })"
+            'system-switch' => $" from main ($report.home.source.commit)"
             _ => ' unrecorded'
         }
         $" · hm ($report.home.generation)($from)"
