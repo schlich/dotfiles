@@ -17,6 +17,19 @@ let
   wrapWithConfig = import ../../lib/wrap-with-config.nix { inherit lib pkgs; };
 in
 {
+  # ci's daily `ci prune --apply` backstop for topics landed without
+  # `ci park`. It lived in vcs.nix until ci moved to its own repository and
+  # was lost then; landed branches piled up again until 2026-10-19.
+  imports = [ inputs.ci.homeModules.default ];
+
+  config.services.ci-prune = {
+    enable = true;
+    package = cfg.package;
+    jujutsu = config.programs.jujutsu.package;
+    repositories = [ "${config.home.homeDirectory}/dotfiles" ];
+    sshAuthSock = "%t/gcr/ssh";
+  };
+
   options.dotfiles.ci = {
     tracesEndpoint = lib.mkOption {
       type = lib.types.nullOr lib.types.str;

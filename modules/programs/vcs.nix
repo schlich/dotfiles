@@ -33,8 +33,9 @@ in
 {
   imports = [ ./ci.nix ];
 
-  # Other modules reach the wrapped git through this option.
+  # Other modules reach the wrapped git and jj through these options.
   programs.git.package = git;
+  programs.jujutsu.package = jj;
   programs.git.settings = {
     user = {
       name = config.accounts.email.accounts.personal.userName;
