@@ -284,6 +284,18 @@
   Use `ci cancel` for a topic that will not land.
   A failed pipeline, conflicts, or undispatched edits keep the task open. Native
   archive-button clicks are not a closeout hook.
+- When `ci land` reports that it parked the workspace, which it does for a
+  `ci start` workspace, the topic is already parked; do not run `ci park`.
+- Once `ci park` or `ci cancel` succeeds, the session's work is done, so
+  offer to archive it in the same turn. In the Claude desktop app, end the
+  turn with the wrap-up's `archive` action as the first button; elsewhere,
+  say in one line that the session can be archived. Archive only on the
+  user's click or yes. A parked topic left with its session open is how
+  sessions pile up in the sidebar.
+- A `ci start` workspace leaks when its session stops after landing without
+  parking. The daily `ci-prune` timer (`modules/programs/ci.nix`) removes
+  such workspaces and landed branches after a day idle; `ci prune` shows
+  what it would remove. It never archives sessions.
 - `ci land` owns delivery to `main`. It rebases the topic onto
   `main@origin`, proves a declared refactor leaves every closure unchanged,
   builds every flake check at that exact commit on the local machine, and only

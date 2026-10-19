@@ -402,8 +402,12 @@ state for that one workspace, but must not silently rebase or resolve
 conflicts. Before archiving a delivered topic, run
 `ci park`: it verifies that the current head was merged to main and
 removes a workspace that `ci start` created, or leaves any other one on a
-clean change on main. Use `ci cancel` for a topic that will not land. Only then call the archive tool. Failed
+clean change on main. Use `ci cancel` for a topic that will not land. Failed
 checks, conflicts, pending delivery, or undispatched edits leave the task open.
+Once `ci park` or `ci cancel` succeeds, offer to archive the session in the
+same turn rather than leaving it open: in the Claude desktop app, make the
+wrap-up's `archive` action the first button; elsewhere, say in one line that
+the session can be archived. Archive only on the user's click or yes.
 Do not treat app exit, idle timeout, or SessionEnd as authorization to dispatch
 or merge. Direct archive-button clicks do not execute this closeout workflow.
 
