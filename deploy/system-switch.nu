@@ -99,17 +99,25 @@ def main [] {
     if $followed.exit_code != 0 {
         print $"Could not follow the journal: ($followed.stderr | str trim). Its lines follow at the end."
     }
+    # A run already in progress, such as one the canary timer or an earlier
+    # system-switch began, absorbs this start job rather than queueing
+    # another, so its invocation never changes. Follow that run as this one.
+    let begun = (date now)
+    let attached = ($previous | is-not-empty) and ((show ActiveState) in [activating deactivating reloading])
     let started = (^$"($BIN)/systemctl" start --no-block (unit) | complete)
     if $started.exit_code != 0 {
         ^$"($BIN)/systemctl" --user stop $follower | complete | ignore
         error make { msg: $"(unit) did not start: ($started.stderr | str trim)" }
+    }
+    if $attached {
+        print $"(unit) was already running; following that run. Its earlier lines are in journalctl --unit (unit)."
     }
 
     mut seen = { journal: 0, status: 0 }
     mut build = { builds: 0, fetches: 0, built: 0, fetched: 0, current: '' }
     mut build_open = true
     mut last_build = { at: ((date now) - 1hr), msg: '' }
-    mut run = ''
+    mut run = if $attached { $previous } else { '' }
     mut finished = false
     while not $finished {
         # A new invocation is this run's; the unit may first wait in its
@@ -123,7 +131,10 @@ def main [] {
             let again = (show InvocationID)
             if ($again | is-not-empty) and $again != $previous { $run = $again } else { $finished = true }
         }
-        if $run != '' { $finished = ((show ActiveState) not-in [activating deactivating reloading]) }
+        # A run that ends while a start job is still queued, as when the
+        # attached run finished just before this start, is followed by
+        # that job's own run.
+        if $run != '' { $finished = ((show ActiveState) not-in [activating deactivating reloading]) and (show Job | is-empty) }
         # The journal and the status file may trail the unit's end slightly.
         if $finished { sleep 1sec }
 
@@ -160,8 +171,9 @@ def main [] {
     }
 
     let state = ($env.DEPLOY_STATE | path join last.nuon)
+    mut last = null
     if ($state | path exists) {
-        let last = (open $state)
+        $last = (open $state)
         print $last
         if ($last.report? | is-not-empty) {
             print $"Revert report: ($last.report)"
@@ -172,7 +184,16 @@ def main [] {
         print $"Failed units:\n($failed)"
     }
     if $run == '' {
-        error make { msg: $"(unit) never started; see systemctl status (unit)" }
+        # A run that wrote its outcome after this command began was this
+        # one, even if its invocation was never seen.
+        let at = (try { $last.at | into datetime } catch { null })
+        if $at == null or $at < $begun {
+            error make { msg: $"(unit) never started; see systemctl status (unit)" }
+        }
+        if $last.exit_code? != 0 {
+            error make { msg: $"(unit) ended with outcome ($last.outcome? | default unknown)" }
+        }
+        return
     }
     let result = (show Result)
     if $result != 'success' {
