@@ -3,6 +3,14 @@
 
   inputs = {
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
+    # Build Codex from the fork that contains the execution-tool transcript renderer.
+    codex = {
+      url = "github:schlich/codex/d0e6fb56b19d";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.rust-overlay.follows = "rust-overlay";
+    };
+    # The fork's Rust toolchain requires a newer overlay than its own lockfile.
+    rust-overlay.url = "github:oxalica/rust-overlay/a110337465cfb76e3806b81b9db3094c3e6e770a";
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -207,6 +215,9 @@
     let
       system = "x86_64-linux";
       overlays = [
+        (_final: _prev: {
+          codex = inputs.codex.packages.${system}.codex-rs;
+        })
         jj-starship.overlays.default
         nushellWith.overlays.default
       ];

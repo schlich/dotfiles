@@ -86,6 +86,16 @@ jobs:
         run: |
           echo "checks=$(nix --accept-flake-config eval --json .#checks.x86_64-linux --apply builtins.attrNames)" >> "$GITHUB_OUTPUT"
           echo "remote=$(nix --accept-flake-config eval --json .#remoteChecks.x86_64-linux --apply builtins.attrNames)" >> "$GITHUB_OUTPUT"
+  codex-package:
+    name: Build Codex fork package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: DeterminateSystems/determinate-nix-action@v3.21.9
+      - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
+      - name: Build the pinned Codex fork output
+        run: >-
+          nix --accept-flake-config build --inputs-from . 'codex#packages.x86_64-linux.codex-rs' --no-link --print-out-paths
   check:
     name: flake check (${{ matrix.check }})
     needs: discover
