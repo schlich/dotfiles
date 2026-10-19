@@ -87,6 +87,11 @@
       url = "github:getpaseo/paseo/main";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # grpc:// stores: homelab's daemon and every remote host's client plugin.
+    nix-grpc-store = {
+      url = "github:Mic92/nix-grpc-store";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     modern-web-guidance = {
       url = "github:GoogleChrome/modern-web-guidance";
       flake = false;
