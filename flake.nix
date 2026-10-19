@@ -276,6 +276,7 @@
       iwe = import ./modules/tooling/knowledge/iwe-package.nix { inherit inputs lib pkgs; };
       marimohub = import ./modules/tooling/knowledge/marimohub-package.nix { inherit lib pkgs; };
       ciDashboard = import ./tools/ci-dashboard/checks.nix { inherit lib pkgs; };
+      jjGraph = import ./tools/jj-graph { inherit lib pkgs; };
       workbench = import ./workbench { inherit pkgs lib iwe; };
       workbenchImages = lib.mapAttrs' (
         name: environment: lib.nameValuePair "workbench-image-${name}" environment.image
@@ -539,6 +540,7 @@
         jj = pkgs.jujutsu;
         jjui = pkgs.jjui;
         jj-ci-lifecycle = jjCiLifecycle;
+        jj-graph = jjGraph.package;
         xr-workbench = xrWorkbench;
         quota-advisor = quotaAdvisor;
         inherit marimohub;
@@ -605,6 +607,10 @@
           type = "app";
           program = "${pkgs.jjui}/bin/jjui";
         };
+        jj-graph = {
+          type = "app";
+          program = "${jjGraph.package}/bin/jj-graph";
+        };
         xr-workbench = {
           type = "app";
           program = "${xrWorkbench}/bin/xr-workbench";
@@ -631,6 +637,11 @@
         '';
         # Hegel properties of the CI dashboard's feed reductions.
         ci-dashboard-feeds = ciDashboard.feeds;
+        # jj-graph's build runs its lints, its Hegel properties (some in real
+        # jj repositories), and its conformance to spec/Normalize.qnt; the
+        # model check simulates and model checks the specifications.
+        jj-graph = jjGraph.package;
+        jj-graph-model = jjGraph.model;
         marimohub = marimohub;
         # One Markdown file as an IWE node and a marimo notebook: IWE
         # validates the corpus, marimo executes the demo in the Nix
@@ -856,6 +867,8 @@
         // import ./xr-workbench/bombadil-check.nix { inherit lib pkgs; }
         // {
           ci-dashboard-bombadil = ciDashboard.exploration;
+          # TLC over every three-change graph takes about twelve minutes.
+          jj-graph-model-exhaustive = jjGraph.exhaustive;
           deploy-revert = import ./tests/deploy-revert.nix { inherit pkgs; };
           marimohub-homelab-evaluation = marimohubHomelabEvaluationCheck;
           nixbot-homelab-evaluation = nixbotHomelabEvaluationCheck;

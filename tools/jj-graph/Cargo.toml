@@ -1,0 +1,38 @@
+[package]
+name = "jj-graph"
+version = "0.1.0"
+edition = "2024"
+description = "Plan, check, and normalize Jujutsu change graphs against the code's dependency graph"
+license = "MIT"
+publish = false
+
+[[bin]]
+name = "jj-graph"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0.104"
+clap = { version = "4.6.7", features = ["derive"] }
+gherkin = "0.16.0"
+graphviz-rust = { version = "0.9.9", default-features = false }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+similar = "3.2.0"
+tempfile = "3.27.0"
+tree-sitter = "0.27.1"
+tree-sitter-go = "0.25.0"
+tree-sitter-javascript = "0.25.0"
+tree-sitter-nix = "0.3.0"
+tree-sitter-python = "0.25.0"
+tree-sitter-rust = "0.24.2"
+tree-sitter-typescript = "0.23.2"
+
+[dev-dependencies]
+# The static engine links Hegel's engine as an ordinary dependency, so the
+# tests build offline inside the Nix sandbox.
+hegeltest = { version = "0.50.2", features = ["static-engine"] }
+itf = "0.4.0"
+quint-connect = "0.1.2"
+
+[profile.test]
+opt-level = 1

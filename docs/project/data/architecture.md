@@ -23,4 +23,6 @@ rejected are as valuable as the one you picked.*
 
 [Generation provenance](architecture/generation-provenance.md)
 
+[jj-graph normal form](architecture/jj-graph-normal-form.md)
+
 [GitHub trunk](architecture/github-trunk.md)

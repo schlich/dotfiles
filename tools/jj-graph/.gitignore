@@ -1,0 +1,4 @@
+# Cargo's build output.
+/target/
+# Quint's verifier server writes its logs next to the specification.
+_apalache-out/
