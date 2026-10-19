@@ -46,9 +46,17 @@ in
       Description = "Dispatch a ci flake input update for a new ci release";
       After = [ "network-online.target" ];
       Wants = [ "network-online.target" ];
+      # ci writes its log in bursts, a run each write; systemd's default limit
+      # of five starts in ten seconds failed the service and with it the path
+      # unit (2026-10-19), so the watch stopped. The pause below paces runs
+      # instead.
+      StartLimitIntervalSec = 0;
     };
     Service = {
       Type = "oneshot";
+      # Debounce: writes during the pause start no further run, and the run
+      # after it reads all of them from the saved offset.
+      ExecStartPre = "${pkgs.coreutils}/bin/sleep 10";
       ExecStart = "${lib.getExe ciInputWatch} on-log";
       # Dispatch runs preflight, which takes several minutes.
       TimeoutStartSec = "30min";
@@ -70,8 +78,8 @@ in
     };
   };
   # %S is $XDG_STATE_HOME for the user manager, where ci keeps its log. A
-  # write while the service runs is read on its next run, from the saved
-  # offset, so none is lost.
+  # write while the service runs starts no run of its own; the next run reads
+  # it from the saved offset, so none is lost while ci keeps writing.
   systemd.user.paths.ci-input-watch = {
     Unit.Description = "Watch the ci log for a release main does not pin";
     Path.PathModified = "%S/ci/log.otlp.jsonl";
