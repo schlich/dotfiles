@@ -39,7 +39,7 @@ in
   imports = [ ../../programs/ci.nix ];
 
   home.packages = [
-    # The jj, nix and chrome-devtools servers start through npx and uvx.
+    # Copilot's and OpenCode's chrome-devtools server starts through npx.
     pkgs.nodejs
     pkgs.uv
     # Monitor command for a Nushell job's log and done marker, so the
@@ -61,20 +61,8 @@ in
   programs.mcp = {
     enable = true;
     servers = {
-      chrome-devtools = {
-        command = "npx";
-        args = [
-          "-y"
-          "chrome-devtools-mcp@latest"
-        ];
-      };
-      jj = {
-        command = "npx";
-        args = [
-          "-y"
-          "jj-mcp@1.0.8"
-        ];
-      };
+      # Built ahead of time, so sessions start no `npm exec` parent for it.
+      jj.command = lib.getExe (pkgs.callPackage ./jj-mcp { });
       nix = {
         command = "nix";
         args = [

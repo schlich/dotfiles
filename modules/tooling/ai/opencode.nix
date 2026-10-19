@@ -73,6 +73,15 @@ in
           User requirements: $ARGUMENTS
         '';
       };
+      mcp.chrome-devtools =
+        let
+          server = import ./chrome-devtools-mcp.nix;
+        in
+        {
+          type = "local";
+          command = [ server.command ] ++ server.args;
+          enabled = true;
+        };
       mcp.github = {
         type = "remote";
         url = "https://api.githubcopilot.com/mcp/";

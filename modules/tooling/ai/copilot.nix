@@ -18,6 +18,10 @@ in
     enable = true;
     inherit package;
     enableMcpIntegration = true;
+    mcpServers.chrome-devtools = import ./chrome-devtools-mcp.nix // {
+      type = "local";
+      tools = [ "*" ];
+    };
     agents.trunk-triage = ../../../copilot/plugins/jj-flake-vigilance/agents/trunk-triage.agent.md;
     # No `settings`: Copilot rewrites config.json as runtime state and keeps
     # user preferences such as notifications in its own settings.json.

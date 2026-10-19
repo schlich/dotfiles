@@ -1,0 +1,8 @@
+{
+  "name": "jj-mcp-wrapper",
+  "version": "1.0.8",
+  "private": true,
+  "dependencies": {
+    "jj-mcp": "1.0.8"
+  }
+}
