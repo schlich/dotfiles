@@ -72,7 +72,7 @@ them before publishing.
 After the user accepts the changes, or decides a cluster needs none, run:
 
 ```nu
-^claude-bash-audit mark-reviewed | complete
+claude-bash-audit mark-reviewed | complete
 ```
 
 This records the newest log timestamp, so the next report starts after it,
