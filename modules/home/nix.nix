@@ -44,8 +44,8 @@ in
   };
   home.packages = [
     # A faster, cached Nix evaluator and client; commands it lacks fall
-    # through to the real nix. Only under its own name: the classic names
-    # still run nix.
+    # through to the real nix. Workstations also run it under the classic
+    # names (den/aspects/workstation.nix); elsewhere those still run Nix.
     iets
     # Deploys the flake's clan: `clan machines update homelab`. From the
     # clan-core input, so the CLI matches the lib that builds the clan.

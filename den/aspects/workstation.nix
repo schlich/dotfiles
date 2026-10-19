@@ -15,9 +15,14 @@
       { pkgs, ... }:
       {
         imports = [
+          inputs.iets.nixosModules.default
           ../../modules/nixos/codex.nix
           ../../modules/nixos/docker.nix
         ];
+        # iets answers nix, nix-build, nix-shell, nix-instantiate and
+        # nix-eval-jobs, and runs the real Nix for what it lacks; the daemon
+        # and store tools stay Nix. system-switch keeps the real Nix.
+        iets.classic.enable = true;
         # den/aspects/home-manager-host.nix adds the jj-starship and
         # nushellWith overlays and the Home Manager settings.
         environment.systemPackages = [

@@ -107,7 +107,9 @@ let
     env = {
       DEPLOY_CONFIG = "${deployConfig}";
       PATH = lib.makeBinPath [
-        config.nix.package
+        # The real Nix where iets's classic names front nix.package, so a
+        # broken iets cannot block switching away from it.
+        (config.iets.classic.nix or config.nix.package)
         config.systemd.package
         config.programs.ssh.package
         pkgs.coreutils
