@@ -1,6 +1,6 @@
 # The session launcher (Mod+0; see `session.nu overview`): lists sessions by
 # the Mod+<digit> that reaches them, the Johnny Decimal areas and categories from
-# the knowledge base's hubs, and the projects in ~'s area directories, then leaves a shell
+# the knowledge base's hubs, and ~/Projects by workspace tag, then leaves a shell
 # where `project DIR` opens one. Run `overview` to list again.
 
 def workspace_snapshot [] {
@@ -50,28 +50,31 @@ def system_snapshot [] {
     }
 }
 
-# Projects live in the Johnny Decimal area directories of ~ ("40-49 Nix tooling/nix-ui")
-# and their categories ("70-79 Career/77 Gig & contract work/resume"); a numbered
-# subdirectory is a category, anything else a project.
+# Projects live flat in ~/Projects (dotfiles and kb stay at the top of ~ and
+# are linked in). Each project's knowledge-base note (`projects/NAME.md`) tags
+# it with the workspaces it belongs to, so a project can appear under several.
 def project_snapshot [] {
-    print "\nProjects"
-    let areas = (ls $env.HOME | where type == dir and ($it.name | path basename) =~ '^\d\d-\d\d ' | get name | sort)
-    let listings = ($areas | each {|area|
-        # Projects that must stay at the top of ~ (dotfiles, kb) are linked in.
-        let entries = (ls ($area | into glob) | get name | where ($it | path expand | path type) == dir)
-        let categories = ($entries | where ($it | path basename) =~ '^\d\d ')
-        let nested = ($categories | each {|category| ls ($category | into glob) | where type == dir | get name } | flatten)
-        {area: ($area | path basename), projects: ($entries | where $it not-in $categories | append $nested)}
-    } | where ($it.projects | is-not-empty))
-
-    if ($listings | is-empty) {
-        print "  No projects found in the area directories of ~"
-    } else {
-        $listings | each {|listing|
-            print $"  ($listing.area): ($listing.projects | each { path basename } | str join ' · ')"
-        } | ignore
+    print "\nProjects (by workspace tag)"
+    let root = ($env.KB_ROOT? | default ($env.HOME | path join kb))
+    let notes = (glob $"($root)/projects/*.md" | where ($it | path basename) != "index.md" | each {|note|
+        let frontmatter = (open --raw $note | parse --regex '(?s)^---\n(?P<yaml>.*?)\n---' | get 0?.yaml)
+        if $frontmatter != null { try { $frontmatter | from yaml | select path workspaces } catch { null } }
+    } | compact)
+    let order = [work research xr nix ai shell career personal inbox]
+    for workspace in $order {
+        let names = ($notes | where $workspace in $it.workspaces | get path | path basename | sort -i)
+        if ($names | is-not-empty) {
+            print $"  ($workspace): ($names | str join ' · ')"
+        }
     }
-    print "\n`project \"AREA/NAME\"` opens a project session. Mod+0 closes this."
+
+    # Directories with no note yet: tag them so they show up above.
+    let tagged = ($notes | get path | path basename)
+    let untagged = (ls ($env.HOME | path join Projects) | where ($it.name | path expand | path type) == dir | get name | path basename | where $it not-in $tagged)
+    if ($untagged | is-not-empty) {
+        print $"  untagged: ($untagged | sort -i | str join ' · ')"
+    }
+    print "\n`project NAME` opens a project session. Mod+0 closes this."
 }
 
 def overview [] {

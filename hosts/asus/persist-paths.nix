@@ -45,19 +45,13 @@
 
   users.schlich = {
     directories = [
-      # Johnny Decimal areas, which hold the projects. A new project created
-      # at the top of ~ is wiped at reboot; create it inside an area.
-      "10-19 Pathfinder"
-      "20-29 Research"
-      "30-39 XR"
-      "40-49 Nix tooling"
-      "50-59 AI and agents"
-      "60-69 Shell tools"
-      "70-79 Career"
-      "80-89 Personal"
-      "90-99 Inbox"
+      # Projects, flat; the knowledge base tags each with its workspaces. A new
+      # project created at the top of ~ is wiped at reboot; create it here.
+      "Projects"
+      # Zotero's data directory (its profile is .zotero below).
+      "Zotero"
 
-      # XDG user directories; the unused ones point into the areas above.
+      # XDG user directories; the unused ones point at Downloads.
       "Documents"
       "Downloads"
       "Pictures"

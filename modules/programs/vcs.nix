@@ -94,7 +94,7 @@ in
       {
         "--when".repositories = [
           "~/dotfiles"
-          "~/40-49 Nix tooling/ci"
+          "~/Projects/ci"
         ];
         git.push = "tangled";
         git.fetch = [

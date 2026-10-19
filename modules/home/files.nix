@@ -40,11 +40,11 @@ in
     documents = "${config.home.homeDirectory}/Documents";
     pictures = "${config.home.homeDirectory}/Pictures";
     videos = "${config.home.homeDirectory}/Videos";
-    # Unused XDG dirs fold into Johnny Decimal areas instead of cluttering ~.
-    music = "${config.home.homeDirectory}/80-89 Personal";
-    desktop = "${config.home.homeDirectory}/90-99 Inbox";
-    publicShare = "${config.home.homeDirectory}/90-99 Inbox";
-    templates = "${config.home.homeDirectory}/90-99 Inbox";
+    # Unused XDG dirs fold into Downloads, the inbox, instead of cluttering ~.
+    music = "${config.home.homeDirectory}/Downloads";
+    desktop = "${config.home.homeDirectory}/Downloads";
+    publicShare = "${config.home.homeDirectory}/Downloads";
+    templates = "${config.home.homeDirectory}/Downloads";
   };
 
   dotfiles.retiredHomeFiles = [

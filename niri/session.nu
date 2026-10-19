@@ -77,9 +77,10 @@ def project-sessions [] {
   if ($file | path exists) { open $file } else { {} }
 }
 
-# Projects live in the Johnny Decimal area directories at the top of ~.
+# Projects live flat in ~/Projects; the knowledge base tags each with its
+# workspaces.
 def project-directory [] {
-  $env.HOME
+  $"($env.HOME)/Projects"
 }
 
 # The knowledge base: an IWE workspace whose `<range>-<session>.md` notes are
@@ -291,7 +292,7 @@ def "main overview" [] {
       return
     }
   }
-  let opened = (open-window niri.overview $env.HOME [nu -e $"source ($overview_script)"])
+  let opened = (open-window niri.overview (project-directory) [nu -e $"source ($overview_script)"])
   niri-action center-window --id $opened.id
 }
 
