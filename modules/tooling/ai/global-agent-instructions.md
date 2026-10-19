@@ -171,7 +171,11 @@ script, use valid Nushell syntax.
   `▶ ID: MSG` when a phase starts, `✓ ID DURATION` when it finishes,
   `✗ ID DURATION: MSG` when it fails, and `⏸ BLOCKED ID: MSG`. It ends
   with `✓ DONE exit 0 after DURATION` or `✗ DONE exit N after DURATION: ERROR` as soon as the job ends, or `✗ DONE lost: ...` when the process
-  that ran the job has exited. A reporting job's log still raises
+  that ran the job has exited. Indented `  · LINE` details give what a
+  phase logged but did not report, such as the commits a rebase moved and
+  their new parent, where a push went, the recovery point, and test
+  totals, and `  · hooks: N passed, failed: NAME` tallies a preflight's
+  hooks. A reporting job's log still raises
   `⚠ ALARM: LINE` for trouble it did not report, such as an evaluator
   that died; only a job that writes no reports, such as a bare
   `nix build`, falls back to log lines that match its pattern. After five

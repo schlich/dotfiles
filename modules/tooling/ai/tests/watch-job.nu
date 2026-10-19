@@ -92,6 +92,28 @@ def main [watch_job: path] {
   let result = (do $watch $log 10sec)
   $failures = ($failures | append (check "reported job raises alarms" $result.run ['^JOB: ' '^▶ clearance: Waiting for local flake checks$' '^⚠ ALARM: error: evaluation worker 411987 was killed by signal 9$' '^✓ DONE exit 0 after \dsec$'] $result.took 5sec))
 
+  # What a reporting job's phases log but do not report prints indented under
+  # them: the facts that match --detail, shortened, and the hooks a preflight
+  # ran as one tally that names each failure.
+  let log = ($tmp | path join detail.log)
+  job-log $log { ^sh -c r#'
+    report() { printf '%s\n' "$1" >> "$PST_FILE"; }
+    report '{"time":"2026-10-07T08:00:00-05:00","state":"working","id":"rebase","app":"ci","msg":"Rebasing onto trunk()"}'
+    echo "Rebased 1 commits to destination."
+    echo "Parent commit (@-)      : sorqnvok 4e1383cf main | Update the ci input"
+    echo "Added 0 files, modified 1 files, removed 0 files"
+    report '{"time":"2026-10-07T08:00:03-05:00","state":"done","id":"rebase","app":"ci","msg":"Rebasing onto trunk()"}'
+    report '{"time":"2026-10-07T08:00:03-05:00","state":"working","id":"preflight","app":"ci","msg":"Running preflight"}'
+    sleep 1
+    echo "  nix fmt................................................................Passed"
+    echo "  check whitespace.......................................................Failed"
+    echo "  evaluate Home Manager..................................................Passed"
+    sleep 1
+    report '{"time":"2026-10-07T08:00:45-05:00","state":"failed","id":"preflight","app":"ci","msg":"Preflight failed"}'
+  '# } | ignore
+  let result = (do $watch $log 10sec)
+  $failures = ($failures | append (check "reported job shows its phases' details" $result.run ['^JOB: ' '^▶ rebase: Rebasing onto trunk\(\)$' '^  · Rebased 1 commits to destination\.$' '^  · onto sorqnvok 4e1383cf main \| Update the ci input$' '^✓ rebase 3sec$' '^▶ preflight: Running preflight$' '^✗ preflight 42sec: Preflight failed$' '^  · hooks: 2 passed, failed: check whitespace$' '^✓ DONE exit 0 after \dsec$'] $result.took 5sec))
+
   # A job quiet for longer than --quiet-after gets a heartbeat naming its
   # phase and last log line, once per quiet period.
   let log = ($tmp | path join quiet.log)

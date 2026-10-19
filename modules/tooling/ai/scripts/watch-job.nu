@@ -20,9 +20,20 @@
 # how long it took since it started, and its message only when that differs
 # from the one it started with. A report without an id prints its message
 # after the glyph. Once a job has
-# reported, those lines tell its story, and the log adds only the lines that
-# match --alarm, as `⚠ ALARM: LINE`: trouble the job did not report, such as
-# an evaluator that died. Lines that match --ignore never print; by default
+# reported, those lines tell its story. The log adds the facts a phase logs
+# but does not report, the lines that match --detail, indented under it, and
+# tallies the pre-commit hooks a preflight ran under the phase they ran in:
+#
+#   ▶ rebase: Rebasing onto trunk()
+#     · Rebased 1 commits to destination.
+#     · onto sorqnvok 4e1383cf main | Update the ci input to 2026.10.19.5
+#   ✓ rebase 3sec
+#   ✓ preflight 45sec
+#     · hooks: 6 passed, failed: check whitespace
+#
+# It also adds the lines that match --alarm, as `⚠ ALARM: LINE`: trouble the
+# job did not report, such as an evaluator that died. Lines that match
+# --ignore never print; by default
 # these include nix-eval-jobs replacing a worker that outgrew its memory
 # budget, which it does routinely. A job that reports nothing, such as a bare
 # `nix build`, falls back to its log lines that match --pattern, as they are.
@@ -144,6 +155,40 @@ def last-text [lines: list<string>]: nothing -> any {
   if ($texts | is-empty) { null } else { $texts | last | str trim | str substring 0..<200 }
 }
 
+# A log line a phase logged, as the indented line under it: whitespace
+# collapsed, git's and jj's wording shortened, and the length capped.
+def detail-line [line: string]: nothing -> string {
+  let text = (
+    $line | ansi strip | str trim | str replace --all --regex '\s{2,}' ' '
+    | str replace --regex '^Parent commit \(@-\) ?: ' 'onto '
+    | str replace --regex '^Changes to push to (\S+):$' 'pushing to $1'
+    | str substring 0..<160
+  )
+  $"  · ($text)"
+}
+
+# A pre-commit hook's result line, `name.....Passed`, as its name and
+# result, or null for any other line.
+def hook-result [line: string]: nothing -> any {
+  let found = ($line | ansi strip | parse --regex '^\s*(?<name>\S.*?)\.{3,}\s*(?<result>Passed|Failed|Skipped)\s*$')
+  if ($found | is-empty) { null } else { $found | first }
+}
+
+# The hooks a phase ran as one indented line, naming each failure, or null
+# when it ran none.
+def hooks-line [hooks: list<record>]: nothing -> any {
+  if ($hooks | is-empty) { return null }
+  let passed = ($hooks | where result == Passed | length)
+  let skipped = ($hooks | where result == Skipped | length)
+  let failed = ($hooks | where result == Failed | get name)
+  let parts = [
+    (if $passed > 0 { $"($passed) passed" })
+    (if $skipped > 0 { $"($skipped) skipped" })
+    (if ($failed | is-not-empty) { $"failed: ($failed | str join ', ')" })
+  ] | compact
+  $"  · hooks: ($parts | str join ', ')"
+}
+
 # A duration as a notification reads it, `12min 5sec`; NUON would write
 # nanoseconds.
 def whole-seconds []: duration -> string { $in // 1sec * 1sec | into string }
@@ -214,7 +259,8 @@ def main [
   log: path # Log the job writes both streams to
   --pattern: string = '(?i)^===|landed|releas|tagg|mirror|error|fail|refus|conflict|status=|oom|passed|waiting' # Log lines worth a notification, for a job that writes no status reports
   --alarm: string = '(?i)\bkill(ed|ing)\b|exceeded|out of memory|\boom\b|panicked|segmentation fault|^error[:\s]|\berror:' # Log lines worth an alarm even from a job that reports its status
-  --ignore: string = '(?i)\bno conflicts?\b|^memory budget of \d+ MiB exceeded \(\d+ MiB in use\), killing worker \d+' # Matching log lines to drop anyway: nix-eval-jobs replacing a worker that outgrew its budget is routine
+  --detail: string = '^Rebased \d+ commits|^Parent commit \(@-\)|^Changes to push to \S+:$|^Recovery point:|^Impact:|\b\d+/\d+ successful\b|^(PATHS|SIZE|DIFF):' # Log lines a reporting job's phases log but do not report, printed indented under them
+  --ignore: string ='(?i)\bno conflicts?\b|^memory budget of \d+ MiB exceeded \(\d+ MiB in use\), killing worker \d+' # Matching log lines to drop anyway: nix-eval-jobs replacing a worker that outgrew its budget is routine
   --interval: duration = 2sec # How often to read the files between job events
   --quiet-after: duration = 5min # How long without an event before each heartbeat
   --replay # Start from the beginning instead of the saved position
@@ -233,6 +279,8 @@ def main [
   } else { [] }
   mut started = (phases {} $earlier)
   mut latest = if ($earlier | is-empty) { null } else { $earlier | last }
+  # The hooks run since the last phase finished, tallied under the next one.
+  mut hooks = []
   print (job-line $job)
   loop {
     for _ in (wakeups $interval $job.topic) {
@@ -251,22 +299,44 @@ def main [
         $logged = $new.lines
         $seen.log = $new.offset
       }
+      $hooks = ($hooks | append ($logged | each {|line| hook-result $line } | compact))
       mut events = []
+      # Where the log's lines go among the reports: before the first phase
+      # to finish, which logged them before it reported.
+      mut at = -1
       if ($status | path exists) {
         let new = (read-lines $status $seen.status --final=$final)
         let reports = (status-reports $new.lines)
         for report in $reports {
           # The phase's start, read before a finished phase closes.
           let start = ($started | get --optional ($report.id? | default ''))
+          if $at < 0 and $report.state in [done error failed] { $at = ($events | length) }
           $events = ($events | append (report-line $report $start))
           $started = (phases $started [$report])
+          if $report.state in [done error failed] {
+            $events = ($events | append (hooks-line $hooks))
+            $hooks = []
+          }
         }
         if ($reports | is-not-empty) { $latest = ($reports | last) }
         $seen.status = $new.offset
       }
-      let wanted = if $seen.status == 0 { $pattern } else { $alarm }
-      let prefix = if $seen.status == 0 { '' } else { '⚠ ALARM: ' }
-      $events = ($events | append ($logged | where {|line| $line =~ $wanted and $line !~ $ignore } | each {|line| $"($prefix)($line)" }))
+      let shown = if $seen.status == 0 {
+        $logged | where {|line| $line =~ $pattern and $line !~ $ignore }
+      } else {
+        $logged | where {|line| $line !~ $ignore } | each {|line|
+          if $line =~ $alarm { $"⚠ ALARM: ($line)" } else if ($line | ansi strip | str trim) =~ $detail { detail-line $line }
+        }
+      }
+      $events = if $at < 0 { $events | append $shown } else {
+        $events | take $at | append $shown | append ($events | skip $at)
+      }
+      # A reporting job's last hooks go under its last phase.
+      if $final and $seen.status > 0 {
+        $events = ($events | append (hooks-line $hooks))
+        $hooks = []
+      }
+      $events = ($events | compact)
       $last_line = (last-text $logged | default $last_line)
       if ($events | is-empty) and ((date now) - $last_event) >= $quiet_after and $outcome == null and $alive {
         # A running phase is timed from its start, not its latest update.
