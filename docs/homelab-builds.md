@@ -2,7 +2,8 @@
 
 homelab is the fleet's build host and binary cache. Keep editing,
 formatting, quick checks, publication, and landing coordination on the
-workstation; activation remains a separate, explicitly approved action.
+workstation; activation happens only through `system-switch`, after a
+landing that changes a closure or when the user asks.
 Remote CI is GitHub Actions (`.github/workflows/nix-ci.yml`), which builds
 every flake check on each pushed topic branch and the `remoteChecks` system
 closures after each push. homelab used to run a Tangled spindle for that; it

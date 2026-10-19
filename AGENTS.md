@@ -69,13 +69,19 @@
 ## Applying configuration
 
 - When Nix configuration edits are ready to apply, identify whether they affect
-  the NixOS system, Home Manager, or both, and ask the user for explicit
-  approval before activating anything.
-- For NixOS changes, land them, then offer `system-switch`. It applies
-  GitHub's `main` without sudo through the `nixos-switch-main` unit, which
-  polkit lets the user start, and prints the switch's output and any failed
-  units. Run it only when the user asks to switch; never start it on your
-  own. Unlanded changes cannot be switched to this way.
+  the NixOS system, Home Manager, or both. Apply only landed changes;
+  unlanded ones cannot be switched to.
+- `system-switch` applies GitHub's `main` without sudo through the
+  `nixos-switch-main` unit, which polkit lets the user start, and prints the
+  switch's output and any failed units. After a landing changes a closure,
+  the agent that landed it runs `system-switch --with-home` on asus at once,
+  without asking, and reports the outcome. A landing declared `behavior`
+  changes a closure; a `refactor` landing does not (`ci land` proves it), so
+  it never triggers a switch. Ask first instead when the landing is declared
+  `breaking`, since its manual steps come before activation, or when it
+  touches boot, storage, encryption, or security configuration. Switch
+  another host, or switch when no landing changed a closure, only when the
+  user asks.
 - The switch is staged: the new system runs without becoming the boot default
   while the host's health checks are watched, and a breach reverts it and
   writes a report under `/var/lib/nixos-switch-main/reports/`. When a switch
@@ -112,19 +118,19 @@
   this checkout (`NH_FLAKE`) and needs no `sudo`; prefer `home-activate`,
   which runs it and records the change each generation came from for
   `generation`. `system-switch --with-home` does both from landed main: after
-  a successful switch it activates the home from the same commit. The same
-  approval rule applies to each step: activate a home only when the user
-  asks, and pass `--with-home` only when they asked for the home too.
+  a successful switch it activates the home from the same commit, so the
+  switch after a closure-changing landing always passes it. Outside that,
+  activate a home only when the user asks.
   `home.packages` install into `~/.nix-profile`, not `/etc/profiles/per-user`.
 - `system-switch` refuses to start when the running system still embeds the
   user's Home Manager and main's standalone home is not active yet, because
   that switch would remove every user package (as on asus on 2026-10-19).
-  Relay its message and ask the user whether to run
-  `system-switch --with-home` or `home-activate` first.
+  `--with-home` avoids it; if a plain `system-switch` refuses, rerun it with
+  `--with-home`.
 - Every activation prints dix's package and version changes from the running
   system (`modules/nixos/closure-diff.nix`), so `system-switch` and Clan
-  output include them. When offering `system-switch`, mention the notable
-  changes if a build already exists; `nix-suite diff` builds this checkout's
+  output include them. When reporting or offering a switch, mention the
+  notable changes; `nix-suite diff` builds this checkout's
   system and shows them, but it is a build, so run it only when the user asks.
   `nix-suite last [N]` shows what recent switches changed.
 
@@ -239,7 +245,8 @@
   `ci land` only at topic closeout.
 - For a small change that affects a single host, a user request to dispatch (or to publish)
   also authorizes delivery: run `ci dispatch`, then `ci land` right away
-  (its local clearance builds the checks), and `ci park` afterwards. Still stop after dispatching
+  (its local clearance builds the checks), switch as "Applying
+  configuration" describes, and `ci park` afterwards. Still stop after dispatching
   and ask before landing when the change affects several hosts, is part of a
   stack, is declared `breaking`, or touches boot, storage, encryption, or
   security configuration. A failed validation, pipeline, or rebase conflict
@@ -383,7 +390,7 @@ plans, features, bugs, specs, architecture, and releases as an IWE graph under
 - Every declared host must evaluate. A host whose `policy.criticality` is `disposable` evaluates in `remoteChecks`, which GitHub Actions reports without blocking a landing, as do previews of a host with modules it has not adopted yet; every other host gates it through `checks`. Keep policy and aspect metadata machine-readable so affected hosts, risk, checks, and reviewer domains can be identified.
 - Do not silently alter boot, storage, filesystem, encryption, swap, or security configuration. These are high-risk changes and generated hardware files remain host-local.
 - Never put plaintext secrets in the repository or Nix store. Preserve encrypted inputs and recovery paths.
-- Do not automatically switch the current system. Build and evaluate first; any `nixos-rebuild test` or activation remains a deliberate manual operation. The canary's own deployment timer (`policy.autoDeploy`) is the only exception, and enabling it for another host is a policy change for the user to request.
+- Switch the current system only through `system-switch` from landed `main`: after a closure-changing landing as "Applying configuration" describes, or when the user asks. Never use `nixos-rebuild test` or another activation outside it. The canary's own deployment timer (`policy.autoDeploy`) switches homelab on its own, and enabling it for another host is a policy change for the user to request.
 - The architecture and safe recovery flow are documented in `docs/architecture.md`.
 
 Repository checks are `nix fmt` and `nix flake check --no-build path:.`. The

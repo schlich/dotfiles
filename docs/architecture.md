@@ -162,8 +162,10 @@ stops and names both ways forward:
 
 - `system-switch --with-home` switches and, once the switch succeeds,
   builds that home from the commit the switch deployed, runs its `activate`
-  as the user, and records it for `generation`. Asking for it is the
-  approval for both activations.
+  as the user, and records it for `generation`. It is the switch an agent
+  runs after a landing that changes a closure (AGENTS.md, "Applying
+  configuration"); otherwise, asking for it is the approval for both
+  activations.
 - `home-activate` from `~/dotfiles` at main, then `system-switch`.
 
 `--with-home` also works on any later switch, to apply both steps from

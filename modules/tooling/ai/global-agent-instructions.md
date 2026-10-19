@@ -132,7 +132,8 @@ script, use valid Nushell syntax.
   the program's absolute path (`/run/current-system/sw/bin/...`, or the
   result of `which`); a bare name fails with exit code 203. `--background=`
   stops run0 tinting the output. For a NixOS switch in the dotfiles
-  repository, still run `system-switch` when the user asks for one.
+  repository, run `system-switch` instead, as that repository's AGENTS.md
+  describes: after a landing that changes a closure, or when the user asks.
 
 - Elsewhere, run a privileged command as `sudo -A COMMAND` in Bash. Bash
   has no terminal for a password prompt, so `-A` asks sudoplz instead: it
