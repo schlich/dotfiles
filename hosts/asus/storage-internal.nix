@@ -95,20 +95,33 @@ in
         "x-systemd.device-timeout=5s"
       ];
     };
+    # The swapfile's own subvolume: btrfs cannot snapshot a subvolume holding
+    # an active swapfile, and a top-level one stays out of @root's snapshots
+    # and the impermanence wipe. Swapfiles are NOCOW, so compression does not
+    # apply. `nofail` keeps the machine booting without swap if @swap is
+    # missing.
+    "/swap" = {
+      device = btrfsDevice;
+      fsType = "btrfs";
+      options = [
+        "subvol=@swap"
+        "noatime"
+        "nofail"
+      ];
+    };
   };
 
-  zramSwap = {
-    enable = true;
-    algorithm = "zstd";
-    memoryPercent = 100;
-    priority = 100;
-  };
+  # Disk-backed swap inside the LUKS volume, with zswap compressing pages in
+  # RAM in front of it. zram held every swapped page in RAM with no way out,
+  # so cold pages from idle agent sessions filled it and systemd-oomd killed
+  # the Claude app; the Seagate swapfile is absent whenever that drive is
+  # unplugged. zswap writes its coldest pages through to this file instead.
+  boot.zswap.enable = true;
 
   swapDevices = [
     {
-      device = "/mnt/seagate/.nixos-swapfile";
-      size = 8 * 1024;
-      priority = 10;
+      device = "/swap/swapfile";
+      size = 16 * 1024;
     }
   ];
 }

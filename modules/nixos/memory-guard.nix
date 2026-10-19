@@ -21,9 +21,10 @@
 
   # Also kill the unit using the most swap once both RAM and swap are more
   # than SwapUsedLimit full, as Fedora does by default; NixOS's options leave
-  # this out. zram swap lives in RAM, and on 2026-10-07 it filled to its last
-  # 48 kB before the kernel acted. oomd picks one leaf unit, never a whole
-  # session.
+  # this out. On 2026-10-07 the RAM-backed zram swap filled to its last 48 kB
+  # before the kernel acted. oomd picks one leaf unit, never a whole login
+  # session, but an app's scope is one leaf: the Claude desktop app's holds
+  # every agent session and its MCP servers, and goes as a whole.
   systemd.slices."-".sliceConfig.ManagedOOMSwap = "kill";
 
   # systemd-oomd reads oomd.conf only when it starts.
