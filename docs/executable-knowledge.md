@@ -122,6 +122,12 @@ itself, computes reactively, and reports the store path of its interpreter.
   aspect carries server policy metadata. No host includes it yet. The
   `marimohub-homelab-evaluation` check proves the homelab evaluates with it,
   as `nixbot-homelab-evaluation` does for nixbot.
+- **Tailscale Serve on 9443, never Funnel.** `proxy-header` auth trusts
+  `Tailscale-User-Login`, which only Serve sets for a signed-in tailnet user.
+  The hub claims 9443 in `dotfiles.tailscale.https`
+  (`modules/nixos/tailscale-https.nix`), clear of the CI dashboard's 8443 and
+  of Funnel's ports, and evaluation fails if another service on the node
+  claims the same port.
 
 ## Not yet verified
 

@@ -13,11 +13,18 @@ let
   iwe = import ../tooling/knowledge/iwe-package.nix { inherit inputs lib pkgs; };
   workbench = import ../../workbench { inherit pkgs lib iwe; };
   cfg = config.services.marimohub;
-  # Tailscale Funnel units on the homelab already use 443.
-  servePort = 8443;
+  servePort = config.dotfiles.tailscale.https.marimohub.port;
 in
 {
-  imports = [ ./marimohub.nix ];
+  imports = [
+    ./marimohub.nix
+    ./tailscale-https.nix
+  ];
+
+  # Serve only, never Funnel: proxy-header auth trusts Tailscale-User-Login,
+  # which Serve sets only for a signed-in tailnet user. A port outside
+  # Funnel's 443, 8443 and 10000 leaves those for public endpoints.
+  dotfiles.tailscale.https.marimohub.port = 9443;
 
   services.marimohub = {
     enable = true;

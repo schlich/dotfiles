@@ -28,12 +28,16 @@ let
 
   # Niri's own default config, minus its waybar autostart: homelab has no
   # waybar, and the desktop session instead starts the monitor terminal.
+  dashboardPort = config.dotfiles.tailscale.https.ci-dashboard.port;
+
   niriConfig = pkgs.runCommand "niri-homelab-config.kdl" { } ''
     substitute ${config.programs.niri.package.src}/resources/default-config.kdl $out \
       --replace-fail 'spawn-at-startup "waybar"' '// The monitor terminal starts as a systemd user service.'
   '';
 in
 {
+  imports = [ ./tailscale-https.nix ];
+
   networking.hostName = "homelab";
   networking.networkmanager.enable = true;
 
@@ -145,6 +149,8 @@ in
   # This is Tailscale Serve, not Funnel: only tailnet devices can reach it.
   # The dedicated port keeps the existing root route and Funnel configuration
   # on 443 independent from the dashboard.
+  dotfiles.tailscale.https.ci-dashboard.port = 8443;
+
   systemd.services.ci-dashboard-serve = {
     description = "Publish the CI dashboard privately on the tailnet";
     wantedBy = [ "multi-user.target" ];
@@ -158,8 +164,8 @@ in
     ];
     serviceConfig = {
       Type = "simple";
-      ExecStart = "${pkgs.tailscale}/bin/tailscale serve --https=8443 http://127.0.0.1:4173";
-      ExecStop = "${pkgs.tailscale}/bin/tailscale serve --https=8443 off";
+      ExecStart = "${pkgs.tailscale}/bin/tailscale serve --https=${toString dashboardPort} http://127.0.0.1:4173";
+      ExecStop = "${pkgs.tailscale}/bin/tailscale serve --https=${toString dashboardPort} off";
       Restart = "on-failure";
       RestartSec = "10s";
     };

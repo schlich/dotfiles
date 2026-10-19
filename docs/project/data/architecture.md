@@ -19,6 +19,8 @@ rejected are as valuable as the one you picked.*
 
 [Local CI tower dashboard feed](architecture/ci-nix-dashboard.md)
 
+[Tailscale HTTPS ports](architecture/tailscale-https-ports.md)
+
 [Generation provenance](architecture/generation-provenance.md)
 
 [GitHub trunk](architecture/github-trunk.md)

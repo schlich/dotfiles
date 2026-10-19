@@ -19,6 +19,8 @@ let
   };
 in
 {
+  imports = [ ./tailscale-https.nix ];
+
   options.services.jj-ci-webhook = {
     enable = lib.mkEnableOption "a GitHub workflow webhook that syncs a local JJ checkout and runs read-only CI triage";
     projectDir = lib.mkOption {
@@ -60,6 +62,12 @@ in
 
   config = lib.mkIf cfg.enable {
     services.tailscale.enable = true;
+
+    # `tailscale funnel PORT` publishes on Funnel's default HTTPS port.
+    dotfiles.tailscale.https.jj-ci-webhook = lib.mkIf cfg.funnel.enable {
+      port = 443;
+      funnel = true;
+    };
 
     systemd.services.jj-ci-webhook = {
       description = "GitHub webhook listener for local JJ synchronization";
