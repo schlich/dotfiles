@@ -2,6 +2,14 @@
 # so repeated Bash use cases can be fixed in the agent instructions or in
 # bash-policy.nuon. The bash-feedback skill drives the review loop.
 
+# claude-code.nix replaces these with store paths; the CLAUDE_BASH_AUDIT_*
+# variables override them for tests.
+const default_questions = "@questions@"
+const default_jev = "@jev@"
+
+# Mirrors jev's credential filter: such examples are never sent to Jev.
+const credential_pattern = '(KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)[A-Z0-9_]*\s*='
+
 def state-dir [] {
   ($env.XDG_STATE_HOME? | default ($env.HOME | path join ".local" "state")) | path join "claude-code"
 }
@@ -73,10 +81,37 @@ def pending [all: bool] {
   }
 }
 
+# Ask Jev which bash-feedback remedy fits a cluster. Jev sees the cluster's
+# rule, program, outcomes, and example commands, minus any that assign a
+# credential; the reviewer still decides.
+def suggest-remedy [cluster: record] {
+  let config = (open ($env.CLAUDE_BASH_AUDIT_QUESTIONS? | default $default_questions)).bash_feedback
+  let jev = ($env.CLAUDE_BASH_AUDIT_JEV? | default $default_jev)
+  let state = {
+    cluster: {
+      rule: $cluster.rule
+      program: $cluster.program
+      outcomes: $cluster.outcomes
+      examples: ($cluster.examples | where {|command| $command !~ $credential_pattern })
+    }
+  }
+  let result = ({ state: $state, questions: $config.questions } | to json --raw | run-external $jev "ask" | complete)
+  if $result.exit_code != 0 {
+    let detail = ($result.stderr | lines | where {|line| $line | str trim | is-not-empty } | get -o 0 | default "no output")
+    error make { msg: $"jev ask exited ($result.exit_code): ($detail)" }
+  }
+  let remedy = ($result.stdout | from json).answers.remedy
+  {
+    remedy: (if $remedy.confidence >= $config.min_confidence { $remedy.choice } else { "unsure" })
+    remedy_confidence: $remedy.confidence
+  }
+}
+
 # Group pending requests into use cases: rule plus leading program.
 def "main report" [
   --all # Include requests that were already reviewed
   --json # Print JSON for an agent instead of a table
+  --jev # Suggest each cluster's remedy with Jev
 ] {
   let requests = (pending $all)
   let clusters = (
@@ -97,6 +132,15 @@ def "main report" [
     }
     | sort-by count --reverse
   )
+  # A cluster Jev cannot judge keeps its place with the reason, so the
+  # review goes on without a suggestion.
+  let clusters = if $jev {
+    $clusters | each {|cluster|
+      $cluster | merge (try { suggest-remedy $cluster } catch {|err|
+        { remedy: null, remedy_confidence: null, remedy_error: $err.msg }
+      })
+    }
+  } else { $clusters }
   let report = {
     since: (if $all { null } else { reviewed-until })
     requests: ($requests | length)
@@ -171,5 +215,5 @@ def "main path" [] {
 }
 
 def main [] {
-  print "Usage: claude-bash-audit report [--all] [--json] | mark-reviewed | stop-hook | path"
+  print "Usage: claude-bash-audit report [--all] [--json] [--jev] | mark-reviewed | stop-hook | path"
 }

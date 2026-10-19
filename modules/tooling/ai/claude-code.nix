@@ -202,7 +202,7 @@ let
                 hooks = [
                   {
                     type = "command";
-                    command = "${pkgs.nushell}/bin/nu --stdin ${./scripts/claude-bash-audit.nu} stop-hook";
+                    command = "${pkgs.nushell}/bin/nu --stdin ${bashAuditScript} stop-hook";
                     timeout = 10;
                   }
                 ];
@@ -212,9 +212,15 @@ let
         }
       } $out/hooks/hooks.json
     '';
-  bashAudit = pkgs.writeNuScriptBin "claude-bash-audit" (
-    builtins.readFile ./scripts/claude-bash-audit.nu
-  );
+  # `report --jev` suggests each cluster's remedy with the `bash_feedback`
+  # questions in jev/questions.nuon.
+  bashAuditSource =
+    builtins.replaceStrings
+      [ "@questions@" "@jev@" ]
+      [ "${../../../jev/questions.nuon}" "${jev}/bin/jev" ]
+      (builtins.readFile ./scripts/claude-bash-audit.nu);
+  bashAuditScript = pkgs.writeText "claude-bash-audit.nu" bashAuditSource;
+  bashAudit = pkgs.writeNuScriptBin "claude-bash-audit" bashAuditSource;
   # Record background Bash tasks and Monitors (which follow Nushell jobs) for
   # the homelab Fieldnotes wallpaper; agent-tasks-push marks them finished and
   # copies the list there.
@@ -398,6 +404,15 @@ in
             jev=${jev} \
             agent-trust=${agentTrust} \
             copilot-guard=${../../../copilot/plugins/jj-flake-vigilance}
+          touch "$out"
+        '';
+    # claude-bash-audit's report with a stub jev, so no request leaves.
+    checks.claude-bash-audit =
+      pkgs.runCommand "claude-bash-audit-check" { nativeBuildInputs = [ pkgs.nushell ]; }
+        ''
+          export HOME="$TMPDIR/home"
+          mkdir -p "$HOME"
+          nu --no-config-file ${./tests/claude-bash-audit.nu} ${./scripts/claude-bash-audit.nu} ${../../../jev/questions.nuon}
           touch "$out"
         '';
     checks.prefer-nix-mcp-hook =

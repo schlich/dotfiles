@@ -29,28 +29,33 @@ the hook.
 Run in the Nushell evaluate tool:
 
 ```nu
-^claude-bash-audit report --json | complete | get stdout | from json
+^claude-bash-audit report --json --jev | complete | get stdout | from json
 ```
 
 The report lists clusters keyed by `rule` and leading `program`, with
 counts, distinct sessions, outcomes, and example commands. `--all` includes
-requests that were already reviewed. The raw JSONL log is at
-`claude-bash-audit path`; load it with the rlm skill if it is large.
+requests that were already reviewed. `--jev` asks Jev which row of the table
+below fits each cluster and adds it as `remedy` with `remedy_confidence`;
+examples that assign a credential are not sent. Drop `--jev` to review
+without it. The raw JSONL log is at `claude-bash-audit path`; load it with
+the rlm skill if it is large.
 
 ## 2. Classify each cluster
 
 Decide what each cluster needs. Weigh clusters that recur across sessions
-over one-off requests.
+over one-off requests. Treat `remedy` as a suggestion: confirm it against
+the examples, start with clusters labeled `unsure` or with no remedy, and
+never edit the repository on a label alone.
 
-| Pattern | Change |
+| Pattern (`remedy`) | Change |
 | --- | --- |
-| Denied, and a Nushell rewrite is straightforward | Instruction gap. Add a concrete recipe or rule to `modules/tooling/ai/global-agent-instructions.md` ("Shell conventions") so the first attempt uses the evaluate tool. |
-| Denied, and a dedicated MCP tool covers it (jj, GitHub, Nix) | Point the instruction at that tool by name. |
-| Denied, but Bash is really needed, such as a TTY, sudo, or a harness-only feature | Add a narrow `allow` rule with a `why` to `bash-policy.nuon`. Anchor the regex and never allow a whole interpreter such as `bash -c`. |
-| `text_tools` denial repeated inside background runs | Tell agents to write the log to the scratchpad and read it from Nushell. |
-| Allowed, then ran, and Nushell would have worked | Consider tightening: remove or narrow the allow rule. |
-| Long workflow command (build, publish, land) run in the background | Add its program to `long_jobs` in `bash-policy.nuon`, so it runs as a Nushell `job spawn` with a scratchpad log. |
-| Denied or not run because the evaluate tool lacked a capability | Report the tooling gap to the user instead of loosening the policy. |
+| Denied, and a Nushell rewrite is straightforward (`instruction_gap`) | Instruction gap. Add a concrete recipe or rule to `modules/tooling/ai/global-agent-instructions.md` ("Shell conventions") so the first attempt uses the evaluate tool. |
+| Denied, and a dedicated MCP tool covers it (jj, GitHub, Nix) (`dedicated_tool`) | Point the instruction at that tool by name. |
+| Denied, but Bash is really needed, such as a TTY, sudo, or a harness-only feature (`needs_bash`) | Add a narrow `allow` rule with a `why` to `bash-policy.nuon`. Anchor the regex and never allow a whole interpreter such as `bash -c`. |
+| `text_tools` denial repeated inside background runs (`background_log`) | Tell agents to write the log to the scratchpad and read it from Nushell. |
+| Allowed, then ran, and Nushell would have worked (`tighten_allow`) | Consider tightening: remove or narrow the allow rule. |
+| Long workflow command (build, publish, land) run in the background (`long_job`) | Add its program to `long_jobs` in `bash-policy.nuon`, so it runs as a Nushell `job spawn` with a scratchpad log. |
+| Denied or not run because the evaluate tool lacked a capability (`tooling_gap`) | Report the tooling gap to the user instead of loosening the policy. |
 
 Keep instruction edits short and general. Describe the use case, not the
 session that produced it, and never copy command lines that contain paths

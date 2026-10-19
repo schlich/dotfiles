@@ -51,6 +51,27 @@
       }
     }
   }
+  # `claude-bash-audit report --jev`: the bash-feedback skill's remedy for
+  # each cluster of logged Bash requests. Below `min_confidence` the cluster
+  # is labeled `unsure` and the reviewer decides from its examples.
+  bash_feedback: {
+    min_confidence: 0.6
+    questions: {
+      remedy: {
+        type: choice
+        instructions: "Which change would make agents need the Bash requests in `cluster` less often? `cluster.rule` is the Bash policy rule that decided them, `cluster.outcomes` what happened to them, and `cluster.examples` sample command lines."
+        criteria: {
+          instruction_gap: "The requests were denied and a Nushell pipeline could do the same work directly, so the agent instructions should give a recipe"
+          dedicated_tool: "A dedicated tool already covers the work, such as a Jujutsu, GitHub, or Nix MCP tool, so the instructions should name it"
+          needs_bash: "The work genuinely needs Bash, such as a terminal, sudo, or a harness-only feature, so the policy should allow a narrow pattern"
+          background_log: "Text tools such as grep, tail, or cat read the log or output of a background run, which belongs in a scratchpad file read from Nushell"
+          tighten_allow: "The requests were allowed and ran, but Nushell would have worked, so an allow rule is too broad"
+          long_job: "A long workflow command such as a build, publish, or landing ran in the background and should run as a Nushell job"
+          tooling_gap: "The Nushell evaluate tool lacks a capability the work needs, which is a tooling problem rather than a policy or instruction change"
+        }
+      }
+    }
+  }
   # Claude Code permission dialogs; thresholds and class tiers live in
   # modules/tooling/ai/trust-policy.nuon.
   route: {
