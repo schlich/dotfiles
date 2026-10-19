@@ -329,22 +329,23 @@ topic as a new change on trunk in the current workspace (`ci new -m MESSAGE`
 where `ci` is available, otherwise `jj new main@origin -m MESSAGE`); earlier
 topics stay as sibling changes, and `jj edit` returns to one.
 
-Work only in a workspace whose change this session owns. A workspace with
-trunk checked out (nothing above trunk but an empty change) and no live
-session owning it is free, the repository's default checkout included; check
-it out for this session at once. Where `ci` is available, the session's first
-edit claims it, and `ci new -m MESSAGE` names the claimed change in place.
-The hooks refuse edits to a workspace another live session owns, or to one
-holding a topic no session owns, such as the user's own work in progress,
-and name the free workspaces to move to. Never take over a topic the user
-started unless they hand it over (`ci adopt`). Create a separate workspace
-only when no workspace is free: where `ci` is available with
-`ci start NAME`, otherwise with
-`jj workspace add --revision main@origin --name NAME PATH` from the
+Work only in a workspace whose change this session owns. The repository's
+default checkout is free when it has trunk checked out (nothing above trunk
+but an empty change) and no live session owns it; check it out for this
+session at once. Where `ci` is available, the session's first edit claims
+it, and `ci new -m MESSAGE` names the claimed change in place. A named
+workspace belongs to the topic it was named for: never start another task
+there, even when it sits idle on trunk and the hooks list it as free. The
+hooks refuse edits to a workspace another live session owns, or to one
+holding a topic no session owns, such as the user's own work in progress.
+Never take over a topic the user started unless they hand it over
+(`ci adopt`). When the default checkout is busy, create a workspace named
+for the new task: where `ci` is available with `ci start NAME`, otherwise
+with `jj workspace add --revision main@origin --name NAME PATH` from the
 repository. Then open that directory as a local Codex project. Never move a
-working copy owned by another active task. Reuse a small pool of workspaces
-with `ci park --keep` instead of creating one for every topic; start the next
-task's topic there with `ci new -m MESSAGE`.
+working copy owned by another active task. When the topic ends, remove its
+workspace with `ci park` or `ci cancel`, without `--keep`, so its name
+never outlives its task.
 If the project is a linked Git worktree, it is not automatically a JJ
 workspace: `jj` may act on the shared checkout above it and never record the
 worktree's edits. Run `ci start NAME` from that worktree, which creates
