@@ -296,6 +296,9 @@
       };
       denFlake = denEval.config.flake;
       denAsus = denFlake.nixosConfigurations.asus;
+      # Home Manager runs apart from the system; `nh home switch` applies
+      # homeConfigurations."USER@HOST" (den/inventory.nix).
+      denAsusHome = denFlake.homeConfigurations."schlich@asus";
       denInventory = pkgs.writeText "den-inventory.json" (
         builtins.toJSON (
           lib.mapAttrs (_: host: {
@@ -311,8 +314,7 @@
       );
       homeEvaluation = pkgs.writeText "home-manager-evaluation" (
         # Instantiate the activation derivation without pulling its desktop closure into CI.
-        builtins.unsafeDiscardStringContext
-          "${denAsus.config.home-manager.users.schlich.home.activationPackage.drvPath}\n"
+        builtins.unsafeDiscardStringContext "${denAsusHome.activationPackage.drvPath}\n"
       );
       homeCheck = pkgs.linkFarm "home-manager-check" (
         [
@@ -324,7 +326,7 @@
         ++ lib.mapAttrsToList (checkName: path: {
           name = checkName;
           inherit path;
-        }) denAsus.config.home-manager.users.schlich.dotfiles.tooling.checks
+        }) denAsusHome.config.dotfiles.tooling.checks
       );
       # Keep every host derivation evaluated without adding its closure as an
       # input, one check per host: all of them in one evaluator came within
@@ -351,7 +353,7 @@
       # evaluates; a failure names each test with what it got and expected.
       denConfigTests = import ./tests/den-config.nix {
         inherit lib;
-        inherit (denFlake) nixosConfigurations;
+        inherit (denFlake) nixosConfigurations homeConfigurations;
         hosts = denEval.config.den.hosts.${system};
       };
       denConfigTestChecksFor = lib.mapAttrs' (
@@ -374,11 +376,11 @@
       remoteHostEvaluationChecks =
         denHostEvaluationChecksFor (builtins.intersectAttrs remoteCheckHosts denFlake.nixosConfigurations)
         // denConfigTestChecksFor (builtins.intersectAttrs remoteCheckHosts denConfigTests);
-      # The workstation with only its primary terminal, editor, and agent
-      # desktop client; CI builds this closure after landing, and
-      # den-host-asus evaluates the full one.
-      denAsusPrimary = denAsus.extendModules {
-        modules = [ { home-manager.users.schlich.dotfiles.alternates = false; } ];
+      # The workstation's home with only its primary terminal, editor, and
+      # agent desktop client; CI builds this closure after landing, and
+      # home-manager evaluates the full one.
+      denAsusPrimary = denAsusHome.extendModules {
+        modules = [ { dotfiles.alternates = false; } ];
       };
       # homelab with nixbot running, before hosts/homelab/nixbot.nix names
       # the GitHub App; the IDs are placeholders until it does.
@@ -498,6 +500,9 @@
 
       # Den's systems, not Clan's: the clan CLI deploys these.
       nixosConfigurations = denFlake.nixosConfigurations;
+      # Standalone homes named USER@HOST, which `nh home switch` picks for
+      # the current user and host.
+      homeConfigurations = denFlake.homeConfigurations;
       inherit (clan.config) clanInternals;
       clan = clan.config;
       den = denEval.config.den;
@@ -527,8 +532,9 @@
 
       packages.${system} = {
         default = denFlake.nixosConfigurations.asus.config.system.build.toplevel;
+        home = denAsusHome.activationPackage;
         headless = denFlake.nixosConfigurations.asus-headless.config.system.build.toplevel;
-        desktop-primary = denAsusPrimary.config.system.build.toplevel;
+        desktop-primary = denAsusPrimary.activationPackage;
         ci = jjCi;
         jj = pkgs.jujutsu;
         jjui = pkgs.jjui;
@@ -682,7 +688,7 @@
         # The closure builds after landing (remoteChecks); evaluating it here
         # still rejects a broken configuration before it lands.
         desktop-primary-evaluation = pkgs.writeText "desktop-primary-evaluation" (
-          builtins.unsafeDiscardStringContext "${denAsusPrimary.config.system.build.toplevel.drvPath}\n"
+          builtins.unsafeDiscardStringContext "${denAsusPrimary.activationPackage.drvPath}\n"
         );
         den-policy = denPolicyCheck;
         dev-shell = pkgs.runCommand "dev-shell-check" { } ''
@@ -693,7 +699,7 @@
           test -x ${profileDrift}/bin/profile-drift
           touch "$out"
         '';
-        home-manager-nixos = homeCheck;
+        home-manager = homeCheck;
         niri-config =
           pkgs.runCommand "niri-config-check"
             {
@@ -853,10 +859,11 @@
           deploy-revert = import ./tests/deploy-revert.nix { inherit pkgs; };
           marimohub-homelab-evaluation = marimohubHomelabEvaluationCheck;
           nixbot-homelab-evaluation = nixbotHomelabEvaluationCheck;
-          # The system closures build after landing. A revision whose closure
-          # fails to build can land, but no host activates it: a switch builds
-          # the closure before it stages anything.
-          desktop-primary = denAsusPrimary.config.system.build.toplevel;
+          # The system and home closures build after landing. A revision
+          # whose closure fails to build can land, but no host activates it:
+          # a switch builds the closure before it stages anything.
+          desktop-primary = denAsusPrimary.activationPackage;
+          desktop-system = denAsus.config.system.build.toplevel;
           headless-system = denFlake.nixosConfigurations.asus-headless.config.system.build.toplevel;
         };
     };

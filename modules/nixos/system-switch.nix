@@ -1,7 +1,6 @@
 {
   config,
   lib,
-  options,
   pkgs,
   ...
 }:
@@ -66,16 +65,6 @@ let
       niri-config.command = probe "niri-config" ''
         ${active}/niri validate --config /etc/niri/config.kdl
       '';
-    }
-    // lib.optionalAttrs (options ? home-manager) {
-      home-manager-nixos.command = probe "home-manager-nixos" (
-        lib.concatMapStrings (user: ''
-          if ${config.systemd.package}/bin/systemctl is-failed --quiet home-manager-${user}.service; then
-            echo "home-manager-${user}.service failed"
-            exit 1
-          fi
-        '') (builtins.attrNames config.home-manager.users)
-      );
     };
 
   checks = lib.unique cfg.healthChecks;
@@ -281,13 +270,13 @@ in
       after = [ "graphical-session.target" ];
       partOf = [ "graphical-session.target" ];
       # niri comes from the system; `ssh`, `terminal`, `ai`, and `editor`
-      # from the profile.
+      # from the standalone Home Manager profile.
       environment.PATH = lib.mkForce "${
         lib.makeBinPath [
           pkgs.coreutils
           pkgs.libnotify
         ]
-      }:/etc/profiles/per-user/%u/bin:/run/current-system/sw/bin";
+      }:%h/.nix-profile/bin:/run/current-system/sw/bin";
       serviceConfig = {
         Type = "oneshot";
         ExecStart = "${deployReverts}/bin/deploy-reverts notify ${lib.escapeShellArgs (lib.unique cfg.notify.sources)}";

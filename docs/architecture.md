@@ -24,10 +24,16 @@ typed inventory -> host aspect composition -> Den host/user pipeline
                  -> NixOS + Home Manager module graph -> outputs/checks
 ```
 
-User configuration is supplied by Den user aspects. A host runs Home Manager
-when a user there has the `homeManager` class (asus, asus-usb and homelab);
-`den/aspects/home-manager-host.nix` holds its NixOS settings for exactly those
-hosts. Every such user gets the shell home (`user-shell`: Nushell, its
+User configuration is supplied by Den user aspects. Home Manager runs
+standalone, apart from the system: an inventory user with `home = true`
+(schlich on asus, asus-usb and homelab) gets the flake output
+`homeConfigurations."USER@HOST"`, the name `nh home switch` looks up for that
+user on that host. `den/inventory.nix` builds each home from its host's
+package set and passes the evaluated system as `osConfig`, so home modules
+still read system facts; `den/aspects/home-manager-host.nix` adds the overlays
+those homes need to exactly those hosts. No system embeds or activates a
+home, so `system-switch` and Clan never change one. Every such user gets the
+shell home (`user-shell`: Nushell, its
 prompt and history tools, git, jj, ssh and the command-line tools), and
 workstations add the desktop home (`user-desktop`: terminals, editors, agent
 clients, desktop apps and their user services, plus the rest of
@@ -54,11 +60,11 @@ Choose the path the wrapper names by how long the program runs:
 - A long-running graphical program that reloads its configuration names a
   stable path that a switch updates, so a reload picks up the new
   configuration: `/etc/niri/config.kdl` for niri, which never runs in the
-  sandbox, and the per-user profile for Ghostty.
+  sandbox, and the user's profile (`~/.nix-profile`) for Ghostty.
 
 Do not move a program that agents run to `/etc`: the Claude Desktop sandbox
-shows no host `/etc/ssh` or `/etc/gitconfig`, while `/nix/store` and
-`/etc/profiles/per-user` stay visible. Where Home Manager adds shell
+shows no host `/etc/ssh` or `/etc/gitconfig`, while `/nix/store` and `$HOME`,
+which holds the standalone home's `~/.nix-profile`, stay visible. Where Home Manager adds shell
 integration but cannot safely manage an app's settings, keep
 `programs.<name>.enable` with the wrapped `package` and no `settings`, after
 checking at the locked revision that the module writes no file without
@@ -79,7 +85,7 @@ These stay in Home Manager:
 - Nushell's `config.nu`: no variable names it, an explicit `--config` also
   loads for scripts and `nu -c`, and the vendor autoload directories reach the
   agent MCP server as well as interactive sessions. Autoload files that only
-  define commands ship in the per-user profile through
+  define commands ship in the user's profile through
   `dotfiles.nushellAutoload` instead. Starship's `init nu` embeds the
   unwrapped binary's path, so `config.nu` sets `STARSHIP_CONFIG` rather than
   a wrapper.
@@ -148,14 +154,14 @@ the generation instead:
   the boot default (`deployed`) and for each later revision whose system is
   already running (`unchanged`). One store path therefore maps to the revision
   that introduced it and the newest one still producing it.
-- `home-activate` builds the working copy, which may hold edits `main` lacks,
-  so it appends the JJ change, commit, and whether that commit has landed to
-  `~/.local/state/home-activate/generations.jsonl`.
+- `home-activate` runs `nh home switch` on the working copy, which may hold
+  edits `main` lacks, so it appends the JJ change, commit, and whether that
+  commit has landed to `~/.local/state/home-activate/generations.jsonl`.
 
 `generation` reads both: the running, booted, and boot-default system
 generations, the revision behind the running one, whether Tangled's `main` has
-moved past it, and whether Home Manager runs the generation the system embeds
-or one `home-activate` built since. `generation --line` is a one-line form for
+moved past it, and the running Home Manager generation with the change
+`home-activate` built it from (unrecorded after a bare `nh home switch`). `generation --line` is a one-line form for
 a status bar, and `--json` the full record. A host switched another way, such
 as by Clan or `nixos-rebuild`, shows its source as unrecorded.
 
@@ -177,7 +183,7 @@ and undoes one that breaks the host:
    settled once none of the touched units has a job queued or sits between
    states; systemd's own start and stop timeouts bound how long that can
    take. Then each probe that the host's `policy.healthChecks` names (`ssh`,
-   `tailscale`, `niri-config`, `home-manager-nixos`) runs once, and a probe
+   `tailscale`, `niri-config`) runs once, and a probe
    that fails, or answers slower than its latency budget, breaches the watch.
 1. A settled candidate whose probes pass becomes the boot default
    (`switch-to-configuration boot`) right away. A breach, a failed activation,
@@ -253,8 +259,8 @@ user escalates with sudo on the target. asus has no `deploy.targetHost`, so
 `clan machines update asus` reaches it over ssh to localhost. Deploying from
 an unlanded topic skips the landing gate, and Clan offers no preview goal to
 reserve it for, so do not.
-Home Manager-only changes use `home-activate` when
-they leave the NixOS toplevel unchanged. In this repository,
-`home-manager.useUserPackages = true`, so changes to `home.packages` are
-system-owned and can change the NixOS toplevel; classify those by the same path
-comparison rather than by where the option is declared.
+Home Manager changes, `home.packages` included, never change the NixOS
+toplevel: the home is standalone, and `nh home switch` (or `home-activate`)
+applies it on each host apart from the system. A landing therefore reaches a
+host's home only when someone switches that home there; the canary's timer
+and Clan update systems alone.

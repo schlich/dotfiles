@@ -54,8 +54,8 @@ Not for:
 All hosts are `x86_64-linux` NixOS (`den/inventory.nix`).
 
 - **asus** — the AMD laptop workstation: Niri desktop, development, XR, and
-  remote tooling; deployed in place with `clan machines update`, and its
-  staged switches commit once the units they touched settle.
+  remote tooling; deployed in place with `clan machines update`, and its staged
+  switches commit once the units they touched settle.
 - **asus-usb** — the same workstation profile on removable media; `disposable`,
   so it evaluates in `remoteChecks` rather than the landing gate.
 - **asus-headless** — the asus hardware as a server with no desktop.
@@ -64,8 +64,9 @@ All hosts are `x86_64-linux` NixOS (`den/inventory.nix`).
   health checks, and runs the shell home only.
 
 Changes are delivered through Tangled: a topic lands on `main` through the local
-`ci land` gate, then a host switches with `system-switch` (or `home-activate`
-when the NixOS toplevel is unchanged). Deliberately unsupported: nix-darwin,
+`ci land` gate, then a host switches its system with `system-switch`, and each
+user's standalone home (`homeConfigurations."USER@HOST"`) switches apart from it
+with `nh home switch` or `home-activate`. Deliberately unsupported: nix-darwin,
 macOS, and non-NixOS Linux.
 
 ## Stack

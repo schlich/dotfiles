@@ -10,8 +10,10 @@ $env.config.cursor_shape.helix_select = "underscore"
 
 alias lg = lazygit
 alias hm = home-manager
-# nh finds the flake through NH_FLAKE and the host by its name.
+# nh finds the flake through NH_FLAKE, the host by its name, and the home as
+# USER@HOST.
 alias nrb = nh os switch
+alias nhs = nh home switch
 alias nixfmt = nix fmt
 
 # source ~/.config/nushell/completions/niri.nu
@@ -57,9 +59,7 @@ def nix-discover [query: string] {
 
     {
         packages: $packages
-        # Home Manager is embedded in the host, so read its option tree from
-        # the submodule type of home-manager.users.
-        home_manager_programs: (do $matching_options ".#nixosConfigurations.asus.options.home-manager.users" 'users: builtins.attrNames (users.type.getSubOptions []).programs')
+        home_manager_programs: (do $matching_options '.#homeConfigurations."schlich@asus".options.programs')
         nixos_programs: (do $matching_options ".#nixosConfigurations.asus.options.programs")
         nixos_services: (do $matching_options ".#nixosConfigurations.asus.options.services")
     }

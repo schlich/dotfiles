@@ -7,6 +7,7 @@
   lib,
   hosts,
   nixosConfigurations,
+  homeConfigurations,
 }:
 let
   builder = import ../hosts/homelab/builder.nix;
@@ -108,19 +109,39 @@ let
         };
       };
 
-      # Health check `home-manager-nixos`: the probe watches each user's unit.
-      testActivatesHomeManagerAsASystemUnit = {
+      # Home Manager runs standalone (homeConfigurations."schlich@asus"), so
+      # the system neither embeds nor activates it.
+      testLeavesHomeManagerOutOfTheSystem = {
         expr = {
-          users = builtins.attrNames config.home-manager.users;
+          module = config ? home-manager;
           unit = config.systemd.services ? "home-manager-schlich";
         };
         expected = {
-          users = [ "schlich" ];
-          unit = true;
+          module = false;
+          unit = false;
         };
       };
     };
   };
+
+  # A standalone home follows the host it is named for: the desktop home only
+  # on a workstation, and ci's traces only where the viewer runs. Den keys a
+  # home's scope by its name, so homes of one user that shared a name would
+  # all resolve as one host's (den/inventory.nix names them USER@HOST).
+  homeTests = host: userName: config: {
+    "testHome_${userName}_FollowsItsHost" = {
+      expr = {
+        desktop = config.programs.ghostty.enable;
+        traces = (config.dotfiles.ci.tracesEndpoint or null) != null;
+      };
+      expected = {
+        desktop = host.profile.role == "workstation";
+        traces = host.services.nixObservability;
+      };
+    };
+  };
+
+  homesOf = name: lib.filterAttrs (_: user: user.home) hosts.${name}.users;
 
   # Decided from the inventory alone, so dropping a host's empty group never
   # evaluates its system.
@@ -134,9 +155,14 @@ let
         lib.optionalAttrs host.deploy.enable (deployTests name config)
         // lib.optionalAttrs (host.profile.remote && name != "homelab") (remoteClientTests config)
         // (hostTests.${name} or (_: { })) config
+        // lib.concatMapAttrs (
+          userName: _: homeTests host userName homeConfigurations."${userName}@${name}".config
+        ) (homesOf name)
       )
       (
-        lib.filterAttrs (name: host: host.deploy.enable || host.profile.remote || hostTests ? ${name}) hosts
+        lib.filterAttrs (
+          name: host: host.deploy.enable || host.profile.remote || hostTests ? ${name} || homesOf name != { }
+        ) hosts
       );
 in
 perHost

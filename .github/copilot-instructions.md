@@ -4,7 +4,7 @@
 
 - Format the repository with Checkmate: `nix run github:denful/checkmate#fmt --override-input target path:. -- --on-unmatched warn --excludes '.agents/**' --excludes '.codex/**'`
 - Build the Home Manager configs:
-  - `nix build .#homeConfigurations.schlich.activationPackage`
+  - `nix build path:.#homeConfigurations.schlich@asus.activationPackage`
   - `nix build .#checks.x86_64-linux.home-profiles`
 - Build the NixOS system configs:
   - `nix build .#nixosConfigurations.asus.config.system.build.toplevel`

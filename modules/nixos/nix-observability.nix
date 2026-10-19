@@ -20,13 +20,6 @@ in
       ProtectHome = true;
     };
   };
-
-  # ci sends each dispatch and landing to the viewer as a trace when the run
-  # ends; `ci trace export` sends the ones recorded before.
-  home-manager.sharedModules = [
-    {
-      imports = [ ../programs/ci.nix ];
-      dotfiles.ci.tracesEndpoint = "http://127.0.0.1:${toString otlpPort}/v1/traces";
-    }
-  ];
+  # Users' homes point ci's traces here through the nix-observability-home
+  # aspect (den/aspects/nix-observability.nix), which names the same port.
 }

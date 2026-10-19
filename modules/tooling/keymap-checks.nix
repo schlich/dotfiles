@@ -9,7 +9,7 @@
 # the keymap rules: the current mode stays on screen, a prefix key shows the
 # keys that follow it, and Esc returns to the base mode. The specifications
 # are in tests/bombadil; the checks run with this home's other tooling checks
-# in the flake's home-manager-nixos check.
+# in the flake's home-manager check.
 let
   bombadil = import ../../lib/bombadil.nix { inherit lib pkgs; };
 in

@@ -1,6 +1,6 @@
 name: Build one flake check
 description: >-
-  Build one attribute of the flake's checks or remoteChecks with nix-fast-build, freeing runner disk first for the desktop closure.
+  Build one attribute of the flake's checks or remoteChecks with nix-fast-build, freeing runner disk first for the desktop closures.
 inputs:
   set:
     description: The flake output that holds the check, checks or remoteChecks.
@@ -11,9 +11,10 @@ inputs:
 runs:
   using: composite
   steps:
-    # Only the desktop closure outgrows the runner's free disk.
+    # Only the desktop closures, its home and its system, outgrow the
+    # runner's free disk.
     - name: Start freeing runner disk space
-      if: inputs.check == 'desktop-primary'
+      if: inputs.check == 'desktop-primary' || inputs.check == 'desktop-system'
       shell: bash
       run: |
         status_file="$RUNNER_TEMP/runner-disk-cleanup.status"
@@ -69,7 +70,7 @@ runs:
     # before building, so only `nix build` waits for the cleanup; the
     # evaluation runs meanwhile. Its stdout is the job log.
     - name: Hold builds until runner disk cleanup finishes
-      if: inputs.check == 'desktop-primary'
+      if: inputs.check == 'desktop-primary' || inputs.check == 'desktop-system'
       shell: bash
       run: |
         wrapper="$RUNNER_TEMP/nix-after-disk-cleanup"

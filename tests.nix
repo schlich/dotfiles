@@ -8,9 +8,12 @@ let
     rollback = true;
     healthChecks = [ ];
   };
+  # The inventory's homes read the evaluated systems from `config`; these
+  # tests read only its hosts, so the homes are never evaluated.
   inventory = import ./den/inventory.nix {
     inherit lib;
     inputs = { };
+    config = { };
   };
   hosts = inventory.den.hosts.x86_64-linux;
 in

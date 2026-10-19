@@ -34,9 +34,10 @@ in
   programs.nh = {
     enable = true;
     inherit (osConfig.programs.nh) package;
-    # `nh os` defaults to this checkout as a `path:` flake, so new files count
-    # without Git staging. Home Manager is embedded in the system, so there
-    # is no `nh home` target; `home-activate` remains the home-only path.
+    # `nh os` and `nh home` default to this checkout as a `path:` flake, so
+    # new files count without Git staging. `nh home switch` applies
+    # homeConfigurations."USER@HOST" for the current user and host;
+    # `home-activate` runs it and records the change it came from.
     flake = "path:${config.home.homeDirectory}/dotfiles";
   };
   accounts.email.accounts.personal = {
@@ -159,7 +160,7 @@ in
         run-step "Nix formatting" { ^nix fmt -- --check }
         run-step "Flake checks" { ^nix flake check path:. }
         run-step "Home Manager build" {
-          ^nom build path:.#nixosConfigurations.asus.config.home-manager.users.schlich.home.activationPackage
+          ^nom build path:.#homeConfigurations.schlich@asus.activationPackage
         }
         run-step "NixOS build" {
           ^nom build path:.#nixosConfigurations.asus.config.system.build.toplevel
@@ -199,9 +200,10 @@ in
       }
     '')
     (pkgs.writeNuScriptBin "home-activate" ''
-      # Build and activate the Home Manager configuration embedded in NixOS.
-      # It builds the working copy, which may hold edits main lacks, so it
-      # records the change each generation came from for `generation`.
+      # Build and activate this host's standalone Home Manager configuration
+      # with `nh home switch`. It builds the working copy, which may hold
+      # edits main lacks, so it records the change each generation came from
+      # for `generation`.
       const repo = "/home/schlich/dotfiles"
 
       # The change whose files the build reads: an empty working-copy change
@@ -215,9 +217,11 @@ in
         { change: $fields.0, commit: $fields.1, landed: ($fields.2 == "true"), description: ($fields.3? | default "") }
       }
 
-      def record [activation: string, change: record] {
+      def record [change: record] {
         let state = ($env.XDG_STATE_HOME? | default ($env.HOME | path join .local state))
-        let link = (^readlink ($state | path join nix profiles home-manager) | complete | get stdout | str trim)
+        let profile = ($state | path join nix profiles home-manager)
+        let link = (^readlink $profile | complete | get stdout | str trim)
+        let activation = (^readlink --canonicalize $profile | complete | get stdout | str trim)
         let entry = {
           at: (date now | format date '%+')
           activation: $activation
@@ -230,17 +234,11 @@ in
         }
       }
 
-      def main [] {
+      # Extra arguments go to `nh home switch`, such as --ask or --dry.
+      def --wrapped main [...args] {
         let change = (working-change)
-        let flake = $"path:($repo)#nixosConfigurations.${osConfig.networking.hostName}.config.home-manager.users.schlich.home.activationPackage"
-        let activation = (^/run/current-system/sw/bin/nix build --no-link --print-out-paths $flake | str trim)
-
-        if ($activation | is-empty) {
-          error make { msg: "Nix did not produce a Home Manager activation package." }
-        }
-
-        run-external $"($activation)/activate" -- --driver-version 1
-        record $activation $change
+        ^${lib.getExe config.programs.nh.package} home switch $"path:($repo)" --configuration $"${config.home.username}@${osConfig.networking.hostName}" ...$args
+        if not ("--dry" in $args or "-n" in $args) { record $change }
       }
     '')
   ];

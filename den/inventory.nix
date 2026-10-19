@@ -1,4 +1,5 @@
 {
+  config,
   inputs,
   lib,
   ...
@@ -46,10 +47,7 @@ let
 
   personalWorkstation = {
     users.schlich = {
-      classes = [
-        "user"
-        "homeManager"
-      ];
+      home = true;
       primary = true;
     };
     profile = {
@@ -60,10 +58,7 @@ let
       remote = true;
     };
     # tests/den-config.nix tests that each probe has something to watch.
-    policy.healthChecks = [
-      "niri-config"
-      "home-manager-nixos"
-    ];
+    policy.healthChecks = [ "niri-config" ];
   };
 
   hostLayers = {
@@ -98,10 +93,7 @@ let
       {
         # The shell home only; den/aspects/users/schlich.nix keeps desktop
         # pieces to workstations.
-        users.schlich.classes = [
-          "user"
-          "homeManager"
-        ];
+        users.schlich.home = true;
         profile = {
           role = "server";
           # A local session for debugging on the machine itself.
@@ -156,7 +148,42 @@ let
     }
   ) inventory;
   validated = builtins.deepSeq (lib.mapAttrsToList profileTools.validateHost inventory) withInstantiate;
+
+  # Home Manager runs apart from the system: each user with `home = true`
+  # gets homeConfigurations."USER@HOST", the name `nh home switch` looks up
+  # for that user on that host. The home takes its host's package set, with
+  # the overlays and nixpkgs settings the system has, and sees the system as
+  # osConfig.
+  homes = lib.concatMapAttrs (
+    hostName: host:
+    lib.mapAttrs' (
+      userName: _:
+      let
+        system = config.flake.nixosConfigurations.${hostName};
+      in
+      lib.nameValuePair "${userName}@${hostName}" {
+        # Den names a home after its bare user and keys its scope by kind and
+        # name, so one user's homes on several hosts would share one scope and
+        # all resolve as whichever came first. Name each after its host too,
+        # and look the user's aspect up by the user name that no longer
+        # matches.
+        name = lib.mkOverride 10 "${userName}@${hostName}";
+        aspect = config.den.aspects.${userName};
+        inherit (system) pkgs;
+        instantiate =
+          { pkgs, modules }:
+          inputs.home-manager.lib.homeManagerConfiguration {
+            inherit pkgs modules;
+            extraSpecialArgs = {
+              inherit inputs;
+              osConfig = system.config;
+            };
+          };
+      }
+    ) (lib.filterAttrs (_: user: user.home or false) (host.users or { }))
+  ) inventory;
 in
 {
   den.hosts.x86_64-linux = validated;
+  den.homes.x86_64-linux = homes;
 }

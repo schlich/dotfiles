@@ -28,5 +28,5 @@ Conventions and rules for authoring, modifying, and maintaining Nix flakes and N
 
 - Format all Nix changes with `nix fmt` (`nixfmt-tree`).
 - Validate changes by building the smallest relevant target:
-  - Home Manager changes: `nix build .#homeConfigurations.schlich.activationPackage`
+  - Home Manager changes: `nix build path:.#homeConfigurations.schlich@asus.activationPackage`
   - NixOS system changes: `nix build .#nixosConfigurations.asus.config.system.build.toplevel`

@@ -4,8 +4,8 @@
 # landing, so a refactor could no longer prove it changes nothing and every
 # landing would warrant a generation. Instead nixos-switch-main pairs each
 # store path it deploys or finds already running with its revision in
-# generations.jsonl, and home-activate keeps the same record for a Home
-# Manager generation it builds from a working copy.
+# generations.jsonl, and home-activate keeps the same record for each
+# standalone Home Manager generation it builds from a working copy.
 
 const SYSTEM = '/nix/var/nix/profiles/system'
 
@@ -68,21 +68,18 @@ def main-state [rows: list] {
     { rev: $rev, state: $state }
 }
 
-# The running Home Manager generation, and whether it is the one the running
-# system embeds or one home-activate built from a working copy since.
-def home [system: string] {
-    let user = ($env.USER? | default (^id -un | str trim))
-    let unit = ($system | path join etc systemd system $"home-manager-($user).service")
+# The running standalone Home Manager generation, and the change it came
+# from when home-activate built it; a bare `nh home switch` leaves none.
+def home [] {
     let profile = (home-state | path join nix profiles home-manager)
     let running = (resolve $profile)
-    if not ($unit | path exists) or $running == null { return null }
-    let embedded = (open --raw $unit | lines | where $it starts-with 'ExecStart=' | get 0? | default '' | split row ' ' | last)
+    if $running == null { return null }
     let activated = (entries (home-state | path join home-activate generations.jsonl) | where activation == $running | last 1 | get 0?)
     {
         generation: (generation-of $profile $running)
         path: $running
-        origin: (if $running == $embedded { 'system' } else if $activated != null { 'home-activate' } else { 'unrecorded' })
-        source: (if $running == $embedded or $activated == null { null } else { $activated | reject activation })
+        origin: (if $activated != null { 'home-activate' } else { 'unrecorded' })
+        source: (if $activated == null { null } else { $activated | reject activation })
     }
 }
 
@@ -96,7 +93,6 @@ def summary [report: record] {
     let main = if $report.main?.state? == 'ahead' { ' · main ahead' } else { '' }
     let home = if $report.home == null { '' } else {
         let from = match $report.home.origin {
-            'system' => ''
             'home-activate' => $" from ($report.home.source.change)(if $report.home.source.landed { '' } else { ' unlanded' })"
             _ => ' unrecorded'
         }
@@ -125,7 +121,7 @@ def main [
         }
         source: (system-source $rows)
         main: (if $offline { null } else { main-state $rows })
-        home: (home $running)
+        home: (home)
     }
     if $json { return ($report | to json) }
     if $line { return (summary $report) }

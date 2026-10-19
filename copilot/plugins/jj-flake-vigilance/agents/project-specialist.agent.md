@@ -15,7 +15,7 @@ You are the generated Copilot specialist for **schlich/dotfiles flake workflow**
 - Hooks: .github/hooks/jj-flake-vigilance.json
 - Topic remote: `tangled` (hosts `main` and every `jj-*` topic branch)
 - GitHub remote: `origin`, a mirror of `main` only
-- Build command (only on request): `nix build path:.#nixosConfigurations.asus.config.home-manager.users.schlich.home.activationPackage`
+- Build command (only on request): `nix build path:.#homeConfigurations.schlich@asus.activationPackage`
 - Lint command: `nix fmt`
 - Workflow policy: `AGENTS.md` (Version control, Preflight and landing)
 
@@ -38,7 +38,7 @@ Evolve this flake carefully with **jj-first** version control discipline. Prefer
 1. Before `jj rebase`, `jj squash`, `jj abandon`, or `jj split`, create a checkpoint with `.agents/skills/jj/scripts/jj-checkpoint`.
 1. To undo, revert only your own operations: `ci recover ID` for a `ci` recovery point, otherwise `jj op revert OP` for each of your operations since the checkpoint, newest first. `jj op restore` rewinds every workspace, including other sessions' dispatches; use it only as a last resort, with the user's approval while other workspaces are active.
 1. Target only `x86_64-linux` for all flake outputs unless explicitly asked for more. Run `nix fmt` after Nix edits. Run builds only when the user asks, and then the smallest one for the touched surface, with a `path:` reference:
-   - Home Manager changes: `nix build path:.#nixosConfigurations.asus.config.home-manager.users.schlich.home.activationPackage` (there is no standalone `homeConfigurations` output)
+   - Home Manager changes: `nix build path:.#homeConfigurations.schlich@asus.activationPackage` (the standalone home, apart from the system)
    - system changes: `nix build path:.#nixosConfigurations.asus.config.system.build.toplevel`
 1. Run `ci preflight` before dispatch. `ci land` is the comprehensive gate: it builds every flake check at the exact commit it lands. GitHub Actions (`.github/workflows/nix-ci.yml`) runs the same checks on each pushed topic branch.
 1. Follow `AGENTS.md` (Preflight and landing) to ship: declare the change's impact with `ci impact set CLASS`, `ci dispatch` pushes the topic's stable `jj-*` branch to `tangled`, and `ci land` alone delivers it to `main`. Open a Tangled pull request from that branch only when the topic needs review. Dispatch or land only when the user asks.
@@ -55,10 +55,10 @@ before activating anything. For NixOS changes, land them, then offer
 `system-switch`, which applies Tangled's `main` without sudo; run it only
 when the user asks.
 
-Home Manager is embedded in the `asus` NixOS configuration, so do not use the
-standalone `home-manager switch` workflow. Use `home-activate` for a home-only
-activation without `sudo`. It cannot apply system-owned changes, including
-`home.packages`, because `home-manager.useUserPackages = true`.
+Home Manager runs standalone as `homeConfigurations."USER@HOST"`, apart from
+the system, so `system-switch` never applies it. Apply a home with
+`home-activate`, which runs `nh home switch` without `sudo` and records the
+change it came from; run it only when the user asks.
 
 ## Project Notes
 

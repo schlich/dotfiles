@@ -25,11 +25,14 @@
 - Preserve the existing modular flake structure. Do not introduce the
   Dendritic Pattern as part of an unrelated change; adopting it requires a
   deliberate architecture migration.
-- The active output is
-  `nixosConfigurations.asus.config.system.build.toplevel`. Home Manager is
-  embedded in it; there is no standalone `homeConfigurations` output. Its
-  activation package is
-  `nixosConfigurations.asus.config.home-manager.users.schlich.home.activationPackage`.
+- The active outputs are the system
+  `nixosConfigurations.asus.config.system.build.toplevel` and, apart from it,
+  the standalone Home Manager configuration
+  `homeConfigurations."schlich@asus"`, whose activation package is
+  `homeConfigurations."schlich@asus".activationPackage`. Den derives one home
+  for each inventory user with `home = true`, named `USER@HOST` as
+  `nh home switch` expects (`den/inventory.nix`); each takes its host's
+  package set and sees the system as `osConfig`.
 - Add user packages in `modules/home/packages.nix`, version-control wrappers in
   `modules/programs/vcs.nix`, and AI client configuration in
   `modules/tooling/ai/`.
@@ -58,7 +61,7 @@
 - Format Nix changes with `nix fmt`. Do not run Nix builds or other build/test
   validation during agent responses unless the user explicitly requests it.
   When explicitly requested, use the smallest relevant build:
-  `nix build path:.#nixosConfigurations.asus.config.home-manager.users.schlich.home.activationPackage`
+  `nix build path:.#homeConfigurations.schlich@asus.activationPackage`
   for Home Manager changes and
   `nix build path:.#nixosConfigurations.asus.config.system.build.toplevel`
   for system changes.
@@ -96,17 +99,19 @@
 - Create a NixOS generation only when the candidate
   `system.build.toplevel` store path differs from the active
   `/run/current-system` target. If they match, do not switch merely to record a
-  source change. Home-only activation is separate; `home.packages` is
-  system-owned here and is covered by the toplevel comparison. See
+  source change. The toplevel no longer contains the home: a Home Manager
+  change, `home.packages` included, never needs a NixOS generation. See
   `docs/architecture.md` for the full policy.
 - `generation` says which system and Home Manager generation a host runs,
   which commit each came from, and whether `main` has moved past it. Use it
   to answer what a host is running before proposing a switch or activation.
-- Home Manager is embedded in the `asus` NixOS configuration. Do not use the
-  standalone `home-manager switch` workflow for this repository. Use
-  `home-activate` for a home-only activation without `sudo`. This does not
-  apply system-owned changes, including `home.packages` because
-  `home-manager.useUserPackages = true`.
+- Home Manager runs standalone, apart from the system: `system-switch` and
+  Clan never apply it. Apply a home with `nh home switch`, which builds
+  `homeConfigurations."$USER@$HOSTNAME"` from this checkout (`NH_FLAKE`) and
+  needs no `sudo`; prefer `home-activate`, which runs it and records the
+  change each generation came from for `generation`. The same approval rule
+  applies: activate a home only when the user asks. `home.packages` install
+  into `~/.nix-profile`, not `/etc/profiles/per-user`.
 - Every activation prints dix's package and version changes from the running
   system (`modules/nixos/closure-diff.nix`), so `system-switch` and Clan
   output include them. When offering `system-switch`, mention the notable
@@ -271,7 +276,8 @@
   run the same check set: each builds
   every attribute of `checks.x86_64-linux` and skips checks whose outputs are
   already cached. Those checks evaluate every host but build no system
-  closure: the headless and primary desktop closures are `remoteChecks`,
+  closure: the headless system, the desktop system, and the desktop's
+  primary home are `remoteChecks`,
   which GitHub Actions builds after each push without blocking a landing. A closure that fails to build can land, but no host
   activates it, since a switch builds before it stages anything. Add a check
   by adding a flake check; neither needs a change.

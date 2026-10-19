@@ -58,7 +58,7 @@ in
         # niri comes from the system; `terminal`, `ai`, and `editor` from the profile.
         "PATH=${
           lib.makeBinPath [ pkgs.libnotify ]
-        }:/etc/profiles/per-user/${config.home.username}/bin:/run/current-system/sw/bin"
+        }:${config.home.profileDirectory}/bin:/run/current-system/sw/bin"
       ];
     };
     Install.WantedBy = [ "graphical-session.target" ];

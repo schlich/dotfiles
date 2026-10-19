@@ -15,7 +15,7 @@ This skill is the repeatable workflow for **flake and host evolution in schlich/
 - Hooks: .github/hooks/jj-flake-vigilance.json
 - GitHub remote: `origin https://github.com/schlich/dotfiles.git`
 - Default PR base: `main`
-- Build: `nix build .#homeConfigurations.schlich.activationPackage`
+- Build: `nix build path:.#homeConfigurations.schlich@asus.activationPackage`
 - Lint: `nix fmt`
 
 ## When to use
@@ -40,7 +40,7 @@ Use this skill for routine repository tasks that should follow a repeatable patt
 1. Make the smallest coherent change that preserves existing flake output names and host wiring. Target only `x86_64-linux` for all flake outputs unless explicitly asked for more.
 1. Run `nix fmt` after Nix edits.
 1. Choose validation based on the touched surface:
-   - home-level changes: `nix build .#homeConfigurations.schlich.activationPackage`
+   - home-level changes: `nix build path:.#homeConfigurations.schlich@asus.activationPackage`
    - system changes: `nix build .#nixosConfigurations.asus.config.system.build.toplevel`
 1. Treat local validation as the fast gate and GitHub Actions as the comprehensive gate. `.github/workflows/nix-ci.yml` builds every flake check, including the Home Manager and NixOS evaluations, on each pushed topic branch.
 1. Preserve unrelated user changes, and only after formatting and the relevant validation command succeed, finalize the in-scope work with `jj commit` using the up-to-date description. If validation fails or the request is analysis-only, stop without committing.

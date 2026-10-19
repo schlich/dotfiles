@@ -201,6 +201,15 @@ in
             default = false;
             description = "Whether this is the primary reusable personal environment.";
           };
+          home = mkOption {
+            type = types.bool;
+            default = false;
+            description = ''
+              Whether the user has a standalone Home Manager configuration on
+              this host, flake output homeConfigurations."USER@HOST", which
+              `nh home switch` applies apart from the system.
+            '';
+          };
         };
       }
     ];

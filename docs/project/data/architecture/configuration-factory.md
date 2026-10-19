@@ -24,7 +24,9 @@ defaults, hardware, a workstation profile, host overrides) into one record of
 `profile`, `policy`, `deploy`, and `users` facts, and validates it before
 evaluation. `den/hosts.nix` then selects explicit aspects from `den/aspects/`,
 and Den's host and user pipeline resolves them into the module graph that
-`nixosConfigurations`, `checks`, and Clan's machines share.
+`nixosConfigurations`, `checks`, and Clan's machines share. Each user with
+`home = true` gets a standalone home, `homeConfigurations."USER@HOST"`, built
+from its host's package set with the system as `osConfig`.
 
 ``` text
 typed inventory -> host aspect composition -> Den host/user pipeline
@@ -36,6 +38,16 @@ typed inventory -> host aspect composition -> Den host/user pipeline
 deployment, staged switches, and reverts, lives in `docs/architecture.md`; this
 note records the decisions a plan must not undo.
 
+## Decision: Home Manager runs standalone
+
+No system embeds a home: `nh home switch` applies a home on its host, apart from
+`system-switch` and Clan, and the `USER@HOST` name is what it looks up. A home
+change then never warrants a NixOS generation, and `home.packages` install into
+`~/.nix-profile`. The rejected alternative, the Home Manager NixOS module with
+`useUserPackages`, tied every home edit to a system switch and left no `nh home`
+target. The cost is that a landing reaches a home only when someone switches it
+there; homelab's canary timer stages systems alone.
+
 ## Decision: configuration ships with the package
 
 A program that reads its configuration from an environment variable or a flag
@@ -43,7 +55,7 @@ gets it on its executable through `lib/wrap-with-config.nix`, and
 `dotfiles.retiredHomeFiles` fails evaluation if Home Manager links a replaced
 path again. A command-line program names the store file directly; a long-running
 graphical program that reloads names a stable path a switch updates
-(`/etc/niri/config.kdl`, Ghostty's per-user profile).
+(`/etc/niri/config.kdl`, Ghostty's path in the user's profile).
 
 Rejected alternatives:
 
@@ -51,8 +63,8 @@ Rejected alternatives:
   `config.json`), the Claude Desktop sandbox rejects them, and orphaned
   generations override a host's configuration (homelab).
 - **`/etc` for programs agents run** — the Claude Desktop sandbox shows no host
-  `/etc/ssh` or `/etc/gitconfig`, while `/nix/store` and
-  `/etc/profiles/per-user` stay visible.
+  `/etc/ssh` or `/etc/gitconfig`, while `/nix/store` and `$HOME` (with
+  `~/.nix-profile`) stay visible.
 
 Runtime state stays in Home Manager or with the program: agent client
 configuration directories, `GNUPGHOME`, gh's own files, Helix's
