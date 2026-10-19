@@ -199,7 +199,7 @@ jj diff 'cwd:"src/*.rs"'   # Use cwd: prefix for literal path with special chars
 
 Helper scripts in `scripts/`. Add to PATH or invoke directly. Each runs
 through its shebang: `jj-checkpoint` is a Nushell script, so run it as
-`^scripts/jj-checkpoint` or `nu scripts/jj-checkpoint`, never with `bash`.
+`scripts/jj-checkpoint` or `nu scripts/jj-checkpoint`, never with `bash`.
 
 | Script                                    | Purpose                                |
 | ----------------------------------------- | -------------------------------------- |

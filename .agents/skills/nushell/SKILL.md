@@ -742,7 +742,7 @@ For advanced patterns and deeper dives, see:
 7. **Return consistent types** - don't mix null and values unexpectedly
 8. **Use modules** - organize related functions
 9. **Test incrementally** - build complex pipelines step-by-step
-10. **Prefix external commands with caret** - `^grep` instead of just `grep`. Makes it clear it's not a nushell command, avoids ambiguity. **Nushell commands always have precedence**, e.g. `find` is NOT usual Unix `find` tool: use `^find`.
+10. **Use the caret only when it changes what runs** - write `jj status`, `git log`, `nix build`, not `^jj status`. Add `^` in two cases: the name is shadowed by a Nushell built-in, custom command, or alias (`find`, `sort`, `ls`, `ps`, `which`, `open`, `date`, `uniq`, or a wrapper `def` you deliberately bypass), so `^find` reaches the Unix tool; or the command name is computed, as in `^$cmd` or `^$"($bin)/tool"`. A path such as `./script` or `/abs/tool` needs no caret. Check a name with `which -a NAME`.
 11. **Use dedicated external commands when needed** - searching through lots of files is still faster with `grep` or `rg`, and large nested JSON structures will be processed much faster by `jq`
 
 ## Debugging Techniques

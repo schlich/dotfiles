@@ -88,9 +88,11 @@ script, use valid Nushell syntax.
   saved tool results with Read's `offset` and `limit` instead.
 
 - When a skill tells you to run a shell script it bundles, run it from the
-  Nushell evaluate tool as `^bash <script> ...args | complete`, not through
-  Bash. Run a script whose shebang names `nu` as `^<script> ...args | complete`
-  or with `nu` instead of `bash`. If the script needs a program that is not installed, build it with
+  Nushell evaluate tool as `bash <script> ...args | complete`, not through
+  Bash. Run a script whose shebang names `nu` as `<script> ...args | complete`
+  or with `nu` instead of `bash`. Prefix a command with `^` only when a
+  Nushell command of the same name would otherwise run, such as `^find` or
+  `^sort`, or when its name is a variable, such as `^$cmd`. If the script needs a program that is not installed, build it with
   `nix build nixpkgs#PKG --print-out-paths --no-link` and prepend its `bin`
   directory to `PATH` for the session. `$env.PATH` can arrive as a single
   colon-joined string, so split it into a list before prepending:
