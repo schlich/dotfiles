@@ -227,10 +227,12 @@
 - `ci` comes from the `ci` flake input. Change the workflow in its own
   repository, then move this one to it with `nix flake update ci`; try an
   unreleased copy here with `CI_SCRIPT=/path/to/ci.nu ci ...`. On the
-  workstation, the hourly `ci-input-watch` timer does that update for each
-  new ci release: it dispatches the bump from `.jj-workspaces/ci-input-update`
-  and notifies, and landing it stays a deliberate `ci land` there.
-  `ci-input-watch` shows what `main` pins and whether a bump is open.
+  workstation, `ci-input-watch` does that update for each new ci release: a
+  path unit wakes it when `ci land` records a release in the ci log, and it
+  dispatches the bump from `.jj-workspaces/ci-input-update` and notifies.
+  Landing it stays a deliberate `ci land` there. `ci-input-watch` shows what
+  `main` pins and whether a bump is open; `ci-input-watch check` runs the
+  check by hand.
 - Use a concise JJ change description. `ci dispatch` validates and pushes
   the topic's stable `jj-*` branch to GitHub; open a GitHub pull request from that branch when the topic needs review, and never merge it.
   Ordinary dispatch keeps editing the same change ID. Deliver it with

@@ -5,9 +5,12 @@
   ...
 }:
 
-# Keeps the ci flake input on ci's latest release. An hourly timer compares
-# the ci revision main's flake.lock pins with the newest release tag on the
-# GitHub mirror; when the release is ahead and no bump is open, it starts the
+# Keeps the ci flake input on ci's latest release. `ci land` records every
+# release it tags in the ci log, so a path unit on the log wakes the service,
+# which reads what was appended since its last run. When that holds a
+# release, it compares the ci revision main's flake.lock pins with the newest
+# release tag on the GitHub mirror; when the release is ahead and no bump is
+# open, it starts the
 # ci-input-update workspace, runs `nix flake update ci`, declares the change
 # `behavior`, dispatches it, and sends a desktop notification. It never lands:
 # `ci land` and `ci park` from that workspace stay a deliberate step, since a
@@ -46,15 +49,17 @@ in
     };
     Service = {
       Type = "oneshot";
-      ExecStart = "${lib.getExe ciInputWatch} check";
+      ExecStart = "${lib.getExe ciInputWatch} on-log";
       # Dispatch runs preflight, which takes several minutes.
       TimeoutStartSec = "30min";
       Environment = [
         # git lists the mirror's tags and gh compares them, carrying the
-        # GitHub login; ci, jj and nix come from the user and system profiles.
+        # GitHub login; tail reads the log's new bytes; ci, jj and nix come
+        # from the user and system profiles.
         "PATH=${
           lib.makeBinPath [
             pkgs.git
+            pkgs.coreutils
             config.programs.gh.package
           ]
         }:/etc/profiles/per-user/%u/bin:/run/current-system/sw/bin"
@@ -64,14 +69,12 @@ in
       ];
     };
   };
-  systemd.user.timers.ci-input-watch = {
-    Unit.Description = "Check hourly for a ci release main does not pin";
-    Timer = {
-      OnCalendar = "hourly";
-      # Catch up after the laptop was off or asleep at the scheduled time.
-      Persistent = true;
-      RandomizedDelaySec = "5min";
-    };
-    Install.WantedBy = [ "timers.target" ];
+  # %S is $XDG_STATE_HOME for the user manager, where ci keeps its log. A
+  # write while the service runs is read on its next run, from the saved
+  # offset, so none is lost.
+  systemd.user.paths.ci-input-watch = {
+    Unit.Description = "Watch the ci log for a release main does not pin";
+    Path.PathModified = "%S/ci/log.otlp.jsonl";
+    Install.WantedBy = [ "paths.target" ];
   };
 }

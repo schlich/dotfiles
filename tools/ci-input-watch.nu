@@ -5,13 +5,45 @@
 # `ci park` from that workspace.
 #
 #   ci-input-watch          what main pins, the latest release, any open bump
-#   ci-input-watch check    open and dispatch a bump when one is due (the timer)
+#   ci-input-watch check    open and dispatch a bump when one is due
+#   ci-input-watch on-log   check when the ci log gained a release (the path unit)
+#
+# `ci land` tags releases on this machine and records each in the ci log as
+# a `ci.release` record, so a path unit on the log wakes `on-log`, which reads
+# only what was appended since its last run and surveys the mirror only when
+# that holds a release. A release of any repository counts: it may be ci's,
+# or a landed bump that frees the way for a release that waited behind it.
 #
 # The wrapper sets CI_INPUT_WATCH_REPO (the dotfiles checkout) and
-# CI_INPUT_WATCH_NOTIFY (notify-send); ci, jj, nix, git and gh come from PATH.
+# CI_INPUT_WATCH_NOTIFY (notify-send); ci, jj, nix, git, gh and tail come from
+# PATH. CI_LOG moves the ci log, as it does for ci.
 
 const upstream = "schlich/ci"
 const workspace = "ci-input-update"
+
+# The release versions in a stretch of the ci log, one OTLP/JSON request per
+# line. Only lines that name the event are decoded; a torn line is skipped.
+export def releases-in []: string -> list<string> {
+  lines
+  | where {|line| $line =~ '"eventName":"ci\.release"' }
+  | each {|line|
+    try {
+      $line | from json | get resourceLogs | get scopeLogs | flatten | get logRecords | flatten
+      | where eventName == "ci.release"
+      | each {|record| $record.attributes | where key == "ci.release.version" | get value.stringValue }
+      | flatten
+    } catch { [] }
+  }
+  | flatten
+}
+
+# Where the next unread record starts: past the last complete line of
+# `chunk`, read from `offset`. A line still being appended waits for the next
+# run.
+export def next-offset [offset: int]: string -> int {
+  let end = ($in | encode utf8 | bytes index-of --end 0x[0a])
+  if $end < 0 { $offset } else { $offset + $end + 1 }
+}
 
 # Release tags are YYYY.MM.DD.N, so the latest is the largest by number, not
 # by name: 2026.10.19.10 follows 2026.10.19.9.
@@ -44,6 +76,19 @@ export def bump-due [status: string]: nothing -> bool {
 
 def repo [] {
   $env.CI_INPUT_WATCH_REPO? | default ($env.HOME | path join dotfiles)
+}
+
+def state-dir [] {
+  $env.XDG_STATE_HOME? | default ($env.HOME | path join .local state)
+}
+
+def ci-log [] {
+  if ($env.CI_LOG? | is-not-empty) { $env.CI_LOG } else { state-dir | path join ci log.otlp.jsonl }
+}
+
+# How far into the ci log `on-log` has read, in bytes.
+def offset-file [] {
+  state-dir | path join ci-input-watch log-offset
 }
 
 def notify [summary: string, body: string] {
@@ -134,4 +179,31 @@ def "main check" [] {
   }
   print $"Dispatched the ci input update to ($tag) from ($s.open)."
   notify $"ci ($tag) is ready to land" $"Dispatched in ($s.open). Run `ci land` there, then `ci park`."
+}
+
+# The offset is saved before checking, so a failed check notifies once
+# rather than on every later write to the log; `ci-input-watch check` retries
+# it. Without a saved offset, or once the log was replaced by a shorter one,
+# there is no telling what was missed, so it checks once.
+def "main on-log" [] {
+  let log = (ci-log)
+  if not ($log | path exists) { return }
+  let mark = (offset-file)
+  let size = (ls $log | get 0.size | into int)
+  let seen = (try { open --raw $mark | str trim | into int } catch { null })
+  mkdir ($mark | path dirname)
+  if $seen == null or $seen > $size {
+    $size | into string | save --force $mark
+    print "No record of what the ci log held before; checking once."
+    main check
+    return
+  }
+  if $seen == $size { return }
+  # Through `complete`, which keeps the final newline a plain capture drops.
+  let chunk = (^tail --bytes $"+($seen + 1)" $log | complete | get stdout)
+  $chunk | next-offset $seen | into string | save --force $mark
+  let releases = ($chunk | releases-in)
+  if ($releases | is-empty) { return }
+  print $"The ci log recorded ($releases | str join ', '); checking for a ci release."
+  main check
 }

@@ -37,6 +37,20 @@ def main [script: path] {
   $failures = ($failures | append (expect "latest-release without releases" (do $helper "[{commit: a, tag: v1}] | latest-release") null))
   $failures = ($failures | append (expect "bump-due on ahead and diverged" ([ahead diverged identical behind] | each {|s| do $helper $"bump-due ($s)" }) [true true false false]))
 
+  # ci log records as ci.nu writes them: one OTLP/JSON request per line.
+  let record = {|event, version|
+    let attributes = if $version == null { [] } else { [{ key: "ci.release.version", value: { stringValue: $version } }] }
+    { resourceLogs: [{ scopeLogs: [{ logRecords: [{ eventName: $event, body: { stringValue: "" }, attributes: $attributes }] }] }] } | to json --raw
+  }
+  let stretch = ([
+    (do $record "ci.release" "2026.10.19.10")
+    (do $record "ci.run" null)
+    ((do $record "ci.release" "2026.10.19.11") | str substring 0..40)
+  ] | str join "\n")
+  $failures = ($failures | append (expect "releases-in reads release records and skips torn lines" (do $helper $"($stretch | to nuon) | releases-in") ["2026.10.19.10"]))
+  $failures = ($failures | append (expect "next-offset stops after the last complete line" (do $helper "\"a\\nbc\\nde\" | next-offset 10") 15))
+  $failures = ($failures | append (expect "next-offset waits on a torn line" (do $helper "\"abc\" | next-offset 10") 10))
+
   # The whole check against a repository of stubs.
   let repo = ($tmp | path join dotfiles)
   let bin = ($tmp | path join bin)
@@ -54,18 +68,23 @@ def main [script: path] {
   $"#!/bin/sh\nprintf '%s|%s\\n' \"$3\" \"$4\" >> ($notes)\n" | save ($bin | path join notify-send)
   ^chmod +x ...(glob ($bin | path join '*'))
 
-  let check = {|status, diff, fail|
+  let log = ($tmp | path join ci.log)
+  let state = ($tmp | path join state)
+  let invoke = {|command, status, diff, fail|
     if ($calls | path exists) { rm $calls }
     if ($notes | path exists) { rm $notes }
     with-env {
       PATH: ($env.PATH | prepend $bin)
       CI_INPUT_WATCH_REPO: $repo
       CI_INPUT_WATCH_NOTIFY: ($bin | path join notify-send)
+      CI_LOG: $log
+      XDG_STATE_HOME: $state
       STATUS: $status
       DIFF: $diff
       FAIL: $fail
-    } { ^nu --no-config-file $script check | complete }
+    } { ^nu --no-config-file $script $command | complete }
   }
+  let check = {|status, diff, fail| do $invoke check $status $diff $fail }
   let ci_calls = {|| if ($calls | path exists) { open $calls | lines | where $it starts-with "ci " } else { [] } }
   let summaries = {|| if ($notes | path exists) { open $notes | lines | each { split row '|' | first } } else { [] } }
   let open = ($repo | path join .jj-workspaces ci-input-update)
@@ -97,6 +116,27 @@ def main [script: path] {
   $failures = ($failures | append (expect "a failed dispatch fails the run" ($run.exit_code != 0) true))
   $failures = ($failures | append (expect "a failed dispatch notifies" (do $summaries) ["ci-input-watch: bump to 2026.10.19.10 failed"]))
   $failures = ($failures | append (expect "a failed dispatch keeps its workspace" ($open | path exists) true))
+  rm --recursive $open
+
+  # The path unit's entry point reads only what the log gained.
+  let surveyed = {|| if ($calls | path exists) { open $calls | lines | any {|line| $line starts-with "git " } } else { false } }
+  let offset = ($state | path join ci-input-watch log-offset)
+  $"(do $record ci.run null)\n" | save $log
+  let run = (do $invoke on-log identical "" "")
+  $failures = ($failures | append (expect "on-log without an offset checks once" [$run.exit_code (do $surveyed)] [0 true]))
+  $failures = ($failures | append (expect "on-log saves the log's length" (open --raw $offset | into int) (ls $log | get 0.size | into int)))
+
+  $"(do $record ci.run null)\n" | save --append $log
+  do $invoke on-log ahead "flake.lock" "" | ignore
+  $failures = ($failures | append (expect "on-log ignores records that are not releases" [(do $surveyed) (do $ci_calls)] [false []]))
+
+  $"(do $record ci.release 2026.10.19.10)\n" | save --append $log
+  let run = (do $invoke on-log ahead "flake.lock" "")
+  $failures = ($failures | append (expect "on-log dispatches a bump after a release" [$run.exit_code ((do $ci_calls) | last)] [0 "ci dispatch"]))
+  $failures = ($failures | append (expect "on-log has read the whole log" (open --raw $offset | into int) (ls $log | get 0.size | into int)))
+
+  do $invoke on-log ahead "flake.lock" "" | ignore
+  $failures = ($failures | append (expect "on-log with nothing new does nothing" (do $surveyed) false))
 
   rm --recursive $tmp
   if ($failures | is-not-empty) {
