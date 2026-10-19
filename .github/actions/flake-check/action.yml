@@ -12,46 +12,64 @@ runs:
   using: composite
   steps:
     # Only the desktop closure outgrows the runner's free disk.
+    - uses: hustcer/setup-nu@95cd3bfe252450ef7d35dd9a7ddecf3484341134 # v3.28
+      with:
+        version: "0.116.0"
     - name: Start freeing runner disk space
       if: inputs.check == 'desktop-primary'
-      shell: bash
+      shell: nu --no-config-file {0}
       run: |
-        status_file="$RUNNER_TEMP/runner-disk-cleanup.status"
-        log_file="$RUNNER_TEMP/runner-disk-cleanup.log"
-        pid_file="$RUNNER_TEMP/runner-disk-cleanup.pid"
-        rm -f "$status_file" "$log_file" "$pid_file"
-
-        (
-          trap 'printf "%s\n" "$?" > "$status_file"' EXIT
-          set -e
-          cleanup_paths=(
-            /opt/ghc
-            /opt/hostedtoolcache/CodeQL
-            /usr/local/lib/android
-            /usr/local/lib/node_modules
-            /usr/local/share/chromium
-            /usr/local/share/powershell
-            /usr/share/dotnet
-          )
-          cleanup_pids=()
-          for path in "${cleanup_paths[@]}"; do
-            sudo rm -rf -- "$path" &
-            cleanup_pids+=("$!")
-          done
-          cleanup_status=0
-          for cleanup_pid in "${cleanup_pids[@]}"; do
-            if ! wait "$cleanup_pid"; then
-              cleanup_status=1
-            fi
-          done
-          if ((cleanup_status != 0)); then
-            exit "$cleanup_status"
-          fi
-          sudo apt-get clean
-          sudo docker system prune --all --force
-          df -h
-        ) >"$log_file" 2>&1 </dev/null &
-        echo "$!" > "$pid_file"
+        let status_file = $"($env.RUNNER_TEMP)/runner-disk-cleanup.status"
+        let log_file = $"($env.RUNNER_TEMP)/runner-disk-cleanup.log"
+        rm --force $status_file $log_file
+        "" | save --force $log_file
+        job spawn --description runner-disk-cleanup {
+          let cleanup_status = try {
+            let cleanup_paths = [
+              /opt/ghc
+              /opt/hostedtoolcache/CodeQL
+              /usr/local/lib/android
+              /usr/local/lib/node_modules
+              /usr/local/share/chromium
+              /usr/local/share/powershell
+              /usr/share/dotnet
+            ]
+            let removals = $cleanup_paths | par-each {|path| ^sudo rm -rf -- $path | complete }
+            let removal_output = $removals
+              | each {|result| [$result.stdout $result.stderr] | where {|text| $text != "" } | str join "\n" }
+              | where {|text| $text != "" }
+              | str join "\n"
+            if ($removal_output | is-not-empty) {
+              $"($removal_output)\n" | save --append $log_file
+            }
+            if ($removals | any {|result| $result.exit_code != 0 }) {
+              error make {msg: "Runner disk cleanup could not remove all paths."}
+            }
+            let apt = (^sudo apt-get clean | complete)
+            if ($apt.stdout | is-not-empty) { $"($apt.stdout)\n" | save --append $log_file }
+            if ($apt.stderr | is-not-empty) { $"($apt.stderr)\n" | save --append $log_file }
+            if $apt.exit_code != 0 {
+              error make {msg: "Runner disk cleanup failed at apt-get clean."}
+            }
+            let docker = (^sudo docker system prune --all --force | complete)
+            if ($docker.stdout | is-not-empty) { $"($docker.stdout)\n" | save --append $log_file }
+            if ($docker.stderr | is-not-empty) { $"($docker.stderr)\n" | save --append $log_file }
+            if $docker.exit_code != 0 {
+              error make {msg: "Runner disk cleanup failed at docker system prune."}
+            }
+            let disk = (^df -h | complete)
+            if ($disk.stdout | is-not-empty) { $"($disk.stdout)\n" | save --append $log_file }
+            if ($disk.stderr | is-not-empty) { $"($disk.stderr)\n" | save --append $log_file }
+            if $disk.exit_code != 0 {
+              error make {msg: "Could not report runner disk usage."}
+            }
+            0
+          } catch {|err|
+            $"($err.msg)\n" | save --append $log_file
+            1
+          }
+          $"($cleanup_status)" | save --force $status_file
+        } | ignore
     # The installer also enables KVM, which the NixOS VM tests need.
     - uses: DeterminateSystems/determinate-nix-action@v3.21.9
     - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
@@ -70,49 +88,44 @@ runs:
     # evaluation runs meanwhile. Its stdout is the job log.
     - name: Hold builds until runner disk cleanup finishes
       if: inputs.check == 'desktop-primary'
-      shell: bash
+      shell: nu --no-config-file {0}
       run: |
-        wrapper="$RUNNER_TEMP/nix-after-disk-cleanup"
-        cat > "$wrapper" <<'EOF'
-        #!/usr/bin/env bash
-        set -euo pipefail
-        case " $* " in
-          *" build "*)
-            status_file="$RUNNER_TEMP/runner-disk-cleanup.status"
-            log_file="$RUNNER_TEMP/runner-disk-cleanup.log"
-            pid_file="$RUNNER_TEMP/runner-disk-cleanup.pid"
-            cleanup_pid="$(<"$pid_file")"
-
-            while [[ ! -f "$status_file" ]]; do
-              if ! kill -0 "$cleanup_pid" 2>/dev/null; then
-                echo "Runner disk cleanup exited without reporting a status."
-                cat "$log_file"
-                exit 1
-              fi
-              sleep 1
-            done
-
-            cleanup_status="$(<"$status_file")"
-            if [[ "$cleanup_status" != 0 ]]; then
-              cat "$log_file"
-              exit "$cleanup_status"
-            fi
-            df -h
-            ;;
-        esac
-        exec nix "$@"
-        EOF
-        chmod +x "$wrapper"
-        echo "NIX_FAST_BUILD_NIX=$wrapper" >> "$GITHUB_ENV"
+        let wrapper = $"($env.RUNNER_TEMP)/nix-after-disk-cleanup"
+        let wrapper_source = r#'#!/usr/bin/env -S nu --no-config-file
+        let args = $env.CMDLINE_ARGS
+        if "build" in $args {
+          let status_file = $"($env.RUNNER_TEMP)/runner-disk-cleanup.status"
+          let log_file = $"($env.RUNNER_TEMP)/runner-disk-cleanup.log"
+          mut waited = 0
+          while not ($status_file | path exists) {
+            if $waited >= 3600 {
+              print --stderr "Timed out waiting for runner disk cleanup."
+              exit 1
+            }
+            sleep 1sec
+            $waited += 1
+          }
+          let cleanup_status = (open $status_file | str trim | into int)
+          if $cleanup_status != 0 {
+            print --stderr (open --raw $log_file)
+            exit $cleanup_status
+          }
+          ^df -h
+        }
+        ^nix ...$args
+        '# 
+        $wrapper_source | save --force $wrapper
+        ^chmod +x $wrapper
+        $"NIX_FAST_BUILD_NIX=($wrapper)\n" | save --append $env.GITHUB_ENV
     # --skip-cached replaces path filtering: an unchanged check is already
     # in the binary cache, so it passes without being downloaded or rebuilt.
     - name: Build ${{ inputs.check }}
-      shell: bash
       env:
         SET: ${{ inputs.set }}
         CHECK: ${{ inputs.check }}
-      run: >-
-        nix --accept-flake-config run --inputs-from . nixpkgs#nix-fast-build -- --no-nom --skip-cached --flake ".#$SET.x86_64-linux" --select "checks: { inherit (checks) $CHECK; }"
+      shell: nu --no-config-file {0}
+      run: |
+        ^nix --accept-flake-config run --inputs-from . nixpkgs#nix-fast-build -- --no-nom --skip-cached --flake $".#($env.SET).x86_64-linux" --select $"checks: { inherit (checks) ($env.CHECK); }"
     # This check evaluates the full workstation, the largest host, so its
     # fetcher cache serves the rest; anything missing is fetched as before.
     - name: Save the Nix fetcher cache
