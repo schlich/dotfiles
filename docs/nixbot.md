@@ -12,8 +12,8 @@ it again on the workstation.
   the App ID there is `null`.
 - `nixbot.toml` lists `jj-*` in `build_branches`. nixbot reads it from
   `main` only, so topics build once that file has landed.
-- `ci dispatch` pushes a topic to `origin` as well as Tangled when the topic
-  holds `nixbot.toml`, and `ci land --clearance nixbot` waits for nixbot's
+- `ci dispatch` pushes every topic to `origin`, the trunk remote, and
+  `ci land --clearance nixbot` waits for nixbot's
   `nixbot/nix-eval` and `nixbot/nix-build` check runs on the exact head.
   Both need a `ci` release that has them (`nix flake update ci`).
 - nixbot evaluates with one 6 GiB worker and runs two builds at once, and

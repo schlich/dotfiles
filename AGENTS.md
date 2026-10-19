@@ -72,7 +72,7 @@
   the NixOS system, Home Manager, or both, and ask the user for explicit
   approval before activating anything.
 - For NixOS changes, land them, then offer `system-switch`. It applies
-  Tangled's `main` without sudo through the `nixos-switch-main` unit, which
+  GitHub's `main` without sudo through the `nixos-switch-main` unit, which
   polkit lets the user start, and prints the switch's output and any failed
   units. Run it only when the user asks to switch; never start it on your
   own. Unlanded changes cannot be switched to this way.
@@ -171,14 +171,15 @@
   landings too; on 2026-10-16 it undid a concurrent dispatch. Use it only as
   a last resort, and only with the user's approval while other workspaces
   are active.
-- Tangled (`tangled` remote) hosts `main` and every topic branch. GitHub
-  (`origin`) mirrors `main` and can clear a landing with
-  `ci land --clearance github`. Never merge a GitHub pull request: squash and
-  rebase merges rewrite the tested commit and lose change IDs and the impact
-  declarations keyed by them.
+- GitHub (`origin` remote) hosts `main` and every topic branch. Tangled
+  (`tangled`) only mirrors `main` and its release tags, which `ci land`
+  pushes there after each landing. Never merge a GitHub pull request: squash
+  and rebase merges rewrite the tested commit and lose change IDs and the
+  impact declarations keyed by them. The `main-checks` ruleset requires the
+  `ci land` commit status, so only `ci land` can move `main`.
 - Use `ci sync` only from an empty working copy without an active task owner.
-  It fetches `tangled`,
-  advances the local `main` bookmark to `main@tangled`, and rebases the working
+  It fetches `origin`,
+  advances the local `main` bookmark to `main@origin`, and rebases the working
   copy onto it.
 - Use `ci` for all trunk work, including lock-file-only updates.
 - Before implementing or dispatching, inspect the working-copy diff for mixed
@@ -222,7 +223,7 @@
   and notifies, and landing it stays a deliberate `ci land` there.
   `ci-input-watch` shows what `main` pins and whether a bump is open.
 - Use a concise JJ change description. `ci dispatch` validates and pushes
-  the topic's stable `jj-*` branch to Tangled; open a Tangled pull request from that branch when the topic needs review.
+  the topic's stable `jj-*` branch to GitHub; open a GitHub pull request from that branch when the topic needs review, and never merge it.
   Ordinary dispatch keeps editing the same change ID. Deliver it with
   `ci land` only at topic closeout.
 - For a small change that affects a single host, a user request to dispatch (or to publish)
@@ -240,7 +241,7 @@
   current workspace, which leaves earlier topics as siblings (`jj edit`
   returns to one). An agent session works only in a workspace whose change
   it owns. `~/dotfiles` is free when it sits idle on trunk (nothing above
-  `main@tangled` but an empty change, no live session owning it): the
+  `main@origin` but an empty change, no live session owning it): the
   session's first edit claims it, and `ci new -m MESSAGE` names the claimed
   change in place. A named workspace under `.jj-workspaces/` belongs to the
   topic it was named for; never start another task there, even when it sits
@@ -266,14 +267,16 @@
   A failed pipeline, conflicts, or undispatched edits keep the task open. Native
   archive-button clicks are not a closeout hook.
 - `ci land` owns delivery to `main`. It rebases the topic onto
-  `main@tangled`, proves a declared refactor leaves every closure unchanged,
+  `main@origin`, proves a declared refactor leaves every closure unchanged,
   builds every flake check at that exact commit on the local machine, and only
-  then fast-forwards `main` and tags releases. Never push `main` any other way.
-  `--clearance github` waits for GitHub Actions on the exact head instead.
+  then sets the `ci land` status on it, fast-forwards `main`, mirrors it to
+  Tangled, and tags releases. Never push `main` any other way. It needs `gh`
+  signed in to set the status. `--clearance github` waits for GitHub Actions
+  on the exact head instead.
 - GitHub Actions (`.github/workflows/nix-ci.yml`) is the remote CI: every
-  push of `main` or a `jj-*` topic branch to the GitHub mirror starts it.
-  There is no Tangled spindle. The nix-ci workflow and the local clearance
-  run the same check set: each builds
+  push of `main` or a `jj-*` topic branch to GitHub starts it, and every
+  `ci dispatch` pushes one. There is no Tangled spindle. The nix-ci workflow
+  and the local clearance run the same check set: each builds
   every attribute of `checks.x86_64-linux` and skips checks whose outputs are
   already cached. Those checks evaluate every host but build no system
   closure: the headless system, the desktop system, and the desktop's
@@ -296,9 +299,9 @@
   parent changes.
 - Land parents first. `ci land` refuses a topic whose parent has not
   landed; once it has, the child is already on `main` and lands next.
-- For stacked review on Tangled, `ci dispatch --stack` pushes each
-  revision as its own branch for `Submit as stacked PRs`. Pull requests are
-  for review only; `ci land` still delivers.
+- For stacked review, `ci dispatch --stack` pushes each revision as its own
+  branch; open a GitHub pull request for each against the branch below it.
+  Pull requests are for review only; `ci land` still delivers.
 
 ## User-visible progress
 
@@ -319,7 +322,7 @@
   status, pipeline and pull request summaries, stack inspection, and
   formatting-only fixes.
 - Escalate configuration edits, conflicts, failed validation, JJ mutations,
-  Tangled writes, and landing decisions to the primary agent.
+  forge writes, and landing decisions to the primary agent.
 - Do not inspect `/nix/store` routinely. Prefer workspace files and Nix MCP
   package, option, and documentation queries; inspect the store only for an
   explicit user request, a specific path reported by a failure, or necessary
@@ -336,8 +339,8 @@
   wire client exposure through `modules/tooling/ai/`.
 - Run sessions for this repository locally, through Remote Control, or over
   SSH on a host with the same agent configuration. Do not start or hand off
-  a cloud session for it: cloud sessions cannot reach Tangled topics, run
-  `ci`, or activate a host. See `docs/claude-session-environments.md`, which
+  a cloud session for it: cloud sessions cannot run `ci`, use this
+  machine's impact declarations, or activate a host. See `docs/claude-session-environments.md`, which
   also covers SSH failures inside a sandboxed local session.
 
 ## Project memory
@@ -381,7 +384,7 @@ expensive; `nix-fast-build --skip-cached --flake path:.#checks.x86_64-linux` run
 ## Continuous integration and merge-conflict policy
 
 Keep active work continuously integrated: start each topic at
-`main@tangled`, rebase before review updates and when a topic conflicts with
+`main@origin`, rebase before review updates and when a topic conflicts with
 trunk, and never let two concurrent actors share one working copy. `ci dispatch` performs the
 final rebase and validation before pushing; `ci land` does the same and
 lands only the commit the landing clearance passed.

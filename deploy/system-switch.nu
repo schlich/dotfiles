@@ -1,4 +1,4 @@
-# Apply the NixOS configuration on Tangled's main without sudo: start the
+# Apply the NixOS configuration on GitHub's main without sudo: start the
 # root nixos-switch-main unit, follow its journal and step reports while it
 # runs, then show its result. modules/nixos/system-switch.nix wraps this with
 # DEPLOY_UNIT and DEPLOY_STATE.

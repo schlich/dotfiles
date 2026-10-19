@@ -13,7 +13,7 @@ let
   # Only `ci land` moves main, after its landing checks, so this never
   # applies a working copy or an unreviewed change. The staged switch in
   # deploy/switch.nu catches what those checks cannot see on a running host.
-  repo = "https://tangled.org/schlich.tngl.sh/dotfiles";
+  repo = "https://github.com/schlich/dotfiles";
   wrapWithConfig = import ../../lib/wrap-with-config.nix { inherit lib pkgs; };
 
   probeType = lib.types.submodule {
@@ -114,7 +114,7 @@ let
       (builtins.readFile ../../deploy/reverts.nu)
   );
   # Names the running generation's commit from the log the switch keeps,
-  # and asks Tangled whether main has moved past it.
+  # and asks GitHub whether main has moved past it.
   generation = wrapWithConfig {
     package = pkgs.writers.writeNuBin "generation" (builtins.readFile ../../deploy/generation.nu);
     env = {
@@ -158,7 +158,7 @@ in
       type = lib.types.bool;
       default = false;
       description = ''
-        Whether this host stages each new landing of Tangled's main on its
+        Whether this host stages each new landing of main on its
         own, as policy.autoDeploy in den/inventory.nix asks.
       '';
     };
@@ -222,7 +222,7 @@ in
     # unit over D-Bus, which also works where sudo cannot, such as inside the
     # Claude desktop app's sandbox.
     systemd.services.${unit} = switchService // {
-      description = "Switch to the NixOS configuration on Tangled's main";
+      description = "Switch to the NixOS configuration on main";
       serviceConfig = switchService.serviceConfig // {
         ExecStart = "${switchMain}/bin/${unit}";
       };
@@ -234,14 +234,14 @@ in
     systemd.services."${unit}-auto" = lib.mkIf cfg.autoDeploy (
       switchService
       // {
-        description = "Stage each new landing of Tangled's main on this canary";
+        description = "Stage each new landing of main on this canary";
         serviceConfig = switchService.serviceConfig // {
           ExecStart = "${switchMain}/bin/${unit} --auto";
         };
       }
     );
     systemd.timers."${unit}-auto" = lib.mkIf cfg.autoDeploy {
-      description = "Look for a new landing of Tangled's main";
+      description = "Look for a new landing of main";
       wantedBy = [ "timers.target" ];
       timerConfig = {
         OnBootSec = "10min";

@@ -58,7 +58,8 @@ in
             config.programs.gh.package
           ]
         }:/etc/profiles/per-user/%u/bin:/run/current-system/sw/bin"
-        # Dispatch pushes to Tangled over SSH.
+        # Dispatch pushes to GitHub over HTTPS through gh's credentials;
+        # landing also mirrors main to Tangled over SSH.
         "SSH_AUTH_SOCK=%t/gcr/ssh"
       ];
     };

@@ -55,7 +55,7 @@ def system-source [rows: list] {
     }
 }
 
-# Whether Tangled's main is a revision recorded for the running system.
+# Whether GitHub's main is a revision recorded for the running system.
 # `ahead` means this host has not yet been switched to or checked against
 # it; whether it changes this host is known only once a switch evaluates it.
 def main-state [rows: list] {
@@ -105,7 +105,7 @@ def summary [report: record] {
 def main [
     --json # print the report as JSON
     --line # print one line, for a status bar or prompt
-    --offline # do not ask Tangled where main is
+    --offline # do not ask GitHub where main is
 ] {
     let running = (resolve /run/current-system)
     let generation = (generation-of $SYSTEM $running)

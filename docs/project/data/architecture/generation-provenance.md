@@ -32,7 +32,7 @@ Manager generation it activates to
 
 The `generation` command reads both logs. It reports the running, booted, and
 boot-default system generations, the revision behind the running system, whether
-Tangled's `main` has moved past it, and whether Home Manager runs the generation
+GitHub's `main` has moved past it, and whether Home Manager runs the generation
 the system embeds or a later `home-activate` build. `--line` gives one line for
 a status bar, and `--json` gives the full record.
 

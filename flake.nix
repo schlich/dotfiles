@@ -19,7 +19,7 @@
       url = "github:denful/den/v0.18.0";
     };
     # Pushes Den's hosts over ssh (clan below), alongside system-switch,
-    # which pulls Tangled's main on the host itself.
+    # which pulls GitHub's main on the host itself.
     clan-core = {
       url = "https://git.clan.lol/clan/clan-core/archive/main.tar.gz";
       inputs.nixpkgs.follows = "nixpkgs";

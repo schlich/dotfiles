@@ -94,7 +94,7 @@ then rejects the Home Manager-linked config:
 Bad owner or permissions on /home/schlich/.ssh/config
 ```
 
-That blocks Tangled fetches and pushes, so `ci new`, `ci dispatch` and
-`ci land` fail inside it. Start a topic offline with
-`jj new main@tangled -m MESSAGE` and run the networked `ci` steps from an
-unsandboxed shell.
+That blocks SSH to Tangled. Trunk and topics are on GitHub over HTTPS, so
+`ci new` and `ci dispatch` still work there, but the Tangled mirror push
+after `ci land` fails and is reported under `mirror`; retry it from an
+unsandboxed shell with `jj git push --remote tangled --bookmark main`.

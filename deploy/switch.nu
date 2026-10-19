@@ -545,7 +545,7 @@ def save-last [cfg: record, state: record] {
     $state | upsert at (date now | format date '%+') | to nuon | save --force (state-file $cfg last.nuon)
 }
 
-# Switch to Tangled's main, giving each distinct closure a stable,
+# Switch to GitHub's main, giving each distinct closure a stable,
 # recognizable boot label. With --auto, as the canary timer runs it, a
 # revision already deployed or rejected is left alone until main moves, and
 # a switch that holds the lock is left to finish.
