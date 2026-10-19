@@ -14,6 +14,8 @@ deprecation — the `status` frontmatter (`proposed` → `accepted` → `impleme
 terminal `deprecated`/`cancelled`) carries the lifecycle, so the list stays
 flat. Group with `##` headings once it outgrows a single list.*
 
+[jj-graph: change-graph normalization](features/jj-graph.md)
+
 [Reactive CI and Nix dashboard](features/ci-nix-dashboard.md)
 
 [Stately MCP tools](features/stately-mcp.md)
