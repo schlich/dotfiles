@@ -24,9 +24,18 @@ let
           OPENCODE_CHANNEL = "latest";
         };
       });
-  opencode-desktop = pkgs.callPackage (inputs.opencode + "/nix/desktop.nix") {
-    inherit opencode;
-  };
+  # The desktop build reuses the CLI's source but not its postPatch, and its
+  # electron-builder config imports the same missing script
+  # ("Cannot find module '../../script/native-arch'").
+  opencode-desktop =
+    (pkgs.callPackage (inputs.opencode + "/nix/desktop.nix") {
+      inherit opencode;
+    }).overrideAttrs
+      (old: {
+        postPatch = old.postPatch + ''
+          install -Dm644 ${inputs.opencode}/script/native-arch.ts script/native-arch.ts
+        '';
+      });
 in
 lib.mkIf (config.dotfiles.alternates || config.dotfiles.primary.desktopAgent == "opencode") {
   home.packages = [ opencode-desktop ];
