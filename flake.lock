@@ -153,11 +153,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1792422759,
-        "narHash": "sha256-9re+QG2NlQW9mHyVyDg/n0gjEF+81fXHk+EHcBRGf4g=",
+        "lastModified": 1792436209,
+        "narHash": "sha256-sQP84MICJMPoHjpZmPADZWU7ORbuXrhYUshRHD0oqHM=",
         "owner": "schlich",
         "repo": "ci",
-        "rev": "a7331933b3b245371e8f81813b49550852ad5ee8",
+        "rev": "fccb2518544e85752bedaa3fbdabbb120b703fbb",
         "type": "github"
       },
       "original": {
