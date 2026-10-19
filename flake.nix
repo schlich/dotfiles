@@ -110,6 +110,10 @@
       url = "github:hegeldev/hegel-skill";
       flake = false;
     };
+    jevify = {
+      url = "github:altryne/jevify";
+      flake = false;
+    };
     # No flake upstream; bump the tag to update IWE.
     iwe = {
       url = "github:iwe-org/iwe/iwe-v0.24.2";

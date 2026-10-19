@@ -13,6 +13,8 @@
   nushell-text-processing = ../../../.agents/skills/nushell/text-processing;
   rlm = ../../../.agents/skills/rlm;
   typesafe-ai = "${inputs.typesafe-skills}/skills/typesafe-ai";
+  # The repository root is the skill (SKILL.md beside scripts/ and references/).
+  jevify = "${inputs.jevify}";
   modern-web-guidance = "${inputs.modern-web-guidance}/skills/modern-web-guidance";
 }
 # Effective HTML's skills link to each other as siblings (../NAME/SKILL.md),

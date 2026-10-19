@@ -1238,6 +1238,22 @@
         "type": "github"
       }
     },
+    "jevify": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790466157,
+        "narHash": "sha256-1wcngBv0H8S4GoIk75PWdTSr1wp+ciaYHfq5yQsh9JU=",
+        "owner": "altryne",
+        "repo": "jevify",
+        "rev": "11f36f8d548cf5020a20e5eb548f21c3d7181a17",
+        "type": "github"
+      },
+      "original": {
+        "owner": "altryne",
+        "repo": "jevify",
+        "type": "github"
+      }
+    },
     "jj-hunk": {
       "flake": false,
       "locked": {
@@ -1856,6 +1872,7 @@
         "impermanence": "impermanence",
         "iwe": "iwe",
         "iwe-skills": "iwe-skills",
+        "jevify": "jevify",
         "jj-hunk": "jj-hunk",
         "jj-starship": "jj-starship",
         "llm-agents": "llm-agents",
