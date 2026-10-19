@@ -256,18 +256,20 @@ in
             empty_color = "outline";
             urgent_color = "error";
           };
+          # `both` adds the pace beside the reset countdown: ↑N is N
+          # percentage points ahead of the window's elapsed time, ↓N behind.
           codex_usage = {
             type = "felipeartur/ai-usagebar:bar";
             vendor = "openai";
             visualization = "gauge";
-            extras = "countdown";
+            extras = "both";
             show_name = true;
           };
           claude_usage = {
             type = "felipeartur/ai-usagebar:bar";
             vendor = "anthropic";
             visualization = "gauge";
-            extras = "countdown";
+            extras = "both";
             show_name = true;
           };
           cpu = {
