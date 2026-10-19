@@ -11,6 +11,15 @@
 # trial run.
 def state [] { $env.DEPLOY_STATE? | default '/var/lib/nixos-switch-main' }
 
+# system-switch.nix replaces these with store paths; the DEPLOY_REVERTS_*
+# variables override them for tests.
+const default_questions = "@questions@"
+const default_jev = "@jev@"
+
+# Mirrors jev's credential filter: report lines that assign one, as a
+# journal excerpt might, are never sent to Jev.
+const credential_pattern = '(KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)[A-Z0-9_]*\s*='
+
 def entries [log: string] {
     if not ($log | path exists) { return [] }
     open --raw $log | lines | where $it != '' | each { from json }
@@ -20,19 +29,23 @@ def cache-dir [] {
     $env.XDG_STATE_HOME? | default ($env.HOME | path join .local state) | path join deploy-reverts
 }
 
+def revert-rows [since: any, all: bool] {
+    let local = (entries ((state) | path join reverts.jsonl))
+    let fetched = if $all { glob ((cache-dir) | path join '*.jsonl') | each {|log| entries $log } | flatten } else { [] }
+    let rows = ($local ++ $fetched | sort-by at)
+    if $since == null { $rows } else {
+        let after = ($since | into datetime)
+        $rows | where {|row| ($row.at | into datetime) > $after }
+    }
+}
+
 # List this host's reverts and which checks caused them.
 def main [
     --json # print the entries as JSON, each with its report's text
     --since: string # only entries after this RFC 3339 time
     --all # add the canaries' entries this workstation has fetched
 ] {
-    let local = (entries ((state) | path join reverts.jsonl))
-    let fetched = if $all { glob ((cache-dir) | path join '*.jsonl') | each {|log| entries $log } | flatten } else { [] }
-    let rows = ($local ++ $fetched | sort-by at)
-    let rows = if $since == null { $rows } else {
-        let after = ($since | into datetime)
-        $rows | where {|row| ($row.at | into datetime) > $after }
-    }
+    let rows = (revert-rows $since $all)
     if $json {
         return ($rows | each {|row| $row | insert report_text (try { open --raw $row.report } catch { '' }) } | to json)
     }
@@ -43,6 +56,65 @@ def main [
     print ($rows | select at host phase breached subject author | update breached { str join ', ' })
     print "Checks that caused reverts, most frequent first; each is a gap for a pre-deploy check:"
     print ($rows | get breached | flatten | uniq --count | sort-by count --reverse | rename check reverts)
+}
+
+# Ask Jev what caused one revert, from its phase, breached probes, and
+# report. The report is clipped and stripped of credential assignments.
+def judge-cause [row: record, config: record] {
+    let report = (try { open --raw $row.report } catch { '' })
+    let report = ($report | lines | where {|line| $line !~ $credential_pattern } | str join "\n")
+    let report = if ($report | str length) > $config.max_report_chars { $report | str substring 0..($config.max_report_chars - 1) } else { $report }
+    let state = { revert: { phase: $row.phase, breached: $row.breached, activated: $row.activated, report: $report } }
+    let jev = ($env.DEPLOY_REVERTS_JEV? | default $default_jev)
+    let result = ({ state: $state, questions: $config.questions } | to json --raw | run-external $jev "ask" | complete)
+    if $result.exit_code != 0 {
+        let detail = ($result.stderr | lines | where {|line| $line | str trim | is-not-empty } | get -o 0 | default "no output")
+        error make { msg: $"jev ask exited ($result.exit_code): ($detail)" }
+    }
+    let answers = ($result.stdout | from json).answers
+    {
+        cause: (if $answers.cause.confidence >= $config.min_confidence { $answers.cause.choice } else { "unsure" })
+        catchable: $answers.precheck_catchable.noul
+    }
+}
+
+# Tally reverts by root cause, judged by Jev from each report, where the
+# plain listing tallies the probe that tripped. Causes are ranked by how
+# many reverts a pre-deploy check could have caught, which names the next
+# check to add; a revert Jev cannot judge is listed with its error.
+def "main causes" [
+    --json # print each revert's judgment and the tally as JSON
+    --since: string # only entries after this RFC 3339 time
+    --all # add the canaries' entries this workstation has fetched
+] {
+    let config = (open ($env.DEPLOY_REVERTS_QUESTIONS? | default $default_questions)).deploy_reverts
+    let judged = (revert-rows $since $all | each {|row|
+        let base = { id: $row.id, at: $row.at, host: $row.host, phase: $row.phase, subject: $row.subject }
+        $base | merge (try { judge-cause $row $config | insert error null } catch {|err|
+            { cause: null, catchable: null, error: $err.msg }
+        })
+    })
+    let tally = (
+        $judged
+        | where cause != null
+        | group-by cause --to-table
+        | each {|group| {
+            cause: $group.cause
+            reverts: ($group.items | length)
+            catchable: ($group.items | where catchable >= $config.min_catchable | length)
+        } }
+        | sort-by {|row| -1 * $row.catchable } {|row| -1 * $row.reverts } cause
+    )
+    if $json {
+        return ({ reverts: $judged, causes: $tally } | to json)
+    }
+    if ($judged | is-empty) {
+        print "No reverts recorded."
+        return
+    }
+    print ($judged | select at host phase cause catchable subject error)
+    print "Causes, most often catchable before deployment first; the top one names the next pre-deploy check:"
+    print $tally
 }
 
 def seen-file [cache: string, source: string] { $cache | path join $"($source).seen" }

@@ -117,8 +117,12 @@ let
       ];
     };
   };
+  # `deploy-reverts causes` asks Jev why each revert happened, with the
+  # `deploy_reverts` questions in jev/questions.nuon.
+  jev = import ../../jev/package.nix { inherit pkgs; };
   deployReverts = pkgs.writers.writeNuBin "deploy-reverts" (
-    builtins.readFile ../../deploy/reverts.nu
+    builtins.replaceStrings [ "@questions@" "@jev@" ] [ "${../../jev/questions.nuon}" "${jev}/bin/jev" ]
+      (builtins.readFile ../../deploy/reverts.nu)
   );
   # Names the running generation's commit from the log the switch keeps,
   # and asks Tangled whether main has moved past it.

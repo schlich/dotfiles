@@ -78,6 +78,9 @@
   writes a report under `/var/lib/nixos-switch-main/reports/`. When a switch
   reverts, read that report and `deploy-reverts`, and propose the pre-deploy
   check that would have caught the regression (`docs/ci-failure-review.md`).
+  `deploy-reverts causes` has Jev judge every report's root cause and ranks
+  causes by how many reverts a pre-deploy check could have caught; read the
+  reports behind the top cause before proposing a check.
   Do not retry a reverted revision without the user's approval.
 - homelab is the canary: its inventory policy sets `autoDeploy`, so its own
   `nixos-switch-main-auto` timer stages each landing of `main` through the

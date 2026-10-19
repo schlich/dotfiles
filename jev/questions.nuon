@@ -35,6 +35,39 @@
       }
     }
   }
+  # `deploy-reverts causes`: why a staged switch reverted, read from its
+  # report, and whether a check before deployment could have caught it.
+  deploy_reverts: {
+    # Characters of each report sent; the journal excerpt is the tail.
+    max_report_chars: 6000
+    min_confidence: 0.6
+    # A revert counts as catchable at or above this probability.
+    min_catchable: 0.6
+    questions: {
+      cause: {
+        type: choice
+        instructions: "What caused the staged NixOS switch in `revert` to revert or be rejected? `revert.phase` is where it stopped, `revert.breached` the health probes that tripped, and `revert.report` the report the watch wrote."
+        criteria: {
+          evaluation_or_build: "The configuration failed to evaluate or build, so nothing was activated"
+          service_failure: "A system service failed to start or crashed after activation because of its configuration or package"
+          restart_loop: "A unit kept restarting after activation"
+          network_or_ssh: "Networking, DNS, the firewall, or SSH access broke after activation"
+          resource_exhaustion: "Disk, memory, or another resource ran out during the build or after activation"
+          external_dependency: "A remote service, cache, or substituter the switch depends on was unavailable"
+          flaky_probe: "The health probe itself misfired or timed out while the system was healthy"
+          other: "Anything else, or the report does not say"
+        }
+      }
+      precheck_catchable: {
+        type: noul
+        instructions: "A check run before deployment, such as a flake check, an evaluation assertion, or a NixOS VM test, could have caught what made the switch in `revert` fail."
+        criteria: {
+          "true": "The failure follows from the configuration itself and would show up in evaluation, a build, or a VM test"
+          "false": "The failure depends on the live host, its data, the network, or a transient condition"
+        }
+      }
+    }
+  }
   bash_guard: {
     # Jev answers only Choice, Score, and Noul questions; it cannot write a
     # translation. At or above this probability the call is denied so the
