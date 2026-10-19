@@ -63,14 +63,16 @@ in
       Environment = [
         # git lists the mirror's tags and gh compares them, carrying the
         # GitHub login; tail reads the log's new bytes; ci, jj and nix come
-        # from the user and system profiles.
+        # from the standalone home's profile, where home.packages install,
+        # and the system profile. Without ~/.nix-profile no run found jj
+        # (2026-10-19).
         "PATH=${
           lib.makeBinPath [
             pkgs.git
             pkgs.coreutils
             config.programs.gh.package
           ]
-        }:/etc/profiles/per-user/%u/bin:/run/current-system/sw/bin"
+        }:%h/.nix-profile/bin:/etc/profiles/per-user/%u/bin:/run/current-system/sw/bin"
         # Dispatch pushes to GitHub over HTTPS through gh's credentials;
         # landing also mirrors main to Tangled over SSH.
         "SSH_AUTH_SOCK=%t/gcr/ssh"

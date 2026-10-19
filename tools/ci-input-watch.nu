@@ -113,7 +113,8 @@ def pinned [repo: path] {
 
 def survey [] {
   let repo = (repo)
-  step "fetching trunk" $repo { ^jj git fetch --remote tangled } | ignore
+  # GitHub hosts main; Tangled only mirrors it.
+  step "fetching trunk" $repo { ^jj git fetch --remote origin } | ignore
   let rev = (pinned $repo)
   let release = (
     step "listing ci releases" $repo { ^git ls-remote --tags $"https://github.com/($upstream)" }
