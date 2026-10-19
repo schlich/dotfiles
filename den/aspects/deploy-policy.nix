@@ -27,14 +27,6 @@ in
                 removeAttrs canaries [ host.name ]
               );
             };
-          }
-          # A critical host's watch runs longer: its regressions cost more,
-          # and nobody is at its keyboard to notice them.
-          // lib.optionalAttrs (host.policy.criticality == "critical") {
-            watch.duration = 300;
-          }
-          // lib.optionalAttrs (host.policy.watchDuration != null) {
-            watch.duration = host.policy.watchDuration;
           };
         }
       )

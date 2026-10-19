@@ -1,7 +1,7 @@
 # Apply the NixOS configuration on Tangled's main without sudo: start the
 # root nixos-switch-main unit, follow its journal and step reports while it
 # runs, then show its result. modules/nixos/system-switch.nix wraps this with
-# DEPLOY_UNIT, DEPLOY_STATE, and DEPLOY_WATCH.
+# DEPLOY_UNIT and DEPLOY_STATE.
 #
 # deploy/switch.nu writes a JSON line to `status.jsonl` in the state
 # directory for each step, tagged with the unit run's invocation. When
@@ -85,7 +85,7 @@ def main [] {
     mkdir $dir
     let journal = ($dir | path join $"journal-($nu.pid).log")
     let follower = $"system-switch-journal-($nu.pid)"
-    print $"Switching to main through (unit); a new system is watched for ($env.DEPLOY_WATCH)s before it becomes the boot default..."
+    print $"Switching to main through (unit); a new system becomes the boot default once the units it touched settle and its probes pass..."
 
     # Follow the journal from before the start, so no line is missed. The
     # follower stops on its own if this process never stops it.

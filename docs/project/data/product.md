@@ -54,8 +54,8 @@ Not for:
 All hosts are `x86_64-linux` NixOS (`den/inventory.nix`).
 
 - **asus** — the AMD laptop workstation: Niri desktop, development, XR, and
-  remote tooling; deployed in place with `clan machines update`, with a
-  45-second staged-switch watch.
+  remote tooling; deployed in place with `clan machines update`, and its
+  staged switches commit once the units they touched settle.
 - **asus-usb** — the same workstation profile on removable media; `disposable`,
   so it evaluates in `remoteChecks` rather than the landing gate.
 - **asus-headless** — the asus hardware as a server with no desktop.

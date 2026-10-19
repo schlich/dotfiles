@@ -104,17 +104,7 @@ let
       healthChecks = mkOption {
         type = types.listOf types.str;
         default = [ ];
-        description = "Named probes a staged switch watches besides failed units, journal errors, and restart loops.";
-      };
-      watchDuration = mkOption {
-        type = types.nullOr types.ints.positive;
-        default = null;
-        example = 45;
-        description = ''
-          Seconds a staged switch must stay healthy before it becomes the boot
-          default, overriding the criticality default. Keep it at least the
-          watch's failures times its interval, or no breach can revert it.
-        '';
+        description = "Named probes a staged switch runs once the units it touched settle.";
       };
     };
   };

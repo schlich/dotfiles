@@ -1,21 +1,23 @@
 # Switch this host to a NixOS system in stages. The candidate is activated
-# without becoming the boot default, the host's health is watched for a
-# window, and only a healthy candidate becomes the default. A breach
-# reactivates the previous system, rejects the revision so the canary timer
+# without becoming the boot default, and systemd's own events are followed
+# until every unit the switch touched has settled; when the probes then pass,
+# the candidate becomes the default. Nothing waits on a clock. A touched unit
+# that fails or restarts on its own, or a failing probe, breaches the watch:
+# that reactivates the previous system, rejects the revision so the canary timer
 # leaves it alone, writes a report, and appends a line to the revert log that
 # `deploy-reverts` reads. Until the commit, a reboot boots the previous
 # system, since the boot default has not moved.
 #
 # Every entry point takes the state directory's lock, so a switch, the
-# dead-man timer, and the boot-time settle never act at once. A stage whose
+# dead-man, and the boot-time settle never act at once. A stage whose
 # run died is settled under that lock before anything else is staged.
 # deploy/StagedSwitch.tla models these processes; its flake check proves
 # the guarantees above for every interleaving of them, kills, and reboots.
 #
 # DEPLOY_CONFIG names the JSON settings modules/nixos/system-switch.nix
-# writes: the host, the repository, the state directory, the watch window,
-# and the host's health probes. The running system's settings judge the
-# candidate, so a candidate cannot weaken its own watch.
+# writes: the host, the repository, the state directory, and the host's
+# health probes. The running system's settings judge the candidate, so a
+# candidate cannot weaken its own watch.
 
 const DEADMAN = 'nixos-switch-main-deadman'
 
@@ -111,86 +113,112 @@ def run-probe [probe: record] {
     { probe: $probe.name, ok: ($result.exit_code == 0 and not $slow), detail: $detail }
 }
 
-# One look at the host: units that failed since the baseline, the journal's
-# error rate against the baseline's, restart loops, and every named probe.
-def sample [cfg: record, baseline: record, since: datetime] {
-    let minutes = (((date now) - $since) / 1min)
-    let failed = (failed-units | where $it not-in $baseline.failed)
-    let errors = (journal-errors $since | length)
-    let allowed = ([$cfg.journal.minErrors ($cfg.journal.factor * $baseline.errors_per_minute * $minutes)] | math max | math round)
-    let loops = (restart-loops $since $cfg.restarts)
-    [
-        {
-            probe: units
-            ok: ($failed | is-empty)
-            detail: (if ($failed | is-empty) { "no unit failed" } else { $"newly failed: ($failed | str join ', ')" })
-        }
-        {
-            probe: journal
-            ok: ($errors <= $allowed)
-            detail: $"($errors) error lines since activation, ($allowed) allowed"
-        }
-        {
-            probe: restarts
-            ok: ($loops | is-empty)
-            detail: (if ($loops | is-empty) { "no restart loop" } else { $loops | each {|row| $"($row.unit) restarted ($row.count) times" } | str join ', ' })
-        }
-    ] ++ ($cfg.probes | each {|probe| run-probe $probe })
+# The units `dry-activate` says the candidate starts, restarts, or reloads.
+# Units it stops are gone once activation ends, so they have nothing to
+# settle.
+def touched-units [preview: string] {
+    $preview
+    | lines
+    | parse --regex '^would (?:start|restart|reload) the following units: (?<units>.+)$'
+    | get units
+    | each { split row ',' | str trim }
+    | flatten
+    | where $it != ''
+    | uniq
 }
 
-# Sample until the window closes. A check that fails `failures` samples in a
-# row breaches the watch, so one slow answer does not revert a switch.
-def watch [cfg: record, baseline: record, since: datetime] {
-    let deadline = ($since + ($cfg.watch.duration * 1sec))
-    mut strikes = {}
-    loop {
-        let results = (sample $cfg $baseline $since)
-        mut breached = []
-        for result in $results {
-            let count = if $result.ok { 0 } else { ($strikes | get --optional $result.probe | default 0) + 1 }
-            $strikes = ($strikes | upsert $result.probe $count)
-            if $count >= $cfg.watch.failures {
-                $breached = ($breached | append ($result | insert samples $count))
-            }
-        }
-        if ($breached | is-not-empty) { return $breached }
-        let failing = ($results | where not ok)
-        let elapsed = ([((date now) - $since) ($cfg.watch.duration * 1sec)] | math min)
-        let at = $"(($elapsed / 1sec) | math floor)/($cfg.watch.duration)s"
-        let progress = (($elapsed / ($cfg.watch.duration * 1sec)) * 100 | math floor)
-        let line = if ($failing | is-empty) {
-            $"Healthy: all ($results | length) checks pass."
-        } else {
-            $"Watching: ($failing | each {|row| $'($row.probe): ($row.detail)' } | str join '; ')"
-        }
-        print $line
-        status $cfg working switch/watch $"($at) ($line)" --progress $progress
-        if (date now) >= $deadline { return [] }
-        sleep ($cfg.watch.interval * 1sec)
+# Where each touched unit stands: its state, whether systemd still has a job
+# queued for it, and how often systemd restarted it on its own since
+# activation started or restarted it, which resets the count.
+def unit-states [units: list<string>] {
+    if ($units | is-empty) { return [] }
+    let queued = (^systemctl list-jobs --no-legend --plain | complete | get stdout | lines | each { str trim | split row --regex '\s+' | get 1? } | where $it != null)
+    ^systemctl show --property=Id,LoadState,ActiveState,SubState,Result,NRestarts ...$units
+    | complete
+    | get stdout
+    | str trim
+    | split row "\n\n"
+    | where $it != ''
+    | each {|block| $block | lines | parse --regex '^(?<key>[^=]+)=(?<value>.*)$' | transpose --header-row --as-record }
+    | where LoadState != not-found
+    | insert queued {|row| $row.Id in $queued }
+}
+
+# Judge the candidate as it stands: a breach once a touched unit failed or
+# systemd restarted it on its own, or a unit that was fine before the switch
+# failed; settled once no touched unit has a job queued or sits between
+# states. Anything else is undecided until systemd's next event.
+def assess [baseline: record, units: list<string>] {
+    let states = (unit-states $units)
+    let describe = {|rows| $rows | each {|row| $"($row.Id) \(($row.ActiveState)/($row.SubState)\)" } | str join ', ' }
+    let broken = ($states | where {|row|
+        $row.ActiveState == failed or $row.SubState == auto-restart or ($row.NRestarts | into int) > 0 or ($row.ActiveState == inactive and $row.Result != success)
+    })
+    let failed = (failed-units | where $it not-in $baseline.failed | where $it not-in ($broken | get Id))
+    let breached = (
+        (if ($broken | is-empty) { [] } else { [{ probe: settle, ok: false, detail: $"did not stay up: (do $describe $broken)" }] })
+        ++ (if ($failed | is-empty) { [] } else { [{ probe: units, ok: false, detail: $"newly failed: ($failed | str join ', ')" }] })
+    )
+    let moving = ($states | where {|row| $row.queued or $row.ActiveState not-in [active inactive failed] })
+    {
+        breached: $breached
+        decided: (($breached | is-not-empty) or ($moving | is-empty))
+        line: (if ($moving | is-empty) { $"($states | length) touched units settled" } else { $"Waiting on (do $describe $moving)" })
     }
 }
 
-# Revert a staged switch on its own if the watch never decides, as when its
-# process is killed. The transient unit waits for the lock, so it settles
-# the stage only once the run that armed it is gone. It inherits nothing,
-# so it gets the settings and PATH explicitly.
-def arm-deadman [cfg: record] {
+# Wait for the candidate to settle, driven by systemd alone. Each message
+# systemd logs, which it does whenever a unit starts, stops, fails, or is
+# scheduled to restart, prompts another look; nothing here waits on a clock,
+# and systemd's own start and stop timeouts bound how long a unit can sit
+# between states. Following from the moment of activation replays any event
+# that came before the first look. Once the touched units settle, every
+# probe runs. Returns what breached and how long it took.
+def watch [cfg: record, baseline: record, since: datetime, units: list<string>] {
+    let first = (assess $baseline $units)
+    let verdict = if $first.decided { $first } else {
+        print $first.line
+        status $cfg working switch/watch $first.line
+        ^journalctl --follow --no-pager --quiet --output cat $"--since=@($since | format date '%s')" _PID=1
+        | lines
+        | each {|_|
+            let verdict = (assess $baseline $units)
+            if not $verdict.decided {
+                print $verdict.line
+                status $cfg working switch/watch $verdict.line
+            }
+            $verdict
+        }
+        | where decided
+        | first
+    }
+    if ($verdict.breached | is-not-empty) { return { breached: $verdict.breached, elapsed: ((date now) - $since) } }
+    print $"($verdict.line); running probes."
+    status $cfg working switch/watch $"($verdict.line); running probes"
+    let failing = ($cfg.probes | each {|probe| run-probe $probe } | where not ok)
+    { breached: $failing, elapsed: ((date now) - $since) }
+}
+
+# Revert a staged switch on its own if its run dies before it decides, as
+# when its process is killed. The transient unit starts at once and blocks
+# on the lock, so it settles the stage the moment the run that armed it is
+# gone; a run that decides stops it first. It inherits nothing, so it gets
+# the settings and PATH explicitly.
+def arm-deadman [] {
     disarm-deadman
-    let after = ($cfg.watch.duration + $cfg.watch.grace)
     let path = (if ($env.PATH | describe) =~ '^list' { $env.PATH | str join (char esep) } else { $env.PATH })
     (^systemd-run --quiet --unit $DEADMAN
-        --description "Revert a staged NixOS switch whose watch stopped"
-        $"--on-active=($after)s" --timer-property=AccuracySec=1s
+        --description "Revert a staged NixOS switch whose run died"
         $"--setenv=DEPLOY_CONFIG=($env.DEPLOY_CONFIG)"
         $"--setenv=PATH=($path)"
         $nu.current-exe --no-config-file $env.CURRENT_FILE revert)
 }
 
-# Stop the timer and a dead-man that fired and waits for the lock. Only a
-# process that holds the lock disarms, so the dead-man is never mid-settle.
+# Stop the dead-man waiting for the lock. Only a process that holds the
+# lock disarms, so the dead-man is never mid-settle.
 def disarm-deadman [] {
-    ^systemctl stop $"($DEADMAN).timer" $"($DEADMAN).service" | complete | ignore
-    ^systemctl reset-failed $"($DEADMAN).timer" $"($DEADMAN).service" | complete | ignore
+    ^systemctl stop $"($DEADMAN).service" | complete | ignore
+    ^systemctl reset-failed $"($DEADMAN).service" | complete | ignore
 }
 
 # Who landed the revision and what it says, for the report. The unit only
@@ -430,13 +458,14 @@ def record-generation [cfg: record, meta: record, toplevel: string, outcome: str
 # stays armed until the pending switch is cleared, so a run killed partway
 # leaves it to settle. Under the lock nothing else reverts the candidate;
 # the check guards against a hand-run activation.
-def commit [cfg: record, pending: record] {
+def commit [cfg: record, pending: record, elapsed: duration] {
     let file = (state-file $cfg pending.nuon)
     if (active) != $pending.candidate or not ($file | path exists) {
         error make { msg: "The staged switch is no longer active; nothing was committed." }
     }
-    print $"Healthy for ($cfg.watch.duration)s; making it the boot default."
-    status $cfg done switch/watch $"Healthy for ($cfg.watch.duration)s"
+    let line = $"Settled after (($elapsed / 1sec) | math round)s"
+    print $"($line); making it the boot default."
+    status $cfg done switch/watch $line
     status $cfg working switch/commit "Making it the boot default"
     ^nix-env --profile /nix/var/nix/profiles/system --set $pending.candidate
     ^$"($pending.candidate)/bin/switch-to-configuration" boot
@@ -452,26 +481,25 @@ def stage [cfg: record, candidate: string, meta: record] {
     let previous = (active)
     print "Previewing service changes..."
     status $cfg working switch/preview "Previewing service changes"
-    let previewed = (try { ^$"($candidate)/bin/switch-to-configuration" dry-activate; true } catch { false })
-    if not $previewed {
+    let preview = (^$"($candidate)/bin/switch-to-configuration" dry-activate | complete)
+    let said = ([$preview.stdout $preview.stderr] | str join "\n" | str trim)
+    print $said
+    if $preview.exit_code != 0 {
         status $cfg error switch/preview "switch-to-configuration dry-activate failed"
         return (reject $cfg ($meta | merge { candidate: $candidate, previous: $previous }) preview "switch-to-configuration dry-activate failed")
     }
-    status $cfg done switch/preview "Previewed service changes"
+    # The watch waits for these to settle.
+    let units = (touched-units $said)
+    status $cfg done switch/preview $"Previewed service changes: ($units | length) units to settle"
 
-    # The journal's error rate over a window as long as the watch, so a host
-    # that is always noisy is judged against itself.
-    let window = ($cfg.watch.duration * 1sec)
-    let baseline = {
-        failed: (failed-units)
-        errors_per_minute: ((journal-errors ((date now) - $window) | length) / ($window / 1min))
-    }
+    # Units already failed are not the candidate's doing.
+    let baseline = { failed: (failed-units) }
     let pending = ($meta | merge { candidate: $candidate, previous: $previous, baseline: $baseline, started: (date now) })
     let file = (state-file $cfg pending.nuon)
     # Armed first, so a pending switch always has a dead-man; written just
     # before activation, so a settle that finds it rejects a revision that
     # may have run.
-    arm-deadman $cfg
+    arm-deadman
     $pending | to nuon | save --force $file
 
     print $"Activating ($candidate) without making it the boot default..."
@@ -485,16 +513,17 @@ def stage [cfg: record, candidate: string, meta: record] {
     }
     status $cfg done switch/activate "Activated"
 
-    print $"Watching health for ($cfg.watch.duration)s..."
-    status $cfg working switch/watch $"Watching health for ($cfg.watch.duration)s" --progress 0
-    let breached = (watch $cfg $baseline $pending.activated)
-    if ($breached | is-not-empty) {
-        let line = $"Breached: ($breached | each {|row| $'($row.probe): ($row.detail)' } | str join '; ')"
+    let goal = $"Waiting for ($units | length) units to settle"
+    print $"($goal)..."
+    status $cfg working switch/watch $goal
+    let watched = (watch $cfg $baseline $pending.activated $units)
+    if ($watched.breached | is-not-empty) {
+        let line = $"Breached: ($watched.breached | each {|row| $'($row.probe): ($row.detail)' } | str join '; ')"
         print $line
         status $cfg error switch/watch $line
-        return (revert $cfg $pending watch $breached)
+        return (revert $cfg $pending watch $watched.breached)
     }
-    commit $cfg $pending
+    commit $cfg $pending $watched.elapsed
     null
 }
 
@@ -641,14 +670,13 @@ def "main apply" [toplevel: string] {
     }
 }
 
-# Run by the dead-man timer: settle a staged switch whose run is gone. It
-# waits for the lock, so a run that is slow but alive decides for itself
-# and stops this unit when it disarms.
+# Run by the dead-man: settle a staged switch whose run is gone. It waits
+# for the lock, so it acts only once that run has died; a run that decides
+# stops this unit when it disarms.
 def "main revert" [] {
     let cfg = (settings)
     relock $cfg [revert]
-    let limit = ($cfg.watch.duration + $cfg.watch.grace)
-    settle $cfg deadman $"the watch did not decide within ($limit)s"
+    settle $cfg deadman "the switch's run died before its watch decided"
 }
 
 # Run once at boot: settle a staged switch that a restart cut short, such as

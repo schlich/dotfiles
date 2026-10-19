@@ -166,30 +166,35 @@ runs it well, so `nixos-switch-main` (`deploy/switch.nu`) stages every switch
 and undoes one that breaks the host:
 
 1. It activates the candidate with `switch-to-configuration test`, which leaves
-   the boot default alone, and arms a dead-man timer.
-1. It watches the host for `dotfiles.deploy.watch.duration` seconds (180, or
-   300 on a critical host). Every sample checks for units that failed since the
-   switch, the journal's error rate against its rate before the switch, restart
-   loops, and each probe that the host's `policy.healthChecks` names (`ssh`,
-   `tailscale`, `niri-config`, `home-manager-nixos`). A probe also fails when it
-   answers slower than its latency budget. A check that fails three samples in
-   a row breaches the watch.
-1. A healthy candidate becomes the boot default (`switch-to-configuration boot`).
-   A breach, a failed activation, or a watch that never decides (the dead-man
-   timer) reactivates the previous system and rejects the revision. A reboot at
-   any point before the commit boots the previous system.
+   the boot default alone, and starts a dead-man that blocks on the switch's
+   lock.
+1. It waits for the candidate to settle, driven only by systemd's events, with
+   no timers of its own. `dry-activate` names the units the switch starts,
+   restarts, or reloads. The watch follows PID 1's journal from activation
+   and, on each message, checks those units. It breaches at once when one
+   failed, a oneshot did not succeed, or systemd restarted one on its own, or
+   when a unit that was fine before the switch failed. The candidate has
+   settled once none of the touched units has a job queued or sits between
+   states; systemd's own start and stop timeouts bound how long that can
+   take. Then each probe that the host's `policy.healthChecks` names (`ssh`,
+   `tailscale`, `niri-config`, `home-manager-nixos`) runs once, and a probe
+   that fails, or answers slower than its latency budget, breaches the watch.
+1. A settled candidate whose probes pass becomes the boot default
+   (`switch-to-configuration boot`) right away. A breach, a failed activation,
+   or a run that dies before it decides (the dead-man) reactivates the
+   previous system and rejects the revision. A reboot at any point before the
+   commit boots the previous system.
 
 Every entry point takes one lock in the state directory: a switch, manual or
-automatic, the dead-man timer, and `nixos-switch-main-settle`, which runs at
-boot. A dead-man that fires while its run is alive waits for the lock instead
-of racing it. A stage whose run died, by a kill or a reboot, is settled under
+automatic, the dead-man, and `nixos-switch-main-settle`, which runs at boot.
+The dead-man starts with the stage and waits for the lock, so it acts the
+moment the run dies and never races a live one; a run that decides stops it. A stage whose run died, by a kill or a reboot, is settled under
 that lock before anything else is staged. A stage that reached the system
 profile finishes its commit. Any other is rejected, so the canary does not stage
 a candidate that crashed the host again at every boot, and the host returns to
 the boot default if it is not running it. `deploy/StagedSwitch.tla` models these
 processes, kills, and reboots. The `staged-switch-model` flake check runs TLC
-over it, with activation both able and unable to outlast the dead-man's grace
-period. It proves the following for every interleaving:
+over it. It proves the following for every interleaving:
 
 - Only a candidate that passed its watch becomes the boot default.
 - No stage is both committed and reverted, and no stage is reverted twice.

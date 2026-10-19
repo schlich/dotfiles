@@ -87,7 +87,6 @@ let
     builtins.toJSON {
       inherit host repo;
       state = stateDir;
-      inherit (cfg) watch journal restarts;
       probes = map (name: {
         inherit name;
         inherit (cfg.probes.${name}) timeout latency;
@@ -97,7 +96,7 @@ let
   );
 
   # Servers lack the nushellWith overlay behind writeNuScriptBin. The
-  # dead-man timer's transient unit gets only this PATH. The build runs as
+  # dead-man's transient unit gets only this PATH. The build runs as
   # root against the local store, so nix itself opens the ssh-ng connection
   # to a remote builder and needs ssh here. Every entry point takes the
   # state directory's lock with flock(1) itself, so the manual switch, the
@@ -156,7 +155,6 @@ let
     env = {
       DEPLOY_UNIT = unit;
       DEPLOY_STATE = stateDir;
-      DEPLOY_WATCH = toString cfg.watch.duration;
     };
   };
 in
@@ -180,56 +178,14 @@ in
       type = lib.types.listOf lib.types.str;
       default = [ ];
       description = ''
-        Probes a staged switch runs beside its built-in unit, journal, and
-        restart checks, from policy.healthChecks in den/inventory.nix.
+        Probes a staged switch runs once the units it touched settle, from
+        policy.healthChecks in den/inventory.nix.
       '';
     };
     probes = lib.mkOption {
       type = lib.types.attrsOf probeType;
       default = { };
       description = "Health probes by name that healthChecks may select.";
-    };
-    watch = {
-      duration = lib.mkOption {
-        type = lib.types.ints.positive;
-        default = 180;
-        description = "Seconds a staged system must stay healthy before it becomes the boot default.";
-      };
-      interval = lib.mkOption {
-        type = lib.types.ints.positive;
-        default = 15;
-        description = "Seconds between health samples.";
-      };
-      failures = lib.mkOption {
-        type = lib.types.ints.positive;
-        default = 3;
-        description = "Consecutive failed samples of one check that revert the switch.";
-      };
-      grace = lib.mkOption {
-        type = lib.types.ints.positive;
-        default = 300;
-        description = ''
-          Seconds past the watch window after which the dead-man timer
-          reverts a staged switch whose watch never decided.
-        '';
-      };
-    };
-    journal = {
-      minErrors = lib.mkOption {
-        type = lib.types.ints.unsigned;
-        default = 25;
-        description = "Error-priority journal lines a watch always tolerates.";
-      };
-      factor = lib.mkOption {
-        type = lib.types.number;
-        default = 3;
-        description = "How many times the pre-switch journal error rate a watch tolerates.";
-      };
-    };
-    restarts = lib.mkOption {
-      type = lib.types.ints.positive;
-      default = 3;
-      description = "Automatic restarts of one unit during the watch that count as a restart loop.";
     };
     notify = {
       enable = lib.mkOption {
@@ -301,7 +257,7 @@ in
       };
     };
 
-    # A restart drops the dead-man timer, so settle a stage the restart cut
+    # A restart drops the transient dead-man, so settle a stage the restart cut
     # short: reject its revision, which keeps a candidate that crashes the
     # host from being staged again at every boot. It gives way to a switch
     # that holds the lock, as during the activation that adds this unit.

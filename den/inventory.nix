@@ -77,9 +77,6 @@ let
         };
         # Deployed in place: `clan machines update asus` over ssh to localhost.
         deploy.enable = true;
-        # Switched by hand at its keyboard, so the watch needs only enough
-        # samples (3 at 15s) to revert a breach on its own.
-        policy.watchDuration = 45;
       }
     ];
 
