@@ -51,6 +51,13 @@ in
   # in a dialog and supplies the stored password only when approved.
   home.sessionVariables.SUDO_ASKPASS = "${sudoplz}/bin/askpass";
 
+  # `mcp probe http|stdio` checks a server's handshake and tool list; `secret
+  # with` hands it a SecretSpec key without the key reaching any output.
+  dotfiles.nushellAutoload = {
+    mcp = ./scripts/mcp.nu;
+    secret = ./scripts/secret.nu;
+  };
+
   programs.mcp = {
     enable = true;
     servers = {
@@ -132,6 +139,21 @@ in
         export HOME="$TMPDIR/home"
         mkdir -p "$HOME"
         nu --config ${./scripts/nu-mcp-config.nu} ${./tests/watch-job.nu} ${./scripts/watch-job.nu}
+        touch "$out"
+      '';
+
+  # `mcp probe` against a stdio server, and `secret with` against a stub
+  # secretspec.
+  dotfiles.tooling.checks.mcp-probe =
+    pkgs.runCommand "mcp-probe-check" { nativeBuildInputs = [ pkgs.nushell ]; }
+      ''
+        export HOME="$TMPDIR/home"
+        mkdir -p "$HOME" scripts tests
+        cp ${./scripts/mcp.nu} scripts/mcp.nu
+        cp ${./scripts/secret.nu} scripts/secret.nu
+        cp ${./tests/mcp-probe.nu} tests/mcp-probe.nu
+        cp ${./tests/fake-mcp-server.nu} tests/fake-mcp-server.nu
+        nu --no-config-file tests/mcp-probe.nu
         touch "$out"
       '';
 
