@@ -15,3 +15,5 @@ else that is required; they are reference material, not work items. Write
 requirements as `### Requirement:` sections with SHALL statements and
 `#### Scenario:` WHEN/THEN examples. The ship skill updates affected specs
 whenever a plan ships, so this section never drifts from the code.*
+
+[iets NixOS client](spec/iets.md)

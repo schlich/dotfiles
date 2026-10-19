@@ -14,6 +14,8 @@ deprecation — the `status` frontmatter (`proposed` → `accepted` → `impleme
 terminal `deprecated`/`cancelled`) carries the lifecycle, so the list stays
 flat. Group with `##` headings once it outgrows a single list.*
 
+[iets NixOS client](features/iets.md)
+
 [Reactive CI and Nix dashboard](features/ci-nix-dashboard.md)
 
 [Stately MCP tools](features/stately-mcp.md)

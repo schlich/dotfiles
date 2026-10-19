@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ inputs, pkgs, ... }:
 
 {
   imports = [
@@ -6,7 +6,10 @@
     ./closure-diff.nix
     ./flakehub-cache.nix
     ./system-switch.nix
+    inputs.iets.nixosModules.default
   ];
+
+  iets.classic.enable = true;
 
   nix = {
     registry.templates.to = {
