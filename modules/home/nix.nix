@@ -7,6 +7,8 @@
 }:
 
 let
+  iets = inputs.iets.packages.${pkgs.stdenv.hostPlatform.system}.default;
+
   closureDiff = lib.getExe (import ../../lib/closure-diff.nix { inherit lib pkgs; });
 
   # Ranks a flake's checks by evaluation time and memory, with a flamegraph
@@ -36,7 +38,15 @@ in
     userName = "schlich";
   };
   fonts.fontconfig.enable = true;
+  dotfiles.nixpkgsWatch.iets = {
+    inherit (iets) version;
+    reason = "replace the iets input's package in modules/home/nix.nix with pkgs.iets and drop the iets input";
+  };
   home.packages = [
+    # A faster, cached Nix evaluator and client; commands it lacks fall
+    # through to the real nix. Only under its own name: the classic names
+    # still run nix.
+    iets
     # Deploys the flake's clan: `clan machines update homelab`. From the
     # clan-core input, so the CLI matches the lib that builds the clan.
     inputs.clan-core.packages.${pkgs.stdenv.hostPlatform.system}.clan-cli

@@ -69,6 +69,11 @@
       url = "github:numtide/llm-agents.nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # Numtide's Rust reimplementation of the Nix client, which nixpkgs lacks.
+    iets = {
+      url = "github:numtide/iets";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     # Upstream packages Atuin 18.24; nixpkgs still ships 18.23.
     atuin = {
       url = "github:atuinsh/atuin/v18.24.0";

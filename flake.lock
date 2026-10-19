@@ -254,6 +254,21 @@
     },
     "crane_4": {
       "locked": {
+        "lastModified": 1791754810,
+        "narHash": "sha256-cN0Mgk+sQtCJcGWs9H4M0CnLRAuC4I8aCwiBTcBJs6E=",
+        "owner": "ipetkov",
+        "repo": "crane",
+        "rev": "bd63bf1d0a0f6dcacd7549c714a671ee63b0db6a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ipetkov",
+        "repo": "crane",
+        "type": "github"
+      }
+    },
+    "crane_5": {
+      "locked": {
         "lastModified": 1768873933,
         "narHash": "sha256-CfyzdaeLNGkyAHp3kT5vjvXhA1pVVK7nyDziYxCPsNk=",
         "owner": "ipetkov",
@@ -1128,6 +1143,27 @@
         "url": "https://github.com/IBM/plex/releases/download/@ibm%2Fplex-mono@1.1.0/ibm-plex-mono.zip"
       }
     },
+    "iets": {
+      "inputs": {
+        "crane": "crane_3",
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1792396882,
+        "narHash": "sha256-UihkjQETT/8dUjfD9W1TMfsOX7lp1bstqZheCTv4ghI=",
+        "owner": "numtide",
+        "repo": "iets",
+        "rev": "bdd26f2c3a3b845f97fcc0c78aaa11afdf4bd476",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "iets",
+        "type": "github"
+      }
+    },
     "impermanence": {
       "inputs": {
         "home-manager": [],
@@ -1757,7 +1793,7 @@
     },
     "nushellWith": {
       "inputs": {
-        "crane": "crane_3",
+        "crane": "crane_4",
         "nixpkgs": [
           "nixpkgs"
         ],
@@ -1869,6 +1905,7 @@
         "grill-me": "grill-me",
         "hegel-skill": "hegel-skill",
         "home-manager": "home-manager",
+        "iets": "iets",
         "impermanence": "impermanence",
         "iwe": "iwe",
         "iwe-skills": "iwe-skills",
@@ -2340,7 +2377,7 @@
     },
     "xs": {
       "inputs": {
-        "crane": "crane_4",
+        "crane": "crane_5",
         "flake-parts": "flake-parts_4",
         "nixpkgs": [
           "nixpkgs"
