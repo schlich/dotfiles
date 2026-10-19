@@ -1,12 +1,11 @@
-# The GitHub App nixbot on homelab builds the mirror with. Both IDs are public;
-# the App's private key, webhook secret, and OAuth client secret live only in
-# /var/lib/nixbot-secrets on homelab (modules/nixos/nixbot.nix). nixbot stays
-# off while appId is null. homelab deploys every landing of main, so put the
-# secrets in place before landing the IDs: a nixbot that cannot load them
-# fails its unit, and the staged switch reverts. docs/nixbot.md has the steps.
+# The GitHub App nixbot on homelab runs as. Both IDs are public. nixbot stays
+# off while appId is null; `nixbot-register` creates the App from the manifest
+# in modules/nixos/nixbot.nix, writes its IDs here, and encrypts its secrets
+# into secrets/nixbot/ for homelab. Landing both turns nixbot on.
+# docs/nixbot.md has the steps.
 {
   # The App's numeric "App ID".
-  appId = null;
+  appId = 5386637;
   # The App's "Client ID", for logging in to restart or cancel builds.
-  oauthId = null;
+  oauthId = "Iv23liEReEi3CdI2IIBL";
 }

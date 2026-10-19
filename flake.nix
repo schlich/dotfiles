@@ -4,6 +4,7 @@
   inputs = {
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
     # Build Codex from the fork that contains the execution-tool transcript renderer.
+
     codex = {
       url = "github:schlich/codex/d0e6fb56b19d";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -177,6 +178,12 @@
     };
     nixbot = {
       url = "github:Mic92/nixbot";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    # Decrypts secrets/*.age at activation on hosts whose inventory sets
+    # profile.secrets, with the host's OpenSSH key (secrets/secrets.nix).
+    agenix = {
+      url = "github:ryantm/agenix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     # Which nixpkgs pull requests touch a package and which channels they
@@ -383,8 +390,9 @@
       denAsusPrimary = denAsusHome.extendModules {
         modules = [ { dotfiles.alternates = false; } ];
       };
-      # homelab with nixbot running, before hosts/homelab/nixbot.nix names
-      # the GitHub App; the IDs are placeholders until it does.
+      # homelab with nixbot running, before nixbot-register names the GitHub
+      # App and encrypts its secrets; the IDs and secrets are placeholders
+      # until it does.
       nixbotHomelabEvaluationCheck = pkgs.writeText "nixbot-homelab-evaluation" (
         builtins.unsafeDiscardStringContext "${
           (denFlake.nixosConfigurations.homelab.extendModules {
@@ -395,14 +403,31 @@
                   github = {
                     appId = lib.mkDefault 0;
                     oauthId = lib.mkDefault "placeholder";
-                    oauthSecretFile = lib.mkDefault "/var/lib/nixbot-secrets/github-oauth-secret";
                   };
                 };
+                age.secrets =
+                  lib.genAttrs
+                    [
+                      "nixbot-github-app"
+                      "nixbot-github-webhook-secret"
+                      "nixbot-github-oauth-secret"
+                    ]
+                    (name: {
+                      file = lib.mkForce (builtins.toFile "${name}.age" "");
+                    });
               }
             ];
           }).config.system.build.toplevel.drvPath
         }\n"
       );
+      # What nixbot-register registers and writes, from homelab's
+      # modules/nixos/nixbot.nix: the GitHub App manifest, the topic nixbot
+      # imports, and where the App's IDs and secrets go.
+      nixbotRegistration = denFlake.nixosConfigurations.homelab.config.dotfiles.nixbot.registration;
+      nixbotRegister = import ./tools/nixbot-register {
+        inherit pkgs;
+        registration = nixbotRegistration;
+      };
       # homelab with the marimohub aspect, before the host includes it. The
       # login domain is a placeholder until the hub is enabled there.
       marimohubHomelabEvaluationCheck = pkgs.writeText "marimohub-homelab-evaluation" (
@@ -543,6 +568,7 @@
         jj-graph = jjGraph.package;
         xr-workbench = xrWorkbench;
         quota-advisor = quotaAdvisor;
+        nixbot-register = nixbotRegister;
         inherit marimohub;
         workbench = workbench.cli;
       }
@@ -618,6 +644,10 @@
         quota-advisor = {
           type = "app";
           program = "${quotaAdvisor}/bin/quota-advisor";
+        };
+        nixbot-register = {
+          type = "app";
+          program = "${nixbotRegister}/bin/nixbot-register";
         };
         workbench = {
           type = "app";
@@ -711,6 +741,20 @@
           touch "$out"
         '';
         home-manager = homeCheck;
+        # nixbot's App manifest asks GitHub for exactly the permissions and
+        # events docs/nixbot.md says nixbot needs, and nixbot-register builds.
+        nixbot-app-manifest =
+          pkgs.runCommand "nixbot-app-manifest-check"
+            {
+              nativeBuildInputs = [ pkgs.nushell ];
+            }
+            ''
+              export HOME="$TMPDIR/home"
+              mkdir -p "$HOME"
+              ${pkgs.nushell}/bin/nu --no-config-file ${./tests/nixbot-manifest.nu} ${./docs/nixbot.md} ${nixbotRegistration}
+              test -x ${nixbotRegister}/bin/nixbot-register
+              touch "$out"
+            '';
         niri-config =
           pkgs.runCommand "niri-config-check"
             {

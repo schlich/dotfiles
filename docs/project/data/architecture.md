@@ -26,3 +26,5 @@ rejected are as valuable as the one you picked.*
 [jj-graph normal form](architecture/jj-graph-normal-form.md)
 
 [GitHub trunk](architecture/github-trunk.md)
+
+[Host secrets](architecture/host-secrets.md)

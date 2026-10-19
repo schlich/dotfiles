@@ -100,6 +100,8 @@ let
           desktop = "niri";
           gpu = "intel";
           remote = true;
+          # nixbot's GitHub App secrets, decrypted with homelab's host key.
+          secrets = true;
         };
         services = {
           paseo = true;

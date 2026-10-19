@@ -4,6 +4,16 @@ The history of this workspace, newest first. The `ship` skill appends a dated
 group on every release; any skill that creates or retires a document adds a line
 to the current day's group.
 
+## 2026-10-19
+
+- **Plan**:
+  [Make nixbot's GitHub App and secrets declarative](plans/20261019-nixbot-app-declarative.md);
+  `nixbot-register` creates the App from the flake's manifest and stores its
+  secrets with agenix for homelab.
+- **Architecture**: Recorded [host secrets](architecture/host-secrets.md):
+  agenix with each host's OpenSSH key, chosen over Clan vars for pull-based
+  deploys.
+
 ## 2026-10-16
 
 - **Bug**:
