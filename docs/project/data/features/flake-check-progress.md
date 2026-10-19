@@ -1,17 +1,22 @@
 ---
 type: feature
-description: Show per-attribute evaluation and build progress in the manual flake-check job.
-stage: implemented
+description: Show per-attribute evaluation and build progress in the manual flake-check job, retired with the spindle that ran it.
+stage: deprecated
+status: deprecated
 generated:
-  by: codex/gpt-6-luna
-  at: 2026-10-16T19:26:00Z
+  by: claude-code/opus-5.5
+  at: 2026-10-19T19:20:00Z
 sources:
-- id: flake-check-workflow
-  resource: .tangled/workflows/flake-checks.yml
-  title: Manual flake-check workflow
+- id: github-trunk
+  resource: data/architecture/github-trunk.md
+  title: The trunk move that retired the spindle
 ---
 
 # Streamed flake-check progress
+
+*Deprecated 2026-10-19: the homelab spindle and
+`.tangled/workflows/flake-checks.yml` were retired. `ci land`'s local clearance
+and GitHub Actions build the same checks.*
 
 ## Purpose
 

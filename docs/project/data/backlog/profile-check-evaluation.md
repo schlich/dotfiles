@@ -66,6 +66,6 @@ regardless of the setting.
 The flamegraphs show where to cut check cost instead. colmena-hive-NAME
 evaluates its host twice (colmena and Den) to compare drvPaths, which adds about
 10 s and 0.9 GiB per host over one evaluation. A quarter of colmena-hive-homelab
-is spindle's VM image, which instantiates a second nixpkgs. asus's Home Manager
-generation is evaluated by colmena-hive-asus, desktop-primary-evaluation and
-home-manager-nixos.
+was the spindle's VM image, which instantiated a second nixpkgs (retired
+2026-10-19). asus's Home Manager generation is evaluated by colmena-hive-asus,
+desktop-primary-evaluation and home-manager-nixos.
