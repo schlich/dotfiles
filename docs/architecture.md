@@ -138,7 +138,7 @@ record the source change; evaluation and builds do not create generations.
 When the paths differ and the system change is to be applied, use the deliberate
 NixOS activation workflow: land the change, then run `system-switch`. It starts
 the root `nixos-switch-main` unit, which polkit lets the primary user start
-without a password. The unit builds the host from Tangled's `main` at a pinned
+without a password. The unit builds the host from GitHub's `main` at a pinned
 revision, never from a working copy, skips the switch when that toplevel is
 already active, and records the result in `/var/lib/nixos-switch-main`.
 
@@ -192,7 +192,7 @@ the generation instead:
   same log.
 
 `generation` reads both: the running, booted, and boot-default system
-generations, the revision behind the running one, whether Tangled's `main` has
+generations, the revision behind the running one, whether GitHub's `main` has
 moved past it, and the running Home Manager generation with the change or
 commit it was built from (unrecorded after a bare `nh home switch` or a
 hand-run `activate`). The system and the home are applied separately, so

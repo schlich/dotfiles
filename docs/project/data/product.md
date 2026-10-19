@@ -63,11 +63,12 @@ All hosts are `x86_64-linux` NixOS (`den/inventory.nix`).
   landing of `main` through the staged-switch watch, with `ssh` and `tailscale`
   health checks, and runs the shell home only.
 
-Changes are delivered through Tangled: a topic lands on `main` through the local
-`ci land` gate, then a host switches its system with `system-switch`, and each
-user's standalone home (`homeConfigurations."USER@HOST"`) switches apart from it
-with `nh home switch` or `home-activate`. Deliberately unsupported: nix-darwin,
-macOS, and non-NixOS Linux.
+Changes are delivered through GitHub, with Tangled as a mirror: a topic lands on
+`main` through the local `ci land` gate, then a host switches its system with
+`system-switch`, and each user's standalone home
+(`homeConfigurations."USER@HOST"`) switches apart from it with `nh home switch`
+or `home-activate`. Deliberately unsupported: nix-darwin, macOS, and non-NixOS
+Linux.
 
 ## Stack
 
@@ -75,7 +76,7 @@ macOS, and non-NixOS Linux.
   composition, Clan for push deployment, impermanence, and the Niri flake
   (`flake.nix`).
 - **Nushell** for scripts, deploy logic (`deploy/switch.nu`), and the `ci`
-  workflow; Jujutsu for version control on Tangled.
+  workflow; Jujutsu for version control, on GitHub mirrored to Tangled.
 - **Layout**: `den/` owns the inventory, aspects, and host composition; `hosts/`
   holds hardware and storage facts only; `modules/` holds ordinary NixOS and
   Home Manager modules the aspects consume; `lib/` holds helpers such as
