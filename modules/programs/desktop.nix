@@ -178,10 +178,7 @@ in
               "network_rx"
               "network_tx"
             ];
-            # The niri hint line leads: the focus context and its keys
-            # (keymap.nu hints), always on screen.
             center = [
-              "schlich/niri-hints:hints"
               "codex_usage"
               "claude_usage"
             ];
