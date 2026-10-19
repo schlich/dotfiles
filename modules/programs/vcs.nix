@@ -29,6 +29,8 @@ let
       config.programs.jujutsu.settings
     }";
   };
+  # Plans, checks, and normalizes change graphs (tools/jj-graph/README.md).
+  jjGraph = (import ../../tools/jj-graph { inherit lib pkgs; }).package;
 in
 {
   imports = [ ./ci.nix ];
@@ -94,6 +96,14 @@ in
       patterns = [ "glob:'**/*.py'" ];
     };
     git.executable-path = lib.getExe git;
+    # `jj graph check`, `jj graph normalize`, and the rest of jj-graph's
+    # commands, run against the repository jj is in.
+    aliases.graph = [
+      "util"
+      "exec"
+      "--"
+      (lib.getExe jjGraph)
+    ];
     # GitHub (origin) holds dotfiles' trunk and topics; Tangled only mirrors
     # main, which `ci land` pushes there itself. Tangled still holds the ci
     # repository's trunk, with GitHub as its mirror. Elsewhere jj keeps its
@@ -122,6 +132,7 @@ in
   home.packages = [
     git
     jj
+    jjGraph
     pkgs.oyui
     ci.jj-describe
     config.dotfiles.ci.package
