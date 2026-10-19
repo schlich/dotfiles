@@ -35,7 +35,9 @@
 # job did not report, such as an evaluator that died. Lines that match
 # --ignore never print; by default
 # these include nix-eval-jobs replacing a worker that outgrew its memory
-# budget, which it does routinely. A job that reports nothing, such as a bare
+# budget, which it does routinely, and passing tests, whose names may
+# describe the very trouble they check for (`ok killed checks read as
+# failed`), even behind a Nix build's `NAME> ` prefix. A job that reports nothing, such as a bare
 # `nix build`, falls back to its log lines that match --pattern, as they are.
 # After --quiet-after without an event, a heartbeat names the job's latest
 # phase, how long it has been in it, and its last log line, and repeats each
@@ -260,7 +262,7 @@ def main [
   --pattern: string = '(?i)^===|landed|releas|tagg|mirror|error|fail|refus|conflict|status=|oom|passed|waiting' # Log lines worth a notification, for a job that writes no status reports
   --alarm: string = '(?i)\bkill(ed|ing)\b|exceeded|out of memory|\boom\b|panicked|segmentation fault|^error[:\s]|\berror:' # Log lines worth an alarm even from a job that reports its status
   --detail: string = '^Rebased \d+ commits|^Parent commit \(@-\)|^Changes to push to \S+:$|^Recovery point:|^Impact:|\b\d+/\d+ successful\b|^(PATHS|SIZE|DIFF):' # Log lines a reporting job's phases log but do not report, printed indented under them
-  --ignore: string ='(?i)\bno conflicts?\b|^memory budget of \d+ MiB exceeded \(\d+ MiB in use\), killing worker \d+' # Matching log lines to drop anyway: nix-eval-jobs replacing a worker that outgrew its budget is routine
+  --ignore: string ='(?i)\bno conflicts?\b|^memory budget of \d+ MiB exceeded \(\d+ MiB in use\), killing worker \d+|^(\S+> )?ok\s|^(\S+> )?test .* \.\.\. ok$' # Matching log lines to drop anyway: nix-eval-jobs replacing a worker that outgrew its budget is routine, and a passing test's name may say "killed" or "error"
   --interval: duration = 2sec # How often to read the files between job events
   --quiet-after: duration = 5min # How long without an event before each heartbeat
   --replay # Start from the beginning instead of the saved position

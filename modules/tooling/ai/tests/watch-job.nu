@@ -80,13 +80,16 @@ def main [watch_job: path] {
 
   # Trouble a reporting job logs but does not report still reaches the
   # Monitor, as an alarm after the report it follows. An evaluator replacing
-  # a worker that outgrew its memory budget is routine and prints nothing.
+  # a worker that outgrew its memory budget is routine and prints nothing,
+  # and so does a passing test whose name mentions what it checks for.
   let log = ($tmp | path join alarm.log)
   job-log $log { ^sh -c r#'
     report() { printf '%s\n' "$1" >> "$PST_FILE"; }
     report '{"time":"2026-10-07T08:00:00-05:00","state":"working","id":"clearance","app":"ci","msg":"Waiting for local flake checks"}'
     echo "=== a line only the pattern matches"
     echo "memory budget of 6144 MiB exceeded (6156 MiB in use), killing worker 411986 ('den-host-evaluation', 6118 MiB)"
+    echo "ci-properties> ok local checks read as killed exactly when no check failed by itself (100 cases)"
+    echo "test spec::error_when_killed ... ok"
     echo "error: evaluation worker 411987 was killed by signal 9"
   '# } | ignore
   let result = (do $watch $log 10sec)
