@@ -43,6 +43,7 @@ empty "ghost graph" of a design before writing code.
   change per scenario on the components its `@needs` tags name; a rerun creates
   only what is missing and updates what changed.
 
+The home configuration installs it as `jj-graph`, and jj runs it as `jj graph`.
 [tools/jj-graph/README.md](../../../../tools/jj-graph/README.md) documents the
 model, the commands, and the limits.
 
