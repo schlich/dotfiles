@@ -32,6 +32,7 @@
     ../../../modules/tooling/ai/claude-desktop.nix
     ../../../modules/tooling/ai/codex.nix
     ../../../modules/tooling/ai/copilot.nix
+    ../../../modules/home/ci-input-watch.nix
     ../../../modules/home/files.nix
     ../../../modules/home/packages.nix
     ../../../modules/home/services.nix

@@ -206,7 +206,11 @@
   (tangled.org/schlich.tngl.sh/ci).
 - `ci` comes from the `ci` flake input. Change the workflow in its own
   repository, then move this one to it with `nix flake update ci`; try an
-  unreleased copy here with `CI_SCRIPT=/path/to/ci.nu ci ...`.
+  unreleased copy here with `CI_SCRIPT=/path/to/ci.nu ci ...`. On the
+  workstation, the hourly `ci-input-watch` timer does that update for each
+  new ci release: it dispatches the bump from `.jj-workspaces/ci-input-update`
+  and notifies, and landing it stays a deliberate `ci land` there.
+  `ci-input-watch` shows what `main` pins and whether a bump is open.
 - Use a concise JJ change description. `ci dispatch` validates and pushes
   the topic's stable `jj-*` branch to Tangled; open a Tangled pull request from that branch when the topic needs review.
   Ordinary dispatch keeps editing the same change ID. Deliver it with
