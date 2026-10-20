@@ -562,10 +562,8 @@ binds {
     Mod+Ctrl+WheelScrollDown cooldown-ms=150 hotkey-overlay-title=null { move-column-to-workspace-down; }
     Mod+Ctrl+WheelScrollUp   cooldown-ms=150 hotkey-overlay-title=null { move-column-to-workspace-up; }
 
-    // The mouse's horizontal (thumb) wheel scrolls the column strip without
-    // Mod, so apps no longer receive horizontal wheel scrolling.
-    WheelScrollRight          hotkey-overlay-title=null { focus-column-right; }
-    WheelScrollLeft           hotkey-overlay-title=null { focus-column-left; }
+    // Leave the bare wheel unbound: binding WheelScrollLeft/Right without
+    // modifiers stopped all vertical scrolling (2026.10.20.2).
     Mod+WheelScrollRight      hotkey-overlay-title=null { focus-column-right; }
     Mod+WheelScrollLeft       hotkey-overlay-title=null { focus-column-left; }
     Mod+Ctrl+WheelScrollRight hotkey-overlay-title=null { move-column-right; }
