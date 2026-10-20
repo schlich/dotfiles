@@ -4,7 +4,7 @@ description: Declare nixbot's GitHub App manifest and agenix secrets in the flak
 created: 2026-10-19
 generated:
   by: claude-code/opus-5.5
-  at: 2026-10-19T20:10:00Z
+  at: 2026-10-20T15:37:00Z
 sources:
 - id: nixbot-module
   resource: nixbot:nixosModules/nixbot.nix
@@ -18,6 +18,8 @@ sources:
 - id: probot-setup
   resource: https://github.com/probot/probot/blob/master/src/apps/setup.ts
   title: Probot's local manifest flow, which redirects to localhost
+stage: done
+completed: 2026-10-20
 ---
 
 # Make nixbot's GitHub App and secrets declarative
@@ -68,7 +70,11 @@ already serves 8443 on homelab's node.
 
 ### Task 5: Go live (the user)
 
-- [ ] Run `nixbot-register`, create and install the App, land the result.
+- [x] Run `nixbot-register`, create and install the App, land the result. App
+  5386637 (`nixbot-schlich-dotfiles`) landed with its secrets as release
+  2026.10.20.3. homelab activated it as generation 119 and kept it: nixbot
+  answers `/health` through the Funnel on 443, GitHub's webhook deliveries
+  return 200, and `nixbot/nix-eval` and `nixbot/nix-build` pass on `main`.
 
 ## Spec changes
 
