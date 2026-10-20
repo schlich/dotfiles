@@ -7,6 +7,7 @@
   bash-feedback = ../../../.agents/skills/bash-feedback;
   ci = inputs.ci.lib.skills.ci;
   datastar = ../../../.agents/skills/datastar;
+  flake-add = ../../../.agents/skills/flake-add;
   jj = ../../../.agents/skills/jj;
   nushell = ../../../.agents/skills/nushell;
   nushell-plugin-builder = ../../../.agents/skills/nushell/plugin-builder;

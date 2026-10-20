@@ -1,4 +1,4 @@
-______________________________________________________________________
+---
 
 ## name: jj-flake-evolution description: Repository workflow for evolving this flake with jj discipline, GitHub publication, and targeted local Nix validation.
 
