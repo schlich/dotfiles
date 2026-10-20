@@ -308,6 +308,40 @@ let
         }
       } $out/hooks/hooks.json
     '';
+  # Report each session's id and lifecycle to Luvus, as
+  # `luvus integration install claude` would, without its python3 dependency
+  # or an entry in the runtime settings.json. Inert outside a Luvus pane.
+  luvus = inputs.luvus.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  luvusHook =
+    let
+      hook = {
+        hooks = [
+          {
+            type = "command";
+            command = "${pkgs.nushell}/bin/nu --stdin ${./scripts/luvus-hook.nu} --luvus ${lib.getExe luvus}";
+            timeout = 5;
+          }
+        ];
+      };
+    in
+    pkgs.runCommand "claude-code-luvus" { } ''
+      install -Dm644 ${
+        pkgs.writers.writeJSON "plugin.json" {
+          name = "luvus";
+          description = "Report session ids and lifecycle events to Luvus for exact resume and agent state.";
+        }
+      } $out/.claude-plugin/plugin.json
+      install -Dm644 ${
+        pkgs.writers.writeJSON "hooks.json" {
+          hooks = {
+            SessionStart = [ hook ];
+            Notification = [ hook ];
+            Stop = [ hook ];
+            UserPromptSubmit = [ hook ];
+          };
+        }
+      } $out/hooks/hooks.json
+    '';
 in
 {
   imports = [ ./common.nix ];
@@ -353,6 +387,7 @@ in
     plugins.context-status = contextStatusHandoff;
     plugins.background-tasks = backgroundTasks;
     plugins.prefer-nix-mcp = preferNixMcp;
+    plugins.luvus = luvusHook;
     # IWE memory: inert outside a workspace whose root has a MEMORY.md policy.
     plugins.iwe = "${inputs.iwe-skills}";
   };
@@ -423,6 +458,12 @@ in
           nu ${./tests/prefer-nix-mcp.nu} ${lib.escapeShellArg preferNixMcpCommand}
           touch "$out"
         '';
+    checks.luvus-hook = pkgs.runCommand "luvus-hook-check" { nativeBuildInputs = [ pkgs.nushell ]; } ''
+      export HOME="$TMPDIR/home"
+      mkdir -p "$HOME"
+      nu --no-config-file ${./tests/luvus-hook.nu} ${./scripts/luvus-hook.nu}
+      touch "$out"
+    '';
     # The test kit runs each test file in a child of the CLI, offline.
     checks.nushell-cards-mod =
       pkgs.runCommand "nushell-cards-mod-check" { nativeBuildInputs = [ pkgs.claude-code ]; }
