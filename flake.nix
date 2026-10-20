@@ -160,6 +160,11 @@
       url = "github:schlich/tangled-dash";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # Mission control TUI for AI coding agents; not in nixpkgs.
+    luvus = {
+      url = "github:RizRiyz/luvus";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     dicta = {
       url = "github:schlich/dicta";
       inputs.nixpkgs.follows = "nixpkgs";

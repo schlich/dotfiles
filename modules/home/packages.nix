@@ -167,6 +167,7 @@ in
     inputs.xs.packages.${pkgs.stdenv.hostPlatform.system}.default
     inputs.ai-usagebar.packages.${pkgs.stdenv.hostPlatform.system}.default
     inputs.tangled-dash.packages.${pkgs.stdenv.hostPlatform.system}.default
+    inputs.luvus.packages.${pkgs.stdenv.hostPlatform.system}.default
     (import ../tooling/ai/fieldnotes-package.nix { inherit inputs lib pkgs; })
   ];
 }
