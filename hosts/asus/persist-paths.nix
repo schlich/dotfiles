@@ -122,6 +122,7 @@
       ".config/bat"
       ".config/bottom"
       ".config/btop"
+      ".config/cachix"
       ".config/carapace"
       ".config/chromium"
       ".config/dconf"
