@@ -44,12 +44,14 @@ struct SpecGraph {
     scope: BTreeSet<Id>,
     parents: BTreeMap<Id, BTreeSet<Id>>,
     info: BTreeMap<Id, SpecChange>,
+    commutes: BTreeSet<(Id, Id)>,
 }
 
 impl From<&Graph> for SpecGraph {
     fn from(g: &Graph) -> Self {
         SpecGraph {
             scope: g.scope(),
+            commutes: g.commutes.clone(),
             parents: g.parents.clone(),
             info: g
                 .info
@@ -133,6 +135,7 @@ impl Normalizer {
         anchors: BTreeSet<String>,
         crefs: Pairs,
         cfiles: Pairs,
+        commutes: Pairs,
     ) {
         let newest_base = bases()
             .into_iter()
@@ -142,6 +145,7 @@ impl Normalizer {
         let mut g = Graph {
             bases: bases(),
             base_ancestry: base_ancestry(),
+            commutes,
             ..Graph::default()
         };
         for (i, c) in ORDER.iter().enumerate() {
@@ -203,8 +207,9 @@ impl Driver for Normalizer {
                 files: Pairs,
                 anchors: BTreeSet<String>,
                 crefs: Pairs,
-                cfiles: Pairs
-            ) => self.init(edges, defs, refs, files, anchors, crefs, cfiles),
+                cfiles: Pairs,
+                commutes: Pairs
+            ) => self.init(edges, defs, refs, files, anchors, crefs, cfiles, commutes),
             place(v: String) => self.place(v),
             finished => {},
         })

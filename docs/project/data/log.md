@@ -10,6 +10,13 @@ to the current day's group.
   workflow, its hooks, and its prompt segment apply only where jj's config sets
   `ci.enable`; other repositories use plain jj.
 
+## 2026-10-20
+
+- **Plan**:
+  [Commute jj-graph's edits of one file](plans/20261020-jj-graph-commutation.md);
+  two changes that touch one file keep their order only when jj cannot move each
+  past the other, with mergiraf as an opt-in structural fallback.
+
 ## 2026-10-19
 
 - **Plan**:

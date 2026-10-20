@@ -9,7 +9,9 @@ use common::{Drawn, LANGUAGES, Language, file, files};
 use hegel::TestCase;
 use hegel::generators as gs;
 use jj_graph::diff::FileDiff;
-use jj_graph::extract::{Lang, Symbols, file_symbols, has_syntax_errors, parse};
+use jj_graph::extract::{
+    Lang, Piece, Symbols, file_symbols, has_syntax_errors, parse, piece_edit, pieces,
+};
 
 fn symbols(lang: &Language, old: &str, new: &str) -> Symbols {
     let diff = FileDiff {
@@ -152,6 +154,127 @@ fn what_a_change_defines_does_not_depend_on_its_direction(tc: TestCase) {
         file(lang, &tc.draw(files(l))),
     );
     assert_eq!(defs(lang, &x, &y), defs(lang, &y, &x), "{x}\n<=>\n{y}");
+}
+
+// ---------------------------------------------------------------------
+// Pieces: an edit item by item, as mergiraf's merges are judged
+// ---------------------------------------------------------------------
+
+#[hegel::test(test_cases = 300)]
+fn moving_or_reformatting_keeps_every_piece_and_a_comment_is_one(tc: TestCase) {
+    let l = tc.draw(gs::integers::<usize>().max_value(LANGUAGES.len() - 1));
+    let lang = &LANGUAGES[l];
+    let code = Lang::of_path(lang.path).unwrap();
+    let items = tc.draw(files(l));
+    let text = file(lang, &items);
+    let mut moved = tc.draw(gs::permutations(items.clone()));
+    for d in &mut moved {
+        d.spaced = tc.draw(gs::booleans());
+    }
+    let moved_text = file(lang, &moved);
+    assert_eq!(
+        pieces(code, &text),
+        pieces(code, &moved_text),
+        "{text}\n=>\n{moved_text}"
+    );
+    let commented = format!("{}{moved_text}", lang.comment);
+    assert_eq!(
+        piece_edit(code, Some(&text), Some(&commented)),
+        Some((
+            Vec::new(),
+            vec![Piece::Comment(lang.comment.trim_end().to_owned())]
+        )),
+        "{text}\n=>\n{commented}"
+    );
+}
+
+/// Changing one item's value removes one piece and adds one, both that
+/// item, or an item inside it, under the same name; the other items' edits
+/// do not change it.
+#[hegel::test(test_cases = 300)]
+fn changing_an_item_changes_one_piece_whatever_else_changed(tc: TestCase) {
+    let l = tc.draw(gs::integers::<usize>().max_value(LANGUAGES.len() - 1));
+    let lang = &LANGUAGES[l];
+    let code = Lang::of_path(lang.path).unwrap();
+    let items = tc.draw(files(l));
+    let k = tc.draw(gs::integers::<usize>().max_value(items.len() - 1));
+    let mut changed = items.clone();
+    changed[k].value = 3 - changed[k].value;
+    let edit = piece_edit(code, Some(&file(lang, &items)), Some(&file(lang, &changed)))
+        .expect("generated files parse");
+    let ([Piece::Item(was, _)], [Piece::Item(is, _)]) = (edit.0.as_slice(), edit.1.as_slice())
+    else {
+        panic!("{edit:?}");
+    };
+    assert_eq!(was, is);
+    // The same edit on top of edits to the other items, with the items in
+    // another order: the same pieces.
+    let mut others = items.clone();
+    for (j, d) in others.iter_mut().enumerate() {
+        if j != k && tc.draw(gs::booleans()) {
+            d.value = 3 - d.value;
+        }
+    }
+    let mut others_changed = others.clone();
+    others_changed[k] = changed[k];
+    let order = tc.draw(gs::permutations((0..items.len()).collect::<Vec<_>>()));
+    let reorder = |ds: &[Drawn]| -> Vec<Drawn> { order.iter().map(|&i| ds[i]).collect() };
+    let elsewhere = piece_edit(
+        code,
+        Some(&file(lang, &reorder(&others))),
+        Some(&file(lang, &reorder(&others_changed))),
+    );
+    assert_eq!(elsewhere, Some(edit));
+}
+
+#[test]
+fn a_method_added_to_one_impl_is_the_same_edit_wherever_it_lands() {
+    let code = Lang::Rust;
+    let one = (
+        "pub struct Db;\nimpl Db {\n    fn a() {}\n}\n",
+        "pub struct Db;\nimpl Db {\n    fn a() {}\n    fn b() {}\n}\n",
+    );
+    // Another change added `c` first, and mergiraf put `b` above it.
+    let other = (
+        "pub struct Db;\nimpl Db {\n    fn a() {}\n    fn c() {}\n}\n",
+        "pub struct Db;\nimpl Db {\n    fn a() {}\n    fn b() {}\n    fn c() {}\n}\n",
+    );
+    let edit = piece_edit(code, Some(one.0), Some(one.1)).unwrap();
+    assert!(edit.0.is_empty());
+    assert!(matches!(edit.1.as_slice(), [Piece::Item(name, _)] if name == "b"));
+    assert_eq!(piece_edit(code, Some(other.0), Some(other.1)), Some(edit));
+    // Changing the impl's header is an edit of its own.
+    let header = piece_edit(
+        code,
+        Some(one.1),
+        Some(&one.1.replace("impl Db", "impl<T> Db")),
+    )
+    .unwrap();
+    assert!(matches!(
+        (header.0.as_slice(), header.1.as_slice()),
+        ([Piece::Unit(_)], [Piece::Unit(_)])
+    ));
+}
+
+#[test]
+fn a_comment_edit_is_an_edit_and_a_broken_file_has_no_pieces() {
+    let code = Lang::Rust;
+    assert_eq!(
+        piece_edit(
+            code,
+            Some("// old\nfn f() {}\n"),
+            Some("// new\nfn f() {}\n")
+        ),
+        Some((
+            vec![Piece::Comment("// old".into())],
+            vec![Piece::Comment("// new".into())]
+        ))
+    );
+    assert_eq!(pieces(code, "fn f( {}\n"), None);
+    assert_eq!(
+        piece_edit(code, Some("fn f() {}\n"), Some("fn f( {}\n")),
+        None
+    );
 }
 
 // ---------------------------------------------------------------------

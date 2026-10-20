@@ -29,6 +29,7 @@ let
       "WitnessNeverReorders"
       "WitnessNeverMerges"
       "WitnessAnchorsNeverGrow"
+      "WitnessEditsOfAFileStayOrdered"
     ];
     "SkeletonWide Skeleton.qnt" = [
       "WitnessNeverReuses"
@@ -72,14 +73,24 @@ in
     ];
     cargoLock.lockFile = ./Cargo.lock;
 
+    # `--mergiraf` runs mergiraf (GPL-3.0) as jj's external merge tool, so
+    # the wrapper names nixpkgs' copy; jj-graph never links it.
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    postInstall = ''
+      wrapProgram "$out/bin/jj-graph" \
+        --set-default JJ_GRAPH_MERGIRAF ${pkgs.mergiraf}/bin/mergiraf
+    '';
+
     # The end-to-end properties drive real jj repositories, the conformance
     # test generates traces with Quint, `shapes --run` writes trees out with
-    # git and tar, and Graphviz's dot is the oracle for reading DOT.
+    # git and tar, Graphviz's dot is the oracle for reading DOT, and mergiraf
+    # merges what jj's text merge cannot.
     nativeCheckInputs = [
       pkgs.jujutsu
       pkgs.git
       pkgs.gnutar
       pkgs.graphviz
+      pkgs.mergiraf
       pkgs.clippy
       pkgs.rustfmt
     ]

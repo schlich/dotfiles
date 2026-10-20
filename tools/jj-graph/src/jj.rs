@@ -248,6 +248,24 @@ impl Jj {
         self.read(at, &["diff", "--git", "-r", rev])
     }
 
+    /// The Git-format diff between two revisions' trees, each hunk covering
+    /// its whole file.
+    pub fn whole_diff_between(&self, at: &str, from: &str, to: &str) -> Result<String> {
+        self.read(
+            at,
+            &[
+                "diff",
+                "--git",
+                "--context",
+                WHOLE_FILE,
+                "--from",
+                from,
+                "--to",
+                to,
+            ],
+        )
+    }
+
     /// The commit a change was before its latest rewrite, if any.
     pub fn previous_version(&self, at: &str, rev: &str) -> Result<Option<String>> {
         let out = self.read(
@@ -325,4 +343,88 @@ pub fn commits<'a>(ids: impl IntoIterator<Item = &'a String>) -> String {
     } else {
         ids.join(" | ")
     }
+}
+
+/// A revset that is exactly these changes.
+pub fn changes<'a>(ids: impl IntoIterator<Item = &'a String>) -> String {
+    let ids: Vec<String> = ids.into_iter().map(|id| change(id)).collect();
+    if ids.is_empty() {
+        "none()".to_owned()
+    } else {
+        ids.join(" | ")
+    }
+}
+
+/// A TOML string literal, for a `--config` value.
+pub fn toml_string(s: &str) -> String {
+    let mut out = String::from("\"");
+    for ch in s.chars() {
+        match ch {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
+}
+
+/// The name jj-graph registers mergiraf under as a merge tool, so a
+/// `merge-tools.mergiraf` of the user's own cannot change how it runs.
+pub const MERGIRAF_TOOL: &str = "jj-graph-mergiraf";
+
+/// The environment variable naming the mergiraf program; `mergiraf` on the
+/// path otherwise.
+pub const MERGIRAF_VARIABLE: &str = "JJ_GRAPH_MERGIRAF";
+
+/// The mergiraf program jj-graph runs.
+pub fn mergiraf_program() -> OsString {
+    std::env::var_os(MERGIRAF_VARIABLE).unwrap_or_else(|| "mergiraf".into())
+}
+
+/// `jj resolve` of every conflicted file of `rev` with mergiraf's
+/// structural merge. mergiraf exits 1 when conflicts remain, which jj then
+/// keeps as conflicts.
+pub fn mergiraf_resolve(rev: &str) -> Vec<String> {
+    let program = mergiraf_program();
+    vec![
+        "resolve".into(),
+        "--revision".into(),
+        rev.into(),
+        "--tool".into(),
+        MERGIRAF_TOOL.into(),
+        "--config".into(),
+        format!(
+            "merge-tools.{MERGIRAF_TOOL}.program={}",
+            toml_string(&program.to_string_lossy())
+        ),
+        "--config".into(),
+        format!(
+            r#"merge-tools.{MERGIRAF_TOOL}.merge-args=["merge", "$base", "$left", "$right", "-o", "$output", "-l", "$marker_length", "-p", "$path"]"#
+        ),
+        "--config".into(),
+        format!("merge-tools.{MERGIRAF_TOOL}.merge-conflict-exit-codes=[1]"),
+    ]
+}
+
+/// Fail unless the mergiraf program runs.
+pub fn check_mergiraf() -> Result<()> {
+    let program = mergiraf_program();
+    let out = Command::new(&program)
+        .arg("--version")
+        .output()
+        .with_context(|| {
+            format!(
+                "running {} (set {MERGIRAF_VARIABLE} to another mergiraf)",
+                program.to_string_lossy()
+            )
+        })?;
+    if !out.status.success() {
+        bail!(
+            "{} --version failed: {}",
+            program.to_string_lossy(),
+            String::from_utf8_lossy(&out.stderr).trim()
+        );
+    }
+    Ok(())
 }

@@ -6,7 +6,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use hegel::TestCase;
 use hegel::generators as gs;
-use jj_graph::graph::{Change, Graph, Id, rebase_revision};
+use jj_graph::graph::{Change, Graph, Id, Reason, rebase_revision};
 use jj_graph::plan::{normalize, plan, simulate};
 
 const SYMBOLS: [&str; 6] = ["Store", "Net", "Codec", "db", "client", "run"];
@@ -50,8 +50,9 @@ fn close(mut r: BTreeSet<(Id, Id)>, nodes: &[Id]) -> BTreeSet<(Id, Id)> {
 
 /// A valid change graph: up to `max_changes` changes over one to three
 /// bases, each with parents among earlier changes and bases, and random
-/// definitions, references, files, and anchors. Change names are a random
-/// permutation, so no property can lean on names following the order.
+/// definitions, references, files, anchors, and commuting pairs. Change
+/// names are a random permutation, so no property can lean on names
+/// following the order.
 #[hegel::composite]
 fn graphs(tc: &TestCase, max_changes: usize) -> Graph {
     let n = tc.draw(gs::integers::<usize>().max_value(max_changes));
@@ -103,7 +104,30 @@ fn graphs(tc: &TestCase, max_changes: usize) -> Graph {
         };
         g.info.insert(name.clone(), change);
     }
+    // Pairs in the order load finds them, an earlier change first, and now
+    // and then the other way round, which must mean the same.
+    let mut pairs: Vec<(Id, Id)> = Vec::new();
+    for (i, u) in names.iter().enumerate() {
+        for v in &names[i + 1..] {
+            pairs.push((u.clone(), v.clone()));
+        }
+    }
+    for (u, v) in tc.draw(gs::subsequences(pairs).max_size(4)) {
+        g.commutes.insert(if tc.draw(gs::weighted_booleans(0.2)) {
+            (v, u)
+        } else {
+            (u, v)
+        });
+    }
     g
+}
+
+/// The same graph with no pair commuting: the old per-file rule.
+fn without_commuting(g: &Graph) -> Graph {
+    Graph {
+        commutes: BTreeSet::new(),
+        ..g.clone()
+    }
 }
 
 fn normalizable_graph(tc: &TestCase, max_changes: usize) -> (Graph, Graph) {
@@ -373,6 +397,7 @@ fn rename(g: &Graph, to: &BTreeMap<Id, Id>) -> Graph {
         info: g.info.iter().map(|(v, c)| (r(v), c.clone())).collect(),
         bases: g.bases.iter().map(r).collect(),
         base_ancestry: g.base_ancestry.iter().map(|(x, y)| (r(x), r(y))).collect(),
+        commutes: g.commutes.iter().map(|(x, y)| (r(x), r(y))).collect(),
     }
 }
 
@@ -453,10 +478,18 @@ fn hoisting_keeps_every_original_ancestor(tc: TestCase) {
     }
 }
 
+/// Hoisting makes no cycle of its own. It forgets what commuted with a
+/// change it splits, which can (the model's simulation finds a case), so the
+/// graph it starts from keeps only the pairs hoisting keeps.
 #[hegel::test(test_cases = 300)]
 fn hoisting_keeps_a_normalizable_graph_normalizable(tc: TestCase) {
-    let (g, _) = normalizable_graph(&tc, 7);
+    let g = tc.draw(graphs(7));
     let (h, _) = g.hoist(twin);
+    let kept = Graph {
+        commutes: h.commutes.clone(),
+        ..g.clone()
+    };
+    tc.assume(kept.normalizable());
     assert!(
         h.normalizable(),
         "hoisting made a cycle: {:?}",
@@ -465,10 +498,149 @@ fn hoisting_keeps_a_normalizable_graph_normalizable(tc: TestCase) {
 }
 
 #[hegel::test(test_cases = 300)]
+fn hoisting_forgets_every_pair_with_a_split_change(tc: TestCase) {
+    let g = tc.draw(graphs(7));
+    let (h, hoisted) = g.hoist(twin);
+    assert!(h.commutes.is_subset(&g.commutes));
+    for (x, y) in &h.commutes {
+        assert!(
+            !hoisted.contains(x) && !hoisted.contains(y),
+            "{x} and {y} still commute after a split"
+        );
+    }
+    for (x, y) in &g.commutes {
+        if !hoisted.contains(x) && !hoisted.contains(y) {
+            assert!(h.commute(x, y), "hoisting forgot {x} and {y}");
+        }
+    }
+}
+
+// ---------------------------------------------------------------------
+// Commuting diffs
+// ---------------------------------------------------------------------
+
+/// Two changes that touch a common file and were ordered stay ordered in the
+/// normal form, unless their diffs commute.
+#[hegel::test(test_cases = 300)]
+fn edits_of_a_file_stay_ordered_unless_they_commute(tc: TestCase) {
+    let (g, n) = normalizable_graph(&tc, 7);
+    let (a, b) = (g.ancestry(), n.ancestry());
+    let mut released = false;
+    for (u, iu) in &g.info {
+        for (v, iv) in &g.info {
+            if a.contains(u, v) && !iu.files.is_disjoint(&iv.files) && !b.contains(u, v) {
+                assert!(
+                    g.commute(u, v),
+                    "{u} and {v} share a file and lost their order"
+                );
+                released = true;
+            }
+        }
+    }
+    tc.event(if released {
+        "commuting edits of a file released"
+    } else {
+        "no edits of a file released"
+    });
+}
+
+/// Commuting only ever drops requirements, and only the shared-file
+/// requirement of an ordered pair with no other reason.
+#[hegel::test(test_cases = 300)]
+fn commuting_drops_only_shared_file_requirements(tc: TestCase) {
+    let g = tc.draw(graphs(7));
+    let old = without_commuting(&g);
+    let (with, without) = (g.requirements(), old.requirements());
+    assert!(with.is_subset(&without));
+    let candidates = old.commutation_candidates();
+    for (u, v) in without.difference(&with) {
+        assert!(
+            g.commute(u, v),
+            "{u} below {v} was dropped without commuting"
+        );
+        assert!(
+            candidates.contains(&(u.clone(), v.clone())),
+            "{u} below {v} was dropped though more than a file orders them"
+        );
+    }
+}
+
+/// The candidates load asks jj about are exactly the pairs whose commuting
+/// changes a requirement: for any other pair, commuting changes nothing.
+#[hegel::test(test_cases = 300)]
+fn the_candidates_are_exactly_the_pairs_commuting_can_release(tc: TestCase) {
+    let g = without_commuting(&tc.draw(graphs(6)));
+    let candidates = g.commutation_candidates();
+    let a = g.ancestry();
+    for u in g.scope() {
+        for v in g.scope() {
+            let mut one = g.clone();
+            one.commutes.insert((u.clone(), v.clone()));
+            let released = g.requires(&a, &u, &v) && !one.requires(&a, &u, &v);
+            assert_eq!(
+                released,
+                candidates.contains(&(u.clone(), v.clone())),
+                "{u} below {v}"
+            );
+        }
+    }
+}
+
+/// A commuting pair means the same in either order.
+#[hegel::test(test_cases = 300)]
+fn a_commuting_pair_counts_in_either_order(tc: TestCase) {
+    let g = tc.draw(graphs(7));
+    let flipped = Graph {
+        commutes: g
+            .commutes
+            .iter()
+            .map(|(x, y)| (y.clone(), x.clone()))
+            .collect(),
+        ..g.clone()
+    };
+    assert_eq!(g.requirements(), flipped.requirements());
+    assert_eq!(g.normal_parents().ok(), flipped.normal_parents().ok());
+}
+
+/// Commuting never makes a graph unnormalizable: a cycle needs requirements,
+/// and commuting only drops them.
+#[hegel::test(test_cases = 300)]
+fn commuting_keeps_a_normalizable_graph_normalizable(tc: TestCase) {
+    let g = tc.draw(graphs(7));
+    let old = without_commuting(&g);
+    tc.assume(old.normalizable());
+    assert!(
+        g.normalizable(),
+        "commuting made a cycle: {:?}",
+        g.cycle_members()
+    );
+}
+
+/// Every reason `reasons` gives for a shared file is a pair that does not
+/// commute.
+#[hegel::test(test_cases = 300)]
+fn a_shared_file_is_a_reason_only_without_commuting(tc: TestCase) {
+    let g = tc.draw(graphs(7));
+    let a = g.ancestry();
+    for u in g.scope() {
+        for v in g.scope() {
+            let shares = g
+                .reasons(&a, &u, &v)
+                .iter()
+                .any(|r| matches!(r, Reason::SharesFiles(_)));
+            if shares {
+                assert!(!g.commute(&u, &v), "{u} and {v} commute");
+            }
+        }
+    }
+}
+
+#[hegel::test(test_cases = 300)]
 fn normalize_hoists_then_reaches_the_hoisted_graphs_normal_form(tc: TestCase) {
-    let (g, _) = normalizable_graph(&tc, 7);
+    let g = tc.draw(graphs(7));
     let twin: &dyn Fn(&str) -> Id = &twin;
-    let run = normalize(&g, Some(twin)).expect("hoisting keeps it normalizable");
+    tc.assume(g.hoist(twin).0.normalizable());
+    let run = normalize(&g, Some(twin)).expect("the hoisted graph is normalizable");
     assert_eq!(run.start, g.hoist(twin).0);
     assert_eq!(simulate(&run.start, &run.steps), Ok(run.target.clone()));
     assert!(run.target.is_normal());

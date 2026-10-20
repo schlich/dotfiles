@@ -1,10 +1,12 @@
 //! Reading a revset into a [`Graph`]: the changes in scope by change ID, the
-//! commits below them by commit ID, each change's symbols, and its anchors.
+//! commits below them by commit ID, each change's symbols, its anchors, and
+//! which changes that touch one file commute.
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use anyhow::{Result, bail};
 
+use crate::commute::{Commutation, How};
 use crate::diff::parse_git_diff;
 use crate::extract::{Symbols, change_symbols};
 use crate::graph::{Change, Graph, Id};
@@ -20,6 +22,8 @@ pub struct Scope {
     pub anchors: Option<String>,
     /// Read conflicted changes instead of refusing them.
     pub allow_conflicts: bool,
+    /// How to decide whether two changes that touch one file commute.
+    pub commutation: Commutation,
 }
 
 /// A graph read at one operation.
@@ -32,6 +36,8 @@ pub struct Loaded {
     pub symbols: BTreeMap<Id, Symbols>,
     /// Why each anchor is one.
     pub anchors: BTreeMap<Id, String>,
+    /// The pairs in `graph.commutes`, and what made each commute.
+    pub commutations: BTreeMap<(Id, Id), How>,
 }
 
 impl Loaded {
@@ -162,13 +168,16 @@ pub fn load(jj: &Jj, op: &str, scope: &Scope) -> Result<Loaded> {
         symbols.insert(id.clone(), s);
     }
     graph.validate()?;
-    Ok(Loaded {
+    let mut loaded = Loaded {
         op: op.to_owned(),
         graph,
         commits: by_change,
         symbols,
         anchors,
-    })
+        commutations: BTreeMap::new(),
+    };
+    crate::commute::fill(jj, &mut loaded, scope.commutation)?;
+    Ok(loaded)
 }
 
 /// A change ID's usual short form.

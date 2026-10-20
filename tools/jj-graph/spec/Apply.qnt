@@ -2,10 +2,13 @@
 //
 // jj-graph runs each plan command on the operation the previous command
 // produced, with `--at-op` and `--no-integrate-operation`, so the commands
-// build a detached chain of operations that nothing else sees. It then checks
-// the chain's last operation (the graph is the plan's target, no change gained
-// a conflict, every anchor's tree and every change's own diff are unchanged)
-// and integrates it with `jj op integrate`, but only while the repository's
+// build a detached chain of operations that nothing else sees. With
+// `--mergiraf`, the commands after the rebases resolve conflicts with
+// mergiraf and give anchors their trees back; they are commands like any
+// other. It then checks the chain's last operation (the graph is the plan's
+// target, no change gained a conflict, every anchor's tree and every change's
+// own diff are unchanged, item by item for a change mergiraf merged) and
+// integrates it with `jj op integrate`, but only while the repository's
 // head operation is still the one the plan started from. A failed command, a
 // failed check, or a foreign operation before the head check abandons the
 // chain, which leaves the repository as it was: an unintegrated operation is

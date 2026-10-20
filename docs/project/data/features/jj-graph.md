@@ -4,11 +4,14 @@ description: A command that plans, checks, and normalizes Jujutsu change graphs 
 stage: accepted
 generated:
   by: claude-code/opus-5
-  at: 2026-10-19T21:40:00Z
+  at: 2026-10-20T16:10:00Z
 sources:
 - id: readme
   resource: tools/jj-graph/README.md
   title: jj-graph README
+- id: commute
+  resource: tools/jj-graph/src/commute.rs
+  title: jj-graph's commutation test
 - id: guide
   resource: https://docs.google.com/document/d/1o1gkaVrv9LoINiwOCi27yAAOd3wiZnjYeulgqCo3tuM
   title: Architectural Graph Engineering in Jujutsu (jj)
@@ -34,6 +37,12 @@ empty "ghost graph" of a design before writing code.
   each mixed change's new contracts into a change of their own, and `--cosmetic`
   each change's layout and comment edits. The rewrite lands as one operation,
   only after every check passes.
+- Two changes that touch one file keep their order only when their diffs do not
+  commute. jj-graph asks jj: it moves the earlier change past the later one on
+  an operation it never integrates, and they commute when nothing conflicts,
+  each keeps its own patch, and the pair ends on the tree it started from. With
+  `--mergiraf`, mergiraf merges what jj's text merge cannot, and its merge
+  counts when each change keeps its edit item by item.
 - `jj-graph symbols` shows what each change defines and references.
 - `jj-graph shapes` names contract roots, their sibling realizations, merges
   that use a branch's private internals, and contracts that changed since the
@@ -60,9 +69,14 @@ model, the commands, and the limits.
 - A DOT diagram is read as Graphviz's own `dot` reads it; what jj-graph cannot
   use (an undirected graph, a self-loop, a reserved `:` in a node ID) is
   refused.
+- Commutation is tested a pair at a time, with the changes between the pair in
+  place; a normal form that drops several ancestors at once is still checked
+  before it lands.
+- Under `--mergiraf`, a working copy over siblings mergiraf merged keeps its
+  files, and its own diff becomes the resolution of their text conflict.
 
 ## Open questions
 
-- Hunk-level commutation would let changes to one file move past each other; the
-  per-file rule is conservative.
+- Commuting is judged pairwise in the graph as read; judging each change in the
+  context the normal form gives it would need the normal form first.
 - A Nushell grammar would let `ci.nu` changes order by symbol instead of file.
