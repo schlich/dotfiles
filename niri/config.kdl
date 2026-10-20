@@ -45,7 +45,7 @@ input {
         // natural-scroll
         // accel-speed 0.2
         // accel-profile "flat"
-        scroll-factor 0.35
+        scroll-factor 0.25
         // scroll-method "no-scroll"
     }
 
