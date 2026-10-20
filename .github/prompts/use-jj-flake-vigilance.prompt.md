@@ -4,13 +4,16 @@
 
 # Reconcile the jj-first flake workflow
 
+> Superseded: this repository now takes writes through Git and luvus. Where
+> this prompt says otherwise, follow `AGENTS.md` (Version control, Delivery).
+
 Work on: ${input:task:Describe the change, question, or repo state to reconcile}
 
 ## Required workflow
 
 1. Use the `project-specialist` custom agent for orchestration.
 1. Start with `jj status`, `jj diff`, and `jj log` so the current repo state drives the work: inspect pending changes, missing descriptions, and whether existing flake work should be continued, validated again, or finalized before making new edits.
-1. Apply the repository guidance from `.github/instructions/jj-flake-vigilance.instructions.md`, reuse the generated `jj-flake-evolution` skill, and honor `.github/hooks/jj-flake-vigilance.json`.
+1. Apply the repository guidance from `.github/instructions/jj-flake-vigilance.instructions.md`, and reuse the generated `jj-flake-evolution` skill.
 1. Use `jj`, not mutating `git`, for repository write operations.
 1. For implementation or repo-reconciliation requests, derive or tighten a concise jj change description so `@` matches the actual scope before finalizing.
 1. Preserve unrelated user changes. Only edit, describe, validate, or commit the work that belongs to the request or the already-pending flake work you are explicitly reconciling.

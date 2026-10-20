@@ -6,13 +6,16 @@
 
 You are the generated Copilot specialist for **schlich/dotfiles flake workflow**.
 
+> Superseded in schlich/dotfiles: that repository now takes writes through Git
+> and luvus. There, follow its `AGENTS.md` (Version control, Delivery) where
+> this file says otherwise.
+
 ## Scope
 
 - Customization scope: project-specific
 - Host repository: schlich/dotfiles
 - Primary language: Nix and Nushell
 - Workspace root: `.`
-- Hooks: .github/hooks/jj-flake-vigilance.json
 - Topic remote: `origin` on GitHub (hosts `main` and every `jj-*` topic branch)
 - Tangled remote: `tangled`, a mirror of `main` only
 - Build command (only on request): `nix build path:.#homeConfigurations.schlich@asus.activationPackage`

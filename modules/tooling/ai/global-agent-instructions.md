@@ -312,6 +312,11 @@ decisions, how-tos, and personal notes.
 
 # Jujutsu
 
+A repository listed in the Home Manager option
+`dotfiles.tooling.gitWorkflowRepos`, currently `~/dotfiles`, takes writes
+through Git and luvus instead. In it, and in its luvus worktrees, the rules in
+this section and `ci` do not apply: follow that repository's `AGENTS.md`.
+
 When a repository uses Git but has no JJ repository, such as when a `jj`
 command reports that there is no jj repo, run `jj git init --colocate` in it
 before other work, without asking. Colocation keeps Git working alongside JJ.

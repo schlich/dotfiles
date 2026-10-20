@@ -1,4 +1,5 @@
 {
+  config,
   inputs,
   lib,
   pkgs,
@@ -6,6 +7,12 @@
 }:
 
 let
+  # Repositories driven through Git and luvus: the jj write guard and ci's
+  # context-status hooks leave sessions in them alone.
+  gitRepos = config.dotfiles.tooling.gitWorkflowRepos;
+  skipInGitRepos =
+    hookCommand:
+    "${pkgs.nushell}/bin/nu --stdin ${./scripts/skip-in-git-repos.nu} --repos ${lib.escapeShellArg (builtins.toJSON gitRepos)} ${hookCommand}";
   agentSource = ../../../copilot/plugins/jj-flake-vigilance/agents;
   # Copilot agents use display names, Copilot tool IDs, and GPT models.
   # Rewrite only the frontmatter keys Claude Code interprets differently.
@@ -37,7 +44,7 @@ let
             hooks = [
               {
                 type = "command";
-                command = "${pkgs.nushell}/bin/nu --stdin ${../../../copilot/plugins/jj-flake-vigilance/scripts/guard-git-writes.nu} --claude";
+                command = "${pkgs.nushell}/bin/nu --stdin ${../../../copilot/plugins/jj-flake-vigilance/scripts/guard-git-writes.nu} --claude ${lib.escapeShellArgs gitRepos}";
               }
             ];
           }
@@ -68,7 +75,7 @@ let
             hooks = [
               {
                 type = "command";
-                command = "${contextStatus}/bin/context-status handoff --hook";
+                command = skipInGitRepos "${contextStatus}/bin/context-status handoff --hook";
                 timeout = 10;
               }
             ];
@@ -80,7 +87,7 @@ let
             hooks = [
               {
                 type = "command";
-                command = "${contextStatus}/bin/context-status guard";
+                command = skipInGitRepos "${contextStatus}/bin/context-status guard";
                 timeout = 10;
               }
             ];
@@ -456,6 +463,23 @@ in
           export HOME="$TMPDIR/home"
           mkdir -p "$HOME"
           nu ${./tests/prefer-nix-mcp.nu} ${lib.escapeShellArg preferNixMcpCommand}
+          touch "$out"
+        '';
+    # The jj write guard and the context-status wrapper, against scratch
+    # repositories with a linked worktree.
+    checks.git-workflow-repos =
+      pkgs.runCommand "git-workflow-repos-check"
+        {
+          nativeBuildInputs = [
+            pkgs.nushell
+            pkgs.git
+          ];
+        }
+        ''
+          export HOME="$TMPDIR/home"
+          mkdir -p "$HOME"
+          nu --no-config-file ${./tests/guard-git-writes.nu} ${../../../copilot/plugins/jj-flake-vigilance/scripts/guard-git-writes.nu}
+          nu --no-config-file ${./tests/skip-in-git-repos.nu} ${./scripts/skip-in-git-repos.nu}
           touch "$out"
         '';
     checks.luvus-hook = pkgs.runCommand "luvus-hook-check" { nativeBuildInputs = [ pkgs.nushell ]; } ''

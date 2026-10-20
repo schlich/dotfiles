@@ -22,8 +22,10 @@ in
   # was lost then; landed branches piled up again until 2026-10-19.
   imports = [ inputs.ci.homeModules.default ];
 
+  # Off since 2026-10-20: dotfiles, its only repository, moved to luvus and
+  # Git. List another ci repository here and enable it again to bring it back.
   config.services.ci-prune = {
-    enable = true;
+    enable = false;
     package = cfg.package;
     jujutsu = config.programs.jujutsu.package;
     repositories = [ "${config.home.homeDirectory}/dotfiles" ];
