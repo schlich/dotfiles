@@ -47,6 +47,10 @@ in
     (pkgs.writeNuScriptBin "watch-job" (builtins.readFile ./scripts/watch-job.nu))
     sudoplz
   ];
+  # This repository runs on luvus's Git worktrees and merge gate; ci stays for
+  # the others.
+  dotfiles.tooling.gitWorkflowRepos = [ "${config.home.homeDirectory}/dotfiles" ];
+
   # Agents run `sudo -A`, which asks sudoplz's askpass; it shows the command
   # in a dialog and supplies the stored password only when approved.
   home.sessionVariables.SUDO_ASKPASS = "${sudoplz}/bin/askpass";

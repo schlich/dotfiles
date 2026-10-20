@@ -119,6 +119,17 @@ in
         default = { };
         internal = true;
       };
+      gitWorkflowRepos = mkOption {
+        type = types.listOf types.str;
+        default = [ ];
+        example = [ "/home/me/project" ];
+        description = ''
+          Repositories that take writes through Git, with luvus, rather than
+          through jj and ci. Agent sessions started inside one, or inside any
+          of its linked worktrees, may run mutating git, and get no ci
+          workspace claims or context.
+        '';
+      };
     };
   };
 

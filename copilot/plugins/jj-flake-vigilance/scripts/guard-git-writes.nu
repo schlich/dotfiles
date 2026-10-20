@@ -41,12 +41,34 @@ def extract-command [payload: any] {
   }
 }
 
+# The repository's shared Git directory, which its main checkout and every
+# linked worktree, wherever it lives, have in common; null outside Git, and
+# when git cannot run at all, so the guard then denies as before.
+def git-common-dir [dir: string] {
+  if ($dir | is-empty) or not ($dir | path exists) { return null }
+  let result = (try { ^git -C $dir rev-parse --path-format=absolute --git-common-dir | complete } catch { null })
+  if $result != null and $result.exit_code == 0 { $result.stdout | str trim } else { null }
+}
+
+# A session started inside a repository that takes Git writes, such as one
+# luvus drives, may run them. Only consulted for a mutating command, so
+# ordinary calls spawn no git.
+def git-writes-allowed [payload: record, repos: list<string>] {
+  if ($repos | is-empty) { return false }
+  let common = (git-common-dir ($payload.cwd? | default ""))
+  if $common == null { return false }
+  $repos | any {|repo| (git-common-dir ($repo | path expand)) == $common }
+}
+
 def main [
   --claude # Emit Claude Code's PreToolUse response shape
+  ...git_repos: string # Repositories that use Git, not jj, for writes
 ] {
   let input = $in
   let result = (try {
-    { denied: ((extract-command (parse-payload $input)) =~ $mutating_git_pattern) }
+    let payload = (parse-payload $input)
+    let mutating = ((extract-command $payload) =~ $mutating_git_pattern)
+    { denied: ($mutating and not (git-writes-allowed $payload $git_repos)) }
   } catch { |err|
     { error: $err.msg }
   })

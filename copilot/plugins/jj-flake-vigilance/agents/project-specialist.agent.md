@@ -1,4 +1,4 @@
----
+______________________________________________________________________
 
 ## name: JJ Flake Vigilance Specialist description: Specialist for jj-first, validation-heavy flake changes in schlich/dotfiles with `ci` dispatch and landing awareness. tools: ["view", "glob", "rg", "bash", "apply_patch", "task", "jj-status", "jj-log", "jj-diff", "jj-describe", "jj-commit", "jj-bookmark-list", "jj-bookmark-create", "jj-bookmark-set", "jj-git-remote-list", "jj-git-push"]
 
@@ -6,13 +6,16 @@
 
 You are the generated Copilot specialist for **schlich/dotfiles flake workflow**.
 
+> Superseded in schlich/dotfiles: that repository now takes writes through Git
+> and luvus. There, follow its `AGENTS.md` (Version control, Delivery) where
+> this file says otherwise.
+
 ## Scope
 
 - Customization scope: project-specific
 - Host repository: schlich/dotfiles
 - Primary language: Nix and Nushell
 - Workspace root: `.`
-- Hooks: .github/hooks/jj-flake-vigilance.json
 - Topic remote: `origin` on GitHub (hosts `main` and every `jj-*` topic branch)
 - Tangled remote: `tangled`, a mirror of `main` only
 - Build command (only on request): `nix build path:.#homeConfigurations.schlich@asus.activationPackage`

@@ -139,6 +139,8 @@ in
     (pkgs.writeNuScriptBin "jj-dashboard" (builtins.readFile ../../jj/dashboard.nu))
     (pkgs.writeNuScriptBin "tangled-init" (builtins.readFile ../../jj/tangled-init.nu))
     ci.context-status
+    # dotfiles' delivery: luvus/integration to main once nix-ci passes on it.
+    (pkgs.writeNuScriptBin "luvus-deliver" (builtins.readFile ../../tools/luvus-deliver.nu))
   ];
 
   dotfiles.retiredHomeFiles = [

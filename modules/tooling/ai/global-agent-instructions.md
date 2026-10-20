@@ -105,6 +105,7 @@ script, use valid Nushell syntax.
   `nix eval` of nixpkgs, or `gh api` against NixOS repositories. Use
   Nushell only to inspect or evaluate this repository's own Nix files and
   flake outputs.
+
   - Before adding a package, confirm its attribute and that it is in the
     channel: `{action: info, query: NAME}`. Find the package that ships a
     binary with `{action: search, type: programs, query: BIN}`.
@@ -311,6 +312,11 @@ decisions, how-tos, and personal notes.
   pull requests; the search also returns pull requests that merely mention it.
 
 # Jujutsu
+
+A repository listed in the Home Manager option
+`dotfiles.tooling.gitWorkflowRepos`, currently `~/dotfiles`, takes writes
+through Git and luvus instead. In it, and in its luvus worktrees, the rules in
+this section and `ci` do not apply: follow that repository's `AGENTS.md`.
 
 When a repository uses Git but has no JJ repository, such as when a `jj`
 command reports that there is no jj repo, run `jj git init --colocate` in it

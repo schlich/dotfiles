@@ -69,19 +69,16 @@
 ## Applying configuration
 
 - When Nix configuration edits are ready to apply, identify whether they affect
-  the NixOS system, Home Manager, or both. Apply only landed changes;
-  unlanded ones cannot be switched to.
+  the NixOS system, Home Manager, or both. Apply only changes delivered to
+  `main`; others cannot be switched to.
 - `system-switch` applies GitHub's `main` without sudo through the
   `nixos-switch-main` unit, which polkit lets the user start, and prints the
-  switch's output and any failed units. After a landing changes a closure,
-  the agent that landed it runs `system-switch --with-home` on asus at once,
-  without asking, and reports the outcome. A landing declared `behavior`
-  changes a closure; a `refactor` landing does not (`ci land` proves it), so
-  it never triggers a switch. Ask first instead when the landing is declared
-  `breaking`, since its manual steps come before activation, or when it
-  touches boot, storage, encryption, or security configuration. Switch
-  another host, or switch when no landing changed a closure, only when the
-  user asks.
+  switch's output and any failed units. After `luvus-deliver` moves `main`,
+  the agent that delivered runs `system-switch --with-home` on asus at once,
+  without asking, and reports the outcome; a delivery that changed no closure
+  creates no generation. Ask first instead when the change needs manual steps
+  before activation, or touches boot, storage, encryption, or security
+  configuration. Switch another host only when the user asks.
 - The switch is staged: the new system runs without becoming the boot default
   while the host's health checks are watched, and a breach reverts it and
   writes a report under `/var/lib/nixos-switch-main/reports/`. When a switch
@@ -170,168 +167,77 @@
 
 ## Version control
 
-- Use Jujutsu for all repository mutations: changes, descriptions, bookmarks,
-  rebases, conflict resolution, commits, and pushes. Git is allowed only for
-  read-only inspection and JJ's Git backend interoperability.
-- Start work with `jj status`, `jj diff`, and `jj log`. Preserve unrelated
-  working-copy changes.
-- Before risky history operations (`jj rebase`, `jj squash`, `jj abandon`,
-  or `jj split`), create a checkpoint with
-  `.agents/skills/jj/scripts/jj-checkpoint`.
-- Undo only your own operations. For a `ci` recovery point, run
-  `ci recover ID`: it reverts just the operations that `ci` command tagged.
-  Otherwise revert each of your operations since the checkpoint, newest
-  first, with `jj op revert OP`. The operation log is shared by every
-  workspace, so `jj op restore` rewinds other sessions' dispatches and
-  landings too; on 2026-10-16 it undid a concurrent dispatch. Use it only as
-  a last resort, and only with the user's approval while other workspaces
-  are active.
-- GitHub (`origin` remote) hosts `main` and every topic branch. Tangled
-  (`tangled`) only mirrors `main` and its release tags, which `ci land`
-  pushes there after each landing. Never merge a GitHub pull request: squash
-  and rebase merges rewrite the tested commit and lose change IDs and the
-  impact declarations keyed by them. The `main-checks` ruleset requires the
-  `ci land` commit status, so only `ci land` can move `main`.
-- Use `ci sync` only from an empty working copy without an active task owner.
-  It fetches `origin`,
-  advances the local `main` bookmark to `main@origin`, and rebases the working
-  copy onto it.
-- Use `ci` for all trunk work, including lock-file-only updates.
-- Before implementing or dispatching, inspect the working-copy diff for mixed
-  deliverables. Split unrelated work into separate JJ changes instead of
-  carrying it in one change. Choose the graph shape by semantic dependency:
-  use a parent/child chain only when the child needs the parent's code, schema,
-  configuration, or other behavior to build, test, or make sense; use sibling
-  changes when each part is independently reviewable and can land without the
-  other. Do not make changes parent/child merely because they touch related
-  files or were discovered in the same task.
-- JJ has this split built in: `jj split` (or `jj split -r <rev>`) creates a
-  parent/child pair, while `jj split --parallel -r <rev>` creates siblings.
-  When both changes touch one file, split by hunk with
-  `jj-hunk split -r <rev> --query HUNKSET`, never with an interactive `-i`;
-  the `jj` skill covers its query language. Use explicit descriptions for both resulting changes, verify the resulting
-  graph with `jj log`, and checkpoint before the split as with other history
-  surgery. If more than two coherent changes are present, repeat the split
-  and re-evaluate the dependency graph after each operation.
+- This repository takes writes through Git, driven by luvus. jj and `ci` are
+  set aside here; they stay installed for other repositories, so their
+  global rules do not apply in this one. It stays colocated, so read-only jj
+  commands such as `jj log` still work, but make every change with Git.
+  `dotfiles.tooling.gitWorkflowRepos` lists it, so the jj write guard and
+  ci's context-status hooks leave sessions here, and in its worktrees, alone.
+- One task, one branch, one worktree. Start a task from the luvus
+  orchestration board (`Ctrl+Space o`, or `luvus task add` and then
+  `luvus task start ID --agent AGENT`), which creates a Git worktree on its
+  own branch (`luvus/tID`) under `~/.luvus/worktrees/`, or with
+  `luvus worktree create BRANCH` for work outside the board. Work only in the
+  worktree your task owns; never make a task's edits in the `~/dotfiles`
+  main checkout, which other sessions share.
+- Give each task the file globs it will touch (`--paths`), so luvus's path
+  leases keep two tasks off the same files, and its dependencies (`--deps`)
+  when it needs another task's work first.
+- Commit with ordinary Git, in small commits with concise, descriptive
+  messages. Do not rewrite commits that `luvus/integration` or another
+  branch already contains, and never push `main` directly.
+- Before finishing, check the branch's diff for mixed deliverables, and split
+  unrelated work into separate tasks rather than carrying it in one branch.
+- The jj workspaces under `.jj-workspaces/` and their topics predate this
+  switch. Leave them alone unless the user asks: they hold earlier work,
+  some of it the user's.
 
-## Preflight and landing
+## Delivery
 
-- `prek` is installed declaratively. Run `prek run --all-files` or
-  `ci preflight` before dispatch; JJ changes do not invoke Git hooks.
-- Declare every JJ change's impact with `ci impact set CLASS`, not in its
-  description, which stays prose. Use `refactor` when no NixOS closure
-  changes (refactors, docs, CI, and tooling; `ci land` verifies it),
-  `behavior` for a user-facing change, and `breaking STEP...` for a
-  user-facing change that needs manual steps, one argument per step. Pass
-  `-r REV` to declare another revision of a stack; declaring again replaces
-  the declaration. It is recorded in this machine's ci log, keyed by change
-  ID, so dispatch and land the topic from the machine that declared it. Keep
-  refactors and user-facing changes in separate topics or stack layers. Each
-  behavior or breaking revision that lands becomes a `YYYY.MM.DD.N` release;
-  refactors cut none. See the ci repository's README
-  (tangled.org/schlich.tngl.sh/ci).
-- `ci` comes from the `ci` flake input. Change the workflow in its own
-  repository, then move this one to it with `nix flake update ci`; try an
-  unreleased copy here with `CI_SCRIPT=/path/to/ci.nu ci ...`. On the
-  workstation, `ci-input-watch` does that update for each new ci release: a
-  path unit wakes it when `ci land` records a release in the ci log, and it
-  dispatches the bump from `.jj-workspaces/ci-input-update` and notifies.
-  Landing it stays a deliberate `ci land` there. `ci-input-watch` shows what
-  `main` pins and whether a bump is open; `ci-input-watch check` runs the
-  check by hand.
-- Use a concise JJ change description. `ci dispatch` validates and pushes
-  the topic's stable `jj-*` branch to GitHub; open a GitHub pull request from that branch when the topic needs review, and never merge it.
-  Ordinary dispatch keeps editing the same change ID. Deliver it with
-  `ci land` only at topic closeout.
-- For a small change that affects a single host, a user request to dispatch (or to publish)
-  also authorizes delivery: run `ci dispatch`, then `ci land` right away
-  (its local clearance builds the checks), switch as "Applying
-  configuration" describes, and `ci park` afterwards. Still stop after dispatching
-  and ask before landing when the change affects several hosts, is part of a
-  stack, is declared `breaking`, or touches boot, storage, encryption, or
-  security configuration. A failed validation, pipeline, or rebase conflict
-  stops delivery and is reported, never resolved automatically.
-- Keep one coherent topic per Codex task. Use one stable JJ change for a single
-  deliverable, but allow a small stack of changes when the task contains
-  multiple deliverables that should be split. Do not create unrelated
-  follow-up changes after dispatch. A topic is a revision; a workspace is
-  a working copy for one actor. Start a topic with `ci new -m MESSAGE` in the
-  current workspace, which leaves earlier topics as siblings (`jj edit`
-  returns to one). An agent session works only in a workspace whose change
-  it owns. `~/dotfiles` is free when it sits idle on trunk (nothing above
-  `main@origin` but an empty change, no live session owning it): the
-  session's first edit claims it, and `ci new -m MESSAGE` names the claimed
-  change in place. A named workspace under `.jj-workspaces/` belongs to the
-  topic it was named for; never start another task there, even when it sits
-  idle on trunk and the hooks list it as free. When `~/dotfiles` is busy,
-  create a workspace named for the new task with `ci start NAME`. The hooks
-  refuse edits to a workspace another live session owns, or to one holding a
-  topic no session owns, such as the user's own work in progress. Never take
-  over a topic the user started unless they hand it over with `ci adopt`.
-  From a Claude Code worktree under `.claude/worktrees/`, which is not a JJ
-  workspace, `ci start` creates the workspace inside the worktree; edit only
-  there. Use
-  `ci rebase` to update a topic in place. A conflict-free
-  topic does not need to catch up with `main` before landing; `ci land` rebases it. `ci sequence --apply` restacks only stacked or
-  conflicting topics, pushes only conflict-free rebases, and leaves conflicted
-  topics local for resolution. Run `ci sequence --apply --all` only when the user
-  asks to rebase every dispatched topic.
-- Before archiving a delivered topic, run `ci park` and confirm success.
-  It verifies that the current head landed and removes a workspace that
-  `ci start` created. Do not pass `--keep`: a kept workspace keeps its old
-  name and gets reused for unrelated work. `~/dotfiles` stays on main
-  and is free again.
-  Use `ci cancel` for a topic that will not land.
-  A failed pipeline, conflicts, or undispatched edits keep the task open. Native
-  archive-button clicks are not a closeout hook.
-- When `ci land` reports that it parked the workspace, which it does for a
-  `ci start` workspace, the topic is already parked; do not run `ci park`.
-- Once `ci park` or `ci cancel` succeeds, the session's work is done, so
-  offer to archive it in the same turn. In the Claude desktop app, end the
-  turn with the wrap-up's `archive` action as the first button; elsewhere,
-  say in one line that the session can be archived. Archive only on the
-  user's click or yes. A parked topic left with its session open is how
-  sessions pile up in the sidebar.
-- A `ci start` workspace leaks when its session stops after landing without
-  parking. The daily `ci-prune` timer (`modules/programs/ci.nix`) removes
-  such workspaces and landed branches after a day idle; `ci prune` shows
-  what it would remove. It never archives sessions.
-- `ci land` owns delivery to `main`. It rebases the topic onto
-  `main@origin`, proves a declared refactor leaves every closure unchanged,
-  builds every flake check at that exact commit on the local machine, and only
-  then sets the `ci land` status on it, fast-forwards `main`, mirrors it to
-  Tangled, and tags releases. Never push `main` any other way. It needs `gh`
-  signed in to set the status. `--clearance github` waits for GitHub Actions
-  on the exact head instead.
-- GitHub Actions (`.github/workflows/nix-ci.yml`) is the remote CI: every
-  push of `main` or a `jj-*` topic branch to GitHub starts it, and every
-  `ci dispatch` pushes one. There is no Tangled spindle. The nix-ci workflow
-  and the local clearance run the same check set: each builds
-  every attribute of `checks.x86_64-linux` and skips checks whose outputs are
-  already cached. Those checks evaluate every host but build no system
-  closure: the headless system, the desktop system, and the desktop's
-  primary home are `remoteChecks`,
-  which GitHub Actions builds after each push without blocking a landing. A closure that fails to build can land, but no host
-  activates it, since a switch builds before it stages anything. Add a check
-  by adding a flake check; neither needs a change.
-
-## Stacked topics
-
-- Use a stack only for a preplanned chain of dependent, independently
-  reviewable JJ changes, or when `ci sequence` reports that a topic conflicts
-  with a dispatched one. Put a refactor below the user-facing change it
-  enables, never above it. In that case, stack the later topic on the earlier
-  one and resolve its conflicts locally before pushing. Keep unrelated,
-  conflict-free work in separate branches.
-- JJ creates, describes, rebases, and pushes every layer. The stack lives in
-  the commit graph: `ci dispatch` stacks a topic on the dispatched topic it is
-  built on or conflicts with, and `ci sequence --apply` restacks children after a
-  parent changes.
-- Land parents first. `ci land` refuses a topic whose parent has not
-  landed; once it has, the child is already on `main` and lands next.
-- For stacked review, `ci dispatch --stack` pushes each revision as its own
-  branch; open a GitHub pull request for each against the branch below it.
-  Pull requests are for review only; `ci land` still delivers.
+- A task's quality gate is the repository's flake checks: create tasks with
+  `--gate "nix-fast-build --skip-cached --no-nom --flake path:.#checks.x86_64-linux"`,
+  or `--gate "prek run --all-files"` for documentation-only work.
+  `luvus task done ID` runs it; a failure holds the task at `review` with the
+  output saved on the task. Run `prek run --all-files` before marking a task
+  done either way.
+- `luvus task merge ID` merges a done task's branch into `luvus/integration`
+  in luvus's own integration worktree, one task at a time. A conflict aborts
+  the merge and marks the task `blocked`: merge `luvus/integration` into the
+  task's branch in its worktree, resolve, rerun the gate, and merge again.
+  Never resolve conflicts automatically.
+- `luvus-deliver` delivers `luvus/integration` to `main`. It pushes the
+  branch, waits for nix-ci's `nix flake checks` on that exact commit, then
+  fast-forwards `main` to it. The `main-checks` ruleset admits only a commit
+  with that check passed, and GitHub refuses a push that is not a
+  fast-forward. It waits for CI, so run it as a `job-log` job. When
+  `luvus/integration` no longer contains `origin/main`, merge `origin/main`
+  into it first.
+- For a small change that affects a single host, a user request to publish
+  or deliver authorizes the whole path: gate, merge, `luvus-deliver`, and the
+  switch "Applying configuration" describes. Stop and ask before delivering
+  when the change affects several hosts or touches boot, storage,
+  encryption, or security configuration. A failed gate, CI run, or merge
+  conflict stops delivery and is reported.
+- Once a task is delivered, remove its worktree with
+  `luvus worktree remove PATH`, which refuses while a task, lease, or live
+  agent still uses it; the branch stays. Then offer to archive the session
+  in the same turn: in the Claude desktop app, end the turn with the
+  wrap-up's `archive` action as the first button; elsewhere, say in one line
+  that the session can be archived. Archive only on the user's click or yes.
+- GitHub (`origin`) hosts `main`, `luvus/integration`, and any branch pushed
+  for review. Open a pull request from a task branch when the user wants
+  review, but deliver through `luvus-deliver`, never GitHub's merge button.
+  Tangled (`tangled`) mirrored `main` through `ci land`; that mirror is
+  paused while this repository runs on luvus.
+- GitHub Actions (`.github/workflows/nix-ci.yml`) is the remote CI: a push of
+  `main` or a `luvus/**` branch, or a pull request, starts it. It builds
+  every attribute of `checks.x86_64-linux`, skipping cached outputs; a push
+  to `main` skips them, since that commit passed on `luvus/integration`.
+  The headless system, the desktop system, and the desktop's primary home
+  are `remoteChecks`, which build after each push without blocking delivery.
+  A closure that fails to build can reach `main`, but no host activates it,
+  since a switch builds before it stages anything. Add a check by adding a
+  flake check.
 
 ## User-visible progress
 
@@ -349,10 +255,11 @@
 ## Agents
 
 - Use the `trunk-triage` agent (GPT-5.6 Luna) only for read-only repository
-  status, pipeline and pull request summaries, stack inspection, and
-  formatting-only fixes.
-- Escalate configuration edits, conflicts, failed validation, JJ mutations,
-  forge writes, and landing decisions to the primary agent.
+  status, pipeline and pull request summaries, and formatting-only fixes.
+- Escalate configuration edits, conflicts, failed validation, Git mutations,
+  forge writes, and delivery decisions to the primary agent.
+- Hand work between agents with luvus (`luvus agent prompt`, `read`, `keys`,
+  and `fork`), and coordinate parallel tasks on its orchestration board.
 - Do not inspect `/nix/store` routinely. Prefer workspace files and Nix MCP
   package, option, and documentation queries; inspect the store only for an
   explicit user request, a specific path reported by a failure, or necessary
@@ -369,8 +276,8 @@
   wire client exposure through `modules/tooling/ai/`.
 - Run sessions for this repository locally, through Remote Control, or over
   SSH on a host with the same agent configuration. Do not start or hand off
-  a cloud session for it: cloud sessions cannot run `ci`, use this
-  machine's impact declarations, or activate a host. See `docs/claude-session-environments.md`, which
+  a cloud session for it: cloud sessions cannot reach this machine's luvus
+  server or activate a host. See `docs/claude-session-environments.md`, which
   also covers SSH failures inside a sandboxed local session.
 
 ## Project memory
@@ -402,36 +309,28 @@ plans, features, bugs, specs, architecture, and releases as an IWE graph under
 - Every declared host must evaluate. A host whose `policy.criticality` is `disposable` evaluates in `remoteChecks`, which GitHub Actions reports without blocking a landing, as do previews of a host with modules it has not adopted yet; every other host gates it through `checks`. Keep policy and aspect metadata machine-readable so affected hosts, risk, checks, and reviewer domains can be identified.
 - Do not silently alter boot, storage, filesystem, encryption, swap, or security configuration. These are high-risk changes and generated hardware files remain host-local.
 - Never put plaintext secrets in the repository or Nix store. Preserve encrypted inputs and recovery paths.
-- Switch the current system only through `system-switch` from landed `main`: after a closure-changing landing as "Applying configuration" describes, or when the user asks. Never use `nixos-rebuild test` or another activation outside it. The canary's own deployment timer (`policy.autoDeploy`) switches homelab on its own, and enabling it for another host is a policy change for the user to request.
+- Switch the current system only through `system-switch` from delivered `main`: after a delivery as "Applying configuration" describes, or when the user asks. Never use `nixos-rebuild test` or another activation outside it. The canary's own deployment timer (`policy.autoDeploy`) switches homelab on its own, and enabling it for another host is a policy change for the user to request.
 - The architecture and safe recovery flow are documented in `docs/architecture.md`.
 
 Repository checks are `nix fmt` and `nix flake check --no-build path:.`. The
 flake checks evaluate the workstation and headless systems, and `remoteChecks`
 build them, so build either only when explicitly requested because they are
-expensive; `nix-fast-build --skip-cached --flake path:.#checks.x86_64-linux` runs the same set as `ci land`.
+expensive; `nix-fast-build --skip-cached --flake path:.#checks.x86_64-linux` runs the same set as nix-ci and the luvus quality gate.
 `nixos-rebuild switch` is never an agent validation step.
 
 ## Continuous integration and merge-conflict policy
 
-Keep active work continuously integrated: start each topic at
-`main@origin`, rebase before review updates and when a topic conflicts with
-trunk, and never let two concurrent actors share one working copy. `ci dispatch` performs the
-final rebase and validation before pushing; `ci land` does the same and
-lands only the commit the landing clearance passed.
+Keep active work continuously integrated: branch each task from
+`origin/main`, merge `origin/main` into a long-running task branch when it
+falls behind or conflicts, and never let two concurrent actors share one
+worktree. luvus's merge gate integrates finished tasks one at a time in its
+own worktree, and `luvus-deliver` moves `main` only to a commit nix-ci
+passed.
 
-Use `ci conflicts` after a rebase to list conflicted revisions and files.
-A conflicted rebase has already rewritten the topic, so resolve revisions from
-oldest to newest and validate only after the conflict report is clear. The only
-unattended rebase is `ci sequence --apply`, and only when it is conflict-free: it
-rebases a checked-out topic from that topic's own workspace, and only after a
-trial merge predicts no conflict. Never resolve conflicts automatically.
+Never resolve conflicts automatically. When `luvus task merge` reports a
+conflict, the task is `blocked`: resolve it in the task's worktree, rerun
+the gate, and merge again.
 
-Herdr or Paseo may monitor an existing JJ workspace and notify its
-owner about stale trunk, topic, or pipeline state. They must not take
-ownership of the workspace or silently rebase, resolve conflicts, dispatch,
-land, or advance a stack.
-
-Prefer one ordinary branch for a coherent topic. Use a stack only for independently
-reviewable changes with real dependency order, including conflict order
-reported by `ci sequence`; keep children based on their
-immediate parent and rebase the remaining stack after each parent lands.
+Order dependent work with task dependencies (`--deps`): a dependent task
+waits until its dependency is merged into `luvus/integration`. Keep
+unrelated, conflict-free work in separate tasks.

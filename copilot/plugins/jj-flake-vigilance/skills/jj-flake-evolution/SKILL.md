@@ -1,4 +1,4 @@
----
+______________________________________________________________________
 
 ## name: jj-flake-evolution description: Repository workflow for evolving this flake with jj discipline, GitHub publication, and targeted local Nix validation.
 
@@ -6,13 +6,15 @@
 
 This skill is the repeatable workflow for **flake and host evolution in schlich/dotfiles**.
 
+> Superseded: schlich/dotfiles now takes writes through Git and luvus. Follow
+> its `AGENTS.md` (Version control, Delivery) where this skill says otherwise.
+
 ## Project context
 
 - Customization scope: project-specific
 - Host repository: schlich/dotfiles
 - Language: Nix and Nushell
 - Workspace root: `.`
-- Hooks: .github/hooks/jj-flake-vigilance.json
 - GitHub remote: `origin https://github.com/schlich/dotfiles.git`
 - Default PR base: `main`
 - Build: `nix build path:.#homeConfigurations.schlich@asus.activationPackage`

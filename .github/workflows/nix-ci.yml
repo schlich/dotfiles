@@ -1,15 +1,15 @@
 name: nix-ci
 # Build every flake check and verify formatting for topic branches and pull
-# requests; main, which `ci land` already cleared, builds only remoteChecks.
-# Impact declarations live in the landing machine's ci log, so `ci land`
-# classifies the topic there rather than here.
+# requests; main, which only receives a commit already cleared here on
+# luvus/integration, builds only remoteChecks.
 on:
   pull_request:
-  # `ci land --gate github` pushes the topic branch and waits for these
-  # checks on its exact head before fast-forwarding main.
+  # Delivery pushes luvus/integration, waits for `nix flake checks` on its
+  # exact head, then fast-forwards main to that commit (AGENTS.md).
   push:
     branches:
       - main
+      - "luvus/**"
       - "jj-*"
   workflow_dispatch:
 permissions:
@@ -25,8 +25,8 @@ concurrency:
 jobs:
   checkmate:
     name: Checkmate formatting and unit-test skeleton
-    # Only `ci land` pushes main, after Prek and its local clearance passed
-    # that exact commit, so a push to main skips the checks again here.
+    # The main-checks ruleset admits only a commit whose `nix flake checks`
+    # passed on luvus/integration, so a push to main skips the checks here.
     if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-latest
     steps:
@@ -99,7 +99,7 @@ jobs:
   check:
     name: flake check (${{ matrix.check }})
     needs: discover
-    # ci land's local clearance already built these on main's exact commit.
+    # The luvus/integration run already built these on main's exact commit.
     if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-latest
     strategy:
@@ -115,7 +115,7 @@ jobs:
   remote-check:
     # The flake's remoteChecks, the system closures among them, build here
     # after each push without blocking: no required status needs
-    # this job, and ci land builds only checks. A failure on main is a
+    # this job. A failure on main is a
     # regression that landed; the staged switch keeps it off the hosts.
     name: remote check (${{ matrix.check }}, non-blocking)
     needs: discover
@@ -139,7 +139,7 @@ jobs:
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
-      # A push to main skips the matrix, which ci land cleared before pushing.
+      # A push to main skips the matrix, which luvus/integration cleared first.
       - name: Require every flake check to pass
         env:
           DISCOVER: ${{ needs.discover.result }}
