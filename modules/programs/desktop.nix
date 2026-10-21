@@ -83,6 +83,14 @@ in
         wallpaper.default.path = "${../../wallpapers/niri-navigation.svg}";
         system.monitor.enabled = true;
 
+        # Light by day, dark from sunset, on the sunrise/sunset schedule of
+        # the location Noctalia resolves from the public IP. The shell
+        # follows the app palette, and the GNOME color-scheme follows both.
+        # A mode picked in the bar's theme_mode widget is saved to
+        # ~/.local/state/noctalia/settings.toml and overrides this.
+        theme.mode = "auto";
+        location.auto_locate = true;
+
         bar = {
           # Navigation, this workspace's windows, media, and time. Rarely used
           # tools fold into an accordion group that expands on hover.
