@@ -7,10 +7,8 @@
 {
   den.aspects.workstation = {
     meta = config.myConfig.aspectPolicy.workstation;
-    includes = [
-      den.aspects.base
-      den.aspects.paseo
-    ];
+    # The Paseo daemon runs only where a host's `services.paseo` asks for it.
+    includes = [ den.aspects.base ];
     nixos =
       { pkgs, ... }:
       {

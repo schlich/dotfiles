@@ -289,10 +289,6 @@ spawn-sh-at-startup "exec niri-desk watch-choices"
 // (Noctalia plugin schlich/niri-hints).
 spawn-sh-at-startup "exec niri-keymap hints"
 
-// Run Handy in the tray so Mod+D reaches it; `--toggle-transcription` only
-// signals a running instance.
-spawn-at-startup "handy" "--start-hidden"
-
 hotkey-overlay {
     skip-at-startup
 }
@@ -379,7 +375,7 @@ window-rule {
   default-window-height { proportion 0.8; }
 }
 
-// Desktop coding agents (T3 Code autostarts) are a choice group, so
+// Desktop coding agents are a choice group, so
 // `session.nu watch-choices` keeps them in one tabbed column beside the work,
 // Mod+A brings that column to the focused workspace, Mod+Shift+A floats one
 // over it instead (`session.nu peek`), and Mod+J/K or Mod+Alt+1..4 switch
@@ -676,8 +672,10 @@ binds {
     // Mod+D is Handy's dictation, which types what you say into the focused
     // field: it starts listening, and again stops and types. Mod+Shift+D
     // cancels. Wayland gives Handy no global shortcut of its own, so niri
-    // signals the running instance. Handy's overlay shows while it listens.
-    Mod+D repeat=false hotkey-overlay-title="Dictate: start or stop typing by voice" { spawn "handy" "--toggle-transcription"; }
+    // signals the running instance. Handy no longer starts with the session:
+    // the first press starts it in the tray, and the next one dictates.
+    // Handy's overlay shows while it listens.
+    Mod+D repeat=false hotkey-overlay-title="Dictate: start or stop typing by voice" { spawn-sh "if pgrep -x handy >/dev/null; then exec handy --toggle-transcription; else exec handy --start-hidden; fi"; }
     Mod+Shift+D repeat=false hotkey-overlay-title="Dictate: cancel" { spawn "handy" "--cancel"; }
 
     // Alternatively, there are commands to move just a single window:
