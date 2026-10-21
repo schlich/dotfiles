@@ -136,11 +136,12 @@ layout {
     // - "always", the focused column will always be centered.
     // - "on-overflow", focusing a column will center it if it doesn't fit
     //   together with the previously focused column.
-    // The laptop panel fits two columns, so focus scrolls only when the next
-    // column would not fit beside the current one.
-    center-focused-column "on-overflow"
+    // Two or more columns stay left-aligned: focus scrolls a column just
+    // into view at the edge instead of centering it.
+    center-focused-column "never"
 
-    // A lone window sits in the middle rather than against the left edge.
+    // A lone window sits in the middle rather than against the left edge;
+    // this is the only centering.
     always-center-single-column
 
     // Mod+R cycles half, two thirds and the whole panel; a third is too
