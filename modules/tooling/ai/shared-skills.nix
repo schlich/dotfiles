@@ -49,3 +49,7 @@
   "hegel"
   "hegel-review"
 ] (name: "${inputs.hegel-skill}/skills/${name}")
+# HumanLayer ships each skill inside its own Claude plugin.
+// inputs.nixpkgs.lib.genAttrs [
+  "show-me"
+] (name: "${inputs.humanlayer-skills}/plugins/${name}/skills/${name}")

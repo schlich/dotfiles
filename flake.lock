@@ -1053,6 +1053,22 @@
         "url": "https://cdn.jsdelivr.net/npm/htmx-ext-ws@2.0.4"
       }
     },
+    "humanlayer-skills": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1791496465,
+        "narHash": "sha256-W3dFEdIi4sz4CAZvaj1xjtN7xTRebF/WHOTQYCIe2Xo=",
+        "owner": "humanlayer",
+        "repo": "skills",
+        "rev": "653b6411c1f70c275a18e37673b042ff99f67ceb",
+        "type": "github"
+      },
+      "original": {
+        "owner": "humanlayer",
+        "repo": "skills",
+        "type": "github"
+      }
+    },
     "ibm-plex-mono-src": {
       "flake": false,
       "locked": {
@@ -1807,6 +1823,7 @@
         "hegel-skill": "hegel-skill",
         "hex": "hex",
         "home-manager": "home-manager",
+        "humanlayer-skills": "humanlayer-skills",
         "iets": "iets",
         "impermanence": "impermanence",
         "iwe": "iwe",
