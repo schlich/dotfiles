@@ -17,21 +17,21 @@ let
     font-family = "Monaspace Krypton";
     # Splits and tabs replace Zellij panes and tabs, on the Alt keys Zellij
     # used; Niri columns and workspaces carry layouts and sessions. Alt+n/i/o
-    # stay with Helix.
+    # and Alt+arrows stay with Helix (sibling and selection moves).
     keybind = [
       "alt+h=goto_split:left"
-      "alt+left=goto_split:left"
       "alt+l=goto_split:right"
-      "alt+right=goto_split:right"
       "alt+j=goto_split:down"
-      "alt+down=goto_split:down"
       "alt+k=goto_split:up"
-      "alt+up=goto_split:up"
       "alt+f=toggle_split_zoom"
       "alt+equal=equalize_splits"
       "alt+bracket_left=previous_tab"
       "alt+bracket_right=next_tab"
-    ];
+      # Defaults that take keys inner programs expect: Alt+digit picks a
+      # result in Atuin's search, and Ctrl+Enter submits in agent prompts.
+    ]
+    ++ map (n: "alt+digit_${toString n}=unbind") (lib.range 1 9)
+    ++ [ "ctrl+enter=unbind" ];
   };
 
   # Ghostty runs as one long-lived instance, so the wrapper names the copy in

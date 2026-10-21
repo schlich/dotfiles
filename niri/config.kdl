@@ -444,7 +444,9 @@ binds {
     Mod+S { spawn-sh "noctalia msg panel-toggle control-center"; }
     Mod+Shift+S { spawn-sh "noctalia msg settings-toggle"; }
     Mod+B { spawn "google-chrome" "--profile-directory=Default"; }
-    Super+Alt+L { spawn "swaylock"; }
+    // Mod+Alt+H/J/K/L belong to the session grid below, so lock sits on Esc's
+    // family: Mod+Escape toggles passthrough, Mod+Shift+Escape leaves the desk.
+    Mod+Shift+Escape hotkey-overlay-title="Lock screen" { spawn "swaylock"; }
     // Alt+Tab is niri's recent-windows switcher (see recent-windows above).
 
     // You can also use a shell. Do this if you need pipes, multiple commands, etc.

@@ -83,13 +83,18 @@ let
     git_status.disabled = true;
   };
 
+  # Atuin binds Ctrl+R and Up only for the emacs and vi modes, and config.nu
+  # runs Nushell in helix mode, where they never fired; add the helix modes,
+  # and fail the build if Atuin's init stops matching.
   atuinNushellConfig = pkgs.runCommandLocal "atuin-nushell-config.nu" { } ''
     export HOME="$TMPDIR/home"
     mkdir -p "$HOME"
     ${atuinPackage}/bin/atuin init nu \
       | ${pkgs.gnused}/bin/sed '0,/name: atuin$/{s/name: atuin$/name: atuin_search/}' \
       | ${pkgs.gnused}/bin/sed '0,/name: atuin$/{s/name: atuin$/name: atuin_up/}' \
+      | ${pkgs.gnused}/bin/sed 's/mode: \[emacs, vi_normal, vi_insert\]/mode: [emacs, vi_normal, vi_insert, helix_normal, helix_insert]/' \
       > "$out"
+    ${pkgs.gnugrep}/bin/grep -q 'helix_insert' "$out"
   '';
   atuinPtyProxyNushellConfig = pkgs.runCommandLocal "atuin-pty-proxy-nushell-config.nu" { } ''
     export HOME="$TMPDIR/home"
