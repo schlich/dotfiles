@@ -19,6 +19,10 @@
     };
   };
 
+  # HEX's Wayland hotkeys read every /dev/input/event* node, which exposes all
+  # keyboard input to processes running as this user (modules/programs/hex.nix).
+  users.users.schlich.extraGroups = [ "input" ];
+
   networking.hostName = "asus";
   networking.networkmanager = {
     enable = true;

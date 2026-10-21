@@ -669,14 +669,15 @@ binds {
     Mod+M repeat=false hotkey-overlay-title="Recorder: start or stop a spoken note" { spawn "dicta" "toggle"; }
     Mod+Shift+M repeat=false hotkey-overlay-title="Recorder: discard this take" { spawn "dicta" "cancel"; }
 
-    // Mod+D is Handy's dictation, which types what you say into the focused
-    // field: it starts listening, and again stops and types. Mod+Shift+D
-    // cancels. Wayland gives Handy no global shortcut of its own, so niri
-    // signals the running instance. Handy no longer starts with the session:
-    // the first press starts it in the tray, and the next one dictates.
-    // Handy's overlay shows while it listens.
-    Mod+D repeat=false hotkey-overlay-title="Dictate: start or stop typing by voice" { spawn-sh "if pgrep -x handy >/dev/null; then exec handy --toggle-transcription; else exec handy --start-hidden; fi"; }
-    Mod+Shift+D repeat=false hotkey-overlay-title="Dictate: cancel" { spawn "handy" "--cancel"; }
+    // Mod+D is HEX's dictation, which types what you say into the focused
+    // field: it starts listening, and again stops and types; Esc cancels.
+    // HEX reads the keyboard itself and does not start with the session, so
+    // this bind starts its service on the first press and otherwise only
+    // keeps Mod+D from reaching the focused window. HEX's shortcut must be
+    // Super+D in Toggle mode, set once in its Settings (Mod+Shift+D). Its
+    // pill shows while it listens.
+    Mod+D repeat=false hotkey-overlay-title="Dictate: start or stop typing by voice" { spawn-sh "systemctl --user is-active --quiet hex.service || exec hex start"; }
+    Mod+Shift+D repeat=false hotkey-overlay-title="Dictate: settings, shortcut, and model" { spawn "hex" "app"; }
 
     // Alternatively, there are commands to move just a single window:
     // Mod+Ctrl+1 { move-window-to-workspace 1; }

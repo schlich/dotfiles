@@ -5,6 +5,7 @@
     ./cli.nix
     ./desktop.nix
     ./dicta.nix
+    ./hex.nix
     ./input-stack.nix
     ./jj-hunk.nix
     ./shell.nix
