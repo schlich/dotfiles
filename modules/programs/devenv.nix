@@ -64,6 +64,11 @@ let
   devenv = import ../../lib/wrap-with-config.nix { inherit lib pkgs; } {
     package = pkgs.devenv;
     env.DEVENV_USER_CONFIG = "${userConfig}";
+    # devenv ships secretspec beside itself; the repository's own copy in
+    # modules/home/packages.nix is the one on PATH.
+    postBuild = ''
+      rm "$out/bin/secretspec"
+    '';
   };
 in
 {
