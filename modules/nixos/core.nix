@@ -4,6 +4,7 @@
   imports = [
     ./boot-postmortem.nix
     ./closure-diff.nix
+    ./devenv-cache.nix
     ./flakehub-cache.nix
     ./system-switch.nix
   ];

@@ -4,6 +4,7 @@
   imports = [
     ./cli.nix
     ./desktop.nix
+    ./devenv.nix
     ./dicta.nix
     ./hex.nix
     ./input-stack.nix
