@@ -41,6 +41,10 @@ def main(nix_log, out_path):
     # Create the file first, so the nix that opens it appends to ours.
     open(nix_log, "ab").close()
     with open(nix_log, "rb") as src, open(out_path, "ab") as out:
+        # Marks when tracing began, so the trace's window includes
+        # evaluation that logs no activity before the first query or build.
+        out.write(str(time.time_ns() // 1000).encode() + b'\t{"action":"collector-start"}\n')
+        out.flush()
         pending = b""
         while True:
             chunk = src.read(1 << 20)

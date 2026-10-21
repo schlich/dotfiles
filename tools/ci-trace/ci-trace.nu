@@ -98,6 +98,7 @@ def load-spans [events: path]: nothing -> record {
     } | compact
   )
   if ($rows | is-empty) { return null }
+  # collect.py's collector-start row, when present, is the earliest.
   let t0 = ($rows.ts | math min)
   let t_end = ($rows.ts | math max)
   let stops = ($rows | where action == stop | uniq-by id | select id ts | rename id end)
