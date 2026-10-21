@@ -61,8 +61,9 @@ When the input replaces or overrides something nixpkgs ships, declare
 `dotfiles.nixpkgsWatch.NAME` in the same module.
 
 `flake-add` writes `flake.nix` itself, so Claude Code's checkpoints do not
-cover that edit; Git does, so commit before running it. A `flake.nix` whose inputs block it cannot find
-goes through `fh add`, which also adds the name to the `outputs` arguments.
+cover that edit; Git does, so commit before running it. A `flake.nix` whose
+inputs block it cannot find goes through `fh add`, which also adds the name to
+the `outputs` arguments.
 Remove that name if `outputs` takes `inputs@{ ..., ... }`.
 
 ## 5. Finish the task
