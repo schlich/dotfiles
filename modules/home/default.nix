@@ -4,6 +4,7 @@
 
 {
   imports = [
+    ./ci-trace.nix
     ./nix.nix
     ./nixpkgs-watch.nix
     ./retired-files.nix
