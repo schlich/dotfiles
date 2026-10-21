@@ -12,19 +12,20 @@ def main [script: string] {
   }
   ^git -C $repo worktree add --quiet --detach $linked
   let stub = ($dir | path join hook)
-  "#!/bin/sh\nprintf 'hook %s: ' \"$1\"\ncat\necho oops >&2\nexit 3\n" | save $stub
+  "#!/bin/sh\nprintf 'hook %s: ' \"$*\"\ncat\necho oops >&2\nexit 3\n" | save $stub
   chmod +x $stub
   let repos = ([$repo] | to json --raw)
   let cases = [
     [name cwd expect];
     ["skips the allowed repository" $repo null]
     ["skips its linked worktree" $linked null]
-    ["runs the hook in another repository" $other "hook guard: "]
-    ["runs the hook outside any repository" $dir "hook guard: "]
+    ["runs the hook in another repository" $other "hook guard --hook: "]
+    ["runs the hook outside any repository" $dir "hook guard --hook: "]
   ]
   let failures = ($cases | each {|c|
     let payload = ({ hook_event_name: PreToolUse, cwd: $c.cwd } | to json --raw)
-    let r = ($payload | ^nu --stdin $script --repos $repos $stub guard | complete)
+    # --hook checks that the hook's own flags reach it, as context-status's do.
+    let r = ($payload | ^nu --stdin $script --repos $repos $stub guard --hook | complete)
     let ok = if $c.expect == null {
       $r.exit_code == 0 and $r.stdout == "" and $r.stderr == ""
     } else {

@@ -84,6 +84,11 @@
         directory = ".gnupg";
         mode = "0700";
       }
+      # Luvus's session, task ledger, leases, and the task worktrees.
+      {
+        directory = ".luvus";
+        mode = "0700";
+      }
       ".metavr"
       ".mozilla"
       ".newsletter-agent"
@@ -193,7 +198,6 @@
       ".local/share/atuin"
       ".local/share/chrome-devtools-mcp"
       ".local/share/com.github.githubapp"
-      ".local/share/com.pais.handy"
       ".local/share/cross.stream"
       ".local/share/cursor-agent"
       ".local/share/dbus-1"
@@ -226,6 +230,11 @@
       ".local/share/systemctl-tui"
       ".local/share/systemd"
       ".local/share/uv"
+      # HEX's settings, models, dictation history, and IPC socket.
+      {
+        directory = ".local/share/voice-control";
+        mode = "0700";
+      }
       ".local/share/wallpapers"
       ".local/share/yazelix"
       ".local/share/zed"

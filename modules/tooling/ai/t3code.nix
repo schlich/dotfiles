@@ -15,6 +15,4 @@ let
 in
 lib.mkIf (config.dotfiles.alternates || config.dotfiles.primary.desktopAgent == "t3code") {
   home.packages = [ t3code ];
-
-  xdg.configFile."autostart/t3code.desktop".source = "${t3code}/share/applications/t3code.desktop";
 }

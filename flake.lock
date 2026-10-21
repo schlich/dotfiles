@@ -974,6 +974,29 @@
         "type": "github"
       }
     },
+    "hex": {
+      "inputs": {
+        "home-manager": [
+          "home-manager"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1792547894,
+        "narHash": "sha256-h+e4TTfnErmM841AmpOPzj58arRZBHi7XcERqcTsi+E=",
+        "owner": "anomalyco",
+        "repo": "hex",
+        "rev": "6c3672b9bcd8138d53771329aab13b789bd3736c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "anomalyco",
+        "repo": "hex",
+        "type": "github"
+      }
+    },
     "hls-src": {
       "flake": false,
       "locked": {
@@ -1782,6 +1805,7 @@
         "gh-stack": "gh-stack",
         "grill-me": "grill-me",
         "hegel-skill": "hegel-skill",
+        "hex": "hex",
         "home-manager": "home-manager",
         "iets": "iets",
         "impermanence": "impermanence",

@@ -105,6 +105,26 @@ runs:
         EOF
         chmod +x "$wrapper"
         echo "NIX_FAST_BUILD_NIX=$wrapper" >> "$GITHUB_ENV"
+    # Every nix process from here on appends its log events, as JSON
+    # without timestamps, to json-log-path; tools/ci-trace/collect.py
+    # follows that file and stamps each activity start, stop, and build
+    # phase as it lands. It follows a plain file, so a collector that dies
+    # never blocks a build.
+    - name: Start the Nix build trace
+      shell: bash
+      run: |
+        dir="$RUNNER_TEMP/nix-trace"
+        mkdir -p "$dir/out"
+        nohup python3 "$GITHUB_WORKSPACE/tools/ci-trace/collect.py" "$dir/nix-log.jsonl" "$dir/out/events.tsv" >"$dir/collect.log" 2>&1 &
+        echo "$!" > "$dir/collect.pid"
+        {
+          echo 'NIX_CONFIG<<NIX_CONFIG_EOF'
+          if [[ -n "${NIX_CONFIG:-}" ]]; then
+            printf '%s\n' "$NIX_CONFIG"
+          fi
+          echo "json-log-path = $dir/nix-log.jsonl"
+          echo 'NIX_CONFIG_EOF'
+        } >> "$GITHUB_ENV"
     # --skip-cached replaces path filtering: an unchanged check is already
     # in the binary cache, so it passes without being downloaded or rebuilt.
     - name: Build ${{ inputs.check }}
@@ -122,3 +142,31 @@ runs:
       with:
         path: ~/.cache/nix
         key: ${{ steps.fetcher-cache.outputs.cache-primary-key }}
+    # The trace never fails the check: a failed or cancelled build is when
+    # it matters most, and a broken trace must not hide the build's result.
+    - name: Summarize the Nix build trace
+      if: always()
+      continue-on-error: true
+      shell: bash
+      env:
+        TITLE: ${{ inputs.set }}.${{ inputs.check }}
+      run: |
+        dir="$RUNNER_TEMP/nix-trace"
+        [[ -f "$dir/collect.pid" ]] || exit 0
+        pid="$(<"$dir/collect.pid")"
+        kill -TERM "$pid" 2>/dev/null || true
+        for _ in $(seq 50); do
+          kill -0 "$pid" 2>/dev/null || break
+          sleep 0.1
+        done
+        cat "$dir/collect.log"
+        nix --accept-flake-config run --inputs-from . nixpkgs#nushell -- --no-config-file tools/ci-trace/ci-trace.nu convert "$dir/out/events.tsv" "$dir/out" --title "$TITLE" >> "$GITHUB_STEP_SUMMARY"
+    - name: Upload the Nix build trace
+      if: always()
+      continue-on-error: true
+      uses: actions/upload-artifact@v7
+      with:
+        name: nix-trace-${{ inputs.set }}-${{ inputs.check }}
+        path: ${{ runner.temp }}/nix-trace/out
+        if-no-files-found: ignore
+        retention-days: 30
