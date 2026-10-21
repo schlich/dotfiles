@@ -4,16 +4,17 @@ Keyboard input passes through a fixed stack of namespaces, each with one
 leader:
 
 ```text
-desktop  / Niri     · Super
-terminal / Ghostty  · Alt
-editor   / Helix    · Space (Helix's own modal namespace)
+desktop     / Niri     · Super
+terminal    / Ghostty  · Alt
+multiplexer / Luvus    · Ctrl+Space (a prefix: one key follows)
+editor      / Helix    · Space (Helix's own modal namespace)
 ```
 
 A key reaches the outermost layer first. Niri consumes its window-management
-binds, Ghostty its split and tab binds, and everything else reaches the shell
-or Helix unchanged. `modules/programs/input-stack.nix` declares the stack and
-exports it as `$XDG_DATA_HOME/input-stack.json`, for hint bars and mode
-indicators to read.
+binds, Ghostty its split and tab binds, Luvus the key after its prefix, and
+everything else reaches the shell or Helix unchanged.
+`modules/programs/input-stack.nix` declares the stack and exports it as
+`$XDG_DATA_HOME/input-stack.json`, for hint bars and mode indicators to read.
 
 ## Ownership rule
 
@@ -21,6 +22,11 @@ indicators to read.
   exception is the window switcher, Alt+Tab and Alt+\`.
 - Ghostty owns splits and tabs on Alt (Alt+H/J/K/L, Alt+F, Alt+[ and ]).
   Splits and tabs replaced Zellij's panes and tabs on the same keys.
+- Luvus owns agent panes, workspaces and its orchestration board behind
+  Ctrl+Space. Its status row names the mode (`NORMAL` at rest) and lists the
+  keys that follow the prefix; pressing the prefix twice sends it to the pane.
+  It binds no direct shortcuts, so Alt stays with Ghostty.
+  `modules/programs/luvus.nix` takes its prefix from this stack.
 - Helix owns editor actions. Space is its native command namespace, and
   Alt+N/I/O stay with it.
 

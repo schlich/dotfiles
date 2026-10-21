@@ -78,6 +78,12 @@ in
           scope = "application";
         }
         {
+          name = "multiplexer";
+          implementation = "luvus";
+          scope = "application";
+          leader = "Ctrl+Space";
+        }
+        {
           name = "editor";
           implementation = config.dotfiles.primary.editor;
           scope = "modal";

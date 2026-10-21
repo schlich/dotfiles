@@ -84,6 +84,11 @@
         directory = ".gnupg";
         mode = "0700";
       }
+      # Luvus's session, task ledger, leases, and the task worktrees.
+      {
+        directory = ".luvus";
+        mode = "0700";
+      }
       ".metavr"
       ".mozilla"
       ".newsletter-agent"
