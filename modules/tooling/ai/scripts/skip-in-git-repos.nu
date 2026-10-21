@@ -12,7 +12,9 @@ def git-common-dir [dir: string] {
   if $result != null and $result.exit_code == 0 { $result.stdout | str trim } else { null }
 }
 
-def main [--repos: string = "[]", ...command: string] {
+# --wrapped passes the hook's own flags, such as `context-status handoff
+# --hook`, through to it instead of rejecting them as unknown.
+def --wrapped main [--repos: string = "[]", ...command: string] {
   let input = ($in | default "" | into string)
   let cwd = (try { $input | from json | get -o cwd | default "" } catch { "" })
   let common = (git-common-dir $cwd)
