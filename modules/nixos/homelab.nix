@@ -34,9 +34,29 @@ let
     substitute ${config.programs.niri.package.src}/resources/default-config.kdl $out \
       --replace-fail 'spawn-at-startup "waybar"' '// The monitor terminal starts as a systemd user service.'
   '';
+
+  # The digest's credentials, which the owner encrypts with agenix
+  # (tools/discord-digest/README.md). The digest stays off until they exist.
+  discordDigestSecret = ../../secrets/discord-digest/env.age;
+  discordDigestReady = builtins.pathExists discordDigestSecret;
 in
 {
-  imports = [ ./tailscale-https.nix ];
+  imports = [
+    ./tailscale-https.nix
+    ./discord-digest.nix
+  ];
+
+  services.discord-digest = lib.mkIf discordDigestReady {
+    enable = true;
+    environmentFile = config.age.secrets.discord-digest-env.path;
+  };
+  age.secrets = lib.mkIf discordDigestReady {
+    discord-digest-env.file = discordDigestSecret;
+  };
+  warnings = lib.optional (!discordDigestReady) ''
+    discord-digest is off on homelab: secrets/discord-digest/env.age does not
+    exist yet. tools/discord-digest/README.md says how to create it.
+  '';
 
   networking.hostName = "homelab";
   networking.networkmanager.enable = true;
