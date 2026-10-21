@@ -241,5 +241,14 @@ in
         if not ("--dry" in $args or "-n" in $args) { record $change }
       }
     '')
+    # Adds a GitHub repository as a flake input; the flake-add skill drives it.
+    (pkgs.writeNuScriptBin "flake-add" (
+      ''
+        $env.FLAKE_ADD_FH = "${
+          lib.getExe' inputs.fh.packages.${pkgs.stdenv.hostPlatform.system}.default "fh"
+        }"
+      ''
+      + builtins.readFile ../../nushell/flake-add.nu
+    ))
   ];
 }
