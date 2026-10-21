@@ -248,17 +248,19 @@ notification, and the panel cuts it after about 30 characters, so lead
 with the target and keep it short, such as `desktop-ssh: ci land`.
 The watcher's `JOB:` line already shows the full command and workspace.
 
-Before a group of shell calls, give the user a short commentary readout
-naming the operation and its target, such as checking JJ status in the
-current workspace or searching specific configuration files. Keep one readout
-for closely related probes and update it when the work moves to a new phase
-or finds a material result.
+Each card's `# comment` title already says what a call does, so do not
+repeat it in prose. Write one short line only when the work moves to a new
+phase, such as from investigating to editing, or when a call finds a
+material result. For RLM work, say once when it starts consulting sub-models,
+and report the compact finding afterwards.
 
-For RLM work, name the source set and the visible phase: loading, searching,
-chunking, or asking sub-models to analyze it. A `let` binding and a history
-slice may show no useful output in the tool card, so summarize what the call
-is doing without printing the stored context. When an RLM map or query runs,
-say that it is consulting sub-models and report the compact finding afterward.
+Keep the user's screen quiet:
+
+- Do not reply to routine Monitor events (`▶`, `✓`, `·` details, `⋯ STILL`).
+  Speak only when a job ends, blocks, raises an `ALARM`, or fails.
+- Keep final answers short: the outcome, what needs the user, and what is
+  next, in a few lines or a small table. Leave out steps the user already
+  watched happen.
 
 # Knowledge base
 
