@@ -45,5 +45,6 @@ takes writes through Git and luvus, and the ci repository has none); a list in
 Nix alone (a clone could not opt itself in); a file committed to the repository
 (it would opt in every collaborator's clone, and `ci` reads no such file).
 Making `ci` refuse to run outside an opted-in repository would belong in the ci
-repository. The `ci` skill comes unchanged from the `ci` input, and still
-describes itself as applying wherever the command is installed.
+repository and is not done. The `ci` skill, which the `ci` input provides from
+release 2026.10.24.1, applies itself only in an opted-in repository and
+documents opting in and out in its Setup section.
