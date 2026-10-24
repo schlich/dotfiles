@@ -4,6 +4,12 @@ The history of this workspace, newest first. The `ship` skill appends a dated
 group on every release; any skill that creates or retires a document adds a line
 to the current day's group.
 
+## 2026-10-24
+
+- **Architecture**: Recorded [ci opt-in](architecture/ci-opt-in.md): the `ci`
+  workflow, its hooks, and its prompt segment apply only where jj's config sets
+  `ci.enable`; other repositories use plain jj.
+
 ## 2026-10-19
 
 - **Plan**:
