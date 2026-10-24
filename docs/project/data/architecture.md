@@ -28,3 +28,5 @@ rejected are as valuable as the one you picked.*
 [GitHub trunk](architecture/github-trunk.md)
 
 [Host secrets](architecture/host-secrets.md)
+
+[ci opt-in](architecture/ci-opt-in.md)
