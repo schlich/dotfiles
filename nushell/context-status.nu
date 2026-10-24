@@ -1,4 +1,6 @@
-# Print a JJ workspace's context status when an interactive shell enters it.
+# Print a JJ workspace's context status when an interactive shell enters it,
+# in a repository that opted into ci (`ci-enabled` reads `ci.enable` from its
+# jj config). Other repositories stay quiet.
 #
 # The readout appears once per workspace: moving between directories inside
 # one workspace stays quiet. Set CONTEXT_STATUS_ON_CD=false to disable it for a
@@ -15,6 +17,10 @@ def context-status-root [dir: path] {
     }
 }
 
+def ci-enabled-in [dir: path] {
+    (do { cd $dir; ^ci-enabled } | complete).exit_code == 0
+}
+
 export def --env setup-context-status [] {
     let on_pwd_change = {
         condition: {|before, after|
@@ -24,6 +30,7 @@ export def --env setup-context-status [] {
                 and (is-terminal --stdout)
                 and (context-status-root $after) != null
                 and (context-status-root $after) != (if $before == null { null } else { context-status-root $before })
+                and (ci-enabled-in (context-status-root $after))
             )
         }
         code: {|_, after| ^context-status brief (context-status-root $after) }

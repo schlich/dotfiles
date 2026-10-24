@@ -63,11 +63,15 @@ let
       command = "prompt";
       format = "$output ";
     };
-    # The topic's `ci` stage, pipeline verdict, and trunk drift. It reads
-    # only local state and a cache that it refreshes in the background,
-    # and prints nothing outside a JJ workspace, so it needs no `when`.
+    # The topic's `ci` stage, pipeline verdict, and trunk drift, in a
+    # repository that opted into ci: `ci-enabled` runs `context-status prompt`
+    # there and prints nothing elsewhere, so it needs no `when`. It reads
+    # only local state and a cache that it refreshes in the background.
     custom.context = {
-      shell = [ "context-status" ];
+      shell = [
+        "ci-enabled"
+        "context-status"
+      ];
       use_stdin = false;
       when = true;
       command = "prompt";
