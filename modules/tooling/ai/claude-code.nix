@@ -10,9 +10,11 @@ let
   # Repositories driven through Git and luvus: the jj write guard and ci's
   # context-status hooks leave sessions in them alone.
   gitRepos = config.dotfiles.tooling.gitWorkflowRepos;
-  skipInGitRepos =
+  # ci's hooks run only for a repository that opted into ci
+  # (modules/programs/ci.nix), and never for a session started in gitRepos.
+  onlyInCiRepos =
     hookCommand:
-    "${pkgs.nushell}/bin/nu --stdin ${./scripts/skip-in-git-repos.nu} --repos ${lib.escapeShellArg (builtins.toJSON gitRepos)} ${hookCommand}";
+    "${pkgs.nushell}/bin/nu --stdin ${./scripts/only-in-ci-repos.nu} --enabled ${lib.getExe config.dotfiles.ci.enabledCommand} --repos ${lib.escapeShellArg (builtins.toJSON gitRepos)} ${hookCommand}";
   agentSource = ../../../copilot/plugins/jj-flake-vigilance/agents;
   # Copilot agents use display names, Copilot tool IDs, and GPT models.
   # Rewrite only the frontmatter keys Claude Code interprets differently.
@@ -53,18 +55,19 @@ let
     } $out/hooks/hooks.json
   '';
   contextStatus = inputs.ci.packages.${pkgs.stdenv.hostPlatform.system}.context-status;
-  # Hand each new or resumed session the workspace's topic, lifecycle stage,
-  # lint and pipeline state, and next `ci` step. Concurrent sessions that
-  # shared one checkout moved each other's working copy and split changes into
-  # divergent copies, so a session's first edit claims a workspace idle on
-  # trunk, the default checkout included, and edits to another session's
-  # workspace, to a topic nobody handed over, or from a session's Git
-  # worktree are refused.
+  # In a repository that opted into ci, hand each new or resumed session the
+  # workspace's topic, lifecycle stage, lint and pipeline state, and next `ci`
+  # step. Concurrent sessions that shared one checkout moved each other's
+  # working copy and split changes into divergent copies, so there a session's
+  # first edit claims a workspace idle on trunk, the default checkout included,
+  # and edits to another session's workspace, to a topic nobody handed over,
+  # or from a session's Git worktree are refused. Other repositories get
+  # neither the note nor the claim.
   contextStatusHandoff = pkgs.runCommand "claude-code-context-status" { } ''
     install -Dm644 ${
       pkgs.writers.writeJSON "plugin.json" {
         name = "context-status";
-        description = "Add the JJ workspace's context status to each session, and claim a free workspace on a session's first edit.";
+        description = "In repositories that opted into ci, add the JJ workspace's context status to each session, and claim a free workspace on a session's first edit.";
       }
     } $out/.claude-plugin/plugin.json
     install -Dm644 ${
@@ -75,7 +78,7 @@ let
             hooks = [
               {
                 type = "command";
-                command = skipInGitRepos "${contextStatus}/bin/context-status handoff --hook";
+                command = onlyInCiRepos "${contextStatus}/bin/context-status handoff --hook";
                 timeout = 10;
               }
             ];
@@ -87,7 +90,7 @@ let
             hooks = [
               {
                 type = "command";
-                command = skipInGitRepos "${contextStatus}/bin/context-status guard";
+                command = onlyInCiRepos "${contextStatus}/bin/context-status guard";
                 timeout = 10;
               }
             ];
@@ -465,8 +468,7 @@ in
           nu ${./tests/prefer-nix-mcp.nu} ${lib.escapeShellArg preferNixMcpCommand}
           touch "$out"
         '';
-    # The jj write guard and the context-status wrapper, against scratch
-    # repositories with a linked worktree.
+    # The jj write guard, against scratch repositories with a linked worktree.
     checks.git-workflow-repos =
       pkgs.runCommand "git-workflow-repos-check"
         {
@@ -479,7 +481,26 @@ in
           export HOME="$TMPDIR/home"
           mkdir -p "$HOME"
           nu --no-config-file ${./tests/guard-git-writes.nu} ${../../../copilot/plugins/jj-flake-vigilance/scripts/guard-git-writes.nu}
-          nu --no-config-file ${./tests/skip-in-git-repos.nu} ${./scripts/skip-in-git-repos.nu}
+          touch "$out"
+        '';
+    # The ci hook wrapper and ci-enabled, against scratch JJ repositories that
+    # opted in or not, a Git-workflow repository, and the first path
+    # dotfiles.ci.repositories lists, using the same jj as ci-enabled.
+    checks.ci-repo-hooks =
+      pkgs.runCommand "ci-repo-hooks-check"
+        {
+          nativeBuildInputs = [
+            pkgs.nushell
+            pkgs.git
+            config.programs.jujutsu.package
+          ];
+        }
+        ''
+          export HOME="$TMPDIR/home"
+          mkdir -p "$HOME"
+          nu --no-config-file ${./tests/only-in-ci-repos.nu} ${./scripts/only-in-ci-repos.nu} ${lib.getExe config.dotfiles.ci.enabledCommand} ${
+            lib.escapeShellArg (lib.head (config.dotfiles.ci.repositories ++ [ "" ]))
+          }
           touch "$out"
         '';
     checks.luvus-hook = pkgs.runCommand "luvus-hook-check" { nativeBuildInputs = [ pkgs.nushell ]; } ''
