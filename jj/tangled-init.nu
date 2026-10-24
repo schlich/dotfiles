@@ -1,8 +1,10 @@
 # Point a new JJ repository at Tangled the way `ci` expects: a `tangled`
 # remote for schlich.tngl.sh/NAME that the repository pushes to, fetches from,
-# and takes its trunk from. The settings go in the repository's own JJ config,
-# because JJ cannot scope global config by remote. Creating the repository on
-# Tangled needs a signed-in session, so this only reports whether it exists.
+# and takes its trunk from. It sets no `ci.enable`, so the repository uses
+# plain jj until it opts into ci (jj/README.md). The settings go in the
+# repository's own JJ config, because JJ cannot scope global config by remote.
+# Creating the repository on Tangled needs a signed-in session, so this only
+# reports whether it exists.
 
 const OWNER = "schlich.tngl.sh"
 const OWNER_DID = "did:plc:cnyy2sz5ddr4gls245vjgbrd"

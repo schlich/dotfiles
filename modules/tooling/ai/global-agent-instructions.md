@@ -53,8 +53,8 @@ script, use valid Nushell syntax.
   for Jujutsu log, diff, status, describe, bookmark, abandon, and push; the
   GitHub MCP server for GitHub pull requests, issues, Actions runs, and
   releases; the Nix MCP server for nixpkgs packages, options, and pinned
-  flake-input sources; the ci MCP
-  server for the repository's `ci` workflow; and the harness's own
+  flake-input sources; the ci MCP server for the `ci` workflow in a ci
+  repository (see Jujutsu); and the harness's own
   file-reading and editing tools for single files. Fall back to the Nushell
   evaluate tool only when no dedicated tool fits, such as Tangled, flake
   evaluation, multi-step pipelines, or combining several results into one
@@ -342,45 +342,71 @@ non-interactive flags for commands that prompt for other input. Use
 the command provides it. Use `jjui` or the JJ dashboard for genuinely
 interactive revision work in a terminal.
 
+## Opting into `ci`
+
+The `ci` trunk workflow is installed everywhere but applies only in a
+repository that opted into it, a ci repository: its JJ config sets
+`ci.enable = true`, so `jj config get ci.enable` prints `true` there. A clone
+opts in with `jj config set --repo ci.enable true`, and the Home Manager
+option `dotfiles.ci.repositories` in `~/dotfiles` opts in every clone and
+workspace at a path. Opt a repository in only when the user asks: a new
+project is not a ci repository, and `tangled-init` does not make it one.
+
+Only in a ci repository do the `ci` command, its MCP server and skill, and the
+rules below that name `ci` apply, and only there does a session start with a
+context-status note or have its first edit claim the workspace. Everywhere
+else, use plain JJ for whatever the user asks, and never run `ci`, not even
+`ci status`: describe the change with `jj describe -m MESSAGE`, start the
+next one with `jj new`, and to publish, point a bookmark at the change with
+`jj bookmark set NAME -r REV` and push it with `jj git push --bookmark NAME`.
+
 ## Project task discipline
 
 For JJ projects, use one coherent topic and one stable change ID for a single
 deliverable. When a task contains multiple deliverables that should be split,
 keep them in one small stack and rewrite each in-scope change as needed; do not
-create unrelated follow-up revisions after dispatching.
+create unrelated follow-up revisions after publishing.
 
 A topic is a revision; a workspace is a working copy for one actor. Start a
 topic as a new change on trunk in the current workspace (`ci new -m MESSAGE`
-where `ci` is available, otherwise `jj new main@origin -m MESSAGE`); earlier
-topics stay as sibling changes, and `jj edit` returns to one.
+in a ci repository, otherwise `jj new 'trunk()' -m MESSAGE`); earlier topics
+stay as sibling changes, and `jj edit` returns to one.
 
 Work only in a workspace whose change this session owns. The repository's
 default checkout is free when it has trunk checked out (nothing above trunk
 but an empty change) and no live session owns it; check it out for this
-session at once. Where `ci` is available, the session's first edit claims
-it, and `ci new -m MESSAGE` names the claimed change in place. A named
-workspace belongs to the topic it was named for: never start another task
-there, even when it sits idle on trunk and the hooks list it as free. The
-hooks refuse edits to a workspace another live session owns, or to one
-holding a topic no session owns, such as the user's own work in progress.
-Never take over a topic the user started unless they hand it over
-(`ci adopt`). When the default checkout is busy, create a workspace named
-for the new task: where `ci` is available with `ci start NAME`, otherwise
-with `jj workspace add --revision main@origin --name NAME PATH` from the
-repository. Then open that directory as a local Codex project. Never move a
-working copy owned by another active task. When the topic ends, remove its
-workspace with `ci park` or `ci cancel`, without `--keep`, so its name
-never outlives its task.
+session at once. A named workspace belongs to the topic it was named for:
+never start another task there, even when it sits idle on trunk and the hooks
+list it as free. Never take over a topic the user started unless they hand
+it over. When the default checkout is busy, create a workspace named for the
+new task: in a ci repository with `ci start NAME`, otherwise with
+`jj workspace add --revision 'trunk()' --name NAME PATH` from the repository.
+Then open that directory as a local Codex project. Never move a working copy
+owned by another active task. When the topic ends, remove its workspace so
+its name never outlives its task: in a ci repository with `ci park` or
+`ci cancel`, without `--keep`, otherwise with `jj workspace forget NAME` and
+then its directory.
+
+In a ci repository, the hooks keep that ownership: the session's first edit
+claims a free workspace, and `ci new -m MESSAGE` names the claimed change in
+place. They refuse edits to a workspace another live session owns, or to one
+holding a topic no session owns, such as the user's own work in progress,
+which the user hands over with `ci adopt`. Never add permanent session locks
+or reject prompts and recovery tools because a saved ownership record is
+stale.
+
 If the project is a linked Git worktree, it is not automatically a JJ
 workspace: `jj` may act on the shared checkout above it and never record the
-worktree's edits. Run `ci start NAME` from that worktree, which creates
-`<worktree>/.jj-workspaces/NAME`; then open and edit only that JJ workspace. In
-a repository with topic workspaces, agents must not edit an unconverted Git
-worktree. Never add permanent session locks or reject prompts and recovery
-tools because a saved ownership record is stale.
+worktree's edits. Create a JJ workspace inside it,
+`<worktree>/.jj-workspaces/NAME`: in a ci repository with `ci start NAME` from
+that worktree, otherwise with
+`jj workspace add --revision 'trunk()' --name NAME .jj-workspaces/NAME` there.
+Then open and edit only that JJ workspace. In a repository with topic
+workspaces, agents must not edit an unconverted Git worktree.
 
 When the working-copy diff contains multiple coherent deliverables, split it
-into separate JJ changes before dispatching or treating the work as complete.
+into separate JJ changes before publishing them or treating the work as
+complete.
 Choose the topology from the dependency, not from file proximity: make a
 parent/child chain only when the later change needs the earlier one to build,
 test, or make sense; make siblings when both changes are independently
@@ -399,7 +425,7 @@ stage, branch, worktree, handoff, push, or merge actions for these tasks.
 Keep Git available as an internal transport dependency. Use `jj-dashboard`
 or the desktop Open in → JJ dashboard action for interactive revision work.
 
-Where `ci` is available, root each topic at `main@origin`; rebase after trunk
+In a ci repository, root each topic at `trunk()`; rebase after trunk
 advances and before review or queue updates.
 `ci dispatch` and `ci land` perform a final rebase before updating
 GitHub. Enable auto-merge only when the user is finished with the topic and has
@@ -413,9 +439,11 @@ checks, conflicts, pending delivery, or undispatched edits leave the task open.
 Once `ci park` or `ci cancel` succeeds, offer to archive the session in the
 same turn rather than leaving it open: in the Claude desktop app, make the
 wrap-up's `archive` action the first button; elsewhere, say in one line that
-the session can be archived. Archive only on the user's click or yes.
-Do not treat app exit, idle timeout, or SessionEnd as authorization to dispatch
-or merge. Direct archive-button clicks do not execute this closeout workflow.
+the session can be archived. Archive only on the user's click or yes. Outside
+a ci repository, make the same offer once the push the user asked for
+succeeds. Do not treat app exit, idle timeout, or SessionEnd as authorization
+to dispatch, push, or merge. Direct archive-button clicks do not execute this
+closeout workflow.
 
 For local Nix flake operations, use an explicit `path:` reference when new
 files must be included, for example `nix develop path:.` or
