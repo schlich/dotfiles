@@ -729,12 +729,14 @@
               export NIX_STATE_DIR="$HOME/nix-state"
               mkdir -p "$NIX_STATE_DIR/profiles/per-user"
               export NIX_REMOTE="$HOME/storedata"
+              # A source copied from a Git worktree carries its `.git` file,
+              # which a bare path would make Nix open as a repository.
               nix-unit \
                 --show-trace \
                 --extra-experimental-features flakes \
                 --accept-flake-config \
                 ${nixUnitInputArgs} \
-                --flake ${./.}#tests.systems.${system}
+                --flake path:${./.}#tests.systems.${system}
               touch "$out"
             '';
         # The closure builds after landing (remoteChecks); evaluating it here
