@@ -48,9 +48,11 @@ jobs:
             exit 0
           fi
           # The formatters and exclusions of Prek's checkmate-format hook
-          # (prek.toml), so CI and the local gate agree. Markdown takes
-          # mdformat and then prettier: mdformat alone flattens YAML front
-          # matter and table padding, which prettier restores.
+          # (prek.toml), judged as Prek judges them: by the files' content
+          # afterwards. Markdown takes mdformat and then prettier, which
+          # restores the front matter and table padding mdformat flattens, so
+          # treefmt's own --ci check, which counts every rewrite, would fail
+          # files whose bytes end up unchanged.
           formatter_files=()
           for file in "${changed_files[@]}"; do
             case "$file" in
@@ -65,7 +67,8 @@ jobs:
             esac
           done
           if ((${#formatter_files[@]} > 0)); then
-            nix run --no-update-lock-file github:denful/checkmate#fmt --override-input target github:$GITHUB_REPOSITORY/$GITHUB_SHA -- --ci --on-unmatched warn "${formatter_files[@]}"
+            nix run --no-update-lock-file github:denful/checkmate#fmt --override-input target github:$GITHUB_REPOSITORY/$GITHUB_SHA -- --no-cache --on-unmatched warn "${formatter_files[@]}"
+            git diff --exit-code -- "${formatter_files[@]}"
           fi
       - name: Run Checkmate nix-unit tests
         run: nix build --no-update-lock-file -L github:denful/checkmate#checks.x86_64-linux.nix-unit --override-input target github:$GITHUB_REPOSITORY/$GITHUB_SHA
