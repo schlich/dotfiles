@@ -60,6 +60,11 @@ in
 
   networking.hostName = "homelab";
   networking.networkmanager.enable = true;
+  # Helix, which homelab installs, rather than NixOS's default nano.
+  environment.variables = {
+    EDITOR = "hx";
+    VISUAL = "hx";
+  };
 
   # sudo also accepts asus's login key from a forwarded SSH agent and falls
   # back to the password without one. Its root-owned key list is separate from
