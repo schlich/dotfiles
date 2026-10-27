@@ -12,6 +12,8 @@ sources:
 - id: commute
   resource: tools/jj-graph/src/commute.rs
   title: jj-graph's commutation test
+stage: done
+completed: 2026-10-27
 ---
 
 # Commute jj-graph's edits of one file

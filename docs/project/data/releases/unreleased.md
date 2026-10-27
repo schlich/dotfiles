@@ -21,5 +21,6 @@ renames this file to the version number and starts a fresh one.*
 - [Stately MCP tools](../features/stately-mcp.md)
 - [Traces of ci landings](../features/ci-traces.md)
 - [nixbot on homelab, with a declarative GitHub App](../plans/20261019-nixbot-app-declarative.md)
+- [jj-graph reorders a file's edits that commute](../plans/20261020-jj-graph-commutation.md)
 
 ## Fixed

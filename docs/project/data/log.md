@@ -4,6 +4,19 @@ The history of this workspace, newest first. The `ship` skill appends a dated
 group on every release; any skill that creates or retires a document adds a line
 to the current day's group.
 
+## 2026-10-27
+
+- **Delivery**: Landed the work left open when this repository moved from jj and
+  `ci` to Git and luvus: `nix-fast-build` and a worktree-safe
+  `den-inventory-tests` for the luvus gate, luvus's PATH order, niri's
+  left-aligned columns and slower scrolling, the keymap fixes, quieter agent
+  output, the show-me skill, the Discord digest (off until its secret exists),
+  the Cachix cache in CI, the staged switch's TLA+ model, Helix on homelab, and
+  Zed's removal. The rest was closed as superseded or stale.
+- **Delivery**:
+  [Commute jj-graph's edits of one file](plans/20261020-jj-graph-commutation.md)
+  done.
+
 ## 2026-10-24
 
 - **Architecture**: Recorded [ci opt-in](architecture/ci-opt-in.md): the `ci`
