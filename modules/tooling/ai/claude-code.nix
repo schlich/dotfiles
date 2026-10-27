@@ -285,9 +285,8 @@ let
       }
     } $out/hooks/hooks.json
   '';
-  # MCP calls render as a bare `input:` argument; echo the full command before
-  # a Nushell evaluation and a one-line result summary after it. The desktop
-  # app's tool card already shows the command, so there only the summary runs.
+  # The nushell-cards mod draws each Nushell evaluation's command, so this hook
+  # adds only a one-line summary after a failed, interrupted, or slow call.
   nushellDisplay =
     let
       hook = {
@@ -305,13 +304,12 @@ let
       install -Dm644 ${
         pkgs.writers.writeJSON "plugin.json" {
           name = "nushell-display";
-          description = "Show each Nushell MCP evaluation's command and a result summary.";
+          description = "Summarise a failed, interrupted, or slow Nushell MCP evaluation in one line.";
         }
       } $out/.claude-plugin/plugin.json
       install -Dm644 ${
         pkgs.writers.writeJSON "hooks.json" {
           hooks = {
-            PreToolUse = [ hook ];
             PostToolUse = [ hook ];
             PostToolUseFailure = [ hook ];
           };
