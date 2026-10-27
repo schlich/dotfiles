@@ -3,7 +3,7 @@ type: architecture
 description: Hosts decrypt repository secrets with agenix and their own OpenSSH host key, so a pull-based deploy needs no key pushed to it.
 generated:
   by: claude-code/opus-5.5
-  at: 2026-10-19T20:10:00Z
+  at: 2026-10-20T15:36:00Z
 sources:
 - id: secrets-module
   resource: modules/nixos/secrets.nix
@@ -31,7 +31,9 @@ for nixbot's GitHub App, and `nixbot-register` writes those files.
 - A file the host cannot decrypt fails activation, and the staged switch
   reverts. The mechanism therefore declares no secret itself: an earlier shared
   `github-token` declaration, encrypted for keys no current host holds, was
-  dropped when homelab adopted it.
+  dropped when homelab adopted it, and on 2026-10-20 the unused `github-token`,
+  `flakehub`, and `openai` files were deleted with their rules. Every `.age`
+  file in the repository is one a host declares.
 - agenix stays off on a host that declares no secret, so turning on
   `profile.secrets` changes nothing until a module declares one.
 
