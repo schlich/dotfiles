@@ -455,6 +455,26 @@
           }).config.system.build.toplevel.drvPath
         }\n"
       );
+      # homelab with discord-digest running, before its owner encrypts
+      # secrets/discord-digest/env.age; the secret is a placeholder until then.
+      discordDigestHomelabEvaluationCheck = pkgs.writeText "discord-digest-homelab-evaluation" (
+        builtins.unsafeDiscardStringContext "${
+          (denFlake.nixosConfigurations.homelab.extendModules {
+            modules = [
+              (
+                { config, ... }:
+                {
+                  services.discord-digest = {
+                    enable = lib.mkForce true;
+                    environmentFile = lib.mkForce config.age.secrets.discord-digest-env.path;
+                  };
+                  age.secrets.discord-digest-env.file = lib.mkForce (builtins.toFile "discord-digest-env.age" "");
+                }
+              )
+            ];
+          }).config.system.build.toplevel.drvPath
+        }\n"
+      );
       # Clan pushes Den's hosts over ssh. `clan machines update NAME` builds
       # this flake's nixosConfigurations.NAME, the system CI checks and
       # system-switch activates; Clan's own machine for each host, which
@@ -682,6 +702,8 @@
         '';
         # Hegel properties of the CI dashboard's feed reductions.
         ci-dashboard-feeds = ciDashboard.feeds;
+        # discord-digest's build runs its tests.
+        discord-digest = pkgs.callPackage ./tools/discord-digest/package.nix { };
         # jj-graph's build runs its lints, its Hegel properties (some in real
         # jj repositories), and its conformance to spec/Normalize.qnt; the
         # model check simulates and model checks the specifications.
@@ -932,6 +954,7 @@
           jj-graph-model-exhaustive = jjGraph.exhaustive;
           deploy-revert = import ./tests/deploy-revert.nix { inherit pkgs; };
           marimohub-homelab-evaluation = marimohubHomelabEvaluationCheck;
+          discord-digest-homelab-evaluation = discordDigestHomelabEvaluationCheck;
           nixbot-homelab-evaluation = nixbotHomelabEvaluationCheck;
           # The system and home closures build after landing. A revision
           # whose closure fails to build can land, but no host activates it:

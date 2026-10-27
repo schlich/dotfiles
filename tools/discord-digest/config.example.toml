@@ -1,0 +1,32 @@
+# Copy to config.toml. Every key is optional; the values below are defaults.
+# Relative paths resolve against this file's directory.
+
+# SQLite state and the rendered dashboard (site/index.html) live here.
+data_dir = "~/.local/share/discord-digest"
+interests_file = "interests.md"
+
+# How far back the first run of a new channel reads.
+first_run_hours = 24
+# A channel with more new messages than this reports only its newest ones.
+max_messages_per_channel = 1000
+# Seconds between Discord requests. Keep it slow: this runs as your account.
+request_pace_seconds = 1.2
+
+# Per-channel triage reads every message, so it uses the inexpensive model;
+# the briefing reads only the findings and uses the stronger one.
+triage_model = "claude-haiku-5-5"
+overview_model = "claude-opus-5-5"
+
+# The dashboard hides findings scored below this until you lower it (+/-).
+min_score = 4
+# Findings and runs older than this drop off the dashboard.
+keep_days = 30
+
+[channels]
+# Match servers and channels by ID or name; channels also as "Server/#name".
+# An empty include list means everything you can read.
+include_guilds = []
+exclude_guilds = []
+include_channels = []
+# For example: ["#memes", "#introductions", "Some Server/#off-topic"]
+exclude_channels = []
