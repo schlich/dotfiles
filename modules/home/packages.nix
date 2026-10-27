@@ -65,6 +65,17 @@ let
       ^nix run "https://flakehub.com/f/DeterminateSystems/nix-src/3.23.1" -- ...$args
     }
   '';
+  # Pushes this machine's builds of the flake checks to the schlich Cachix
+  # cache, which GitHub Actions reads, so runners download what only this
+  # flake builds, such as cross.stream, instead of compiling it.
+  cachixSeed = pkgs.writeShellApplication {
+    name = "cachix-seed";
+    runtimeInputs = [ pkgs.cachix ];
+    text = ''
+      exec ${lib.getExe pkgs.nushell} --no-config-file ${../../tools/cachix-seed.nu} "$@"
+    '';
+    meta.description = "Push this machine's builds of the flake checks to Cachix";
+  };
 in
 {
   home.packages = with pkgs; [
@@ -123,6 +134,8 @@ in
     jev
     questOpen
     nixOtel
+    cachix
+    cachixSeed
     inputs.xs.packages.${pkgs.stdenv.hostPlatform.system}.default
     inputs.ai-usagebar.packages.${pkgs.stdenv.hostPlatform.system}.default
     inputs.tangled-dash.packages.${pkgs.stdenv.hostPlatform.system}.default
