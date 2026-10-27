@@ -15,7 +15,7 @@
 let
   cfg = config.dotfiles.luvus;
   jsonFormat = pkgs.formats.json { };
-  luvus = inputs.luvus.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  luvus = import ./luvus-package.nix { inherit inputs lib pkgs; };
 
   # The prefix is the multiplexer's leader in the input stack (docs/input.md).
   multiplexer = lib.findFirst (

@@ -319,7 +319,7 @@ let
   # Report each session's id and lifecycle to Luvus, as
   # `luvus integration install claude` would, without its python3 dependency
   # or an entry in the runtime settings.json. Inert outside a Luvus pane.
-  luvus = inputs.luvus.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  luvus = import ../../programs/luvus-package.nix { inherit inputs lib pkgs; };
   luvusHook =
     let
       hook = {
