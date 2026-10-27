@@ -146,7 +146,9 @@ test("a job-log card streams its log until the job ends", async ($, on) => {
       }),
     ).toBeDefined();
     // The log tail belongs to the Monitor's card, not the evaluation's.
-    expect(await ui.find({ type: "Code", text: /building foo/ })).toBeUndefined();
+    expect(
+      await ui.find({ type: "Code", text: /building foo/ }),
+    ).toBeUndefined();
     await ui.unmount();
   }
 
@@ -165,7 +167,10 @@ test("a job-log card streams its log until the job ends", async ($, on) => {
   await clock.advance(1_000);
   await clock.settle();
   expect(
-    await ui.find({ type: "Text", text: /build\.log · running · running · building bar/ }),
+    await ui.find({
+      type: "Text",
+      text: /build\.log · running · running · building bar/,
+    }),
   ).toBeDefined();
 
   files.set(LOG, "=== build\nbuilding foo\nbuilding bar\n/nix/store/abc-foo\n");
