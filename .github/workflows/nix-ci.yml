@@ -47,23 +47,23 @@ jobs:
           if ((${#changed_files[@]} == 0)); then
             exit 0
           fi
-          markdown_files=()
+          # The formatters and exclusions of Prek's checkmate-format hook
+          # (prek.toml), so CI and the local gate agree. Markdown takes
+          # mdformat and then prettier: mdformat alone flattens YAML front
+          # matter and table padding, which prettier restores.
           formatter_files=()
           for file in "${changed_files[@]}"; do
             case "$file" in
-              # mdformat rewrites skill frontmatter; Prek excludes these too.
-              .agents/*|.codex/*) ;;
+              # Skill frontmatter, the IWE project graph (`iwe normalize`
+              # formats it), and the knowledge base: Prek excludes these too.
+              .agents/*|.codex/*|workbench/knowledge/*|docs/project/*) ;;
               # pnpm generates this YAML lockfile; generic formatting reports
               # a rewrite even when its formatted bytes are unchanged.
               */pnpm-lock.yaml|pnpm-lock.yaml) ;;
-              *.md|*.mdx) markdown_files+=("$file") ;;
-              *.nix|*.yaml|*.yml) formatter_files+=("$file") ;;
+              *.md|*.mdx|*.nix|*.yaml|*.yml) formatter_files+=("$file") ;;
               *) ;;
             esac
           done
-          if ((${#markdown_files[@]} > 0)); then
-            nix run --no-update-lock-file github:denful/checkmate#fmt --override-input target github:$GITHUB_REPOSITORY/$GITHUB_SHA -- --ci --formatters mdformat --on-unmatched warn "${markdown_files[@]}"
-          fi
           if ((${#formatter_files[@]} > 0)); then
             nix run --no-update-lock-file github:denful/checkmate#fmt --override-input target github:$GITHUB_REPOSITORY/$GITHUB_SHA -- --ci --on-unmatched warn "${formatter_files[@]}"
           fi
