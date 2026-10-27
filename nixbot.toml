@@ -1,4 +1,6 @@
 # nixbot on homelab (modules/nixos/nixbot.nix) builds checks.x86_64-linux on
-# main and, from this list, on every topic branch `ci dispatch` mirrors to
-# GitHub. nixbot reads build_branches from main's copy of this file only.
-build_branches = ["jj-*"]
+# main, on pull requests, and, from this list, on luvus/integration and task
+# branches, whose `nixbot/nix-eval` and `nixbot/nix-build` checks the
+# main-checks ruleset requires. nixbot reads build_branches from main's copy
+# of this file only.
+build_branches = ["luvus/*"]

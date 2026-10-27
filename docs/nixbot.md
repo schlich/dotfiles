@@ -2,22 +2,20 @@
 
 [nixbot](https://github.com/Mic92/nixbot), the rewrite of buildbot-nix by its
 author, builds this repository's `checks.x86_64-linux` on homelab whenever
-GitHub receives `main` or a `jj-*` topic branch. It builds in homelab's own
-store, which Harmonia already serves to the fleet, so `ci land`'s local
-clearance substitutes what nixbot built instead of building it again on the
-workstation.
+GitHub receives `main`, a `luvus/*` branch, or a pull request. Its checks gate
+`main`: the `main-checks` ruleset requires `nixbot/nix-eval` and
+`nixbot/nix-build` from its App (`.github/rulesets/`), and `luvus-deliver`
+waits for both on `luvus/integration`'s exact head before fast-forwarding
+`main`. It builds in homelab's own store, which keeps what earlier builds made
+and which Harmonia serves to the fleet, so a check rebuilds only what changed.
 
 - `modules/nixos/nixbot.nix` configures the service, its Tailscale Funnel on
   homelab's port 443, and the GitHub App's manifest. `hosts/homelab/nixbot.nix`
   names the App, and `secrets/nixbot/` holds its secrets, encrypted with
   agenix for homelab's host key and asus's login key (`secrets/secrets.nix`).
   nixbot stays off while the App ID is `null`.
-- `nixbot.toml` lists `jj-*` in `build_branches`. nixbot reads it from
-  `main` only, so topics build once that file has landed.
-- `ci dispatch` pushes every topic to `origin`, the trunk remote, and
-  `ci land --clearance nixbot` waits for nixbot's
-  `nixbot/nix-eval` and `nixbot/nix-build` check runs on the exact head.
-  Both need a `ci` release that has them (`nix flake update ci`).
+- `nixbot.toml` lists `luvus/*` in `build_branches`. nixbot reads it from
+  `main` only, so a change to that list builds once it has reached `main`.
 - nixbot evaluates with one 6 GiB worker and runs two builds at once, and
   roots each topic's outputs until it lands; its gcroots expire after 90
   days.
