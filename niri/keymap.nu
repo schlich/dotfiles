@@ -215,7 +215,7 @@ def default-config [] {
 # are niri's own, and Alt+Tab may live in the recent-windows block instead of
 # binds, so those always show.
 const hint_sets = {
-  base: [[key label]; [Mod+1…9 area] [Mod+Tab back] [Alt+Tab recent] [Mod+A agents] [Mod+G vcs] [Mod+O overview] [Mod+Slash keymap]]
+  normal: [[key label]; [Mod+1…9 area] [Mod+Tab back] [Alt+Tab recent] [Mod+A agents] [Mod+G vcs] [Mod+O overview] [Mod+Slash keymap]]
   empty: [[key label]; [Mod+Return terminal] [Mod+Shift+Return "restore layout"] [Mod+0 launcher] [Mod+A agents]]
   single: [[key label]; [Mod+R width] [Mod+F maximise] [Mod+Return terminal] [Mod+A agents] [Mod+Tab back]]
   stack: [[key label]; [Mod+J next] [Mod+K previous] [Mod+W tabs] [Mod+Period expel] [Mod+Shift+R height]]
@@ -228,7 +228,8 @@ def niri-json [query: string] {
   ^niri msg --json $query | from json
 }
 
-# base, empty, single, stack, floating or overview, from niri's focus.
+# normal (the base mode's shared name), empty, single, stack, floating or
+# overview, from niri's focus.
 def focus-context [] {
   if (niri-json overview-state).is_open { return 'overview' }
   let focused = (niri-json focused-window)
@@ -238,7 +239,7 @@ def focus-context [] {
   let column = $focused.layout.pos_in_scrolling_layout.0
   if ($tiled | where layout.pos_in_scrolling_layout.0 == $column | length) > 1 { return 'stack' }
   if ($tiled | get layout.pos_in_scrolling_layout | each { get 0 } | uniq | length) == 1 { return 'single' }
-  'base'
+  'normal'
 }
 
 def hint-status [binds: list, mode: string] {
