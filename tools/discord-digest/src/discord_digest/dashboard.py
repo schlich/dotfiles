@@ -5,9 +5,13 @@ keeps only per-browser conveniences (which findings you marked seen) in
 localStorage."""
 
 import json
+import re
 from pathlib import Path
 
 TEMPLATE = (Path(__file__).parent / "dashboard.html").read_text()
+# The data goes in place of whatever the template's #data element holds, so
+# a formatter reflowing its placeholder can't break the substitution.
+DATA_ELEMENT = re.compile(r'(<script id="data" type="application/json">).*?(</script>)', re.DOTALL)
 
 
 def render(runs: list[dict], findings: list[dict], min_score: int, out: Path) -> Path:
@@ -39,5 +43,8 @@ def render(runs: list[dict], findings: list[dict], min_score: int, out: Path) ->
     # JSON inside <script> must not be able to close the tag.
     payload = json.dumps(data, ensure_ascii=False).replace("<", "\\u003c")
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(TEMPLATE.replace("/*DATA*/null", payload))
+    html, count = DATA_ELEMENT.subn(lambda m: m[1] + payload + m[2], TEMPLATE, count=1)
+    if count != 1:
+        raise RuntimeError("dashboard.html lost its <script id=\"data\"> element")
+    out.write_text(html)
     return out
