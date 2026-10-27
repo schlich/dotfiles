@@ -10,6 +10,13 @@ to the current day's group.
   workflow, its hooks, and its prompt segment apply only where jj's config sets
   `ci.enable`; other repositories use plain jj.
 
+## 2026-10-20
+
+- **Delivery**:
+  [Make nixbot's GitHub App and secrets declarative](plans/20261019-nixbot-app-declarative.md)
+  done: release 2026.10.20.3 turned nixbot on at homelab, which builds every
+  push and reports `nixbot/nix-eval` and `nixbot/nix-build` on GitHub.
+
 ## 2026-10-19
 
 - **Plan**:
