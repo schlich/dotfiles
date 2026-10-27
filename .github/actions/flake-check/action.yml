@@ -8,6 +8,11 @@ inputs:
   check:
     description: The check's attribute name.
     required: true
+  cachix-auth-token:
+    description: >-
+      A token that may push to the schlich Cachix cache. Without one the job only reads from it.
+    required: false
+    default: ""
 runs:
   using: composite
   steps:
@@ -56,6 +61,15 @@ runs:
     # The installer also enables KVM, which the NixOS VM tests need.
     - uses: DeterminateSystems/determinate-nix-action@v3.21.9
     - uses: DeterminateSystems/flakehub-cache-action@v3.21.9
+    # What only this flake builds, such as cross.stream, comes from the
+    # schlich cache, which `cachix-seed` fills from the workstation, instead
+    # of compiling for an hour. With a token the job pushes its own builds
+    # there too, except sources and unfree packages: the cache is public.
+    - uses: cachix/cachix-action@v17
+      with:
+        name: schlich
+        authToken: ${{ inputs.cachix-auth-token }}
+        pushFilter: (-source$|claude-code)
     # Evaluation fetches sources outside flake.lock, such as Helix's
     # tree-sitter grammars, which no binary cache holds. Reuse Nix's fetcher
     # cache instead of downloading them again in every job.

@@ -22,10 +22,10 @@ moves them.*
 [Add OpenCode desktop client](plans/20261017-add-opencode-desktop.md)
 [Run MCP-NixOS with Nix](plans/20261016-mcp-nixos-nix-launch.md)
 [Adopt Home Manager mutable settings for app-owned config](plans/20261017-mutable-settings.md)
-[Make nixbot's GitHub App and secrets declarative](plans/20261019-nixbot-app-declarative.md)
 
 ## Done
 
+[Make nixbot's GitHub App and secrets declarative](plans/20261019-nixbot-app-declarative.md)
 [Add Stately MCP server](plans/20261016-stately-mcp-server.md)
 [Build a reactive CI and Nix dashboard](plans/20261016-ci-nix-dashboard.md)
 [Test the CI dashboard with Hegel and Bombadil](plans/20261016-ci-dashboard-property-tests.md)

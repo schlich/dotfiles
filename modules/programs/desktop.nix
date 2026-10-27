@@ -186,7 +186,10 @@ in
               "network_rx"
               "network_tx"
             ];
+            # The hint line (noctalia/plugins/niri-hints) names niri's focus
+            # context as the mode and lists the keys that work in it.
             center = [
+              "schlich/niri-hints:hints"
               "codex_usage"
               "claude_usage"
             ];

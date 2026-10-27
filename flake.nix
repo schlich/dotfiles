@@ -129,6 +129,10 @@
       url = "github:hegeldev/hegel-skill";
       flake = false;
     };
+    humanlayer-skills = {
+      url = "github:humanlayer/skills";
+      flake = false;
+    };
     jevify = {
       url = "github:altryne/jevify";
       flake = false;
@@ -451,6 +455,26 @@
           }).config.system.build.toplevel.drvPath
         }\n"
       );
+      # homelab with discord-digest running, before its owner encrypts
+      # secrets/discord-digest/env.age; the secret is a placeholder until then.
+      discordDigestHomelabEvaluationCheck = pkgs.writeText "discord-digest-homelab-evaluation" (
+        builtins.unsafeDiscardStringContext "${
+          (denFlake.nixosConfigurations.homelab.extendModules {
+            modules = [
+              (
+                { config, ... }:
+                {
+                  services.discord-digest = {
+                    enable = lib.mkForce true;
+                    environmentFile = lib.mkForce config.age.secrets.discord-digest-env.path;
+                  };
+                  age.secrets.discord-digest-env.file = lib.mkForce (builtins.toFile "discord-digest-env.age" "");
+                }
+              )
+            ];
+          }).config.system.build.toplevel.drvPath
+        }\n"
+      );
       # Clan pushes Den's hosts over ssh. `clan machines update NAME` builds
       # this flake's nixosConfigurations.NAME, the system CI checks and
       # system-switch activates; Clan's own machine for each host, which
@@ -678,6 +702,8 @@
         '';
         # Hegel properties of the CI dashboard's feed reductions.
         ci-dashboard-feeds = ciDashboard.feeds;
+        # discord-digest's build runs its tests.
+        discord-digest = pkgs.callPackage ./tools/discord-digest/package.nix { };
         # jj-graph's build runs its lints, its Hegel properties (some in real
         # jj repositories), and its conformance to spec/Normalize.qnt; the
         # model check simulates and model checks the specifications.
@@ -729,12 +755,14 @@
               export NIX_STATE_DIR="$HOME/nix-state"
               mkdir -p "$NIX_STATE_DIR/profiles/per-user"
               export NIX_REMOTE="$HOME/storedata"
+              # A source copied from a Git worktree carries its `.git` file,
+              # which a bare path would make Nix open as a repository.
               nix-unit \
                 --show-trace \
                 --extra-experimental-features flakes \
                 --accept-flake-config \
                 ${nixUnitInputArgs} \
-                --flake ${./.}#tests.systems.${system}
+                --flake path:${./.}#tests.systems.${system}
               touch "$out"
             '';
         # The closure builds after landing (remoteChecks); evaluating it here
@@ -882,6 +910,20 @@
               ruff format --no-cache --config ${./workbench/ruff.toml} --check ${./workbench/python} ${./workbench/tests}
               touch "$out"
             '';
+        # TLC explores every state of the staged switch's bounded model, once
+        # with activation able to outlast the dead-man's grace period and once
+        # with the timer firing only after its run has died.
+        staged-switch-model =
+          pkgs.runCommand "staged-switch-model-check" { nativeBuildInputs = [ pkgs.tlaplus ]; }
+            ''
+              cp ${./deploy/StagedSwitch.tla} StagedSwitch.tla
+              cp ${./deploy/StagedSwitch.cfg} StagedSwitch.cfg
+              cp ${./deploy/StagedSwitchOnTime.cfg} StagedSwitchOnTime.cfg
+              for cfg in StagedSwitch StagedSwitchOnTime; do
+                tlc -workers auto -metadir "$TMPDIR/$cfg" -config "$cfg.cfg" StagedSwitch.tla
+              done
+              touch "$out"
+            '';
         whitespace =
           pkgs.runCommand "whitespace-check"
             {
@@ -926,6 +968,7 @@
           jj-graph-model-exhaustive = jjGraph.exhaustive;
           deploy-revert = import ./tests/deploy-revert.nix { inherit pkgs; };
           marimohub-homelab-evaluation = marimohubHomelabEvaluationCheck;
+          discord-digest-homelab-evaluation = discordDigestHomelabEvaluationCheck;
           nixbot-homelab-evaluation = nixbotHomelabEvaluationCheck;
           # The system and home closures build after landing. A revision
           # whose closure fails to build can land, but no host activates it:

@@ -1,22 +1,16 @@
 #!/usr/bin/env -S nu --stdin
 
-# Claude Code renders a Nushell MCP evaluation as a bare `input:` argument and
-# a collapsed result. Show the head of the command, clipped to the terminal,
-# before the call as a `systemMessage`, which the user sees and the model does not.
-# After the call, report only what the collapsed result hides: a failure, an
-# interruption, or a slow command's summary. The Claude desktop app already
-# shows the full `input` in its tool card and folds these messages into a
-# collapsed notice list, so there the hook skips the command and reports only
-# the result. This hook only displays: it never decides, and any problem
-# leaves it silent so the tool call proceeds exactly as it would without it.
+# The nushell-cards mod draws each Nushell MCP evaluation as a card titled by
+# its `# comment`, with the head of its source, so this hook never repeats the
+# command. After the call it reports, as a one-line `systemMessage` the user
+# sees and the model does not, only what the collapsed result hides: a
+# failure, an interruption, or a slow command's history index, duration, and
+# size. This hook only displays: it never decides, and any problem leaves it
+# silent so the tool call proceeds exactly as it would without it.
 
-# Show only the head of a command: its `# title` line and the first lines of
-# code, each clipped to one row, so a long script stays a short notice.
-const max_command_lines = 3
 # Report a successful evaluation only when it took at least this long.
 const slow_ms = 5000
 const max_text = 160
-const preview_lines = 12
 # Columns Claude Code spends before a message line: its gutter plus our indent.
 const line_indent = 12
 const fallback_width = 100
@@ -31,7 +25,7 @@ def in-desktop-app [] {
 
 # The hook has no terminal of its own, but Claude Code, an ancestor process,
 # does. Walk up to the first process attached to a pseudo-terminal and ask it
-# for the width, so lines can be clipped instead of wrapping mid-table.
+# for the width, so a line can be clipped instead of wrapping.
 def terminal-width [] {
   mut pid = $nu.pid
   for _ in 1..8 {
@@ -50,22 +44,16 @@ def terminal-width [] {
   $fallback_width
 }
 
-# Clip one line to `width` columns, never past max_text.
-def clip-line [line: string, width: int] {
+# The first line of some text, clipped to the terminal and never past max_text.
+def clip [text: string] {
+  let line = ($text | lines | get -o 0 | default "" | str trim)
+  let width = ($env.DISPLAY_COLUMNS? | default $fallback_width) - $line_indent
   let limit = ([$max_text ([$width 20] | math max)] | math min)
   if ($line | str length) > $limit {
     $"($line | str substring 0..<($limit - 1))…"
   } else {
     $line
   }
-}
-
-def line-width [] {
-  ($env.DISPLAY_COLUMNS? | default $fallback_width) - $line_indent
-}
-
-def clip [text: string] {
-  clip-line ($text | lines | get -o 0 | default "" | str trim) (line-width)
 }
 
 def home-relative [path: string] {
@@ -97,49 +85,30 @@ def response-text [response: any] {
   | str join "\n"
 }
 
-# The last few non-blank lines of some output, indented under the summary, so
-# a finished command shows its outcome rather than only line counts.
-def tail-preview [text: string, label: string = ""] {
-  let all = ($text | lines | where ($it | str trim) != "")
-  if ($all | is-empty) { return "" }
-  let width = (line-width)
-  let shown = ($all | last $preview_lines | each {|line| clip-line $line $width })
-  let skipped = ($all | length) - ($shown | length)
-  let header = if $label != "" { $"\n  ($label):" } else { "" }
-  let gap = if $skipped > 0 { $"\n    … ($skipped) earlier lines" } else { "" }
-  $"($header)($gap)\n($shown | each {|line| $'    ($line)' } | str join "\n")"
-}
-
-def describe-value [value: any] {
+# A value's size in a few words: the result itself is one keypress away.
+def size-of [value: any] {
   let kind = ($value | describe | str replace --regex '<.*' '')
   match $kind {
     "nothing" => "no output"
     "string" => {
       let count = ($value | lines | length)
-      if $count <= 1 { $"\"(clip $value)\"" } else { $"($count) lines(tail-preview $value)" }
+      if $count <= 1 { $"\"(clip $value)\"" } else { $"($count) lines" }
     }
     "list" | "table" => {
       let count = ($value | length)
-      let rows = if $count == 1 { "1 row" } else { $"($count) rows" }
-      # Render only the last rows so a huge table stays within the hook timeout.
-      $"($rows)(tail-preview ($value | last $preview_lines | table --expand | ansi strip))"
+      if $count == 1 { "1 row" } else { $"($count) rows" }
     }
     "record" => {
       let columns = ($value | columns)
       if ("exit_code" in $columns) and ("stdout" in $columns) {
-        let stdout = ($value.stdout | into string)
-        let stderr = ($value.stderr? | default "" | into string)
-        let base = $"exit ($value.exit_code) · stdout ($stdout | lines | length) lines · stderr ($stderr | lines | length) lines"
-        # A failure's cause is usually on stderr; a success's result on stdout.
-        let err = if $value.exit_code != 0 { tail-preview $stderr "stderr" } else { "" }
-        $"($base)(tail-preview $stdout 'stdout')($err)"
+        let stderr = ($value.stderr? | default "" | into string | lines | where ($it | str trim) != "")
+        let cause = if $value.exit_code != 0 and ($stderr | is-not-empty) { $": (clip ($stderr | last))" } else { "" }
+        $"exit ($value.exit_code)($cause)"
       } else {
-        let shown = ($columns | first 6 | str join ", ")
-        let more = if ($columns | length) > 6 { ", …" } else { "" }
-        $"record {($shown)($more)}"
+        $"record of ($columns | length) fields"
       }
     }
-    _ => $"($kind): (clip ($value | to nuon))"
+    _ => $kind
   }
 }
 
@@ -148,33 +117,18 @@ def elapsed [payload: record] {
   if $ms == null { "" } else { $" · ($ms | into int | into duration --unit ms)" }
 }
 
-def show-command [payload: record] {
-  let command = ($payload.tool_input?.input? | default "")
-  if ($command | str trim) == "" { return }
-  let width = (line-width) - 4
-  let all = ($command | str trim | lines | where ($it | str trim) != "")
-  let shown = ($all | first $max_command_lines | each {|line| clip-line $line $width })
-  let hidden = ($all | length) - ($shown | length)
-  let body = ($shown | str join "\n    ")
-  let tail = if $hidden > 0 { $"\n    … ($hidden) more lines" } else { "" }
-  emit $"nu ▸ ($body)($tail)"
-}
-
 def show-result [payload: record] {
   if ($payload.duration_ms? | default 0) < $slow_ms { return }
   let reply = (parse-reply (response-text ($payload.tool_response? | default null)))
   if not ($reply | describe | str starts-with "record") {
-    emit $"nu ✓(elapsed $payload) · (describe-value $reply)"
+    emit $"nu ✓(elapsed $payload) · (size-of $reply)"
     return
   }
   let index = if $reply.history_index? != null { $" #($reply.history_index)" } else { "" }
-  let summary = if $reply.note? != null { clip ($reply.note | into string) } else { describe-value ($reply.output? | default null) }
+  let summary = if $reply.note? != null { "output truncated" } else { size-of ($reply.output? | default null) }
   let cwd = ($reply.cwd? | default "")
   let place = if $cwd != "" and $cwd != ($payload.cwd? | default "") { $" · in (home-relative $cwd)" } else { "" }
-  # Keep the directory on the summary line, above any output preview.
-  let head = ($summary | lines | get -o 0 | default "")
-  let preview = ($summary | lines | skip 1 | each {|line| $"\n($line)" } | str join)
-  emit $"nu ✓($index)(elapsed $payload) · ($head)($place)($preview)"
+  emit $"nu ✓($index)(elapsed $payload) · ($summary)($place)"
 }
 
 def show-failure [payload: record] {
@@ -197,11 +151,9 @@ def main [] {
   let input = $in
   try {
     let payload = ($input | into string | from json)
-    let desktop = (in-desktop-app)
     # The desktop app has no terminal to measure; its notices use the fallback.
-    $env.DISPLAY_COLUMNS = if $desktop { $fallback_width } else { terminal-width }
+    $env.DISPLAY_COLUMNS = if (in-desktop-app) { $fallback_width } else { terminal-width }
     match ($payload.hook_event_name? | default "") {
-      "PreToolUse" => { if not $desktop { show-command $payload } }
       "PostToolUse" => { show-result $payload }
       "PostToolUseFailure" => { show-failure $payload }
       _ => {}

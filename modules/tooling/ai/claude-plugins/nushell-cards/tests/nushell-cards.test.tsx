@@ -145,7 +145,8 @@ test("a job-log card streams its log until the job ends", async ($, on) => {
         text: /build\.log · running · running · building foo/,
       }),
     ).toBeDefined();
-    expect(await ui.find({ type: "Code", text: /building foo/ })).toBeDefined();
+    // The log tail belongs to the Monitor's card, not the evaluation's.
+    expect(await ui.find({ type: "Code", text: /building foo/ })).toBeUndefined();
     await ui.unmount();
   }
 
@@ -157,10 +158,15 @@ test("a job-log card streams its log until the job ends", async ($, on) => {
     requestId: "toolu_build",
     props: ROW,
   });
-  files.set(LOG, "=== build\nbuilding foo\nbuilding bar\n");
+  files.set(
+    `${LOG}.status.jsonl`,
+    '{"state":"running","msg":"building foo"}\n{"state":"running","msg":"building bar"}\n',
+  );
   await clock.advance(1_000);
   await clock.settle();
-  expect(await ui.find({ type: "Code", text: /building bar/ })).toBeDefined();
+  expect(
+    await ui.find({ type: "Text", text: /build\.log · running · running · building bar/ }),
+  ).toBeDefined();
 
   files.set(LOG, "=== build\nbuilding foo\nbuilding bar\n/nix/store/abc-foo\n");
   files.set(`${LOG}.done.nuon`, "{exit_code: 0}");
@@ -169,7 +175,7 @@ test("a job-log card streams its log until the job ends", async ($, on) => {
   expect(
     await ui.find({ type: "Text", text: /build\.log · exit 0/ }),
   ).toBeDefined();
-  expect(await ui.find({ type: "Code", text: /abc-foo/ })).toBeDefined();
+  expect(await ui.find({ type: "Code", text: /abc-foo/ })).toBeUndefined();
 
   const monitor = await $.ui.mount({
     plugin: "nushell-cards",
@@ -239,7 +245,7 @@ test("a long source folds behind a button on every surface", async ($) => {
       },
     });
     expect((await ui.find({ key: "fold" }))?.props.label).toBe(
-      "Show 4 more lines",
+      "Show 9 more lines",
     );
     expect((await ui.find({ type: "Code" }))?.text).not.toMatch(/print 11/);
     await ui.press({ key: "fold" });

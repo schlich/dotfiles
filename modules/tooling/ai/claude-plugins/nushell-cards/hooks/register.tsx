@@ -6,9 +6,9 @@ import type { NushellJob } from "../types";
 // The Nushell MCP server's evaluate tool, under whichever plugin ships it.
 const EVALUATE = /^mcp__.*nushell__evaluate$/;
 // Source lines a card shows before folding the rest behind a button.
-const FOLDED_LINES = 8;
-// Log lines a job's card shows.
-const TAIL_LINES = 14;
+const FOLDED_LINES = 3;
+// Log lines a job's Monitor card shows.
+const TAIL_LINES = 5;
 // A log at most this size is read whole; a larger one is tailed.
 const READ_LIMIT = 1024 * 1024;
 const POLL_MS = 1000;
@@ -338,7 +338,8 @@ export const register: Register = (on) => {
               />
             </Box>
           )}
-          {log !== undefined && jobBlock({ job, log, Box, Code, Text })}
+          {log !== undefined &&
+            jobBlock({ job, log, Box, Code, Text, withTail: false })}
         </Box>
       );
     },
@@ -370,7 +371,7 @@ export const register: Register = (on) => {
               {description}
             </Text>
           </Box>
-          {jobBlock({ job, log, Box, Code, Text })}
+          {jobBlock({ job, log, Box, Code, Text, withTail: true })}
         </Box>
       );
     },
@@ -379,15 +380,17 @@ export const register: Register = (on) => {
 
 type Elements = ReturnType<Dollar["ui"]["resolve"]>;
 
-// The bordered block of a job's status line and log tail.
+// The bordered block of a job's status line and, on the Monitor's card only,
+// its log tail, so the tail is drawn once rather than on both cards.
 function jobBlock(props: {
   job: NushellJob | undefined;
   log: string;
   Box: Elements["Box"];
   Code: Elements["Code"];
   Text: Elements["Text"];
+  withTail: boolean;
 }) {
-  const { job, log, Box, Code, Text } = props;
+  const { job, log, Box, Code, Text, withTail } = props;
   const summary =
     job === undefined
       ? {
@@ -406,7 +409,7 @@ function jobBlock(props: {
       <Text color={summary.color} wrap="truncate-end">
         {summary.text}
       </Text>
-      {job !== undefined && job.tail.length > 0 && (
+      {withTail && job !== undefined && job.tail.length > 0 && (
         <Code source={job.tail.join("\n")} wrap="truncate-end" />
       )}
     </Box>
