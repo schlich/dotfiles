@@ -4,8 +4,9 @@ name: nix-ci
 # luvus/integration, builds only remoteChecks.
 on:
   pull_request:
-  # Delivery pushes luvus/integration, waits for `nix flake checks` on its
-  # exact head, then fast-forwards main to that commit (AGENTS.md).
+  # Delivery pushes luvus/integration, waits for nixbot's checks on its
+  # exact head, then fast-forwards main to that commit (AGENTS.md). These
+  # runs report alongside nixbot but no ruleset requires them.
   push:
     branches:
       - main

@@ -1,12 +1,12 @@
 # Deliver luvus's integration branch to main: push it to GitHub, wait for
-# nix-ci's `nix flake checks` on that exact commit, then move main to it.
-# The main-checks ruleset admits only a commit with that check passed, and
-# GitHub refuses a push that is not a fast-forward, so this never rewrites
-# main. It waits for CI, so agents run it as a `job-log` job.
+# nixbot's checks on that exact commit, then move main to it. The main-checks
+# ruleset admits only a commit whose nixbot checks passed, and GitHub refuses
+# a push that is not a fast-forward, so this never rewrites main. It waits for
+# homelab to build, so agents run it as a `job-log` job.
 def main [
   --repo: path = "."                     # Any checkout of the repository
   --branch: string = "luvus/integration" # The branch luvus merges finished tasks into
-  --check: string = "nix flake checks"   # The required check run on GitHub
+  --check: list<string> = [nixbot/nix-eval nixbot/nix-build] # The required check runs on GitHub
   --timeout: duration = 2hr
   --poll: duration = 30sec
 ] {
@@ -26,19 +26,30 @@ def main [
   ^git -C $root push --quiet origin $"($sha):refs/heads/($branch)"
   let slug = (do { cd $root; ^gh repo view --json nameWithOwner --jq .nameWithOwner } | str trim)
   let deadline = ((date now) + $timeout)
+  # GitHub counts these conclusions as passing a required check.
+  let passing = [success neutral skipped]
   loop {
-    let runs = (^gh api --method GET $"repos/($slug)/commits/($sha)/check-runs" -f $"check_name=($check)" | from json | get check_runs)
-    let latest = ($runs | where status == completed | sort-by completed_at | last)
-    if $latest != null {
-      if $latest.conclusion != "success" {
-        error make { msg: $"`($check)` concluded ($latest.conclusion) on ($short): ($latest.html_url)" }
-      }
-      break
+    let latest = $check | each {|name|
+      ^gh api --method GET $"repos/($slug)/commits/($sha)/check-runs" -f $"check_name=($name)"
+      | from json
+      | get check_runs
+      | where status == completed
+      | sort-by completed_at
+      | last
+      | default { name: $name, conclusion: null }
     }
+    # A failed eval means nix-build may never report, so stop at the first failure.
+    let failed = $latest | where conclusion != null and conclusion not-in $passing
+    if ($failed | is-not-empty) {
+      let first = $failed | first
+      error make { msg: $"`($first.name)` concluded ($first.conclusion) on ($short): ($first.html_url? | default '')" }
+    }
+    let pending = $latest | where conclusion == null | get name
+    if ($pending | is-empty) { break }
     if (date now) > $deadline {
-      error make { msg: $"Timed out after ($timeout) waiting for `($check)` on ($short)." }
+      error make { msg: $"Timed out after ($timeout) waiting for ($pending | str join ', ') on ($short)." }
     }
-    print $"Waiting for `($check)` on ($short)."
+    print $"Waiting for ($pending | str join ', ') on ($short)."
     sleep $poll
   }
   ^git -C $root push --quiet origin $"($sha):refs/heads/main"

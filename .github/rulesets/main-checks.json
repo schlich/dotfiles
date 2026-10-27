@@ -22,7 +22,12 @@
         "do_not_enforce_on_create": false,
         "required_status_checks": [
           {
-            "context": "ci land"
+            "context": "nixbot/nix-eval",
+            "integration_id": 5386637
+          },
+          {
+            "context": "nixbot/nix-build",
+            "integration_id": 5386637
           }
         ]
       }

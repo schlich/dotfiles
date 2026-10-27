@@ -206,10 +206,11 @@
   task's branch in its worktree, resolve, rerun the gate, and merge again.
   Never resolve conflicts automatically.
 - `luvus-deliver` delivers `luvus/integration` to `main`. It pushes the
-  branch, waits for nix-ci's `nix flake checks` on that exact commit, then
-  fast-forwards `main` to it. The `main-checks` ruleset admits only a commit
-  with that check passed, and GitHub refuses a push that is not a
-  fast-forward. It waits for CI, so run it as a `job-log` job. When
+  branch, waits for nixbot's `nixbot/nix-eval` and `nixbot/nix-build` on that
+  exact commit, then fast-forwards `main` to it. The `main-checks` ruleset
+  admits only a commit with both passed, reported by nixbot's own App, and
+  GitHub refuses a push that is not a fast-forward. It waits for homelab to
+  build, so run it as a `job-log` job. When
   `luvus/integration` no longer contains `origin/main`, merge `origin/main`
   into it first.
 - For a small change that affects a single host, a user request to publish
@@ -229,10 +230,13 @@
   review, but deliver through `luvus-deliver`, never GitHub's merge button.
   Tangled (`tangled`) mirrored `main` through `ci land`; that mirror is
   paused while this repository runs on luvus.
-- GitHub Actions (`.github/workflows/nix-ci.yml`) is the remote CI: a push of
-  `main` or a `luvus/**` branch, or a pull request, starts it. It builds
-  every attribute of `checks.x86_64-linux`, skipping cached outputs; a push
-  to `main` skips them, since that commit passed on `luvus/integration`.
+- nixbot on homelab is the gating CI (`docs/nixbot.md`): it builds
+  `checks.x86_64-linux` for `main`, every `luvus/*` branch (`nixbot.toml`),
+  and pull requests, in homelab's warm store.
+- GitHub Actions (`.github/workflows/nix-ci.yml`) also runs on a push of
+  `main` or a `luvus/**` branch, or a pull request, but gates nothing. It
+  builds every attribute of `checks.x86_64-linux`, skipping cached outputs; a
+  push to `main` skips them, since that commit passed on `luvus/integration`.
   The headless system, the desktop system, and the desktop's primary home
   are `remoteChecks`, which build after each push without blocking delivery.
   A closure that fails to build can reach `main`, but no host activates it,
