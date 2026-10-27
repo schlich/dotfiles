@@ -186,7 +186,6 @@
       ".config/wivrn"
       ".config/yazelix"
       ".config/yazi"
-      ".config/zed"
 
       # ~/.local
       ".local/bin"
@@ -237,7 +236,6 @@
       }
       ".local/share/wallpapers"
       ".local/share/yazelix"
-      ".local/share/zed"
       ".local/share/zellij"
       ".local/share/zoxide"
       ".local/state/boot-postmortem"

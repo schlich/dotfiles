@@ -113,7 +113,7 @@ in
 
   dotfiles.nixpkgsWatch.atuin = {
     inherit (atuinPackage) version;
-    reason = "use pkgs.atuin where modules/programs/atuin-package.nix is imported (shell.nix, tooling/ai/common.nix, tooling/editors/zed.nix), delete that file, and drop the atuin input";
+    reason = "use pkgs.atuin where modules/programs/atuin-package.nix is imported (shell.nix, tooling/ai/common.nix), delete that file, and drop the atuin input";
   };
 
   programs.carapace = {

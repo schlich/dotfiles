@@ -99,7 +99,7 @@ layout.
 makes the target a child document, so hubs, milestones, and release pages are
 structure, not convention. The CLI queries it (`iwe find`, `iwe tree`),
 refactors it safely (`iwe rename` updates every reference), and validates it
-(`iwe schema validate`). Editor support (VSCode, Neovim, Zed, Helix) via LSP.
+(`iwe schema validate`). Editor support (VSCode, Neovim, Helix) via LSP.
 
 ## Acknowledgments
 
