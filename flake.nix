@@ -129,6 +129,10 @@
       url = "github:hegeldev/hegel-skill";
       flake = false;
     };
+    humanlayer-skills = {
+      url = "github:humanlayer/skills";
+      flake = false;
+    };
     jevify = {
       url = "github:altryne/jevify";
       flake = false;
