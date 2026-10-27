@@ -3,7 +3,8 @@
 //!
 //! `graph` and `plan` are the pure core that `spec/Normalize.qnt` specifies.
 //! `diff` and `extract` read what each change defines and references, `jj`
-//! and `load` read a repository into a graph, and `apply` rewrites it as one
+//! and `load` read a repository into a graph, `commute` asks jj which
+//! changes that touch one file commute, and `apply` rewrites it as one
 //! operation (`spec/Apply.qnt`). `hoist` is the diff editor that splits
 //! changes, `dot`, `gherkin`, and `skeleton` build ghost graphs from Graphviz
 //! diagrams and Gherkin features (`spec/Skeleton.qnt`), and `shapes` and
@@ -11,6 +12,7 @@
 
 pub mod apply;
 pub mod checks;
+pub mod commute;
 pub mod diff;
 pub mod dot;
 pub mod extract;

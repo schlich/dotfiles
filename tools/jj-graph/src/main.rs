@@ -8,6 +8,7 @@ use serde::Serialize;
 
 use jj_graph::apply::{Options, Outcome, command_line, normalize};
 use jj_graph::checks::{mutated_contracts, run_at};
+use jj_graph::commute::{Commutation, How};
 use jj_graph::graph::{Check, Id};
 use jj_graph::jj::Jj;
 use jj_graph::load::{Loaded, Scope, load, short};
@@ -41,9 +42,39 @@ struct ScopeArgs {
 }
 
 #[derive(Args, Clone)]
+struct CommuteArgs {
+    /// Where jj's text merge conflicts when two changes that touch one file
+    /// move past each other, try mergiraf's structural merge: they commute
+    /// if each keeps its edit item by item. Rewritten changes mergiraf
+    /// merged keep their edits item by item, and anchors keep their trees.
+    #[arg(long)]
+    mergiraf: bool,
+}
+
+impl CommuteArgs {
+    fn commutation(&self) -> Commutation {
+        if self.mergiraf {
+            Commutation::Mergiraf
+        } else {
+            Commutation::Jj
+        }
+    }
+}
+
+#[derive(Args, Clone)]
+struct CheckArgs {
+    #[command(flatten)]
+    scope: ScopeArgs,
+    #[command(flatten)]
+    commute: CommuteArgs,
+}
+
+#[derive(Args, Clone)]
 struct NormalizeArgs {
     #[command(flatten)]
     scope: ScopeArgs,
+    #[command(flatten)]
+    commute: CommuteArgs,
     /// First move the formatting- and comment-only edits of each change that
     /// also makes other edits into a new change before it (the guide's
     /// refactor precursor).
@@ -68,7 +99,7 @@ struct NormalizeArgs {
 enum Cmd {
     /// Report how far the changes are from their normal form. Exits 1 when
     /// they are not normal.
-    Check(ScopeArgs),
+    Check(CheckArgs),
     /// Show the normal form and the rebases that reach it; change nothing.
     Plan(NormalizeArgs),
     /// Rewrite the changes into their normal form, as one operation.
@@ -122,11 +153,14 @@ enum Cmd {
     },
 }
 
-fn scope(a: &ScopeArgs) -> Scope {
+/// What a command reads; `commutation` is how it decides which changes that
+/// touch one file commute, which only the normal form needs.
+fn scope(a: &ScopeArgs, commutation: Commutation) -> Scope {
     Scope {
         revset: a.revisions.clone(),
         anchors: a.anchor.clone(),
         allow_conflicts: false,
+        commutation,
     }
 }
 
@@ -155,14 +189,14 @@ fn print_json(value: &impl Serialize) -> Result<()> {
     Ok(())
 }
 
-fn check(jj: &Jj, a: &ScopeArgs) -> Result<ExitCode> {
+fn check(jj: &Jj, a: &CheckArgs) -> Result<ExitCode> {
     let op = {
         jj.snapshot()?;
         jj.head_op()?
     };
-    let l = load(jj, &op, &scope(a))?;
+    let l = load(jj, &op, &scope(&a.scope, a.commute.commutation()))?;
     let report = l.graph.check();
-    if a.json {
+    if a.scope.json {
         print_json(&report)?;
     } else {
         print_check(&l, &report);
@@ -233,13 +267,43 @@ fn print_check(l: &Loaded, r: &Check) {
 struct PlanJson<'a> {
     precursors: &'a [(Id, Id)],
     hoisted: &'a [(Id, Id)],
+    /// Each pair of changes that touch one file and commute, and how.
+    commutes: Vec<(&'a Id, &'a Id, How)>,
     target: &'a BTreeMap<Id, BTreeSet<Id>>,
     commands: Vec<String>,
+    merged: &'a BTreeSet<Id>,
     integrated: Option<&'a String>,
+}
+
+/// The commuting pairs the normal form no longer orders the way they were.
+fn released(o: &Outcome) -> Vec<(&Id, &Id, How)> {
+    let (before, after) = (o.start.graph.ancestry(), o.target.ancestry());
+    o.commutations
+        .iter()
+        .filter(|((u, v), _)| before.contains(u, v) && !after.contains(u, v))
+        .map(|((u, v), how)| (u, v, *how))
+        .collect()
 }
 
 fn print_plan(o: &Outcome, applied: bool) {
     let l = &o.start;
+    for (u, v, how) in released(o) {
+        let files: Vec<String> = l.graph.info[u]
+            .files
+            .intersection(&l.graph.info[v].files)
+            .cloned()
+            .collect();
+        println!(
+            "commute {} and {} both touch {}, and their diffs commute ({})",
+            short(u),
+            short(v),
+            files.join(", "),
+            match how {
+                How::Jj => "jj merges them",
+                How::Mergiraf => "mergiraf merges them",
+            }
+        );
+    }
     for (v, twin) in &o.precursors {
         println!(
             "split  {} ({}) gets its formatting edits in {}",
@@ -296,7 +360,7 @@ fn print_plan(o: &Outcome, applied: bool) {
 
 fn run_normalize(jj: &Jj, a: &NormalizeArgs, apply: bool) -> Result<ExitCode> {
     let opts = Options {
-        scope: scope(&a.scope),
+        scope: scope(&a.scope, a.commute.commutation()),
         cosmetic: a.cosmetic,
         hoist: a.hoist,
         editor: std::env::current_exe().context("finding jj-graph's own path")?,
@@ -309,16 +373,28 @@ fn run_normalize(jj: &Jj, a: &NormalizeArgs, apply: bool) -> Result<ExitCode> {
         print_json(&PlanJson {
             precursors: &o.precursors,
             hoisted: &o.hoisted,
+            commutes: o
+                .commutations
+                .iter()
+                .map(|((u, v), how)| (u, v, *how))
+                .collect(),
             target: &o.target.parents,
             commands: o
                 .steps
                 .iter()
                 .map(|s| command_line(&o.start.graph, s))
                 .collect(),
+            merged: &o.merged,
             integrated: o.integrated.as_ref(),
         })?;
     } else {
         print_plan(&o, apply);
+        for v in &o.merged {
+            println!(
+                "merged {} with mergiraf; its edit is the same item by item",
+                short(v)
+            );
+        }
         if let Some(op) = &o.integrated {
             println!("✓ applied as operation {}", &op[..12.min(op.len())]);
         }
@@ -339,7 +415,7 @@ fn symbols(jj: &Jj, a: &ScopeArgs) -> Result<ExitCode> {
         jj.snapshot()?;
         jj.head_op()?
     };
-    let l = load(jj, &op, &scope(a))?;
+    let l = load(jj, &op, &scope(a, Commutation::Off))?;
     if a.json {
         let rows: Vec<SymbolsJson> = l
             .symbols
@@ -389,7 +465,7 @@ fn shapes(
         jj.snapshot()?;
         jj.head_op()?
     };
-    let l = load(jj, &op, &scope(a))?;
+    let l = load(jj, &op, &scope(a, Commutation::Off))?;
     let shapes = classify(&l.graph, &l.symbols);
     let private: BTreeMap<Id, BTreeSet<String>> = l
         .symbols

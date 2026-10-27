@@ -16,7 +16,10 @@
 //! same name look related. That only ever adds a requirement, which keeps a
 //! normalization safe at the cost of some parallelism. Files in other
 //! languages contribute only their paths, through which changes to the same
-//! file stay ordered.
+//! file stay ordered unless their diffs commute.
+//!
+//! The same items, cut into pieces (`pieces`), judge a merge jj's text merge
+//! did not make: an edit is kept when it removes and adds the same pieces.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::hash::{DefaultHasher, Hash, Hasher};
@@ -916,6 +919,147 @@ pub fn units(lang: Lang, text: &str) -> Vec<Unit> {
         });
     }
     out
+}
+
+// ---------------------------------------------------------------------
+// Edits item by item, for merges jj's text merge did not make
+// ---------------------------------------------------------------------
+
+/// A part of a file as an edit sees it. Two versions of a file hold the
+/// same pieces when they hold the same items, statements, and comments, in
+/// whatever order and layout.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Piece {
+    /// A named item and its syntax. An item that holds others (a class and
+    /// its methods) counts only its own tokens; each item inside it is a
+    /// piece of its own.
+    Item(String, u64),
+    /// What a top-level unit holds outside every named item: an import, a
+    /// statement, the header of an `impl` block.
+    Unit(u64),
+    /// A comment, by its text.
+    Comment(String),
+    /// The tokens outside every unit, such as a Nix module's arguments.
+    Rest(u64),
+}
+
+fn hash_tokens<'a>(tokens: impl IntoIterator<Item = &'a str>) -> u64 {
+    let mut h = DefaultHasher::new();
+    for t in tokens {
+        t.hash(&mut h);
+    }
+    h.finish()
+}
+
+/// A file's pieces, sorted, or None when tree-sitter finds a syntax error,
+/// which leaves its items unreliable.
+pub fn pieces(lang: Lang, text: &str) -> Option<Vec<Piece>> {
+    let tree = parse_tree(lang, text)?;
+    let root = tree.root_node();
+    if root.has_error() {
+        return None;
+    }
+    let items = parse(lang, text).items;
+    let units = units(lang, text);
+    let inside = |inner: &Range<usize>, outer: &Range<usize>| {
+        outer.start <= inner.start && inner.end <= outer.end
+    };
+    // Each token belongs to the innermost item around it, if any.
+    let owner = |t: &Range<usize>| {
+        items
+            .iter()
+            .enumerate()
+            .filter(|(_, i)| inside(t, &i.bytes))
+            .min_by_key(|(_, i)| i.bytes.len())
+            .map(|(k, _)| k)
+    };
+    let tokens: Vec<(Range<usize>, Option<usize>)> = tokens(root, root)
+        .into_iter()
+        .filter(|t| !t.is_empty())
+        .map(|t| {
+            let o = owner(&t);
+            (t, o)
+        })
+        .collect();
+    let mut out = Vec::new();
+    for (k, item) in items.iter().enumerate() {
+        let holds_another = items
+            .iter()
+            .any(|j| j.bytes.len() < item.bytes.len() && inside(&j.bytes, &item.bytes));
+        let fingerprint = if holds_another {
+            hash_tokens(
+                tokens
+                    .iter()
+                    .filter(|(_, o)| *o == Some(k))
+                    .map(|(t, _)| &text[t.clone()]),
+            )
+        } else {
+            item.fingerprint
+        };
+        out.push(Piece::Item(item.name.clone(), fingerprint));
+    }
+    for unit in &units {
+        if !items.iter().any(|i| inside(&i.bytes, &unit.bytes)) {
+            out.push(Piece::Unit(unit.fingerprint));
+            continue;
+        }
+        let rest: Vec<&str> = tokens
+            .iter()
+            .filter(|(t, o)| o.is_none() && inside(t, &unit.bytes))
+            .map(|(t, _)| &text[t.clone()])
+            .collect();
+        if !rest.is_empty() {
+            out.push(Piece::Unit(hash_tokens(rest)));
+        }
+    }
+    let outside: Vec<&str> = tokens
+        .iter()
+        .filter(|(t, o)| o.is_none() && !units.iter().any(|u| inside(t, &u.bytes)))
+        .map(|(t, _)| &text[t.clone()])
+        .collect();
+    if !outside.is_empty() {
+        out.push(Piece::Rest(hash_tokens(outside)));
+    }
+    let mut cursor = root.walk();
+    let mut stack = vec![root];
+    while let Some(n) = stack.pop() {
+        if is_comment(n.kind()) {
+            out.push(Piece::Comment(text[n.byte_range()].trim_end().to_owned()));
+        } else {
+            stack.extend(n.children(&mut cursor));
+        }
+    }
+    out.sort();
+    Some(out)
+}
+
+/// What changing a file from `old` to `new` (None: it does not exist on
+/// that side) does to its pieces: those it removes and those it adds, each
+/// sorted. None when either side does not parse cleanly.
+pub fn piece_edit(
+    lang: Lang,
+    old: Option<&str>,
+    new: Option<&str>,
+) -> Option<(Vec<Piece>, Vec<Piece>)> {
+    let side = |t: Option<&str>| t.map_or(Some(Vec::new()), |t| pieces(lang, t));
+    let (before, after) = (side(old)?, side(new)?);
+    let minus = |a: &[Piece], b: &[Piece]| {
+        let mut left: BTreeMap<&Piece, usize> = BTreeMap::new();
+        for p in b {
+            *left.entry(p).or_default() += 1;
+        }
+        a.iter()
+            .filter(|p| match left.get_mut(p) {
+                Some(n) if *n > 0 => {
+                    *n -= 1;
+                    false
+                }
+                _ => true,
+            })
+            .cloned()
+            .collect::<Vec<_>>()
+    };
+    Some((minus(&before, &after), minus(&after, &before)))
 }
 
 /// A statement made only of a string: a docstring or a directive.

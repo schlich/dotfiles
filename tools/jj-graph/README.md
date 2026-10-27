@@ -10,6 +10,7 @@ from nothing it does not need (minimality).
 jj-graph check                       # how far trunk()..@ is from its normal form; exits 1 if not normal
 jj-graph plan --cosmetic --hoist     # the normal form and the rebases that reach it; changes nothing
 jj-graph normalize --cosmetic --hoist  # rewrite trunk()..@ into its normal form, as one operation
+jj-graph normalize --mergiraf        # let mergiraf merge edits of one file that jj's text merge cannot
 jj-graph symbols -r 'trunk()..@'     # what each change defines and references
 jj-graph shapes -- cargo check       # boundary shapes; run a check in each affected change's tree
 jj-graph shapes --every -- cargo test  # run it in every change (the guide's atomicity)
@@ -42,7 +43,7 @@ take `--json`.
 
 A change _requires_ another when it references a symbol the other defines;
 and, for an original ancestor, when both define the same symbol, both touch
-the same file (their diffs may not commute), or the change is an anchor. An
+the same file and their diffs do not commute, or the change is an anchor. An
 anchor is a working copy, or a change with children outside the scope: its
 tree must not change. Each change also keeps the out-of-scope (trunk) commits
 it was built on. The normal form is the transitive reduction of the closure
@@ -50,6 +51,42 @@ of these requirements: each change's parents are its required ancestors that
 no other required ancestor descends from. It is unique, normalizing it again
 changes nothing, every edge in it is a direct requirement, and `check`
 reports nothing exactly on a graph that is already normal.
+
+### Commuting edits of one file
+
+Two changes that touch the same file commute when jj itself can move each
+past the other. jj-graph asks it once per read of the graph
+(`src/commute.rs`). The pairs it asks about are those whose order nothing but
+a shared file keeps (`Graph::commutation_candidates`). For each pair it runs
+`jj rebase -r u -A v` on an operation it never integrates, so the later change
+`v`, and the changes between the two, go on without `u`, and `u` goes on top.
+The diffs commute only if all of these hold:
+
+- no change between them conflicts, and neither `u` nor `v` does;
+- each keeps its own patch: the lines it removes and adds, in order;
+- `u` on top has exactly the tree `v` had, so the pair ends where it started.
+
+The specification takes the result as an input, `commutes`. Two changes
+editing different functions of one file become siblings, and a change written
+before the code it calls in the same file can move above it. Edits that jj's
+text merge cannot separate, such as two changes on one line, keep their
+order.
+
+With `--mergiraf`, a conflict in `u` or `v` goes to
+[mergiraf](https://mergiraf.org), a structural merge tool. jj runs it as an
+external merge tool through `jj resolve`; jj-graph never links it, and runs
+the program `JJ_GRAPH_MERGIRAF` names, or `mergiraf` on the path. A
+resolution counts only if each change keeps its edit item by item, and `u` on
+top holds what `v` held, though order and layout may differ. An item here is
+a piece of a file: a named item, read with the same queries as definitions;
+what a top-level unit holds outside its items; a comment; or the tokens
+outside every unit. Each change must remove and add the same pieces it did
+before the move. `normalize --mergiraf` then hands mergiraf every conflict the
+plan's rebases leave, parents first, and gives each anchor its own tree back.
+The check before integration holds each change mergiraf merged to the same
+rule. A merge is judged against its parents as mergiraf merges them, on an
+operation off the chain that is never integrated. `check` and `plan` take
+`--mergiraf` too, so that they judge the graph by the same rule.
 
 Three situations have no normal form jj-graph will apply:
 
@@ -84,7 +121,9 @@ specification shows with two of its tests:
 The guide's minimality ("a direct parent iff the change references a symbol
 defined there") is extended with the textual, anchor, and base requirements
 above; without them a normalization could conflict, change the working copy,
-or drop trunk commits a change was built on. Pass 2 hoists only new
+or drop trunk commits a change was built on. The textual requirement holds
+only where jj cannot commute the two diffs, so it costs no parallelism that a
+clean rebase would allow. Pass 2 hoists only new
 contracts: a precursor that changed or removed a contract would break the
 code still written against the old one, so it would not build.
 
@@ -95,7 +134,8 @@ command on a detached chain of operations (`--at-op`,
 `--no-integrate-operation`), then checks the chain's last operation: every
 change has its planned parents, none gained a conflict, every anchor and
 every workspace's working copy has the same tree, and every change's own diff
-is unchanged. Only then, and only if the repository's head operation is still
+is unchanged (item by item, for a change mergiraf merged under `--mergiraf`).
+Only then, and only if the repository's head operation is still
 the one it started from, does it run `jj op integrate`. A failed command or
 check leaves the repository as it was. If another operation races the
 integration and leaves a change divergent, jj-graph reverts its own
@@ -117,7 +157,9 @@ what the split moves.
 - `--cosmetic` (the guide's Pattern A): each unit whose tokens the change
   leaves alone, but whose layout, comments, or trailing commas it changes,
   takes its new text. The new change defines nothing and orders only by the
-  files it touches. Renames change tokens, so they stay with the change.
+  files it touches, where its diff and theirs do not commute; a re-indent
+  far from the change's other edits commutes with them, so the two end as
+  siblings. Renames change tokens, so they stay with the change.
 - `--hoist` (Pass 2): each top-level unit that holds only contracts (traits,
   interfaces, protocols, structs, enums, type aliases, module option
   declarations) that the file did not have, and that no implementation
@@ -192,14 +234,15 @@ safe and makes it less parallel. Other files only count by path.
 ## Tests
 
 - `tests/graph_properties.rs`: Hegel properties of the normal form, the plan,
-  hoisting, and anchor growth, with a brute-force search of every valid
-  rewrite for small graphs.
+  hoisting, anchor growth, and commuting pairs, with a brute-force search of
+  every valid rewrite for small graphs.
 - `tests/conformance.rs`: quint-connect replays `NormalizeWide` traces and
   compares all six state variables after every step.
 - `tests/jj_end_to_end.rs`: random stories of commits in real repositories,
   normalized and then checked from outside (normal when read back, trees and
   own diffs unchanged, refusals change nothing, a second run does nothing),
-  and the guide's examples.
+  the guide's examples, and edits of one file that commute, that do not, and
+  that commute only through mergiraf.
 - `tests/extract_properties.rs`, `tests/split_properties.rs`: files in every
   language, moved, commented, reformatted, edited, and extended; what a
   change defines and uses, and what each split moves.
@@ -215,8 +258,8 @@ safe and makes it less parallel. Other files only count by path.
   `NormalizeTiny` takes about twelve minutes and runs as a remote check.
 
 ```nu
-# jj, quint, git, and Graphviz's dot on PATH; keep cargo's output outside
-# the checkout, since `path:` flakes copy ignored files too.
+# jj, quint, git, Graphviz's dot, and mergiraf on PATH; keep cargo's output
+# outside the checkout, since `path:` flakes copy ignored files too.
 $env.CARGO_TARGET_DIR = ($nu.temp-path | path join jj-graph-target)
 cargo test
 quint test --main=NormalizeExamples spec/Normalize.qnt
@@ -229,8 +272,21 @@ nix build path:.#checks.x86_64-linux.jj-graph-model
   names, and string-keyed lookups are invisible, so a missed reference can
   order changes too loosely. `shapes -- CMD` runs a project's own check in
   each affected tree to catch what the names miss.
-- The textual requirement is per file: changes touching one file stay in
-  their original order even when their hunks would commute.
+- Commutation is tested a pair at a time, in the graph as it was read, with
+  the changes between the pair still in place. A normal form that drops
+  several of a change's ancestors at once applies its patch where no test
+  did, and a later read with fewer changes between a pair could judge it
+  differently. The check before integration refuses any conflict or changed
+  patch either makes.
+- Each pair tested costs a rebase on a detached operation and a few reads, so
+  `check` and `plan` take longer on stacks with many edits of one file.
+- mergiraf's merges are judged item by item, which ignores order and layout:
+  a change mergiraf merged may hold its items in another order or layout
+  than its own diff had. Anchors keep their trees exactly, so a working copy
+  over siblings mergiraf merged gets a diff that resolves their text
+  conflict, which changes no item. mergiraf keeps each merge it makes for
+  `mergiraf review` in its data directory; the merges made only to test a
+  pair or to check a plan go to a directory that is removed afterwards.
 - A hoisted part parses and holds what it should, but jj-graph cannot build
   it: an import's package name in Go is guessed from its path, and a new
   contract may rely on something only the implementation adds. Run

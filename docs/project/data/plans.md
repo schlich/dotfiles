@@ -18,6 +18,7 @@ moves them.*
 ## Active
 
 [Implement jj graph normalization](plans/20261019-jj-graph.md)
+[Commute jj-graph's edits of one file](plans/20261020-jj-graph-commutation.md)
 [Add OpenCode desktop client](plans/20261017-add-opencode-desktop.md)
 [Run MCP-NixOS with Nix](plans/20261016-mcp-nixos-nix-launch.md)
 [Adopt Home Manager mutable settings for app-owned config](plans/20261017-mutable-settings.md)

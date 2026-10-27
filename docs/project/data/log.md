@@ -12,6 +12,10 @@ to the current day's group.
 
 ## 2026-10-20
 
+- **Plan**:
+  [Commute jj-graph's edits of one file](plans/20261020-jj-graph-commutation.md);
+  two changes that touch one file keep their order only when jj cannot move each
+  past the other, with mergiraf as an opt-in structural fallback.
 - **Delivery**:
   [Make nixbot's GitHub App and secrets declarative](plans/20261019-nixbot-app-declarative.md)
   done: release 2026.10.20.3 turned nixbot on at homelab, which builds every

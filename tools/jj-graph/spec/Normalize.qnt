@@ -14,8 +14,14 @@
 // safe, so the requirements here are wider than "references a definition":
 //
 // - Text. Two changes that touch the same file may not commute: moving one
-//   off the other can conflict. A change keeps every original ancestor it
-//   shares a file with, and every one that defines a symbol it also defines.
+//   off the other can conflict, or change what either one's diff does. A
+//   change keeps every original ancestor it shares a file with, unless their
+//   diffs commute, and every one that defines a symbol it also defines.
+//   Whether two diffs commute is an input, `commutes`, which jj-graph
+//   computes once per load by asking jj itself: on an operation nobody sees,
+//   it rebases each change past the other, and they commute only if neither
+//   conflicts, each keeps its own patch, and the pair ends on the tree it
+//   started from.
 // - Anchors. A working-copy change, or one with a child outside the rewrite,
 //   must keep its tree: files on disk, or a descendant nobody asked to move,
 //   would change. An anchor keeps every original ancestor, so it becomes a
@@ -67,6 +73,9 @@ module Normalize {
   const SYMS: Set[str]
   const CONTRACTS: Set[str]
   const FILES: Set[str]
+  // The pairs of changes whose diffs the generated graphs may find to
+  // commute.
+  const COMMUTABLE: Set[(str, str)]
 
   pure val COMMITS: Set[str] = ORDER.foldl(Set(), (s, c) => s.union(Set(c)))
   pure val POS: str -> int =
@@ -89,14 +98,21 @@ module Normalize {
   }
 
   // A graph is the set of changes in scope, each change's parents (changes in
-  // scope or BASES), and each change's facts.
+  // scope or BASES), each change's facts, and the pairs of changes whose
+  // diffs commute: jj rebases each past the other without a conflict, and
+  // each keeps its own patch.
   type Graph = {
     scope: Set[str],
     parents: str -> Set[str],
-    info: str -> Change
+    info: str -> Change,
+    commutes: Set[(str, str)]
   }
 
   pure def nodesOf(g: Graph): Set[str] = g.scope.union(BASES)
+
+  // Whether the diffs of u and v commute, in either order.
+  pure def commute(g: Graph, u: str, v: str): bool =
+    g.commutes.contains((u, v)) or g.commutes.contains((v, u))
 
   pure def edgesOf(g: Graph): Set[(str, str)] =
     g.scope.map(c => g.parents.get(c).map(p => (p, c))).flatten().union(BASE_ANC)
@@ -126,7 +142,8 @@ module Normalize {
 
   // v requires u (u must stay a proper ancestor of v) when v references a
   // symbol u defines; and, for an original ancestor u, when both define the
-  // same symbol, when both touch the same file, or when v is an anchor.
+  // same symbol, when both touch the same file and their diffs do not
+  // commute, or when v is an anchor.
   pure def requires(g: Graph, a: Set[(str, str)], u: str, v: str): bool = {
     val iu = g.info.get(u)
     val iv = g.info.get(v)
@@ -136,7 +153,7 @@ module Normalize {
       or {
         iv.refs.intersect(iu.defs) != Set(),
         before and iu.defs.intersect(iv.defs) != Set(),
-        before and iu.files.intersect(iv.files) != Set(),
+        before and iu.files.intersect(iv.files) != Set() and not(commute(g, u, v)),
         before and iv.anchor,
       },
     }
@@ -292,7 +309,9 @@ module Normalize {
   // Insert each hoistable change's twin between it and its parents. The twin
   // takes the contract definitions and the contract part's references and
   // files; the change keeps the rest and everything it touches, so its tree
-  // and its children are unchanged.
+  // and its children are unchanged. Splitting a change changes its diff, so
+  // nothing is known to commute with it or its twin until they are read
+  // again.
   pure def hoist(g: Graph): Graph = {
     val hs = g.scope.filter(v => hoistable(g.info.get(v)))
     val twins = hs.map(v => TWIN.get(v))
@@ -309,7 +328,12 @@ module Normalize {
         val c = g.info.get(x)
         { ...c, defs: implDefs(c), crefs: Set(), cfiles: Set() }
       } else g.info.get(x))
-    { scope: g.scope.union(twins), parents: parents, info: info }
+    {
+      scope: g.scope.union(twins),
+      parents: parents,
+      info: info,
+      commutes: g.commutes.filter(e => not(hs.contains(e._1) or hs.contains(e._2))),
+    }
   }
 
   // ---------------------------------------------------------------------
@@ -388,7 +412,7 @@ module Normalize {
 
   pure def build(edges: Set[(str, str)], defs: Set[(str, str)], refs: Set[(str, str)],
                  files: Set[(str, str)], anchors: Set[str], crefs: Set[(str, str)],
-                 cfiles: Set[(str, str)]): Graph = {
+                 cfiles: Set[(str, str)], commutes: Set[(str, str)]): Graph = {
     scope: COMMITS,
     parents: COMMITS.mapBy(c => {
       val ps = edges.filter(e => e._2 == c).map(e => e._1)
@@ -402,6 +426,7 @@ module Normalize {
       crefs: related(crefs, c).intersect(related(refs, c)),
       cfiles: related(cfiles, c).intersect(related(files, c)),
     }),
+    commutes: commutes,
   }
 
   pure val NO_PAIRS: Set[Set[(str, str)]] = Set(Set())
@@ -417,7 +442,8 @@ module Normalize {
     // Hoisting needs contract symbols; without any, its inputs stay empty.
     nondet crefs = (if (CONTRACTS == Set()) NO_PAIRS else SYM_PAIRS).oneOf()
     nondet cfiles = (if (CONTRACTS == Set()) NO_PAIRS else FILE_PAIRS).oneOf()
-    val g = build(edges, defs, refs, files, anchors, crefs, cfiles)
+    nondet commutes = COMMUTABLE.powerset().oneOf()
+    val g = build(edges, defs, refs, files, anchors, crefs, cfiles, commutes)
     val h = hoist(g)
     all {
       original' = g,
@@ -489,6 +515,16 @@ module Normalize {
     requirements(hoisted).subseteq(ancestry(target))
   val NormalFormIsSound = normalizable(hoisted) implies sound(target)
 
+  // Two changes that touch a common file and were ordered stay ordered,
+  // unless their diffs commute.
+  pure def sharesAFile(g: Graph, u: str, v: str): bool =
+    g.info.get(u).files.intersect(g.info.get(v).files) != Set()
+  val EditsOfAFileStayOrderedUnlessTheyCommute = normalizable(hoisted) implies
+    tuples(hoisted.scope, hoisted.scope).forall(e =>
+      (ancestry(hoisted).contains(e) and sharesAFile(hoisted, e._1, e._2)
+        and not(commute(hoisted, e._1, e._2)))
+      implies ancestry(target).contains(e))
+
   // Nothing is lost: each change keeps the base it was built on, and each
   // anchor keeps every ancestor, so its tree stays the same.
   val NormalFormKeepsBase = normalizable(hoisted) implies hoisted.scope.forall(v =>
@@ -521,14 +557,24 @@ module Normalize {
 
   // Hoisting leaves no hoistable change, keeps the graph acyclic, keeps every
   // original change's ancestors, and never makes a normalizable graph
-  // unnormalizable.
+  // unnormalizable, except by forgetting what commuted with a change it
+  // splits: a pair that commuted whole may not once split, and the cycle
+  // that leaves makes jj-graph refuse before anything changes.
   val HoistingSplitsEveryMixedChange = hoisted.scope.forall(v => not(hoistable(hoisted.info.get(v))))
   val HoistingKeepsAncestors = and {
     isAcyclic(hoisted),
     original.scope.forall(v =>
       ancestorsIn(ancestry(original), v).subseteq(ancestorsIn(ancestry(hoisted), v))),
   }
-  val HoistingKeepsNormalizable = normalizable(original) implies normalizable(hoisted)
+  val HoistingKeepsNormalizable =
+    normalizable({ ...original, commutes: hoisted.commutes }) implies normalizable(hoisted)
+  // Splitting a change changes its diff, so hoisting keeps only the
+  // commuting pairs neither of whose changes it splits.
+  val HoistingForgetsSplitChangesCommutations = and {
+    hoisted.commutes.subseteq(original.commutes),
+    hoisted.commutes.forall(e =>
+      not(hoistable(original.info.get(e._1)) or hoistable(original.info.get(e._2)))),
+  }
 
   // Witnesses. Each is false in some reachable state, which shows the
   // invariants above are not vacuous; the checks expect simulation to find a
@@ -544,6 +590,12 @@ module Normalize {
   val WitnessNeverMerges = normalizable(hoisted) implies
     hoisted.scope.forall(v => target.parents.get(v).size() <= 1)
   val WitnessAnchorsNeverGrow = anchorGrowth(hoisted) == Set()
+  // Some pair of commuting edits of one file is released: they were ordered
+  // and the normal form leaves them unordered or reverses them.
+  val WitnessEditsOfAFileStayOrdered = normalizable(hoisted) implies
+    tuples(hoisted.scope, hoisted.scope).forall(e =>
+      (ancestry(hoisted).contains(e) and sharesAFile(hoisted, e._1, e._2))
+      implies ancestry(target).contains(e))
 
   val Invariants = and {
     PlanStaysAcyclic,
@@ -555,6 +607,7 @@ module Normalize {
     NormalFormHasParents,
     NormalFormSatisfiesRequirements,
     NormalFormIsSound,
+    EditsOfAFileStayOrderedUnlessTheyCommute,
     NormalFormKeepsBase,
     NormalFormKeepsAnchors,
     UngrownAnchorsKeepTheirTrees,
@@ -567,6 +620,7 @@ module Normalize {
     HoistingSplitsEveryMixedChange,
     HoistingKeepsAncestors,
     HoistingKeepsNormalizable,
+    HoistingForgetsSplitChangesCommutations,
   }
 }
 
@@ -579,14 +633,17 @@ module NormalizeExamples {
     TWIN = Map("a" -> "a~c", "b" -> "b~c", "c" -> "c~c", "d" -> "d~c", "e" -> "e~c"),
     SYMS = Set("Storage", "Network", "Engine", "db", "client", "run"),
     CONTRACTS = Set("Storage", "Network"),
-    FILES = Set("types.rs", "db.rs", "client.rs", "engine.rs", "cli.rs")
+    FILES = Set("types.rs", "db.rs", "client.rs", "engine.rs", "cli.rs", "lib.rs"),
+    COMMUTABLE = Set()
   ).*
 
   pure def change(defs: Set[str], refs: Set[str], files: Set[str]): Change =
     { defs: defs, refs: refs, files: files, anchor: false, crefs: Set(), cfiles: Set() }
 
   pure def graph(parents: str -> Set[str], info: str -> Change): Graph =
-    { scope: parents.keys(), parents: parents, info: info }
+    { scope: parents.keys(), parents: parents, info: info, commutes: Set() }
+
+  pure def commuting(g: Graph, pairs: Set[(str, str)]): Graph = { ...g, commutes: pairs }
 
   // Section 3's ghost graph is already normal: types, two realizations of
   // it, the engine that wires them, and the CLI on top.
@@ -673,6 +730,64 @@ module NormalizeExamples {
     not(normalizable(tangled)),
   })
 
+  // Unless their diffs commute: jj moved the engine's hunk past the CLI's
+  // cleanly, so the engine moves below the CLI after all.
+  run commutingDiffsUntangleAnInversionTest = {
+    val g = commuting(tangled, Set(("a", "b")))
+    assert(and {
+      normalizable(g),
+      unsatisfied(g) == Set(("b", "a")),
+      normalParents(g) == Map("a" -> Set("b"), "b" -> Set("trunk")),
+    })
+  }
+
+  // Two changes edit different functions of one file. Their diffs commute,
+  // so neither needs the other and they become siblings; without that, the
+  // shared file keeps them stacked.
+  pure val twoFunctions: Graph = graph(
+    Map("a" -> Set("trunk"), "b" -> Set("a")),
+    Map(
+      "a" -> change(Set("db"), Set(), Set("lib.rs")),
+      "b" -> change(Set("client"), Set(), Set("lib.rs")),
+    ),
+  )
+
+  run commutingEditsOfOneFileForkTest = {
+    val g = commuting(twoFunctions, Set(("a", "b")))
+    assert(and {
+      isNormal(twoFunctions),
+      unneeded(g) == Set(("a", "b")),
+      normalParents(g) == Map("a" -> Set("trunk"), "b" -> Set("trunk")),
+      isNormal(normalForm(g)),
+    })
+  }
+
+  // Commuting releases only the shared file. A change that also uses what
+  // the other defines, defines the same symbol, or is an anchor still needs
+  // it.
+  run commutingReleasesOnlyTheFileTest = {
+    val uses = commuting(graph(
+      Map("a" -> Set("trunk"), "b" -> Set("a")),
+      Map("a" -> change(Set("db"), Set(), Set("lib.rs")),
+          "b" -> change(Set("client"), Set("db"), Set("lib.rs"))),
+    ), Set(("a", "b")))
+    val redefines = commuting(graph(
+      Map("a" -> Set("trunk"), "b" -> Set("a")),
+      Map("a" -> change(Set("db"), Set(), Set("lib.rs")),
+          "b" -> change(Set("db"), Set(), Set("lib.rs"))),
+    ), Set(("a", "b")))
+    val anchored = commuting(graph(
+      Map("a" -> Set("trunk"), "b" -> Set("a")),
+      Map("a" -> change(Set("db"), Set(), Set("lib.rs")),
+          "b" -> { ...change(Set("client"), Set(), Set("lib.rs")), anchor: true }),
+    ), Set(("a", "b")))
+    assert(and {
+      normalParents(uses).get("b") == Set("a"),
+      normalParents(redefines).get("b") == Set("a"),
+      normalParents(anchored).get("b") == Set("a"),
+    })
+  }
+
   // An anchor (here the working copy on top of a stack of independent
   // changes) keeps all of them, so its files on disk do not change.
   pure val workingCopy: Graph = graph(
@@ -721,8 +836,10 @@ module NormalizeExamples {
   )
 
   run contractHoistingTest = {
-    val h = hoist(mixedChange)
+    val h = hoist(commuting(mixedChange, Set(("a", "b"))))
     assert(and {
+      // Splitting a changes its diff, so nothing commutes with it any more.
+      h.commutes == Set(),
       h.scope == Set("a", "a~c", "b"),
       h.parents.get("a~c") == Set("trunk"),
       h.parents.get("a") == Set("a~c"),
@@ -782,7 +899,8 @@ module NormalizeExamples {
 }
 
 // A small instance TLC explores exhaustively: every graph on three changes
-// over one base, with one symbol and one file, and every order of the plan.
+// over one base, with one symbol and one file, whether or not the first two
+// changes' diffs commute, and every order of the plan.
 module NormalizeTiny {
   import Normalize(
     ORDER = ["a", "b", "c"],
@@ -791,12 +909,13 @@ module NormalizeTiny {
     TWIN = Map("a" -> "a~c", "b" -> "b~c", "c" -> "c~c"),
     SYMS = Set("s"),
     CONTRACTS = Set(),
-    FILES = Set("f")
+    FILES = Set("f"),
+    COMMUTABLE = Set(("a", "b"))
   ).*
 }
 
 // A wider instance for random simulation: two trunk commits, contracts and
-// hoisting, two files, and four changes.
+// hoisting, two files, four changes, and any pair of them commuting.
 module NormalizeWide {
   import Normalize(
     ORDER = ["a", "b", "c", "d"],
@@ -805,6 +924,7 @@ module NormalizeWide {
     TWIN = Map("a" -> "a~c", "b" -> "b~c", "c" -> "c~c", "d" -> "d~c"),
     SYMS = Set("S", "x", "y"),
     CONTRACTS = Set("S"),
-    FILES = Set("f", "g")
+    FILES = Set("f", "g"),
+    COMMUTABLE = Set(("a", "b"), ("a", "c"), ("a", "d"), ("b", "c"), ("b", "d"), ("c", "d"))
   ).*
 }

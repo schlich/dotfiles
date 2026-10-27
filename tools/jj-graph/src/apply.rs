@@ -6,14 +6,15 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 
-use anyhow::{Result, bail};
+use anyhow::{Context, Result, bail};
 
-use crate::diff::{parse_git_diff, patch_signature};
+use crate::commute::{Commutation, fill, same_edit};
+use crate::diff::{FileDiff, parse_git_diff, patch_signature};
 use crate::graph::{Graph, Id};
 use crate::hoist::Split;
-use crate::jj::{Jj, change, commit};
+use crate::jj::{Jj, change, changes, check_mergiraf, commit, mergiraf_resolve, toml_string};
 use crate::load::{Loaded, Scope, load, short};
-use crate::plan::{Step, plan};
+use crate::plan::{Step, plan, topological_order};
 
 /// The name jj-graph registers itself under as a diff editor.
 pub const SPLIT_TOOL: &str = "jj-graph-split";
@@ -134,6 +135,13 @@ pub struct Outcome {
     pub steps: Vec<Step>,
     /// The changes each anchor gains, when that was allowed.
     pub growth: BTreeMap<Id, BTreeSet<Id>>,
+    /// Every pair of changes that touch one file found to commute, in the
+    /// graph the plan starts from or in a read of its normal form, and how.
+    pub commutations: BTreeMap<(Id, Id), crate::commute::How>,
+    /// The changes whose conflicts mergiraf resolved, and the anchors given
+    /// their own trees back, with mergiraf allowed: each keeps its edit
+    /// item by item rather than line by line.
+    pub merged: BTreeSet<Id>,
     /// The operation integrated, when `apply` was set and there was work.
     pub integrated: Option<String>,
 }
@@ -148,18 +156,20 @@ fn node_ref(g: &Graph, id: &str) -> String {
     }
 }
 
-fn changes<'a>(ids: impl IntoIterator<Item = &'a Id>) -> String {
-    ids.into_iter()
-        .map(|id| change(id))
-        .collect::<Vec<_>>()
-        .join(" | ")
-}
-
 /// Run `opts` against the repository.
 pub fn normalize(jj: &Jj, opts: &Options) -> Result<Outcome> {
     jj.snapshot()?;
     let op0 = jj.head_op()?;
-    let before = load(jj, &op0, &opts.scope)?;
+    // Which changes commute is asked of the graph the plan starts from,
+    // after any split, once.
+    let before = load(
+        jj,
+        &op0,
+        &Scope {
+            commutation: Commutation::Off,
+            ..opts.scope.clone()
+        },
+    )?;
     let mut op = op0.clone();
 
     // The guide's refactor precursor, then Pass 2: give each change that
@@ -197,7 +207,9 @@ pub fn normalize(jj: &Jj, opts: &Options) -> Result<Outcome> {
         .chain(precursors.iter().chain(&hoisted).map(|(_, t)| t.clone()))
         .collect();
     let start = if hoisted.is_empty() && precursors.is_empty() {
-        before.clone()
+        let mut start = before.clone();
+        fill(jj, &mut start, opts.scope.commutation)?;
+        start
     } else {
         load(
             jj,
@@ -209,34 +221,45 @@ pub fn normalize(jj: &Jj, opts: &Options) -> Result<Outcome> {
         )?
     };
 
-    let target = start.graph.normal_form().map_err(|cycle| {
-        let a = start.graph.ancestry();
-        let title = |id: &str| {
-            format!(
-                "{} ({})",
-                short(id),
-                start.commits[id].description.lines().next().unwrap_or("")
-            )
-        };
-        let edges: Vec<String> = cycle
-            .edges
-            .iter()
-            .map(|(u, v)| {
-                let why: Vec<String> = start
-                    .graph
-                    .reasons(&a, u, v)
-                    .iter()
-                    .map(ToString::to_string)
-                    .collect();
-                format!("{} needs {}: {}", title(v), title(u), why.join("; "))
-            })
-            .collect();
-        anyhow::anyhow!(
-            "these changes require each other, so no order satisfies them; squash them, or split \
-             the part one needs from the other:\n  {}",
-            edges.join("\n  ")
-        )
-    })?;
+    // Whether two diffs commute can depend on the changes between them, and
+    // the normal form moves those. So the normal form settles: it is made on
+    // the detached chain and read back, which asks again in its own
+    // contexts, until a read finds it normal. Only then is it judged, and
+    // a second run finds nothing to do.
+    let mut target = start.graph.normal_form().map_err(|c| cycle(&start, c))?;
+    let mut commutations = start.commutations.clone();
+    let mut realized = Realized::none(&op);
+    let mut seen = BTreeSet::from([start.graph.parents.clone()]);
+    while target.parents != start.graph.parents {
+        let growth = start.graph.anchor_growth(&target);
+        realized = realize(jj, &op, &before, &start, &target, &growth, opts)?;
+        let read = load(
+            jj,
+            &realized.op,
+            &Scope {
+                revset: changes(&scope_ids),
+                allow_conflicts: true,
+                ..opts.scope.clone()
+            },
+        )?;
+        commutations.extend(read.commutations.clone());
+        // A conflict leaves nothing to judge; the check below refuses it.
+        if read.commits.values().any(|c| c.conflict) {
+            break;
+        }
+        let next = read.graph.normal_form().map_err(|c| cycle(&read, c))?;
+        if next.parents == target.parents {
+            target = next;
+            break;
+        }
+        if !seen.insert(target.parents.clone()) || seen.contains(&next.parents) {
+            bail!(
+                "the normal form does not settle: reading it back keeps finding other changes \
+                 that commute; nothing was applied"
+            );
+        }
+        target = next;
+    }
     let combined = start.graph.new_combinations(&target);
     if !combined.is_empty() && !opts.allow_new_combinations {
         let pairs: Vec<String> = combined
@@ -291,6 +314,8 @@ pub fn normalize(jj: &Jj, opts: &Options) -> Result<Outcome> {
         target,
         steps,
         growth,
+        commutations,
+        merged: realized.merged,
         integrated: None,
     };
     let splits = outcome.precursors.len() + outcome.hoisted.len();
@@ -298,15 +323,9 @@ pub fn normalize(jj: &Jj, opts: &Options) -> Result<Outcome> {
         return Ok(outcome);
     }
 
-    for step in &outcome.steps {
-        let mut args = vec!["rebase".to_owned(), "--source".into(), change(&step.change)];
-        for p in &step.onto {
-            args.push("--onto".into());
-            args.push(node_ref(&outcome.start.graph, p));
-        }
-        op = jj.detached(&op, &args)?;
-        chain.push(op.clone());
-    }
+    // The last realization is the plan's: its rebases, then its merges.
+    let op = realized.op;
+    chain.extend(realized.chain);
     verify(jj, &op, &outcome)?;
 
     if jj.head_op()? != op0 {
@@ -330,6 +349,127 @@ pub fn normalize(jj: &Jj, opts: &Options) -> Result<Outcome> {
     let _ = jj.update_stale();
     outcome.integrated = Some(op);
     Ok(outcome)
+}
+
+/// The requirement cycle that stops a graph, with each requirement's reason.
+fn cycle(l: &Loaded, cycle: crate::graph::RequirementCycle) -> anyhow::Error {
+    let a = l.graph.ancestry();
+    let title = |id: &str| {
+        format!(
+            "{} ({})",
+            short(id),
+            l.commits[id].description.lines().next().unwrap_or("")
+        )
+    };
+    let edges: Vec<String> = cycle
+        .edges
+        .iter()
+        .map(|(u, v)| {
+            let why: Vec<String> = l
+                .graph
+                .reasons(&a, u, v)
+                .iter()
+                .map(ToString::to_string)
+                .collect();
+            format!("{} needs {}: {}", title(v), title(u), why.join("; "))
+        })
+        .collect();
+    anyhow::anyhow!(
+        "these changes require each other, so no order satisfies them; squash them, or split the \
+         part one needs from the other:\n  {}",
+        edges.join("\n  ")
+    )
+}
+
+/// A target made on the detached chain: the operation it ends on, the
+/// operations it added, and the changes mergiraf merged.
+struct Realized {
+    op: String,
+    chain: Vec<String>,
+    merged: BTreeSet<Id>,
+}
+
+impl Realized {
+    fn none(op: &str) -> Realized {
+        Realized {
+            op: op.to_owned(),
+            chain: Vec::new(),
+            merged: BTreeSet::new(),
+        }
+    }
+}
+
+/// Make `target` from `start` on top of `op`: the plan's rebases, then,
+/// with mergiraf allowed, its merges. Nothing is integrated.
+fn realize(
+    jj: &Jj,
+    op: &str,
+    before: &Loaded,
+    start: &Loaded,
+    target: &Graph,
+    growth: &BTreeMap<Id, BTreeSet<Id>>,
+    opts: &Options,
+) -> Result<Realized> {
+    let mut r = Realized::none(op);
+    for step in plan(&start.graph, &target.parents) {
+        let mut args = vec!["rebase".to_owned(), "--source".into(), change(&step.change)];
+        for p in &step.onto {
+            args.push("--onto".into());
+            args.push(node_ref(&start.graph, p));
+        }
+        r.op = jj.detached(&r.op, &args)?;
+        r.chain.push(r.op.clone());
+    }
+    if opts.scope.commutation == Commutation::Mergiraf {
+        merge_structurally(jj, &mut r, before, start, target, growth)?;
+    }
+    Ok(r)
+}
+
+/// With mergiraf allowed: after the plan's rebases, give each conflict
+/// jj's text merge left to mergiraf, parents first, and give each anchor
+/// that must keep its tree its own tree back, since its files must not
+/// change. `verify` then holds each of them to its edit item by item.
+fn merge_structurally(
+    jj: &Jj,
+    r: &mut Realized,
+    before: &Loaded,
+    start: &Loaded,
+    target: &Graph,
+    growth: &BTreeMap<Id, BTreeSet<Id>>,
+) -> Result<()> {
+    check_mergiraf()?;
+    let order =
+        topological_order(&target.parents, &BTreeMap::new()).expect("a normal form has no cycle");
+    for v in order {
+        let now = jj.commits(&r.op, &change(&v))?;
+        let [c] = now.as_slice() else {
+            bail!("{} became divergent; nothing was applied", short(&v));
+        };
+        let args = if before.anchors.contains_key(&v) && !growth.contains_key(&v) {
+            let own = commit(before.commit_id(&v));
+            if jj.same_tree(&r.op, &own, &change(&v))? {
+                continue;
+            }
+            vec![
+                "restore".to_owned(),
+                "--from".into(),
+                own,
+                "--into".into(),
+                change(&v),
+            ]
+        } else if c.conflict && !start.commits[&v].conflict {
+            mergiraf_resolve(&change(&v))
+        } else {
+            continue;
+        };
+        r.op = jj
+            .detached(&r.op, &args)
+            .with_context(|| format!("merging {} with mergiraf; nothing was applied", short(&v)))?;
+        r.chain.push(r.op.clone());
+        r.merged.insert(v);
+    }
+    Ok(())
 }
 
 /// Check the chain's last operation before integrating it.
@@ -426,14 +566,65 @@ fn verify(jj: &Jj, op: &str, o: &Outcome) -> Result<()> {
     for v in &scope {
         let old = patch_signature(&jj.diff(&o.start.op, &commit(o.start.commit_id(v)))?);
         let new = patch_signature(&jj.diff(op, &change(v))?);
-        if old != new {
+        if old == new {
+            continue;
+        }
+        // A change mergiraf merged keeps its edit item by item.
+        if o.merged.contains(v)
+            && same_edit(
+                &parse_git_diff(&jj.whole_diff(&o.start.op, &commit(o.start.commit_id(v)))?)?,
+                &merged_edit(jj, op, o, v)?,
+            )
+        {
+            continue;
+        }
+        bail!(
+            "rebasing {} would change its own diff; nothing was applied",
+            short(v)
+        );
+    }
+    Ok(())
+}
+
+/// The edit of a change mergiraf merged: the whole diff to its tree from
+/// its parents' tree, which for several parents is their merge by mergiraf
+/// where jj's text merge of them conflicts. That merge is made on a probe
+/// operation off the chain, which nothing integrates.
+fn merged_edit(jj: &Jj, op: &str, o: &Outcome, v: &str) -> Result<Vec<FileDiff>> {
+    let parents = &o.target.parents[v];
+    if parents.len() < 2 {
+        return parse_git_diff(&jj.whole_diff(op, &change(v))?);
+    }
+    let mark = format!("jj-graph merges the parents of {v}");
+    let mut args = vec![
+        "new".to_owned(),
+        "--no-edit".into(),
+        "--message".into(),
+        mark.clone(),
+    ];
+    args.extend(parents.iter().map(|p| node_ref(&o.start.graph, p)));
+    let mut probe = jj.detached(op, &args)?;
+    let rev = format!("description(substring:{})", toml_string(&mark));
+    let made = jj.commits(&probe, &rev)?;
+    let [merge] = made.as_slice() else {
+        bail!("merging the parents of {} made no one commit", short(v));
+    };
+    if merge.conflict {
+        // A probe's merge is no one's to review: mergiraf keeps its record
+        // in a directory removed afterwards.
+        let scratch = tempfile::tempdir()?;
+        probe = jj
+            .clone()
+            .with_env("XDG_DATA_HOME", scratch.path())
+            .detached(&probe, &mergiraf_resolve(&rev))?;
+        if jj.commits(&probe, &rev)?.iter().any(|c| c.conflict) {
             bail!(
-                "rebasing {} would change its own diff; nothing was applied",
+                "mergiraf cannot merge the parents of {}; nothing was applied",
                 short(v)
             );
         }
     }
-    Ok(())
+    parse_git_diff(&jj.whole_diff_between(&probe, &rev, &change(v))?)
 }
 
 /// The files of the commits an anchor gains below its bases: those below
@@ -479,20 +670,6 @@ fn summary_paths(line: &str) -> Vec<String> {
         ];
     }
     vec![path.to_owned()]
-}
-
-/// A TOML string literal.
-fn toml_string(s: &str) -> String {
-    let mut out = String::from("\"");
-    for ch in s.chars() {
-        match ch {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            c => out.push(c),
-        }
-    }
-    out.push('"');
-    out
 }
 
 /// The rebase command a step runs, for showing to people.

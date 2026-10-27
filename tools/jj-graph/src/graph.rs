@@ -49,6 +49,11 @@ pub struct Graph {
     pub bases: BTreeSet<Id>,
     /// Ancestry among `bases`: `(x, y)` when `x` is a proper ancestor of `y`.
     pub base_ancestry: BTreeSet<(Id, Id)>,
+    /// Pairs of changes whose diffs commute: jj rebases each past the other
+    /// without a conflict, and each keeps its own patch (see `commute.rs`).
+    /// A pair counts in either order.
+    #[serde(default)]
+    pub commutes: BTreeSet<(Id, Id)>,
 }
 
 /// Why a graph is not a valid change graph.
@@ -341,9 +346,15 @@ impl Graph {
         }
     }
 
+    /// Whether the diffs of `u` and `v` commute, in either order.
+    pub fn commute(&self, u: &str, v: &str) -> bool {
+        let pair = |x: &str, y: &str| self.commutes.contains(&(x.to_owned(), y.to_owned()));
+        pair(u, v) || pair(v, u)
+    }
+
     /// Whether `v` requires `u`: `v` references a symbol `u` defines; or `u`
     /// is an original ancestor of `v` and they define a common symbol, touch
-    /// a common file, or `v` is an anchor.
+    /// a common file and their diffs do not commute, or `v` is an anchor.
     pub fn requires(&self, a: &Relation, u: &str, v: &str) -> bool {
         if u == v {
             return false;
@@ -352,8 +363,30 @@ impl Graph {
         let before = a.contains(u, v);
         !iv.refs.is_disjoint(&iu.defs)
             || before && !iu.defs.is_disjoint(&iv.defs)
-            || before && !iu.files.is_disjoint(&iv.files)
+            || before && !iu.files.is_disjoint(&iv.files) && !self.commute(u, v)
             || before && iv.anchor
+    }
+
+    /// The pairs `(u, v)` whose commuting would change what `v` requires:
+    /// `u` is an original ancestor of `v`, they touch a common file, and
+    /// nothing else makes `v` require `u`. Only these are worth asking jj
+    /// about.
+    pub fn commutation_candidates(&self) -> BTreeSet<(Id, Id)> {
+        let a = self.ancestry();
+        let mut out = BTreeSet::new();
+        for (u, iu) in &self.info {
+            for (v, iv) in &self.info {
+                if a.contains(u, v)
+                    && !iu.files.is_disjoint(&iv.files)
+                    && iv.refs.is_disjoint(&iu.defs)
+                    && iu.defs.is_disjoint(&iv.defs)
+                    && !iv.anchor
+                {
+                    out.insert((u.clone(), v.clone()));
+                }
+            }
+        }
+        out
     }
 
     /// Every requirement `(u, v)`: `v` requires `u`.
@@ -640,7 +673,7 @@ impl Graph {
                 out.push(Reason::Redefines(both));
             }
             let files: BTreeSet<String> = iu.files.intersection(&iv.files).cloned().collect();
-            if !files.is_empty() {
+            if !files.is_empty() && !self.commute(u, v) {
                 out.push(Reason::SharesFiles(files));
             }
             if iv.anchor {
@@ -652,7 +685,8 @@ impl Graph {
 
     /// Insert a contract twin before every hoistable change. `twin` names
     /// the twin of a change. Returns the hoisted graph and the hoisted
-    /// changes.
+    /// changes. Splitting a change changes its diff, so the hoisted graph
+    /// forgets every commuting pair with a hoisted change.
     pub fn hoist(&self, twin: impl Fn(&str) -> Id) -> (Graph, BTreeSet<Id>) {
         let hoisted: BTreeSet<Id> = self
             .info
@@ -661,6 +695,8 @@ impl Graph {
             .map(|(id, _)| id.clone())
             .collect();
         let mut g = self.clone();
+        g.commutes
+            .retain(|(x, y)| !hoisted.contains(x) && !hoisted.contains(y));
         for v in &hoisted {
             let t = twin(v);
             let c = &self.info[v];
@@ -718,7 +754,7 @@ pub enum Reason {
     References(BTreeSet<String>),
     /// Both define these symbols; the upper one's definition comes last.
     Redefines(BTreeSet<String>),
-    /// Both touch these files, so their diffs may not commute.
+    /// Both touch these files, and their diffs do not commute.
     SharesFiles(BTreeSet<String>),
     /// The upper change is an anchor and keeps every ancestor.
     Anchor,

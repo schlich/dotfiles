@@ -2,14 +2,18 @@
 //! by the whole pipeline and checked from outside, and the guide's own
 //! examples.
 
-use std::collections::BTreeSet;
+mod common;
+
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use std::process::Command;
 
 use hegel::TestCase;
 use hegel::generators as gs;
 use jj_graph::apply::{Options, Outcome, normalize};
-use jj_graph::diff::patch_signature;
+use jj_graph::commute::{Commutation, How, same_edit};
+use jj_graph::diff::{parse_git_diff, patch_signature};
+use jj_graph::graph::Reason;
 use jj_graph::jj::{Jj, change, commit};
 use jj_graph::load::{Scope, load};
 use jj_graph::{dot, skeleton};
@@ -104,13 +108,18 @@ impl Repo {
     }
 }
 
+fn scope(revset: &str) -> Scope {
+    Scope {
+        revset: revset.into(),
+        anchors: None,
+        allow_conflicts: false,
+        commutation: Commutation::Jj,
+    }
+}
+
 fn options(revset: &str, hoist: bool) -> Options {
     Options {
-        scope: Scope {
-            revset: revset.into(),
-            anchors: None,
-            allow_conflicts: false,
-        },
+        scope: scope(revset),
         cosmetic: false,
         hoist,
         editor: PathBuf::from(env!("CARGO_BIN_EXE_jj-graph")),
@@ -311,15 +320,13 @@ fn check_outcome(
 }
 
 fn check_outcome_with(r: &Repo, jj: &Jj, opts: &Options, o: &Outcome, files_ok: &dyn Fn(&Files)) {
-    let revset = opts.scope.revset.as_str();
     let head = jj.head_op().unwrap();
     let after = load(
         jj,
         &head,
         &Scope {
-            revset: revset.into(),
-            anchors: None,
             allow_conflicts: true,
+            ..opts.scope.clone()
         },
     )
     .unwrap();
@@ -395,6 +402,9 @@ fn normalizing_a_story_reaches_a_stable_normal_form_without_changing_any_tree(tc
             }
             if !o.hoisted.is_empty() {
                 tc.event("hoisted contracts");
+            }
+            if !o.commutations.is_empty() {
+                tc.event("edits of the shared file commute");
             }
             // An anchor that grew keeps every file no gained change touches,
             // and any file it gains is one a gained change touches. The
@@ -545,6 +555,299 @@ fn a_contract_written_later_moves_below_its_user() {
     assert_eq!(parent, "Add the engine");
 }
 
+const THREE_FUNCTIONS: &str = "pub fn one() -> u8 {\n    1\n}\n\npub fn two() -> u8 {\n    2\n}\n\npub fn three() -> u8 {\n    3\n}\n";
+
+/// A base holding `file` as src/lib.rs, a stack of two changes on it that
+/// make it `edits[0]` and then `edits[1]`, and an empty working copy on
+/// top. Returns the base and the two changes.
+fn two_edits_of_one_file(r: &Repo, file: &str, edits: [&str; 2]) -> (String, String, String) {
+    let base = r.base();
+    r.write("src/lib.rs", file);
+    r.jj(&["new", "-m", "First edit"]);
+    r.write("src/lib.rs", edits[0]);
+    let first = r.current_change();
+    r.jj(&["new", "-m", "Second edit"]);
+    r.write("src/lib.rs", edits[1]);
+    let second = r.current_change();
+    r.jj(&["new"]);
+    (base, first, second)
+}
+
+/// Two changes edit different functions of one file. jj moves each past
+/// the other cleanly, so their diffs commute: they become siblings on the
+/// base, and the working copy merges them with its files as they were.
+#[test]
+fn edits_of_different_functions_of_one_file_become_siblings() {
+    let r = Repo::new();
+    let first_text = THREE_FUNCTIONS.replace("    1\n", "    10\n");
+    let second_text = first_text.replace("    3\n", "    30\n");
+    let (base, first, second) =
+        two_edits_of_one_file(&r, THREE_FUNCTIONS, [&first_text, &second_text]);
+    let jj = r.handle();
+    let revset = format!("{}..", change(&base));
+    let before_files = files_on_disk(&r);
+    // The shared file alone kept them stacked.
+    let ordered = Options {
+        scope: Scope {
+            commutation: Commutation::Off,
+            ..scope(&revset)
+        },
+        apply: false,
+        ..options(&revset, false)
+    };
+    let old = normalize(&jj, &ordered).unwrap();
+    assert!(old.steps.is_empty(), "{:?}", old.steps);
+    let opts = options(&revset, false);
+    let o = normalize(&jj, &opts).unwrap();
+    assert_eq!(
+        o.commutations,
+        BTreeMap::from([((first.clone(), second.clone()), How::Jj)])
+    );
+    assert!(o.integrated.is_some());
+    assert!(!o.target.ancestry().contains(&first, &second));
+    assert_eq!(o.target.parents[&first], o.target.parents[&second]);
+    check_outcome(&r, &jj, &opts, &o, &before_files);
+    // Each sibling holds its own edit and nothing of the other's.
+    let show = |c: &str| r.jj(&["file", "show", "-r", &change(c), "src/lib.rs"]);
+    assert_eq!(show(&first), first_text);
+    assert_eq!(
+        show(&second),
+        THREE_FUNCTIONS.replace("    3\n", "    30\n")
+    );
+}
+
+const ONE_LINE: &str = "pub fn one() -> u8 { 1 } pub fn two() -> u8 { 2 }\n";
+
+/// Two changes edit different functions on one line. jj's text merge
+/// cannot move either past the other without a conflict, so their diffs do
+/// not commute and the two stay stacked.
+#[test]
+fn overlapping_edits_of_one_file_stay_ordered() {
+    let r = Repo::new();
+    let first_text = ONE_LINE.replace("{ 1 }", "{ 10 }");
+    let second_text = first_text.replace("{ 2 }", "{ 20 }");
+    let (base, first, second) = two_edits_of_one_file(&r, ONE_LINE, [&first_text, &second_text]);
+    let jj = r.handle();
+    let revset = format!("{}..", change(&base));
+    let before_op = jj.head_op().unwrap();
+    let o = normalize(&jj, &options(&revset, false)).unwrap();
+    assert!(o.commutations.is_empty());
+    assert!(o.steps.is_empty() && o.integrated.is_none());
+    assert_eq!(o.target.parents[&second], BTreeSet::from([first.clone()]));
+    let a = o.start.graph.ancestry();
+    assert_eq!(
+        o.start.graph.reasons(&a, &first, &second),
+        vec![Reason::SharesFiles(BTreeSet::from([
+            "src/lib.rs".to_owned()
+        ]))]
+    );
+    // Testing the pair left no operation behind.
+    assert_eq!(jj.head_op().unwrap(), before_op);
+    let status = |args: &[&str]| r.jj_graph(args).status.code();
+    assert_eq!(status(&["check", "-r", &revset]), Some(0));
+}
+
+/// The same two edits with mergiraf allowed: mergiraf merges each past the
+/// other, and each keeps its edit item by item, so they commute and become
+/// siblings. The working copy keeps its files exactly; its own diff becomes
+/// the resolution of its parents' text conflict, which changes no item.
+#[test]
+fn mergiraf_lets_edits_jj_cannot_merge_commute() {
+    let r = Repo::new();
+    let first_text = ONE_LINE.replace("{ 1 }", "{ 10 }");
+    let second_text = first_text.replace("{ 2 }", "{ 20 }");
+    let (base, first, second) = two_edits_of_one_file(&r, ONE_LINE, [&first_text, &second_text]);
+    let working = r.current_change();
+    let jj = r.handle();
+    let revset = format!("{}..", change(&base));
+    let before_files = files_on_disk(&r);
+    let opts = Options {
+        scope: Scope {
+            commutation: Commutation::Mergiraf,
+            ..scope(&revset)
+        },
+        ..options(&revset, false)
+    };
+    let o = normalize(&jj, &opts).unwrap();
+    assert_eq!(
+        o.commutations,
+        BTreeMap::from([((first.clone(), second.clone()), How::Mergiraf)])
+    );
+    assert!(o.integrated.is_some());
+    assert_eq!(o.target.parents[&first], o.target.parents[&second]);
+    assert_eq!(
+        o.target.parents[&working],
+        BTreeSet::from([first.clone(), second.clone()])
+    );
+    assert!(o.merged.contains(&working), "{:?}", o.merged);
+    assert_eq!(files_on_disk(&r), before_files);
+
+    let head = jj.head_op().unwrap();
+    let after = load(
+        &jj,
+        &head,
+        &Scope {
+            allow_conflicts: true,
+            ..opts.scope.clone()
+        },
+    )
+    .unwrap();
+    assert!(
+        after.commits.values().all(|c| !c.conflict),
+        "a change has conflicts"
+    );
+    assert_eq!(after.graph.parents, o.target.parents);
+    assert!(after.graph.is_normal(), "{:?}", after.graph.check());
+    assert!(
+        jj.same_tree(
+            &head,
+            &commit(o.before.commit_id(&working)),
+            &change(&working)
+        )
+        .unwrap()
+    );
+    // The second edit, moved off the first, keeps its edit item by item,
+    // though not line by line: its one line now holds the first's old value.
+    let edit = |op: &str, rev: &str| parse_git_diff(&jj.whole_diff(op, rev).unwrap()).unwrap();
+    let was = edit(&o.start.op, &commit(o.start.commit_id(&second)));
+    let is = edit(&head, &change(&second));
+    assert_ne!(
+        patch_signature(
+            &jj.diff(&o.start.op, &commit(o.start.commit_id(&second)))
+                .unwrap()
+        ),
+        patch_signature(&jj.diff(&head, &change(&second)).unwrap())
+    );
+    assert!(same_edit(&was, &is));
+    assert_eq!(
+        r.jj(&["file", "show", "-r", &change(&second), "src/lib.rs"]),
+        ONE_LINE.replace("{ 2 }", "{ 20 }")
+    );
+    // Normalizing again does nothing, and `check` agrees.
+    let again = normalize(&jj, &opts).unwrap();
+    assert!(again.steps.is_empty() && again.integrated.is_none());
+    let status = |args: &[&str]| r.jj_graph(args).status.code();
+    assert_eq!(status(&["check", "-r", &revset, "--mergiraf"]), Some(0));
+}
+
+/// Two changes edit two items of one file, in each language jj-graph reads,
+/// under a working copy, with or without mergiraf. Whatever jj or mergiraf
+/// decides, the outcome holds from outside: the pair loses its order only
+/// if it commutes, nothing conflicts, the working copy's file is as it was,
+/// each of the two keeps its edit (line by line, or item by item where
+/// mergiraf merged it), and a second run does nothing. Only a merge
+/// mergiraf made may be refused, and a refusal changes nothing.
+#[hegel::test(test_cases = 30)]
+fn two_edits_of_one_file_in_any_language_normalize_safely(tc: TestCase) {
+    use common::{LANGUAGES, file, files};
+    let l = tc.draw(gs::integers::<usize>().max_value(LANGUAGES.len() - 1));
+    let lang = &LANGUAGES[l];
+    let items = tc.draw(files(l));
+    tc.assume(items.len() >= 2);
+    let indices: Vec<usize> = (0..items.len()).collect();
+    let i = tc.draw(gs::sampled_from(indices.clone()));
+    let j = tc.draw(gs::sampled_from(
+        indices.into_iter().filter(|j| *j != i).collect::<Vec<_>>(),
+    ));
+    let mergiraf = tc.draw(gs::booleans());
+    let r = Repo::new();
+    let base = r.base();
+    r.write(lang.path, &file(lang, &items));
+    let mut edited = items.clone();
+    r.jj(&["new", "-m", "First edit"]);
+    edited[i].value = 3 - edited[i].value;
+    r.write(lang.path, &file(lang, &edited));
+    let first = r.current_change();
+    r.jj(&["new", "-m", "Second edit"]);
+    edited[j].value = 3 - edited[j].value;
+    r.write(lang.path, &file(lang, &edited));
+    let second = r.current_change();
+    r.jj(&["new"]);
+    let working = r.current_change();
+    let text = r.read(lang.path);
+
+    let jj = r.handle();
+    let revset = format!("{}..", change(&base));
+    let opts = Options {
+        scope: Scope {
+            commutation: if mergiraf {
+                Commutation::Mergiraf
+            } else {
+                Commutation::Jj
+            },
+            ..scope(&revset)
+        },
+        ..options(&revset, false)
+    };
+    let before_op = jj.head_op().unwrap();
+    let o = match normalize(&jj, &opts) {
+        Ok(o) => o,
+        Err(e) => {
+            let msg = format!("{e:#}");
+            assert!(
+                mergiraf && msg.contains("nothing was applied"),
+                "unexpected failure: {msg}"
+            );
+            tc.event("a merge by mergiraf was refused");
+            assert_eq!(jj.head_op().unwrap(), before_op);
+            assert_eq!(r.read(lang.path), text);
+            return;
+        }
+    };
+    let released = !o.target.ancestry().contains(&first, &second);
+    tc.event(match (released, o.commutations.values().next()) {
+        (true, Some(How::Jj)) => "jj commutes them",
+        (true, Some(How::Mergiraf)) => "mergiraf commutes them",
+        (false, _) => "they stay ordered",
+        (true, None) => unreachable!("released without commuting"),
+    });
+    if released {
+        assert!(o.start.graph.commute(&first, &second));
+    }
+    assert_eq!(r.read(lang.path), text, "the working copy's file changed");
+    let head = jj.head_op().unwrap();
+    let after = load(
+        &jj,
+        &head,
+        &Scope {
+            allow_conflicts: true,
+            ..opts.scope.clone()
+        },
+    )
+    .unwrap();
+    assert!(
+        after.commits.values().all(|c| !c.conflict),
+        "a change has conflicts"
+    );
+    assert_eq!(after.graph.parents, o.target.parents);
+    assert!(
+        jj.same_tree(
+            &head,
+            &commit(o.before.commit_id(&working)),
+            &change(&working)
+        )
+        .unwrap()
+    );
+    for v in [&first, &second] {
+        let was = jj.diff(&o.start.op, &commit(o.start.commit_id(v))).unwrap();
+        let is = jj.diff(&head, &change(v)).unwrap();
+        if patch_signature(&was) != patch_signature(&is) {
+            assert!(o.merged.contains(v), "{v}'s own diff changed");
+            let whole =
+                |op: &str, rev: &str| parse_git_diff(&jj.whole_diff(op, rev).unwrap()).unwrap();
+            assert!(
+                same_edit(
+                    &whole(&o.start.op, &commit(o.start.commit_id(v))),
+                    &whole(&head, &change(v))
+                ),
+                "{v} lost its edit"
+            );
+        }
+    }
+    let again = normalize(&jj, &opts).expect("normalizing again works");
+    assert!(again.steps.is_empty() && again.integrated.is_none());
+}
+
 /// Pass 2 on a real file: the trait moves into a change of its own, and a
 /// change that only uses the trait no longer waits for the implementation.
 #[test]
@@ -629,22 +932,14 @@ fn a_working_copy_grows_only_when_allowed() {
     before_files.sort();
     assert_eq!(files_on_disk(&r), before_files);
     let head = jj.head_op().unwrap();
-    let after = load(
-        &jj,
-        &head,
-        &Scope {
-            revset,
-            anchors: None,
-            allow_conflicts: false,
-        },
-    )
-    .unwrap();
+    let after = load(&jj, &head, &scope(&revset)).unwrap();
     assert!(after.graph.is_normal());
 }
 
 /// The guide's refactor precursor: a change re-indents a file and adds a
 /// function. The re-indent moves into a change of its own below it, which
-/// defines nothing and stays below it.
+/// defines nothing. Its diff and the new function's commute, so the two end
+/// as siblings, and the working copy merges them.
 #[test]
 fn cosmetic_edits_move_into_a_precursor() {
     let r = Repo::new();
@@ -678,8 +973,13 @@ fn cosmetic_edits_move_into_a_precursor() {
         o.start.symbols[precursor].defs
     );
     assert_eq!(
-        o.target.parents[&feature],
-        BTreeSet::from([precursor.clone()])
+        o.commutations,
+        BTreeMap::from([((precursor.clone(), feature.clone()), How::Jj)])
+    );
+    assert_eq!(o.target.parents[&feature], o.target.parents[precursor]);
+    assert_eq!(
+        o.target.parents[&r.current_change()],
+        BTreeSet::from([precursor.clone(), feature.clone()])
     );
     check_outcome(&r, &jj, &opts, &o, &before_files);
 }
@@ -995,11 +1295,7 @@ fn a_merge_using_a_private_helper_is_a_leak() {
     let l = load(
         &jj,
         &jj.head_op().unwrap(),
-        &Scope {
-            revset: format!("{}..", change(&base)),
-            anchors: None,
-            allow_conflicts: false,
-        },
+        &scope(&format!("{}..", change(&base))),
     )
     .unwrap();
     let shapes = classify(&l.graph, &l.symbols);
