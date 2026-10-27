@@ -105,7 +105,6 @@ script, use valid Nushell syntax.
   `nix eval` of nixpkgs, or `gh api` against NixOS repositories. Use
   Nushell only to inspect or evaluate this repository's own Nix files and
   flake outputs.
-
   - Before adding a package, confirm its attribute and that it is in the
     channel: `{action: info, query: NAME}`. Find the package that ships a
     binary with `{action: search, type: programs, query: BIN}`.
