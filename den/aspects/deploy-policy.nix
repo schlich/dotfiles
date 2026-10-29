@@ -23,9 +23,13 @@ in
             inherit (host.policy) autoDeploy healthChecks;
             notify = lib.mkIf (host.profile.role == "workstation" && host.profile.desktop != "none") {
               enable = true;
-              sources = lib.mapAttrsToList (_: canary: canary.deploy.targetHost) (
-                removeAttrs canaries [ host.name ]
-              );
+              sources = lib.mapAttrsToList (
+                _: canary:
+                if canary.deploy.sshPort == null then
+                  canary.deploy.targetHost
+                else
+                  "ssh://${canary.deploy.targetHost}:${toString canary.deploy.sshPort}"
+              ) (removeAttrs canaries [ host.name ]);
             };
           };
         }

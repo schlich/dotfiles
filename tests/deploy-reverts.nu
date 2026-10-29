@@ -1,5 +1,7 @@
 # `deploy-reverts causes`, with jev replaced by a stub that records each
-# request and answers by the phase it names, so nothing reaches TypeSafe:
+# request and answers by the phase it names, so nothing reaches TypeSafe,
+# and `deploy-reverts notify` against a stubbed canary that hangs, refuses,
+# or answers:
 #   nu --no-config-file tests/deploy-reverts.nu deploy/reverts.nu jev/questions.nuon
 
 def expect [name: string, actual: any, expected: any] {
@@ -99,6 +101,87 @@ def main [script: path, questions: path] {
 
   let plain = (with-env { HOME: $tmp, DEPLOY_STATE: $state } { ^$nu.current-exe --no-config-file $script | complete })
   $failures = ($failures | append (expect "the plain listing still works" ($plain.exit_code == 0 and ($plain.stdout | str contains "Checks that caused reverts")) true))
+
+  # `notify` against a canary, with ssh, systemd-run, and notify-send
+  # stubbed: ssh hangs, refuses, or answers with SSH_REPLY by SSH_MODE.
+  let bin = ($tmp | path join bin)
+  mkdir $bin
+  let ssh_log = ($tmp | path join ssh.log)
+  let spawn_log = ($tmp | path join spawn.jsonl)
+  let notify_log = ($tmp | path join notify.log)
+  [
+    "#!/bin/sh"
+    $"printf '%s\\n' \"$*\" >> ($ssh_log)"
+    "case \"$SSH_MODE\" in"
+    "  hang\) exec sleep 300 ;;"
+    "  down\) echo 'ssh: connect to host homelab port 2222: Connection refused' >&2; exit 255 ;;"
+    "  *\) cat \"$SSH_REPLY\" ;;"
+    "esac"
+  ] | str join "\n" | save ($bin | path join ssh)
+  [
+    $"#!($nu.current-exe) --no-config-file"
+    $"def --wrapped main [...args] { $\"\(\$args | to json --raw\)\\n\" | save --append ($spawn_log) }"
+  ] | str join "\n" | save ($bin | path join systemd-run)
+  [
+    "#!/bin/sh"
+    $"printf '%s\\n' \"$@\" >> ($notify_log)"
+    "echo"
+  ] | str join "\n" | save ($bin | path join notify-send)
+  ^chmod +x ($bin | path join ssh) ($bin | path join systemd-run) ($bin | path join notify-send)
+
+  let home = ($tmp | path join home)
+  let quiet = ($tmp | path join quiet)
+  mkdir $home $quiet
+  let canary = {|id, phase| { id: ($id | into string), at: $"2026-10-2($id)T10:00:00+00:00", host: homelab, phase: $phase, rev: abc, author: me, subject: $"change ($id)", activated: true, restored: true, breached: [watch], report: $"/var/lib/nixos-switch-main/reports/($id).md", report_text: $"# homelab reverted ($id)" } }
+  let reply = ($tmp | path join reply.json)
+  [(do $canary 1 watch) (do $canary 2 deadman)] | to json | save $reply
+  let none = ($tmp | path join none.json)
+  "[]" | save $none
+  let notify = {|mode, answer|
+    with-env {
+      HOME: $home
+      XDG_STATE_HOME: null
+      DEPLOY_STATE: $quiet
+      DEPLOY_REVERTS_FETCH_TIMEOUT: "2"
+      SSH_MODE: $mode
+      SSH_REPLY: $answer
+      PATH: ($env.PATH | prepend $bin)
+    } {
+      let started = (date now)
+      let run = (^$nu.current-exe --no-config-file $script notify ssh://homelab:2222 | complete)
+      $run | insert took ((date now) - $started)
+    }
+  }
+  let cache = ($home | path join .local state deploy-reverts)
+
+  let hung = (do $notify hang $reply)
+  $failures = ($failures | append (expect "a hanging canary does not fail the run" $hung.exit_code 0))
+  $failures = ($failures | append (expect "a hanging canary is cut off in bounded time" ($hung.took < 15sec) true))
+  $failures = ($failures | append (expect "a hanging canary is reported as a timeout" ($hung.stderr | str contains "ssh to ssh://homelab:2222 gave no answer within 2 seconds") true))
+  $failures = ($failures | append (expect "ssh goes to the OpenSSH port without prompting" (open --raw $ssh_log | str contains "-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 ssh://homelab:2222 deploy-reverts") true))
+
+  let down = (do $notify down $reply)
+  $failures = ($failures | append (expect "an unreachable canary does not fail the run" $down.exit_code 0))
+  $failures = ($failures | append (expect "an unreachable canary names ssh's error" ($down.stderr | str contains "exited 255: ssh: connect to host homelab port 2222: Connection refused") true))
+  $failures = ($failures | append (expect "a failed fetch announces nothing" ($spawn_log | path exists) false))
+  $failures = ($failures | append (expect "a failed fetch keeps the seen stamp" ($cache | path join homelab.seen | path exists) false))
+
+  let fetched = (do $notify ok $reply)
+  $failures = ($failures | append (expect "a canary's reverts are fetched" $fetched.exit_code 0))
+  $failures = ($failures | append (expect "the cache is named for the host, not the destination" (open --raw ($cache | path join homelab.jsonl) | lines | length) 2))
+  $failures = ($failures | append (expect "each fetched report is kept" (open --raw ($cache | path join reports homelab 2.md)) "# homelab reverted 2"))
+  $failures = ($failures | append (expect "the newest revert is marked seen" (open --raw ($cache | path join homelab.seen) | str trim) "2026-10-22T10:00:00+00:00"))
+  let spawned = (open --raw $spawn_log | lines | each { from json })
+  $failures = ($failures | append (expect "missed reverts are announced once, newest first" ($spawned | length) 1))
+  let command = ($spawned.0 | skip until {|arg| $arg == "--" } | skip 1)
+  $failures = ($failures | append (expect "the notification waits in a unit of its own" ($command | last 5) ["prompt" "homelab" "2" "--earlier" "1"]))
+
+  let again = (do $notify ok $none)
+  $failures = ($failures | append (expect "a seen revert is not announced again" ($again.exit_code == 0 and (open --raw $spawn_log | lines | length) == 1) true))
+
+  let prompted = (with-env { HOME: $home, DEPLOY_STATE: $quiet, PATH: ($env.PATH | prepend $bin) } { ^($command | first) ...($command | skip 1) | complete })
+  $failures = ($failures | append (expect "the prompt shows the revert" ($prompted.exit_code == 0 and (open --raw $notify_log | str contains "homelab reverted change 2")) true))
+  $failures = ($failures | append (expect "the prompt counts the earlier reverts" (open --raw $notify_log | str contains "deadman: watch. By me (and 1 earlier).") true))
 
   rm --recursive $tmp
   if ($failures | is-not-empty) {
