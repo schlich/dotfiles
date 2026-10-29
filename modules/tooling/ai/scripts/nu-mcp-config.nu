@@ -10,8 +10,9 @@ $env.NU_MCP_OUTPUT_LIMIT = 50kb
 # the directory this server starts in, the agent's project, as the hook
 # would. direnv's allow list still decides, and a dev shell that takes longer
 # than 20s to build loads nothing rather than stall the server's start.
+# T3CODE_DIRENV_HOOK keeps the unit's bash hook out of direnv's own shells.
 if ($env.T3_FLEET_DIRENV? == "1") {
-  let loaded = (try { ^timeout 20 direnv export json | complete } catch { null })
+  let loaded = (try { with-env { T3CODE_DIRENV_HOOK: "1" } { ^timeout 20 direnv export json | complete } } catch { null })
   if $loaded != null and $loaded.exit_code == 0 and ($loaded.stdout | str trim | is-not-empty) {
     let exports = ($loaded.stdout | from json)
     let unset = ($exports | transpose name value | where value == null | get name)
