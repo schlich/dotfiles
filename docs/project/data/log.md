@@ -4,6 +4,12 @@ The history of this workspace, newest first. The `ship` skill appends a dated
 group on every release; any skill that creates or retires a document adds a line
 to the current day's group.
 
+## 2026-10-29
+
+- **Plan**: [Run the flake checks with Dagger](plans/20261029-dagger-ci.md);
+  Dagger 1.0 beta runs `checks.x86_64-linux` locally and as Dagger Cloud Checks,
+  beside nixbot and nix-ci.
+
 ## 2026-10-27
 
 - **Delivery**: Landed the work left open when this repository moved from jj and

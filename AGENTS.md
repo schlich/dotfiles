@@ -242,6 +242,9 @@
   A closure that fails to build can reach `main`, but no host activates it,
   since a switch builds before it stages anything. Add a check by adding a
   flake check.
+- Dagger (`docs/dagger.md`) runs the same `checks.x86_64-linux` in
+  containers with a cache keyed by content: `dagger check` locally, and Dagger
+  Cloud Checks after each push. Like nix-ci, it reports and gates nothing.
 
 ## User-visible progress
 
