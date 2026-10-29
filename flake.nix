@@ -956,11 +956,30 @@
               touch "$out"
             '';
         whitespace =
+          let
+            # Leave out what the globs below skip, so ignored state such as
+            # .direnv does not change the check's input.
+            src = lib.fileset.toSource {
+              root = ./.;
+              fileset = lib.fileset.difference ./. (
+                lib.fileset.unions (
+                  map lib.fileset.maybeMissing [
+                    ./.git
+                    ./.jj
+                    ./.direnv
+                    ./packages
+                    ./result
+                  ]
+                )
+              );
+            };
+          in
           pkgs.runCommand "whitespace-check"
             {
               nativeBuildInputs = [ pkgs.ripgrep ];
             }
             ''
+              cd ${src}
               matches="$(${pkgs.ripgrep}/bin/rg \
                 --hidden \
                 --glob '!.git/**' \
