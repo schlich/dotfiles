@@ -6,6 +6,8 @@ to the current day's group.
 
 ## 2026-10-29
 
+- **Desktop**: Prepared Noctalia Minimizer with Niri shortcuts and persistent
+  hints; the change awaits validation and delivery.
 - **Workflow**: Allow agents to resolve merge conflicts automatically when
   intent is clear, preserving both sides and rerunning checks; ask only for
   ambiguous intent or product decisions.

@@ -650,6 +650,8 @@ binds {
     // from every app, so discard has its own chord.
     Mod+M repeat=false hotkey-overlay-title="Recorder: start or stop a spoken note" { spawn "dicta" "toggle"; }
     Mod+Shift+M repeat=false hotkey-overlay-title="Recorder: discard this take" { spawn "dicta" "cancel"; }
+    Mod+Alt+M repeat=false hotkey-overlay-title="Minimize window" { spawn "noctalia" "msg" "plugin" "local/minimizer:actions" "all" "minimize"; }
+    Mod+Ctrl+M repeat=false hotkey-overlay-title="Minimized windows" { spawn "noctalia" "msg" "plugin" "local/minimizer:actions" "all" "windows"; }
 
     // Mod+D is HEX's dictation, which types what you say into the focused
     // field: it starts listening, and again stops and types; Esc cancels.

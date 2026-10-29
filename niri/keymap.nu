@@ -215,11 +215,11 @@ def default-config [] {
 # are niri's own, and Alt+Tab may live in the recent-windows block instead of
 # binds, so those always show.
 const hint_sets = {
-  normal: [[key label]; [Mod+1…9 area] [Mod+Tab back] [Alt+Tab recent] [Mod+A agents] [Mod+G vcs] [Mod+O overview] [Mod+Slash keymap]]
-  empty: [[key label]; [Mod+Return terminal] [Mod+Shift+Return "restore layout"] [Mod+0 launcher] [Mod+A agents]]
-  single: [[key label]; [Mod+R width] [Mod+F maximise] [Mod+Return terminal] [Mod+A agents] [Mod+Tab back]]
-  stack: [[key label]; [Mod+J next] [Mod+K previous] [Mod+W tabs] [Mod+Period expel] [Mod+Shift+R height]]
-  floating: [[key label]; [Mod+V tile] [Mod+Shift+V "to tiled"] [Mod+Q close]]
+  normal: [[key label]; [Mod+1…9 area] [Mod+Tab back] [Alt+Tab recent] [Mod+A agents] [Mod+G vcs] [Mod+O overview] [Mod+Alt+M minimize] [Mod+Ctrl+M minimized] [Mod+Slash keymap]]
+  empty: [[key label]; [Mod+Return terminal] [Mod+Shift+Return "restore layout"] [Mod+0 launcher] [Mod+A agents] [Mod+Ctrl+M minimized]]
+  single: [[key label]; [Mod+R width] [Mod+F maximise] [Mod+Return terminal] [Mod+A agents] [Mod+Tab back] [Mod+Alt+M minimize] [Mod+Ctrl+M minimized]]
+  stack: [[key label]; [Mod+J next] [Mod+K previous] [Mod+W tabs] [Mod+Period expel] [Mod+Shift+R height] [Mod+Alt+M minimize] [Mod+Ctrl+M minimized]]
+  floating: [[key label]; [Mod+V tile] [Mod+Shift+V "to tiled"] [Mod+Q close] [Mod+Alt+M minimize] [Mod+Ctrl+M minimized]]
   overview: [[key label]; [←↓↑→ move] [Return pick] [Escape close]]
 }
 const always_shown = [Mod+1…9 Alt+Tab ←↓↑→ Return Escape]
