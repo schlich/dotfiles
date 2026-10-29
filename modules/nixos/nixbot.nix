@@ -114,11 +114,8 @@ in
       # chooses which branches build; only this rule roots them. Roots are
       # per attribute, so a branch's newer result stands in for main's until
       # main builds again.
-      # Kept at jj-* until homelab runs the watch that judges sockets: a new
-      # rule restarts nixbot.socket, which the old watch cannot judge
-      # (docs/project/data/bugs/staged-switch-crashes-on-socket-units.md).
       branches.topics = {
-        matchGlob = "jj-*";
+        matchGlob = "luvus/*";
         registerGCRoots = true;
       };
       github = {
