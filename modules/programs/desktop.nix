@@ -16,7 +16,7 @@ let
 in
 
 {
-  # Warn through Noctalia notifications half an hour before a Claude or Codex
+  # Warn through a desktop notification half an hour before a Claude or Codex
   # usage window resets.
   systemd.user.services.usage-reset-alert = {
     Unit.Description = "Notify before Claude or Codex usage resets";
@@ -82,6 +82,10 @@ in
         };
         wallpaper.default.path = "${../../wallpapers/niri-navigation.svg}";
         system.monitor.enabled = true;
+
+        # Hokum (hokum.nix) is the notification daemon. Noctalia leaves
+        # org.freedesktop.Notifications to it and keeps its internal toasts.
+        notification.enable_daemon = false;
 
         # Light by day, dark from sunset, on the sunrise/sunset schedule of
         # the location Noctalia resolves from the public IP. The shell
@@ -193,8 +197,8 @@ in
               "codex_usage"
               "claude_usage"
             ];
+            # Hokum's tray icon holds notifications and Do not disturb.
             end = [
-              "notifications"
               "clipboard"
               "network"
               "bluetooth"

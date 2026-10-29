@@ -7,6 +7,7 @@
     ./devenv.nix
     ./dicta.nix
     ./hex.nix
+    ./hokum.nix
     ./input-stack.nix
     ./jj-hunk.nix
     ./luvus.nix
