@@ -1638,6 +1638,22 @@
         "type": "github"
       }
     },
+    "nixpkgs-t3code": {
+      "locked": {
+        "lastModified": 1793267494,
+        "narHash": "sha256-yfcbjtk+7WLm+Zcz4KqwXW7Xp/O5W9C0Om3xBBA6VGA=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "1a1a6e280ff8f744a0bf5e2fb32a1fb1775b54e5",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "1a1a6e280ff8f744a0bf5e2fb32a1fb1775b54e5",
+        "type": "github"
+      }
+    },
     "nixpkgs_2": {
       "locked": {
         "lastModified": 1790510107,
@@ -1862,6 +1878,7 @@
         "nix-grpc-store": "nix-grpc-store",
         "nixbot": "nixbot",
         "nixpkgs": "nixpkgs",
+        "nixpkgs-t3code": "nixpkgs-t3code",
         "noc-minimizer": "noc-minimizer",
         "npr": "npr",
         "nushellWith": "nushellWith",

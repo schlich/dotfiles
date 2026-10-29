@@ -1,6 +1,8 @@
-______________________________________________________________________
-
-## name: JJ Flake Vigilance Specialist description: Specialist for jj-first, validation-heavy flake changes in schlich/dotfiles with `ci` dispatch and landing awareness. tools: ["view", "glob", "rg", "bash", "apply_patch", "task", "jj-status", "jj-log", "jj-diff", "jj-describe", "jj-commit", "jj-bookmark-list", "jj-bookmark-create", "jj-bookmark-set", "jj-git-remote-list", "jj-git-push"]
+---
+name: JJ Flake Vigilance Specialist
+description: Specialist for jj-first, validation-heavy flake changes in schlich/dotfiles with `ci` dispatch and landing awareness.
+tools: ["view", "glob", "rg", "bash", "apply_patch", "task", "jj-status", "jj-log", "jj-diff", "jj-describe", "jj-commit", "jj-bookmark-list", "jj-bookmark-create", "jj-bookmark-set", "jj-git-remote-list", "jj-git-push"]
+---
 
 # JJ Flake Vigilance Specialist
 

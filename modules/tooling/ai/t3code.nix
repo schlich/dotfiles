@@ -1,18 +1,17 @@
-{
-  config,
-  lib,
-  pkgs,
-  ...
-}:
+{ config, lib, ... }:
 
-let
-  # T3 Code drives the Claude Code and Codex CLIs, which sign in with the
-  # Claude and ChatGPT subscriptions themselves. Leave both off the wrapper's
-  # PATH so it finds the profile's configured `claude` and `codex` wrapper
-  # rather than plain nixpkgs copies. The app sets its own Wayland app ID,
-  # com.t3tools.T3Code, which niri's agents rules match.
-  t3code = pkgs.t3code.override { enableCodex = false; };
-in
-lib.mkIf (config.dotfiles.alternates || config.dotfiles.primary.desktopAgent == "t3code") {
-  home.packages = [ t3code ];
+# T3 Code's desktop app, `t3code-desktop`. It sets its own Wayland app ID,
+# com.t3tools.T3Code, which niri's agents rules match. On a host that also
+# runs the fleet server (t3code-server.nix) the app is that server's client
+# rather than a server of its own; docs/T3-FLEET.md describes the setup.
+
+{
+  imports = [ ./t3code-package.nix ];
+
+  dotfiles.t3code.desktop.enable =
+    config.dotfiles.alternates || config.dotfiles.primary.desktopAgent == "t3code";
+
+  home.packages = lib.mkIf config.dotfiles.t3code.desktop.enable [
+    config.dotfiles.t3code.desktop.package
+  ];
 }

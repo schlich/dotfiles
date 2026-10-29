@@ -88,6 +88,7 @@ in
     super-productivity
     element-desktop
     discord
+    github-desktop
     marimo
     nodejs
     ty

@@ -276,8 +276,11 @@ in
       description = "Announce staged switches that reverted here or on a canary";
       after = [ "graphical-session.target" ];
       partOf = [ "graphical-session.target" ];
-      # niri comes from the system; `ssh`, `terminal`, `ai`, and `editor`
-      # from the standalone Home Manager profile.
+      # A switch would otherwise restart it whenever its script changes and
+      # wait for the oneshot to finish; the timer runs the new one anyway.
+      restartIfChanged = false;
+      # niri and systemd-run come from the system; `ssh`, `terminal`, `ai`,
+      # and `editor` from the standalone Home Manager profile.
       environment.PATH = lib.mkForce "${
         lib.makeBinPath [
           pkgs.coreutils
@@ -287,6 +290,9 @@ in
       serviceConfig = {
         Type = "oneshot";
         ExecStart = "${deployReverts}/bin/deploy-reverts notify ${lib.escapeShellArgs (lib.unique cfg.notify.sources)}";
+        # Each canary's fetch is cut off after 60 seconds, and notifications
+        # wait for an answer in units of their own, so a run past this is stuck.
+        TimeoutStartSec = "3min";
       };
     };
     systemd.user.timers.deploy-revert-notify = lib.mkIf cfg.notify.enable {
