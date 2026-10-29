@@ -89,8 +89,8 @@ def kb-root [] {
   $env.KB_ROOT? | default $"($env.HOME)/kb"
 }
 
-# Sessions with a fixed name and layout: the places niri/config.kdl pins to
-# workspaces 1-9. The overview is not a session. Research maintains the knowledge base; other areas without a single
+# Sessions with a fixed name and layout, each given a workspace when first
+# restored. The overview is not a session. Research maintains the knowledge base; other areas without a single
 # repository open a plain shell in the home directory.
 def presets [] {
   let area = { layout: area, directory: $env.HOME }
@@ -106,9 +106,6 @@ def presets [] {
     inbox: $area
   }
 }
-
-# Presets whose layouts `startup` builds at login, focusing the first.
-const startup_sessions = [nix]
 
 # A preset, else a session opened with `project`.
 def session-route [session: string] {
@@ -248,14 +245,6 @@ def "main restore" [session?: string] {
     error make { msg: "the focused workspace is not a session" }
   }
   restore $session
-}
-
-# Build the startup sessions' layouts in order, then focus the first.
-def "main startup" [] {
-  for session in $startup_sessions {
-    restore $session
-  }
-  niri-action focus-workspace ($startup_sessions | first)
 }
 
 # Step to the neighbouring session on the numpad grid (Mod+Alt+H/J/K/L):
@@ -750,5 +739,5 @@ def "main keymap" [] {
 }
 
 def main [] {
-  print "Usage: niri-desk (startup | restore [SESSION] | overview | keymap | grid DIRECTION | open [--stack] | project [DIR] | forget [SESSION] | vcs | agents | peek [GROUP] [--next] | notes | capture | stack-choices | watch-choices | workspace (up | down))"
+  print "Usage: niri-desk (restore [SESSION] | overview | keymap | grid DIRECTION | open [--stack] | project [DIR] | forget [SESSION] | vcs | agents | peek [GROUP] [--next] | notes | capture | stack-choices | watch-choices | workspace (up | down))"
 }

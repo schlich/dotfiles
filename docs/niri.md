@@ -8,11 +8,12 @@ in [input.md](input.md).
 
 ## Doctrine
 
-1. **A workspace is a task.** Workspaces 1–9 are pinned places (Work,
-   Research, XR, Nix, AI, Shell, Career, Personal, Inbox), laid out like the
-   numpad (7 8 9 / 4 5 6 / 1 2 3). Projects opened from the
-   session launcher take the workspaces after them. Apps open on the
-   workspace that has focus, so go to the area first, then open.
+1. **A workspace is a task.** A login starts with one workspace and one
+   terminal. A session (`niri-desk restore NAME`, or a project from the
+   session launcher) names the next empty workspace, so workspaces number in
+   the order they were opened; Mod+1–9 reach them by index, laid out like
+   the numpad (7 8 9 / 4 5 6 / 1 2 3). Apps open on the workspace that has
+   focus, so go to the workspace first, then open.
 1. **A column is a role. A tab is an alternative.** Windows you use together
    sit side by side. Windows that do the same job share one tabbed column:
    the coding agents (Mod+A), JJ and GitHub (Mod+G), or any app's own windows
@@ -31,8 +32,9 @@ in [input.md](input.md).
 
 ## Daily routine
 
-1. **Mod+digit** goes to the area.
-1. **Mod+Shift+Return** rebuilds its session layout if it is empty.
+1. **Mod+digit** goes to the workspace.
+1. **Mod+Shift+Return** rebuilds its session layout if it is a session and
+   empty.
 1. **Mod+A** brings the agents beside the work, or **Mod+Shift+A** floats
    one over it.
 1. **Mod+R** sizes the focused column, and **Mod+F** gives it the whole
