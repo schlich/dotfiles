@@ -5,6 +5,7 @@
     ./inventory.nix
     ./aspects/base.nix
     ./aspects/paseo.nix
+    ./aspects/t3code.nix
     ./aspects/cross-stream.nix
     ./aspects/marimohub.nix
     ./aspects/workstation.nix

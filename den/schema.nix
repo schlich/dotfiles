@@ -71,6 +71,7 @@ let
       nixObservability = "the local OpenTelemetry viewer for Nix traces";
       paseo = "the Paseo daemon";
       opencodeServer = "the OpenCode HTTP server";
+      t3code = "the T3 Code server, an execution environment for the agent fleet";
       crossStream = "the system cross.stream service, for hosts without the Home Manager one";
     };
   };
