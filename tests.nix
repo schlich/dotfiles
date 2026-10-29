@@ -76,12 +76,14 @@ in
         nixObservability = false;
         paseo = true;
         opencodeServer = false;
+        t3code = true;
         crossStream = true;
       };
     };
     expected = [
       "base"
       "paseo"
+      "t3code"
       "cross-stream"
       "server"
       "headless"
@@ -95,12 +97,14 @@ in
       asus = [
         "jj-ci-webhook"
         "nix-observability"
+        "t3code"
       ];
       asus-headless = [ ];
       asus-usb = [ ];
       homelab = [
         "paseo"
         "opencode-server"
+        "t3code"
         "cross-stream"
       ];
     };

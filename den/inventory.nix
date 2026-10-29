@@ -24,6 +24,7 @@ let
       nixObservability = false;
       paseo = false;
       opencodeServer = false;
+      t3code = false;
       crossStream = false;
     };
     # Clan logs in as the everyday user and escalates with sudo.
@@ -69,6 +70,9 @@ let
         services = {
           jjCiWebhook = true;
           nixObservability = true;
+          # An execution environment while the laptop is awake; the desktop
+          # app is its client (docs/T3-FLEET.md).
+          t3code = true;
         };
         # Deployed in place: `clan machines update asus` over ssh to localhost.
         deploy.enable = true;
@@ -106,6 +110,8 @@ let
         services = {
           paseo = true;
           opencodeServer = true;
+          # The always-on execution environment of the agent fleet.
+          t3code = true;
           crossStream = true;
         };
         deploy = {

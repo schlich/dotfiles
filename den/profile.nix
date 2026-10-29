@@ -64,6 +64,10 @@ let
       aspect = "opencode-server";
     }
     {
+      service = "t3code";
+      aspect = "t3code";
+    }
+    {
       service = "crossStream";
       aspect = "cross-stream";
     }
