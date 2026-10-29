@@ -295,6 +295,7 @@
       '';
       lib = nixpkgs.lib;
       bombadil = import ./lib/bombadil.nix { inherit lib pkgs; };
+      dagger = import ./modules/programs/dagger-package.nix { inherit lib pkgs; };
       iwe = import ./modules/tooling/knowledge/iwe-package.nix { inherit inputs lib pkgs; };
       marimohub = import ./modules/tooling/knowledge/marimohub-package.nix { inherit lib pkgs; };
       ciDashboard = import ./tools/ci-dashboard/checks.nix { inherit lib pkgs; };
@@ -597,6 +598,7 @@
         headless = denFlake.nixosConfigurations.asus-headless.config.system.build.toplevel;
         desktop-primary = denAsusPrimary.activationPackage;
         ci = jjCi;
+        inherit dagger;
         jj = pkgs.jujutsu;
         jjui = pkgs.jjui;
         jj-ci-lifecycle = jjCiLifecycle;
@@ -622,6 +624,8 @@
             # The CLI must match the clan-core lib that builds `clan` above.
             inputs.clan-core.packages.${system}.clan-cli
             d2
+            # `dagger check` runs the flake checks in containers (docs/dagger.md).
+            dagger
             difftastic
             fd
             gh
