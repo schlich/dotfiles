@@ -14,10 +14,38 @@
 # (vcs.nix, cli.nix).
 
 let
-  t3code = inputs.nixpkgs-t3code.legacyPackages.${pkgs.stdenv.hostPlatform.system}.t3code.override {
-    enableCodex = false;
-    enableGit = false;
-    enableGitHub = false;
+  nixpkgsT3code =
+    inputs.nixpkgs-t3code.legacyPackages.${pkgs.stdenv.hostPlatform.system}.t3code.override
+      {
+        enableCodex = false;
+        enableGit = false;
+        enableGitHub = false;
+      };
+  # T3 Connect, which carries push notifications to the phone, needs three
+  # public values that official builds embed and nixpkgs' build lacks ("T3
+  # Connect is unavailable in builds without public configuration"). The
+  # server and `t3 connect` read them from the environment too. These come
+  # from the official v0.1.4 server (t3-0.1.4-linux-x64.tar.gz, SHA-256
+  # 8d759aff…): the relay, the Clerk publishable key of clerk.t3.codes, and
+  # the Connect CLI's OAuth client, none of them secret. Recheck them when
+  # moving to a release that changes T3 Connect.
+  connectConfig = {
+    T3CODE_RELAY_URL = "https://relay.t3.codes";
+    T3CODE_CLERK_PUBLISHABLE_KEY = "pk_live_Y2xlcmsudDMuY29kZXMk";
+    T3CODE_CLERK_CLI_OAUTH_CLIENT_ID = "hzxSgY2cH10sDU2r";
+  };
+  t3code = pkgs.symlinkJoin {
+    name = "t3code-${nixpkgsT3code.version}";
+    paths = [ nixpkgsT3code ];
+    nativeBuildInputs = [ pkgs.makeBinaryWrapper ];
+    postBuild = ''
+      wrapProgram "$out/bin/t3" ${
+        lib.concatStringsSep " " (
+          lib.mapAttrsToList (name: value: "--set-default ${name} ${lib.escapeShellArg value}") connectConfig
+        )
+      }
+    '';
+    inherit (nixpkgsT3code) version meta;
   };
 in
 {

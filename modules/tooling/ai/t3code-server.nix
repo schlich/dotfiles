@@ -30,14 +30,18 @@ let
   unit = "t3code-server.service";
   jq = lib.getExe pkgs.jq;
 
-  # Agents run their commands in non-interactive bash, which reads BASH_ENV
-  # first. This loads the direnv environment of the command's directory, as
-  # an interactive shell's hook would, so a command sees its project's Nix dev
-  # shell even though T3 starts agents with its own environment. direnv's
-  # allow list still decides which .envrc files load, and direnv evaluates an
-  # .envrc with bash too, hence the guard.
+  # Agents run their commands in non-interactive bash (`bash -c`), which
+  # reads BASH_ENV first. This loads the direnv environment of the command's
+  # directory, as an interactive shell's hook would, so a command sees its
+  # project's Nix dev shell even though T3 starts agents with its own
+  # environment. direnv's allow list still decides which .envrc files load.
+  # It acts only for a command string: script wrappers, direnv's own among
+  # them, also read BASH_ENV, and loading there would leave direnv nothing to
+  # export. direnv evaluates an .envrc in a `bash -c` of its own, with
+  # DIRENV_WATCHES and no DIRENV_DIR, and the guard covers the rest.
   bashEnv = pkgs.writeText "t3code-bash-env" ''
-    if [ -z "''${T3CODE_DIRENV_HOOK-}" ]; then
+    if [ -n "''${BASH_EXECUTION_STRING-}" ] && [ -z "''${T3CODE_DIRENV_HOOK-}" ] \
+      && ! { [ -n "''${DIRENV_WATCHES-}" ] && [ -z "''${DIRENV_DIR-}" ]; }; then
       export T3CODE_DIRENV_HOOK=1
       eval "$(${config.programs.direnv.package}/bin/direnv export bash 2>/dev/null)"
       unset T3CODE_DIRENV_HOOK
@@ -224,6 +228,9 @@ in
     dotfiles.nushellAutoload.t3f = t3f;
 
     # The bash hook loads an allowed .envrc and leaves an unallowed one alone.
+    # It also stays out of direnv's own shells when direnv runs directly, as
+    # the Nushell MCP server runs it: a script wrapper around direnv, and the
+    # shell that evaluates the .envrc, which therefore runs once.
     dotfiles.tooling.checks.t3code-bash-env =
       pkgs.runCommand "t3code-bash-env-check"
         {
@@ -235,13 +242,21 @@ in
         ''
           export HOME="$TMPDIR/home" XDG_DATA_HOME="$TMPDIR/data" XDG_CONFIG_HOME="$TMPDIR/config"
           mkdir -p "$HOME" allowed blocked
-          echo 'export T3CODE_CHECK=loaded' > allowed/.envrc
+          evaluations="$PWD/evaluations"
+          printf 'echo x >> %s\nexport T3CODE_CHECK=loaded\n' "$evaluations" > allowed/.envrc
           echo 'export T3CODE_CHECK=loaded' > blocked/.envrc
           (cd allowed && direnv allow)
           got="$(cd allowed && BASH_ENV=${bashEnv} bash -c 'echo "''${T3CODE_CHECK-}"')"
           test "$got" = loaded
           got="$(cd blocked && BASH_ENV=${bashEnv} bash -c 'echo "''${T3CODE_CHECK-}"')"
           test -z "$got"
+          wrapper="$PWD/direnv-wrapper"
+          printf '#!%s\nexec %s "$@"\n' ${pkgs.runtimeShell} "$(command -v direnv)" > "$wrapper"
+          chmod +x "$wrapper"
+          rm -f "$evaluations"
+          got="$(cd allowed && BASH_ENV=${bashEnv} "$wrapper" export json | ${jq} -r '.T3CODE_CHECK // empty')"
+          test "$got" = loaded
+          test "$(wc -l < "$evaluations")" -eq 1
           touch "$out"
         '';
   };

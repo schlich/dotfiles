@@ -67,7 +67,12 @@ Where it is declared:
   user runs.
 - **T3 Connect publish-only.** It carries push notifications and Live
   Activities without the managed Cloudflare tunnel; connections stay on the
-  tailnet.
+  tailnet. nixpkgs' build has no T3 Connect configuration ("T3 Connect is
+  unavailable in builds without public configuration"), so
+  `t3code-package.nix` wraps `t3` with the three public values the official
+  v0.1.4 server embeds: the relay, the Clerk publishable key and the Connect
+  CLI's OAuth client ID. None is a secret; recheck them on a release that
+  changes T3 Connect.
 - **Pairing tokens stay out of the journal.** `t3 serve` prints a one-time
   admin pairing token, its link and a QR code at every start, on stdout with
   the log. The unit's wrapper drops those lines and keeps the rest
@@ -81,7 +86,12 @@ Where it is declared:
 
 The configuration activates like any other: after delivery,
 `system-switch --with-home` on asus; homelab stages the system on its own,
-and its home needs `home-activate` there.
+and its home needs activating there (build
+`homeConfigurations."schlich@homelab".activationPackage` from main and run
+its `activate`). Its first standalone activation refused to replace a
+`nixfmt` installed with `nix profile`, the same store path the home ships;
+`nix profile remove nixfmt` cleared it, and activation moved
+`~/.config/atuin/config.toml` aside as `config.toml.hm-backup`.
 
 ### On each execution host
 
@@ -93,7 +103,9 @@ and its home needs `home-activate` there.
    `claude auth login`, `codex login --device-auth`, `opencode auth login`.
    Logins persist in each CLI's own store, outside Nix.
 1. Turn on **Settings → Labs → Linked environments** for the host (in any
-   client connected to it).
+   client connected to it). It is `linkedEnvironmentsEnabled` in
+   `~/.t3/userdata/settings.json`, which the server watches, so setting the
+   key there works too.
 1. Push notifications: `t3 connect link --publish-only --headless`, sign in
    with the T3 Connect account the phone uses, then
    `systemctl --user restart t3code-server`. A free account links three
@@ -102,9 +114,13 @@ and its home needs `home-activate` there.
 ### Desktop (asus)
 
 Quit T3 Code before the first activation. Then pair the app with the local
-server once: run `t3 pair`, open the `t3code://pair` link it prints, and
-confirm. Add homelab the same way with a link from `t3f pair` on homelab, or
-use **Settings → Environments → Add environment** with its pairing URL.
+server once: `t3 pair --label 'asus desktop' --ttl 10m` prints a
+`t3code://pair` app link; start the app with it
+(`niri msg action spawn -- t3code-desktop LINK`). A loopback server is added
+without a dialog. Your existing threads are under **Settled** at the bottom
+of the sidebar, which hides projects with no active threads. Add homelab
+with **Settings → Environments → Add environment** and a pairing URL from
+`t3f pair` on homelab.
 
 ### Android
 
@@ -166,6 +182,11 @@ homelab command needs the Tailscale SSH check approved. Inside a thread,
 **Settings → Environments → Load balancing** can pick a machine for new
 threads.
 
+Agents run in scopes of their own, which systemd-oomd may kill under memory
+pressure; only the server is spared (`ManagedOOMPreference=avoid`). On
+asus, a thread running the flake checks with `nix-fast-build` was killed
+this way. Start heavy builds on homelab (`t3f start … --host homelab`).
+
 ### Project environments
 
 T3 starts agents with the server's environment. It does not run direnv, and
@@ -173,8 +194,11 @@ setting the working directory does not activate nix-direnv. The unit covers
 both ways agents run commands here:
 
 - **bash** (Codex's and OpenCode's shell tools): `BASH_ENV` points at a hook
-  that loads the direnv environment of each command's directory, about 0.1 s
-  per command once nix-direnv has cached the dev shell.
+  that loads the direnv environment of each command's directory, about 0.3 s
+  per command once nix-direnv has cached the dev shell. It acts only for
+  `bash -c` command strings, and not inside direnv's own evaluation shell:
+  bash scripts read `BASH_ENV` too, and the `direnv` wrapper is one, so
+  loading there would leave direnv nothing to export.
 - **The Nushell MCP server** (where Claude, following the global
   instructions, does its shell work): it starts in the thread's project and,
   seeing `T3_FLEET_DIRENV=1` from the unit, loads that directory's direnv
@@ -249,5 +273,19 @@ flake project:
 | Server restart while a task runs                                              | pass: the run resumed and finished; all three threads kept               |
 | Client-only desktop launcher on existing, missing and set settings files      | pass; keeps keys and mode                                                |
 
-Not tested: macOS; anything on homelab, linked environments, the phone and
-push notifications, which need the rollout below.
+After delivery, on the real servers:
+
+| Check                                                   | Result                                                                          |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| asus serves 0.1.4 on loopback and its tailnet URL       | pass; 22 threads and 489 messages migrated, environment ID kept                 |
+| Desktop app as a client of the asus server              | pass; paired with an app link                                                   |
+| homelab: canary deploy, home activation, tailnet URL    | pass, after the `nixfmt` profile fix above                                      |
+| Linked environments, both ways                          | pass; `auto` access, valid until 2026-11-28                                     |
+| Cross-machine `delegate_task`                           | pass: a Codex thread on asus delegated a probe that ran in homelab's dev shell  |
+| Server restart while a task runs (asus)                 | pass: new server process, the thread resumed and finished                       |
+| Claude and Codex list the `t3` MCP server               | pass; each still needs its one-time sign-in                                     |
+| Claude's Nushell MCP loads the dev shell under the unit | failed: the hook ran in the `direnv` wrapper script, so direnv exported nothing |
+| The fixed hook, in the unit's environment               | pass for `bash -c` and Nushell; the check covers direnv run through a wrapper   |
+
+Not tested: macOS; the phone and push notifications, which need your
+devices and the T3 Connect sign-in.
