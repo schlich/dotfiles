@@ -220,9 +220,10 @@
 - A user request to publish or deliver authorizes the whole path: gate,
   merge, `luvus-deliver`, and the switch "Applying configuration" describes.
   A high-risk delivery stops before it pushes and names why: it touches
-  boot, storage, secrets, keys, or access, or `secrets/`, `hosts/`, or the
-  rulesets; it reaches several hosts and could break more than a desktop app
-  there; or Jev cannot judge it. Show the owner those reasons and ask. Once
+  boot, storage, secrets, keys, or access, or `secrets/`, `hosts/`, the
+  rulesets, or the classifier itself; it reaches several hosts through
+  configuration `den/policy.nix` rates high or critical, or could break more
+  than a desktop app there; or Jev cannot judge it. Show the owner those reasons and ask. Once
   they approve, rerun `luvus-deliver --approve REV` with the commit it names;
   never pass `--approve` without that approval. Each verdict is kept in
   `~/.local/state/luvus-deliver/risk.jsonl` for review after landing. A

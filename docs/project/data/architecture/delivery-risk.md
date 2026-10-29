@@ -42,20 +42,28 @@ chose Jev as the classifier.
 - Jev judges what the change does: three Nouls (boot or storage, secrets or
   keys, access to a host or to main) and a five-level breakage Score. It reads
   the clipped diff without secrets, credential lines, documentation, or
-  comment-only edits, which describe access or storage without changing either.
+  comment-only edits, which describe access or storage without changing either,
+  and each file's policy risk: the highest risk `den/policy.nix` gives an aspect
+  the file reaches.
 - Code decides. High risk is a concern Noul at or above `min_concern`, breakage
   at or above `max_breakage`, a path under `secrets/`, `hosts/`, or
-  `.github/rulesets/`, or several deployed hosts once breakage reaches
-  `several_hosts_min_breakage`, or anything that could not be judged. Low is no
-  host reached; the rest is medium. A high-risk delivery stops before anything
-  is pushed until `--approve` names the exact commit, never a branch. Every
-  verdict is appended to `~/.local/state/luvus-deliver/risk.jsonl`.
+  `.github/rulesets/`, a change to the classifier or its `delivery_risk`
+  questions (the installed classifier judges a delivery, so one that rewrote it
+  would otherwise judge every delivery after it unseen), several deployed hosts
+  once breakage reaches `several_hosts_min_breakage` or through configuration
+  the policy rates high or critical, or anything that could not be judged. Low
+  is no host reached; the rest is medium. A high-risk delivery stops before
+  anything is pushed until `--approve` names the exact commit, never a branch.
+  Every verdict is appended to `~/.local/state/luvus-deliver/risk.jsonl`.
 - The thresholds were set on 20 deliveries of 2026-10-20 to 2026-10-29: 8 high
   (the ruleset, secret deletions, the Discord digest, the move to luvus, a new
   trusted cache, and three impermanence edits), 9 medium, and 3 low. Two of the
   first verdicts were wrong and fixed in the questions: a formatting job in
   GitHub Actions read as a required check, and trusting a binary cache's key
-  read as routine.
+  read as routine. The fix to the staged switch's watch, which reaches every
+  host through deployment configuration, was medium until policy risk counted,
+  and adding an input that renumbered the lock's nodes counted unchanged inputs
+  as updated until locks were compared by content.
 
 Rejected: a table of path globs to risk levels next to `den/policy.nix`, which
 was the first proposal (the author preferred Jev's judgment to rules to

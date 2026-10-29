@@ -1,8 +1,8 @@
 # Which of this repository's Den aspects each host's system and each home
-# includes, followed through nested and conditional includes, and which hosts
-# a delivery deploys to. luvus-deliver evaluates it against the flake's `den`
-# output (`nix eval FLAKE#den --apply`) to learn which hosts a changed file
-# reaches.
+# includes, followed through nested and conditional includes, which hosts a
+# delivery deploys to, and each aspect's policy risk. luvus-deliver evaluates
+# it against the flake's `den` output (`nix eval FLAKE#den --apply`) to learn
+# which hosts a changed file reaches.
 den:
 let
   hosts = den.hosts.x86_64-linux;
@@ -74,4 +74,6 @@ in
     )
   ) den.homes.x86_64-linux;
   deployed = builtins.filter (name: hosts.${name}.deploy.enable) (builtins.attrNames hosts);
+  # The risk den/policy.nix assigns each aspect, or null for none.
+  risks = builtins.mapAttrs (_: aspect: (aspect.meta or { }).risk or null) den.aspects;
 }

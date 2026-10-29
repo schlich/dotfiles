@@ -88,15 +88,16 @@
     # change to several hosts wait for approval.
     several_hosts_min_breakage: 2.5
     # Changed paths that always need approval, whatever Jev says: secrets,
-    # the host-local hardware, storage, and key files, and the ruleset that
-    # gates main.
-    approval_paths: ['^secrets/' '^hosts/' '^\.github/rulesets/']
+    # the host-local hardware, storage, and key files, and what gates main,
+    # the ruleset and this classifier. A change to delivery_risk below needs
+    # approval too.
+    approval_paths: ['^secrets/' '^hosts/' '^\.github/rulesets/' '^tools/luvus-deliver\.nu$' '^tools/den-reach\.nix$']
     # Named in the diff Jev reads, without their contents.
     hidden_paths: ['^secrets/' '\.age$' '(^|/)flake\.lock$' '(^|/)(pnpm-lock\.yaml|package-lock\.json|Cargo\.lock)$']
     # Documentation is named without its contents too: prose about access or
     # storage would read as a change to it.
     prose_paths: ['\.md$']
-    context: "`delivery` is a set of commits about to be delivered to main of a personal NixOS flake that configures its owner's machines. Once main moves, homelab, an always-on server that serves the fleet's binary cache and runs its CI, stages its new system within minutes, and the owner's laptop, asus, switches right after. Each entry of `delivery.files` lists the hosts whose NixOS system (`systems`) and whose Home Manager home (`homes`) that file reaches through the configuration's imports; empty lists mean no host runs it, as for documentation, tests, CI, and agent instructions. Only nixbot's checks, which the ruleset in `.github/rulesets/` requires, gate main; GitHub Actions workflows report without gating anything. `delivery.diff` is the unified diff, clipped, without secrets. The answers decide whether the owner must approve the delivery before it lands or can review it afterwards."
+    context: "`delivery` is a set of commits about to be delivered to main of a personal NixOS flake that configures its owner's machines. Once main moves, homelab, an always-on server that serves the fleet's binary cache and runs its CI, stages its new system within minutes, and the owner's laptop, asus, switches right after. Each entry of `delivery.files` lists the hosts whose NixOS system (`systems`) and whose Home Manager home (`homes`) that file reaches through the configuration's imports; empty lists mean no host runs it, as for documentation, tests, CI, and agent instructions. `policy_risk` is the highest risk, low to critical, that the configuration's own policy assigns to what the file reaches; deployment, servers, and remote access are high, storage and secrets critical. Only nixbot's checks, which the ruleset in `.github/rulesets/` requires, gate main; GitHub Actions workflows report without gating anything. `delivery.diff` is the unified diff, clipped, without secrets. The answers decide whether the owner must approve the delivery before it lands or can review it afterwards."
     questions: {
       boot_storage: {
         type: noul

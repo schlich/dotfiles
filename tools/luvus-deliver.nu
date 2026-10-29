@@ -134,32 +134,36 @@ def lock-at [root: string, rev: string] {
   if $shown.exit_code == 0 { $shown.stdout | from json } else { { nodes: {} } }
 }
 
-# The flake inputs a delivery updates, by their names in flake.nix: those
-# whose locked source, or that of anything they depend on, changed.
+# What a lock's node `node` pins: its own locked source and those of
+# everything it depends on, by content, so that a lock whose nodes were only
+# renumbered pins the same.
+def pinned [nodes: record, node: string] {
+  mut pending = [$node]
+  mut seen = []
+  while ($pending | is-not-empty) {
+    let next = ($pending | first)
+    $pending = ($pending | skip 1)
+    if $next not-in $seen {
+      $seen = ($seen | append $next)
+      # A list is a `follows` path, which names an input another node owns.
+      $pending = ($pending | append ($nodes | get -o $next | get -o inputs | default {} | values | where {|v| ($v | describe) == "string" }))
+    }
+  }
+  $seen | each {|name| $nodes | get -o $name | get -o locked | to json --raw } | uniq | sort
+}
+
+# The flake inputs a delivery updates, by their names in flake.nix: those it
+# adds, and those whose locked source, or that of anything they depend on,
+# changed.
 def updated-inputs [root: string, base: string, head: string] {
   let before = (lock-at $root $base).nodes
   let after = (lock-at $root $head).nodes
-  let changed = ($after | transpose node value | where {|row|
-    ($row.value.locked? | to json --raw) != ($before | get -o $row.node | get -o locked | to json --raw)
-  } | get node)
-  let depends = {|node|
-    mut pending = [$node]
-    mut found = []
-    while ($pending | is-not-empty) {
-      let next = ($pending | first)
-      $pending = ($pending | skip 1)
-      if $next not-in $found {
-        $found = ($found | append $next)
-        # A list is a `follows` path, which names an input another node owns.
-        let inputs = ($after | get -o $next | get -o inputs | default {} | values | where {|v| ($v | describe) == "string" })
-        $pending = ($pending | append $inputs)
-      }
-    }
-    $found
-  }
-  let root_inputs = ($after | get -o root | get -o inputs | default {})
-  $root_inputs | transpose name node | where {|row|
-    ($row.node | describe) == "string" and (do $depends $row.node | any {|n| $n in $changed })
+  let old_roots = ($before | get -o root | get -o inputs | default {})
+  $after | get -o root | get -o inputs | default {} | transpose name node | where {|row|
+    let old = ($old_roots | get -o $row.name)
+    ($row.node | describe) == "string" and (
+      ($old | describe) != "string" or (pinned $after $row.node) != (pinned $before $old)
+    )
   } | get name
 }
 
@@ -239,9 +243,29 @@ def judge [state: record, config: record] {
   ($result.stdout | from json).answers
 }
 
+const risk_levels = [low medium high critical]
+
+# The highest risk den/policy.nix assigns an aspect a file reaches, or null;
+# Den's host composition reaches every aspect.
+def policy-risk [found: record, risks: record] {
+  let named = if $found.composition { $risks | values } else { $found.aspects | each {|aspect| $risks | get -o $aspect } }
+  let ranks = ($named | where {|risk| $risk in $risk_levels } | each {|risk| $risk_levels | enumerate | where item == $risk | get 0.index })
+  if ($ranks | is-empty) { null } else { $risk_levels | get ($ranks | math max) }
+}
+
+# Whether a delivery changes how deliveries are judged: the delivery_risk
+# questions and thresholds in jev/questions.nuon. Unreadable counts as
+# changed, as when a delivery adds them.
+def judging-changed [root: string, base: string, head: string] {
+  let read = {|rev| try { ^git -C $root show $"($rev):jev/questions.nuon" | from nuon | get delivery_risk } catch { null } }
+  let before = (do $read $base)
+  $before == null or $before != (do $read $head)
+}
+
 # How risky delivering `head` onto `base` is, and why. Code decides: a
 # delivery is high risk, and needs the owner's approval, when it changes a
-# path that always needs approval, when Jev judges that it touches boot,
+# path that always needs approval or the delivery_risk questions that judge
+# deliveries, when Jev judges that it touches boot,
 # storage, secrets, keys, or access, or could break a host badly, when it
 # reaches several deployed hosts and a mistake could break more than a
 # desktop app there, and when any of this cannot be judged. It is low when
@@ -266,7 +290,8 @@ def classify [root: string, base: string, head: string] {
       reach $file.path $refs $definitions
     }
     let hosts = if $den.reach? != null { hosts-of $found $den.reach } else { { systems: [], homes: [] } }
-    $file | merge { layout_only: $layout_only, aspects: $found.aspects } | merge $hosts
+    let policy = if $den.reach? != null { policy-risk $found ($den.reach.risks? | default {}) } else { null }
+    $file | merge { layout_only: $layout_only, aspects: $found.aspects, policy_risk: $policy } | merge $hosts
   })
   let deployed = ($den.reach?.deployed? | default [])
   let hosts = ($files | each {|file| $file.systems ++ ($file.homes | each { split row "@" | last }) } | flatten | uniq | where {|host| $host in $deployed } | sort)
@@ -275,7 +300,7 @@ def classify [root: string, base: string, head: string] {
     context: $config.context
     delivery: {
       commits: (^git -C $root log --format=%s --no-merges $"($base)..($head)" | lines)
-      files: ($files | select path status added removed layout_only systems homes)
+      files: ($files | select path status added removed layout_only systems homes policy_risk)
       flake_inputs_updated: $inputs
       diff: (diff-text $root $base $head $files $config)
     }
@@ -301,7 +326,16 @@ def classify [root: string, base: string, head: string] {
     | append (if ($hosts | length) >= 2 and ($answers == null or $answers.breakage >= $config.several_hosts_min_breakage) {
       [$"it reaches several hosts: ($hosts | str join ', ')"]
     } else { [] })
+    # ...and always through configuration den/policy.nix rates high or
+    # critical, such as deployment or servers.
+    | append ($files | where {|file|
+      $file.policy_risk in [high critical] and (($file.systems ++ ($file.homes | each { split row "@" | last })) | uniq | where {|host| $host in $deployed } | length) >= 2
+    } | each {|file| $"($file.path) reaches several hosts through ($file.policy_risk)-risk configuration" })
     | append ($files | where {|file| $config.approval_paths | any {|pattern| $file.path =~ $pattern } } | each {|file| $"($file.path) always needs approval" })
+    # A delivery that changes the judge cannot be judged by it alone.
+    | append (if ($files | any {|file| $file.path == "jev/questions.nuon" }) and (judging-changed $root $base $head) {
+      ["it changes how deliveries are judged: delivery_risk in jev/questions.nuon"]
+    } else { [] })
     | append (if $answers == null { [$"Jev could not judge it: ($judged.error)"] } else {
       $concerns | where {|c| ($answers | get $c.key) >= $config.min_concern } | each {|c| $"Jev: it changes ($c.label) \(p=($answers | get $c.key | math round --precision 2)\)" }
       | append (if $answers.breakage >= $config.max_breakage { [$"Jev: a mistake could break a host badly \(($answers.breakage | math round --precision 1) of 4\)"] } else { [] })
@@ -316,7 +350,7 @@ def classify [root: string, base: string, head: string] {
     hosts: $hosts
     answers: $answers
     inputs: $inputs
-    files: ($files | select path status layout_only systems homes aspects)
+    files: ($files | select path status layout_only systems homes aspects policy_risk)
   }
 }
 

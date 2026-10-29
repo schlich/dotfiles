@@ -48,6 +48,7 @@ def main [script: path, questions: path] {
     systems: { asus: [base workstation], homelab: [base homelab-platform], spare: [base workstation] }
     homes: { "schlich@asus": [user-shell], "schlich@homelab": [user-shell] }
     deployed: [asus homelab]
+    risks: { base: medium, workstation: medium, homelab-platform: high, user-shell: null }
   } | to json | save $den
   let ledger = ($tmp | path join risk.jsonl)
 
@@ -74,6 +75,7 @@ def main [script: path, questions: path] {
   do $write "modules/programs/tool.nix" "{ inputs, ... }: { home.packages = [ inputs.tool.packages.default ]; }\n"
   do $write "docs/guide.md" "# Guide\n"
   do $write "secrets/token.age" "age-encrypted-v1\n"
+  do $write "jev/questions.nuon" "{ delivery_risk: { min_concern: 0.5 }, other: { limit: 1 } }\n"
   let lock = {|rev: string|
     { nodes: { root: { inputs: { nixpkgs: nixpkgs, tool: tool } }, nixpkgs: { locked: { rev: a } }, tool: { locked: { rev: $rev } } }, root: root, version: 7 } | to json
   }
@@ -114,6 +116,7 @@ def main [script: path, questions: path] {
   do $case service { "modules/nixos/service-helper.nix": "{ services.example.enable = false; }\n" } | ignore
   let service = (do $verdict "")
   $failures = ($failures | append (expect "a module reaches its host through the module that imports it" [$service.risk $service.hosts ($service.files | where path == "modules/nixos/service-helper.nix" | get 0.systems)] [medium [homelab] [homelab]]))
+  $failures = ($failures | append (expect "a file carries the policy risk of what it reaches" ($service.files | get 0.policy_risk) high))
 
   do $case comment { "modules/nixos/service-helper.nix": "{\n  # Example.\n  services.example.enable = true;\n}\n" } | ignore
   let comment = (do $verdict "")
@@ -143,6 +146,16 @@ def main [script: path, questions: path] {
   $failures = ($failures | append (expect "a secret's contents never reach jev" ($sent | str contains "age-encrypted") false))
   $failures = ($failures | append (expect "a credential assignment never reaches jev" ($sent | str contains "hunter2") false))
   $failures = ($failures | append (expect "jev is asked the delivery_risk questions" ($sent | lines | first | from json | get questions | columns | sort) [access boot_storage breakage secrets_keys]))
+
+  do $case judge { "jev/questions.nuon": "{ delivery_risk: { min_concern: 0.9 }, other: { limit: 1 } }\n" } | ignore
+  let judge = (do $verdict "")
+  $failures = ($failures | append (expect "a change to how deliveries are judged needs approval" [$judge.risk ($judge.reasons | any { str contains "how deliveries are judged" })] [high true]))
+  do $case other-question { "jev/questions.nuon": "{ delivery_risk: { min_concern: 0.5 }, other: { limit: 2 } }\n" } | ignore
+  let other = (do $verdict "")
+  $failures = ($failures | append (expect "a change to other Jev questions does not" $other.risk low))
+  do $case gate { "tools/luvus-deliver.nu": "def main [] { }\n" } | ignore
+  let gate = (do $verdict "")
+  $failures = ($failures | append (expect "a change to the classifier always needs approval" [$gate.risk ($gate.reasons | any { str contains "tools/luvus-deliver.nu always needs approval" })] [high true]))
 
   do $case unjudged { "docs/guide.md": "# Guide\n\nOther words.\n" } | ignore
   let unjudged = (do $verdict "1")
