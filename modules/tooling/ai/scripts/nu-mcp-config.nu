@@ -5,6 +5,22 @@
 # as a process environment string.
 $env.NU_MCP_OUTPUT_LIMIT = 50kb
 
+# Agents that T3 Code starts (modules/tooling/ai/t3code-server.nix sets
+# T3_FLEET_DIRENV) inherit no shell's direnv hook, so load the environment of
+# the directory this server starts in, the agent's project, as the hook
+# would. direnv's allow list still decides, and a dev shell that takes longer
+# than 20s to build loads nothing rather than stall the server's start.
+if ($env.T3_FLEET_DIRENV? == "1") {
+  let loaded = (try { ^timeout 20 direnv export json | complete } catch { null })
+  if $loaded != null and $loaded.exit_code == 0 and ($loaded.stdout | str trim | is-not-empty) {
+    let exports = ($loaded.stdout | from json)
+    let unset = ($exports | transpose name value | where value == null | get name)
+    let set = ($exports | reject ...$unset)
+    load-env (if 'PATH' in $set { $set | update PATH { split row (char esep) } } else { $set })
+    if ($unset | is-not-empty) { hide-env --ignore-errors ...$unset }
+  }
+}
+
 # Run a closure as a background job the harness can follow: both output
 # streams of its external commands go to LOG, the outcome to `LOG.done.nuon`,
 # its OSC 7501 reports (osc7501.nu's PST_FILE) to `LOG.status.jsonl`, and

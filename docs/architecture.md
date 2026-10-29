@@ -266,8 +266,12 @@ before a workstation switches. It takes each revision once: one it deployed or
 rejected waits for `main` to move, and `system-switch` there retries a rejected
 one on request. A manual switch and the timer share a lock, and the timer
 skips its turn while the lock is held. asus's notifier fetches homelab's new
-reverts over ssh (`deploy-reverts notify homelab`) and keeps them under
-`~/.local/state/deploy-reverts`, where `deploy-reverts --all` includes them.
+reverts over OpenSSH on its `deploy.sshPort`
+(`deploy-reverts notify ssh://homelab:2222`), since Tailscale SSH on port 22
+hangs a key-based login, and keeps them under `~/.local/state/deploy-reverts`,
+where `deploy-reverts --all` includes them. Each fetch is killed after 60
+seconds, the unit is never restarted by a switch, and each notification waits
+for its answer in a transient unit of its own, so no switch waits on it.
 The den-policy check lets a host deploy itself only with health checks to
 watch, and inventory validation also requires review and rollback for a
 critical one. A Clan update to homelab activates without the watch and makes

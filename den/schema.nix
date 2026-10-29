@@ -71,6 +71,7 @@ let
       nixObservability = "the local OpenTelemetry viewer for Nix traces";
       paseo = "the Paseo daemon";
       opencodeServer = "the OpenCode HTTP server";
+      t3code = "the T3 Code server, an execution environment for the agent fleet";
       crossStream = "the system cross.stream service, for hosts without the Home Manager one";
     };
   };
@@ -132,6 +133,16 @@ let
         description = ''
           SSH user Clan logs in as; any other user activates through sudo on
           the host.
+        '';
+      };
+      sshPort = mkOption {
+        type = types.nullOr types.port;
+        default = null;
+        example = 2222;
+        description = ''
+          OpenSSH port on targetHost for unattended logins with keys, such
+          as a workstation fetching this canary's reverts. null uses the
+          destination's own port.
         '';
       };
     };

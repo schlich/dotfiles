@@ -22,6 +22,14 @@
           includes = [ den.aspects.nix-observability-home ];
         }
       )
+      # The T3 Code server runs in the home of the host's one user with a
+      # home (den/aspects/t3code.nix).
+      (
+        { home, ... }:
+        lib.optionalAttrs home.host.services.t3code {
+          includes = [ den.aspects.t3code-home ];
+        }
+      )
     ];
     homeManager = {
       home.username = "schlich";

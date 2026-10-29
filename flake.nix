@@ -3,6 +3,11 @@
 
   inputs = {
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
+    # T3 Code 0.1.4, the first release with linked environments and
+    # delegate_task, from the nixpkgs commit that packaged it
+    # (NixOS/nixpkgs#580444); the locked nixpkgs still ships 0.0.45.
+    # modules/tooling/ai/t3code-package.nix takes only t3code from it.
+    nixpkgs-t3code.url = "github:NixOS/nixpkgs/1a1a6e280ff8f744a0bf5e2fb32a1fb1775b54e5";
     # Build Codex from the fork that contains the execution-tool transcript renderer.
 
     codex = {
@@ -956,11 +961,30 @@
               touch "$out"
             '';
         whitespace =
+          let
+            # Leave out what the globs below skip, so ignored state such as
+            # .direnv does not change the check's input.
+            src = lib.fileset.toSource {
+              root = ./.;
+              fileset = lib.fileset.difference ./. (
+                lib.fileset.unions (
+                  map lib.fileset.maybeMissing [
+                    ./.git
+                    ./.jj
+                    ./.direnv
+                    ./packages
+                    ./result
+                  ]
+                )
+              );
+            };
+          in
           pkgs.runCommand "whitespace-check"
             {
               nativeBuildInputs = [ pkgs.ripgrep ];
             }
             ''
+              cd ${src}
               matches="$(${pkgs.ripgrep}/bin/rg \
                 --hidden \
                 --glob '!.git/**' \
