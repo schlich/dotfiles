@@ -16,3 +16,4 @@ tells them apart.*
 
 [Bug: the CI dashboard's exploration hides the page behind a GitHub tab](bugs/ci-dashboard-exploration-hides-the-page.md)
 [Bug: nixbot roots only jj topics](bugs/nixbot-roots-only-jj-topics.md)
+[Bug: the staged switch crashes on socket units](bugs/staged-switch-crashes-on-socket-units.md)
