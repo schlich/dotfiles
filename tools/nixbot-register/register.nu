@@ -133,6 +133,6 @@ def main [
   try { ^xdg-open $install } catch { print "Open that address yourself." }
 
   print ""
-  print "Then declare, dispatch, and land the topic; homelab turns nixbot on when it deploys it:"
-  print "  ci impact set behavior; ci dispatch; ci land"
+  print "Then gate, merge, and deliver the task; homelab turns nixbot on when it deploys main."
+  print "A replaced App also needs the main-checks ruleset changed first: see docs/nixbot.md."
 }
