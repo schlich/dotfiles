@@ -870,6 +870,19 @@
               ${pkgs.nushell}/bin/nu --no-config-file ${./tests/luvus-deliver.nu} ${./tools/luvus-deliver.nu} ${./jev/questions.nuon}
               touch "$out"
             '';
+        # How the staged switch judges each kind of unit a candidate touches:
+        # sockets, timers, and targets lack properties services have.
+        nushell-staged-switch =
+          pkgs.runCommand "nushell-staged-switch-check"
+            {
+              nativeBuildInputs = [ pkgs.nushell ];
+            }
+            ''
+              export HOME="$TMPDIR/home"
+              mkdir -p "$HOME"
+              ${pkgs.nushell}/bin/nu --no-config-file ${./tests/staged-switch-units.nu} ${./deploy/switch.nu}
+              touch "$out"
+            '';
         # The Mod+Slash keymap overlay replayed headlessly with `tui debug`.
         nushell-keymap =
           let

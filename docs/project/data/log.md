@@ -11,6 +11,13 @@ to the current day's group.
 - **Delivery**: The product page, the nixbot, homelab-builds, and
   session-environment docs, and the pull request template describe the luvus
   gate, `luvus-deliver`, and nixbot instead of `ci land`.
+- **Bug**:
+  [The staged switch crashes on socket units](bugs/staged-switch-crashes-on-socket-units.md);
+  homelab's dead-man reverted `807fe228` when nixbot.socket restarted, and the
+  watch now judges units without a restart count or a result.
+- **Delivery**: homelab runs the fixed watch since `1860874b`, delivered with
+  nixbot's root rule held at `jj-*` so that the old watch could stage it; the
+  delivery after it restores `luvus/*`.
 - **Architecture**: Recorded [delivery risk](architecture/delivery-risk.md):
   `luvus-deliver` classifies each delivery with Jev and holds a high-risk one
   for the owner's approval of that exact commit.
