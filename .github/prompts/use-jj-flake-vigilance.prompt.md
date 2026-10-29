@@ -1,6 +1,7 @@
-______________________________________________________________________
-
-## description: 'Inspect the current jj/Nix worktree, reconcile pending flake work, and finalize validated changes in schlich/dotfiles.' agent: project-specialist
+---
+description: 'Inspect the current jj/Nix worktree, reconcile pending flake work, and finalize validated changes in schlich/dotfiles.'
+agent: project-specialist
+---
 
 # Reconcile the jj-first flake workflow
 
