@@ -30,3 +30,5 @@ rejected are as valuable as the one you picked.*
 [Host secrets](architecture/host-secrets.md)
 
 [ci opt-in](architecture/ci-opt-in.md)
+
+[Delivery risk](architecture/delivery-risk.md)

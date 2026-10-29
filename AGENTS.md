@@ -205,20 +205,28 @@
   the merge and marks the task `blocked`: merge `luvus/integration` into the
   task's branch in its worktree, resolve, rerun the gate, and merge again.
   Never resolve conflicts automatically.
-- `luvus-deliver` delivers `luvus/integration` to `main`. It pushes the
-  branch, waits for nixbot's `nixbot/nix-eval` and `nixbot/nix-build` on that
-  exact commit, then fast-forwards `main` to it. The `main-checks` ruleset
-  admits only a commit with both passed, reported by nixbot's own App, and
-  GitHub refuses a push that is not a fast-forward. It waits for homelab to
-  build, so run it as a `job-log` job. When
+- `luvus-deliver` delivers `luvus/integration` to `main`. It first judges
+  the delivery's risk, which `luvus-deliver risk` previews: code works out
+  from Den which hosts each changed file reaches, and Jev judges whether the
+  change touches boot or storage, secrets or keys, or access, and how badly
+  a mistake could break a host (`delivery_risk` in `jev/questions.nuon`).
+  Then it pushes the branch, waits for nixbot's `nixbot/nix-eval` and
+  `nixbot/nix-build` on that exact commit, and fast-forwards `main` to it.
+  The `main-checks` ruleset admits only a commit with both passed, reported
+  by nixbot's own App, and GitHub refuses a push that is not a fast-forward.
+  It waits for homelab to build, so run it as a `job-log` job. When
   `luvus/integration` no longer contains `origin/main`, merge `origin/main`
   into it first.
-- For a small change that affects a single host, a user request to publish
-  or deliver authorizes the whole path: gate, merge, `luvus-deliver`, and the
-  switch "Applying configuration" describes. Stop and ask before delivering
-  when the change affects several hosts or touches boot, storage,
-  encryption, or security configuration. A failed gate, CI run, or merge
-  conflict stops delivery and is reported.
+- A user request to publish or deliver authorizes the whole path: gate,
+  merge, `luvus-deliver`, and the switch "Applying configuration" describes.
+  A high-risk delivery stops before it pushes and names why: it touches
+  boot, storage, secrets, keys, or access, or `secrets/`, `hosts/`, or the
+  rulesets; it reaches several hosts and could break more than a desktop app
+  there; or Jev cannot judge it. Show the owner those reasons and ask. Once
+  they approve, rerun `luvus-deliver --approve REV` with the commit it names;
+  never pass `--approve` without that approval. Each verdict is kept in
+  `~/.local/state/luvus-deliver/risk.jsonl` for review after landing. A
+  failed gate, CI run, or merge conflict stops delivery and is reported.
 - Once a task is delivered, remove its worktree with
   `luvus worktree remove PATH`, which refuses while a task, lease, or live
   agent still uses it; the branch stays. Then offer to archive the session
@@ -328,7 +336,7 @@ Keep active work continuously integrated: branch each task from
 `origin/main`, merge `origin/main` into a long-running task branch when it
 falls behind or conflicts, and never let two concurrent actors share one
 worktree. luvus's merge gate integrates finished tasks one at a time in its
-own worktree, and `luvus-deliver` moves `main` only to a commit nix-ci
+own worktree, and `luvus-deliver` moves `main` only to a commit nixbot
 passed.
 
 Never resolve conflicts automatically. When `luvus task merge` reports a

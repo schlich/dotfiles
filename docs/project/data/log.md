@@ -11,6 +11,9 @@ to the current day's group.
 - **Delivery**: The product page, the nixbot, homelab-builds, and
   session-environment docs, and the pull request template describe the luvus
   gate, `luvus-deliver`, and nixbot instead of `ci land`.
+- **Architecture**: Recorded [delivery risk](architecture/delivery-risk.md):
+  `luvus-deliver` classifies each delivery with Jev and holds a high-risk one
+  for the owner's approval of that exact commit.
 
 ## 2026-10-27
 

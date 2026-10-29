@@ -17,9 +17,9 @@ the active system.
 when activating. Create a NixOS generation only if the candidate system
 toplevel differs from the active system.
 For breaking changes, add a "## Manual steps" section after this one.
-Name the hosts it affects. A change to several hosts, or to boot, storage,
-encryption, or security configuration, waits for the owner's approval before
-delivery (AGENTS.md, "Delivery").
+Paste the verdict of `luvus-deliver risk`: the hosts it reaches and why it is
+low, medium, or high risk. A high-risk delivery waits for the owner's approval
+of its exact commit (AGENTS.md, "Delivery").
 -->
 
 ## Validation
