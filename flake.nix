@@ -221,6 +221,12 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.osc7501-nu.follows = "osc7501-nu";
     };
+    # Noctalia Minimizer: reversible window minimization for Niri (Noctalia
+    # Shell plugin)
+    noc-minimizer = {
+      url = "github:SwashX-dev/Noc-minimizer";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =

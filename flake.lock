@@ -1670,6 +1670,26 @@
         "type": "github"
       }
     },
+    "noc-minimizer": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1793295985,
+        "narHash": "sha256-nPKUz05abYsl5oZPlxTFt7O5YcudWTV5zFvsGNih8c8=",
+        "owner": "SwashX-dev",
+        "repo": "Noc-minimizer",
+        "rev": "23540332dba9ceb61fcfedea4cf6d889b247b1e0",
+        "type": "github"
+      },
+      "original": {
+        "owner": "SwashX-dev",
+        "repo": "Noc-minimizer",
+        "type": "github"
+      }
+    },
     "npr": {
       "inputs": {
         "nixpkgs": [
@@ -1842,6 +1862,7 @@
         "nix-grpc-store": "nix-grpc-store",
         "nixbot": "nixbot",
         "nixpkgs": "nixpkgs",
+        "noc-minimizer": "noc-minimizer",
         "npr": "npr",
         "nushellWith": "nushellWith",
         "opencode": "opencode",

@@ -6,6 +6,8 @@ to the current day's group.
 
 ## 2026-10-29
 
+- **Desktop**: Prepared Noctalia Minimizer with Niri shortcuts and persistent
+  hints; the change awaits validation and delivery.
 - **Bug**: [nixbot roots only jj topics](bugs/nixbot-roots-only-jj-topics.md);
   `branches.topics` now matches the `luvus/*` branches nixbot builds.
 - **Delivery**: The product page, the nixbot, homelab-builds, and
