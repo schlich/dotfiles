@@ -275,17 +275,25 @@ flake project:
 
 After delivery, on the real servers:
 
-| Check                                                   | Result                                                                          |
-| ------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| asus serves 0.1.4 on loopback and its tailnet URL       | pass; 22 threads and 489 messages migrated, environment ID kept                 |
-| Desktop app as a client of the asus server              | pass; paired with an app link                                                   |
-| homelab: canary deploy, home activation, tailnet URL    | pass, after the `nixfmt` profile fix above                                      |
-| Linked environments, both ways                          | pass; `auto` access, valid until 2026-11-28                                     |
-| Cross-machine `delegate_task`                           | pass: a Codex thread on asus delegated a probe that ran in homelab's dev shell  |
-| Server restart while a task runs (asus)                 | pass: new server process, the thread resumed and finished                       |
-| Claude and Codex list the `t3` MCP server               | pass; each still needs its one-time sign-in                                     |
-| Claude's Nushell MCP loads the dev shell under the unit | failed: the hook ran in the `direnv` wrapper script, so direnv exported nothing |
-| The fixed hook, in the unit's environment               | pass for `bash -c` and Nushell; the check covers direnv run through a wrapper   |
+| Check                                                | Result                                                                         |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------ |
+| asus serves 0.1.4 on loopback and its tailnet URL    | pass; 22 threads and 489 messages migrated, environment ID kept                |
+| Desktop app as a client of the asus server           | pass; paired with an app link                                                  |
+| homelab: canary deploy, home activation, tailnet URL | pass, after the `nixfmt` profile fix above                                     |
+| Linked environments, both ways                       | pass; `auto` access, valid until 2026-11-28                                    |
+| Cross-machine `delegate_task`                        | pass: a Codex thread on asus delegated a probe that ran in homelab's dev shell |
+| Server restart while a task runs (asus)              | pass: new server process, the thread resumed and finished                      |
+| Claude and Codex list the `t3` MCP server            | pass; each still needs its one-time sign-in                                    |
+| Claude's Nushell MCP sees the project's dev shell    | pass on asus: `dev-shell-loaded` and the dev shell's `hello`, through `nu`     |
+| `t3 connect` on both hosts                           | pass: it answers; linking needs your sign-in                                   |
+
+The first rollout's Claude thread saw no dev shell: the `direnv` wrapper is
+a bash script, so it read `BASH_ENV` too, and the hook loaded the
+environment there, leaving the real direnv nothing to export. The hook now
+acts only for `bash -c` commands, and the `t3code-bash-env` check runs
+direnv through a script wrapper.
 
 Not tested: macOS; the phone and push notifications, which need your
-devices and the T3 Connect sign-in.
+devices and the T3 Connect sign-in; a tool call from an outside agent,
+which needs its MCP sign-in; Claude threads on homelab, which need
+`claude auth login` there.
