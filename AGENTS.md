@@ -204,7 +204,9 @@
   in luvus's own integration worktree, one task at a time. A conflict aborts
   the merge and marks the task `blocked`: merge `luvus/integration` into the
   task's branch in its worktree, resolve, rerun the gate, and merge again.
-  Never resolve conflicts automatically.
+  Resolve conflicts automatically when the intended result is clear; preserve
+  the changes from both sides and rerun the relevant checks. Ask only when
+  resolving the conflict requires a product decision or unclear intent.
 - `luvus-deliver` delivers `luvus/integration` to `main`. It first judges
   the delivery's risk, which `luvus-deliver risk` previews: code works out
   from Den which hosts each changed file reaches, and Jev judges whether the
@@ -227,7 +229,7 @@
   they approve, rerun `luvus-deliver --approve REV` with the commit it names;
   never pass `--approve` without that approval. Each verdict is kept in
   `~/.local/state/luvus-deliver/risk.jsonl` for review after landing. A
-  failed gate, CI run, or merge conflict stops delivery and is reported.
+  failed gate, CI run, or unresolved merge conflict stops delivery and is reported.
 - Once a task is delivered, remove its worktree with
   `luvus worktree remove PATH`, which refuses while a task, lease, or live
   agent still uses it; the branch stays. Then offer to archive the session
@@ -340,9 +342,12 @@ worktree. luvus's merge gate integrates finished tasks one at a time in its
 own worktree, and `luvus-deliver` moves `main` only to a commit nixbot
 passed.
 
-Never resolve conflicts automatically. When `luvus task merge` reports a
-conflict, the task is `blocked`: resolve it in the task's worktree, rerun
-the gate, and merge again.
+Resolve merge conflicts automatically when the intended result is clear,
+preserving the changes from both sides. When `luvus task merge` reports a
+conflict, resolve it in the task's worktree, rerun the relevant checks and
+gate, and merge again. Ask the user only when the resolution requires a
+product decision or the intended behavior is unclear; keep the task
+`blocked` until that decision arrives.
 
 Order dependent work with task dependencies (`--deps`): a dependent task
 waits until its dependency is merged into `luvus/integration`. Keep

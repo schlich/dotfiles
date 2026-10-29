@@ -6,6 +6,9 @@ to the current day's group.
 
 ## 2026-10-29
 
+- **Workflow**: Allow agents to resolve merge conflicts automatically when
+  intent is clear, preserving both sides and rerunning checks; ask only for
+  ambiguous intent or product decisions.
 - **Bug**: [nixbot roots only jj topics](bugs/nixbot-roots-only-jj-topics.md);
   `branches.topics` now matches the `luvus/*` branches nixbot builds.
 - **Delivery**: The product page, the nixbot, homelab-builds, and
