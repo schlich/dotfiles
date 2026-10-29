@@ -2,5 +2,6 @@
 # main, on pull requests, and, from this list, on luvus/integration and task
 # branches, whose `nixbot/nix-eval` and `nixbot/nix-build` checks the
 # main-checks ruleset requires. nixbot reads build_branches from main's copy
-# of this file only.
+# of this file only. It roots only what branches.topics in that module
+# matches, so change the two globs together.
 build_branches = ["luvus/*"]

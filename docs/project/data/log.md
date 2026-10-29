@@ -4,6 +4,14 @@ The history of this workspace, newest first. The `ship` skill appends a dated
 group on every release; any skill that creates or retires a document adds a line
 to the current day's group.
 
+## 2026-10-29
+
+- **Bug**: [nixbot roots only jj topics](bugs/nixbot-roots-only-jj-topics.md);
+  `branches.topics` now matches the `luvus/*` branches nixbot builds.
+- **Delivery**: The product page, the nixbot, homelab-builds, and
+  session-environment docs, and the pull request template describe the luvus
+  gate, `luvus-deliver`, and nixbot instead of `ci land`.
+
 ## 2026-10-27
 
 - **Delivery**: Landed the work left open when this repository moved from jj and

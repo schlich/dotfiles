@@ -15,3 +15,4 @@ means closed without a fix. Bugs stay listed here either way — the status chip
 tells them apart.*
 
 [Bug: the CI dashboard's exploration hides the page behind a GitHub tab](bugs/ci-dashboard-exploration-hides-the-page.md)
+[Bug: nixbot roots only jj topics](bugs/nixbot-roots-only-jj-topics.md)

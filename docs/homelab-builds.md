@@ -1,25 +1,28 @@
 # Offloading builds to homelab
 
 homelab is the fleet's build host and binary cache. Keep editing,
-formatting, quick checks, publication, and landing coordination on the
+formatting, quick checks, publication, and delivery coordination on the
 workstation; activation happens only through `system-switch`, after a
-landing that changes a closure or when the user asks.
-Remote CI is GitHub Actions (`.github/workflows/nix-ci.yml`), which builds
-every flake check on each pushed topic branch and the `remoteChecks` system
-closures after each push. homelab used to run a Tangled spindle for that; it
-was retired on 2026-10-19 once GitHub Actions took over.
+delivery that changes a closure or when the user asks.
+The gating CI is nixbot on homelab ([nixbot.md](nixbot.md)), which builds
+`checks.x86_64-linux` for `main` and every `luvus/*` branch in homelab's own
+store. GitHub Actions (`.github/workflows/nix-ci.yml`) also builds every
+flake check on each push, and the `remoteChecks` system closures after it,
+but gates nothing. homelab used to run a Tangled spindle; it was retired on
+2026-10-19.
 
 ## Existing infrastructure
 
 - Every other host builds on homelab and substitutes from its Harmonia
   cache over the tailnet (`homelab-builder-client.nix`,
-  `homelab-cache-client.nix`). `ci land`'s local clearance offloads its
-  builds the same way.
-- Harmonia serves homelab's whole store and signs with a host-local key.
-  Outputs that nothing roots are subject to GC; this is a reusable cache,
-  not permanent artifact storage.
-- homelab imports nixbot, which stays off until `hosts/homelab/nixbot.nix`
-  names its GitHub App; [nixbot.md](nixbot.md) has the steps to go live.
+  `homelab-cache-client.nix`). The luvus gate's `nix-fast-build` on asus
+  offloads its builds the same way, and its `--skip-cached` skips any check
+  whose output a substituter, Harmonia among them, already has.
+- Harmonia serves homelab's whole store and signs with a host-local key, so
+  what nixbot and offloaded builds produce is the fleet's cache. Outputs
+  that nothing roots are subject to GC; nixbot roots the latest result of
+  each check it built on `main` or a `luvus/*` branch. This is a reusable
+  cache, not permanent artifact storage.
 
 ## Capacity
 

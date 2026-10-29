@@ -102,16 +102,20 @@ in
       admins = [ "github:schlich" ];
       buildSystems = [ "x86_64-linux" ];
       evalSystems = [ "x86_64-linux" ];
-      # A Den host evaluation peaks near 6 GiB, the budget `ci land` gives its
-      # local clearance; nix-eval-jobs restarts a worker past it. One worker
-      # and two builds leave room for offloaded builds on a 15 GiB host.
+      # A Den host evaluation peaks near 6 GiB; nix-eval-jobs restarts a
+      # worker past it. One worker and two builds leave room for offloaded
+      # builds on a 15 GiB host.
       evalWorkerCount = 1;
       evalMaxMemorySize = 6144;
       buildConcurrency = 2;
-      # Keep what nixbot built for a topic until it lands: `ci land` then
-      # substitutes it from Harmonia instead of rebuilding it on the client.
+      # Root what nixbot builds for luvus/integration and task branches, as
+      # it roots main's, so a garbage collection before delivery does not
+      # make main's build or the next luvus gate rebuild it. nixbot.toml
+      # chooses which branches build; only this rule roots them. Roots are
+      # per attribute, so a branch's newer result stands in for main's until
+      # main builds again.
       branches.topics = {
-        matchGlob = "jj-*";
+        matchGlob = "luvus/*";
         registerGCRoots = true;
       };
       github = {
