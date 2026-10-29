@@ -368,7 +368,7 @@
       );
       # Hosts whose inventory policy marks them disposable still have to
       # evaluate, but GitHub Actions checks them after each push without
-      # blocking: ci land builds only `checks`.
+      # blocking: the luvus gate and nixbot build only `checks`.
       remoteCheckHosts = lib.filterAttrs (
         _: host: host.policy.criticality == "disposable"
       ) denEval.config.den.hosts.${system};
@@ -950,7 +950,8 @@
       // denConfigTestChecks;
 
       # Checks that report without gating a landing: GitHub Actions' nix-ci
-      # workflow builds them after each push, and ci land leaves them out.
+      # workflow builds them after each push, and the luvus gate and nixbot
+      # leave them out.
       # They cover disposable hosts, Clan's machines against the systems they
       # deploy, homelab with modules it has not adopted yet, the staged
       # switch's revert in a VM, and Bombadil's explorations of Fieldwork and

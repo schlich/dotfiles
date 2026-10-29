@@ -10,9 +10,10 @@ let
   unit = "nixos-switch-main";
   stateDir = "/var/lib/${unit}";
   host = config.networking.hostName;
-  # Only `ci land` moves main, after its landing checks, so this never
-  # applies a working copy or an unreviewed change. The staged switch in
-  # deploy/switch.nu catches what those checks cannot see on a running host.
+  # Only `luvus-deliver` moves main, once nixbot's checks pass on that exact
+  # commit, so this never applies a working copy or an unchecked change. The
+  # staged switch in deploy/switch.nu catches what those checks cannot see
+  # on a running host.
   repo = "https://github.com/schlich/dotfiles";
   wrapWithConfig = import ../../lib/wrap-with-config.nix { inherit lib pkgs; };
 
