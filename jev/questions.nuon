@@ -68,6 +68,86 @@
       }
     }
   }
+  # `luvus-deliver`: how risky delivering luvus/integration to main is. Code
+  # works out which hosts each changed file reaches, from Den
+  # (tools/den-reach.nix) and the files that import it, and decides; Jev
+  # judges what the change does. A high-risk delivery waits for the owner to
+  # approve that exact commit (`luvus-deliver --approve REV`).
+  delivery_risk: {
+    # Characters of the diff sent: each file's share, then the whole.
+    max_file_diff_chars: 2000
+    max_diff_chars: 12000
+    # At or above this probability, a change to boot or storage, secrets or
+    # keys, or access needs the owner's approval.
+    min_concern: 0.5
+    # At or above this breakage score, out of 4, the delivery needs it too.
+    max_breakage: 3.5
+    # A delivery that reaches several deployed hosts needs approval once its
+    # breakage score reaches this: 2 is a desktop app or user service, 3 a
+    # system service, networking, or the delivery pipeline. 0 makes every
+    # change to several hosts wait for approval.
+    several_hosts_min_breakage: 2.5
+    # Changed paths that always need approval, whatever Jev says: secrets,
+    # the host-local hardware, storage, and key files, and what gates main,
+    # the ruleset and this classifier. A change to delivery_risk below needs
+    # approval too.
+    approval_paths: ['^secrets/' '^hosts/' '^\.github/rulesets/' '^tools/luvus-deliver\.nu$' '^tools/den-reach\.nix$']
+    # Named in the diff Jev reads, without their contents.
+    hidden_paths: ['^secrets/' '\.age$' '(^|/)flake\.lock$' '(^|/)(pnpm-lock\.yaml|package-lock\.json|Cargo\.lock)$']
+    # Documentation is named without its contents too: prose about access or
+    # storage would read as a change to it.
+    prose_paths: ['\.md$']
+    context: "`delivery` is a set of commits about to be delivered to main of a personal NixOS flake that configures its owner's machines. Once main moves, homelab, an always-on server that serves the fleet's binary cache and runs its CI, stages its new system within minutes, and the owner's laptop, asus, switches right after. Each entry of `delivery.files` lists the hosts whose NixOS system (`systems`) and whose Home Manager home (`homes`) that file reaches through the configuration's imports; empty lists mean no host runs it, as for documentation, tests, CI, and agent instructions. `policy_risk` is the highest risk, low to critical, that the configuration's own policy assigns to what the file reaches; deployment, servers, and remote access are high, storage and secrets critical. Only nixbot's checks, which the ruleset in `.github/rulesets/` requires, gate main; GitHub Actions workflows report without gating anything. `delivery.diff` is the unified diff, clipped, without secrets. The answers decide whether the owner must approve the delivery before it lands or can review it afterwards."
+    questions: {
+      boot_storage: {
+        type: noul
+        instructions: {
+          question: "The change in `delivery.diff` alters how a host boots or keeps its data."
+          covers: ["the bootloader, kernel, or initrd" "disks, partitions, filesystems, or mounts" "swap" "what persists across reboots (impermanence)" "hardware configuration"]
+          not_for: ["the Nix store, binary caches, or garbage collection" "documentation, comments, or messages that mention these"]
+        }
+        criteria: {
+          "true": "A changed line sets or alters one of these, in a host's own files or in a module that hosts import"
+          "false": "No changed line does"
+        }
+      }
+      secrets_keys: {
+        type: noul
+        instructions: {
+          question: "The change in `delivery.diff` alters secrets or keys."
+          covers: ["encrypted secret files and who can decrypt them" "disk encryption" "SSH host or user keys" "signing keys" "API tokens" "certificates"]
+          not_for: ["documentation, comments, or messages that mention secrets or keys"]
+        }
+        criteria: {
+          "true": "A changed line adds, removes, moves, or re-encrypts a secret or key, or changes who or what may read one"
+          "false": "No changed line does"
+        }
+      }
+      access: {
+        type: noul
+        instructions: {
+          question: "The change in `delivery.diff` alters who or what may reach or control a host, or which checks main requires before it accepts a commit."
+          covers: ["SSH or login access" "users and groups" "sudo or polkit rules" "firewall rules or listening ports" "Tailscale serve or funnel" "a service's privileges or sandboxing" "the binary caches and signing keys a host trusts to supply software" "the required checks or branch rules that gate main"]
+          not_for: ["what CI builds, caches, or keeps" "garbage collection or build scheduling" "documentation, comments, or messages that mention access"]
+        }
+        criteria: {
+          "true": "A changed line grants, removes, or widens such access, or changes which checks main requires"
+          "false": "No changed line does"
+        }
+      }
+      breakage: {
+        type: score
+        instructions: "If the change in `delivery` is wrong, how badly could it break the hosts that `delivery.files` says it reaches?"
+        criteria: [
+          "Nothing a host runs changes: only documentation, comments, tests, CI, or agent instructions"
+          "One command, script, or tool misbehaves until it is fixed"
+          "A desktop app, the desktop session, or a user service fails"
+          "A system service, networking, remote access, or the build and delivery pipeline fails"
+          "A host fails to boot, loses data, or locks its owner out"
+        ]
+      }
+    }
+  }
   bash_guard: {
     # Jev answers only Choice, Score, and Noul questions; it cannot write a
     # translation. At or above this probability the call is denied so the
