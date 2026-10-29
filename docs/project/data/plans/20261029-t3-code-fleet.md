@@ -63,8 +63,14 @@ machine).
 
 ### Task 2: Roll out and verify
 
-- [ ] Deliver, switch asus, activate homelab's home.
-- [ ] Pair the desktop and phone, link the hosts, delegate a task.
+- [x] Deliver, switch asus, activate homelab's home.
+- [x] Pair the desktop, link the hosts, delegate a task.
+- [x] Load project dev shells in Claude's Nushell MCP server too, not only in
+  bash.
+- [x] Give `t3` T3 Connect's public configuration, which nixpkgs' build lacks.
+- [ ] Owner: pair the phone and link T3 Connect for push notifications.
+- [ ] Owner: sign Claude Code in to the `t3` MCP server, then check a tool call;
+  sign Claude in on homelab.
 
 ## Spec changes
 
