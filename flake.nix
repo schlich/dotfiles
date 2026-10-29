@@ -852,6 +852,24 @@
               ${pkgs.nushell}/bin/nu --no-config-file ${./tests/deploy-reverts.nu} ${./deploy/reverts.nu} ${./jev/questions.nuon}
               touch "$out"
             '';
+        # luvus-deliver's risk classification and approval on a throwaway
+        # repository, with a stub jev and a fixture of Den's reach. Nix
+        # parses both versions of a changed module to spot comment edits.
+        nushell-luvus-deliver =
+          pkgs.runCommand "nushell-luvus-deliver-check"
+            {
+              nativeBuildInputs = [
+                pkgs.git
+                pkgs.nix
+                pkgs.nushell
+              ];
+            }
+            ''
+              export HOME="$TMPDIR/home"
+              mkdir -p "$HOME"
+              ${pkgs.nushell}/bin/nu --no-config-file ${./tests/luvus-deliver.nu} ${./tools/luvus-deliver.nu} ${./jev/questions.nuon}
+              touch "$out"
+            '';
         # How the staged switch judges each kind of unit a candidate touches:
         # sockets, timers, and targets lack properties services have.
         nushell-staged-switch =

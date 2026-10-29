@@ -18,6 +18,9 @@ to the current day's group.
 - **Delivery**: homelab runs the fixed watch since `1860874b`, delivered with
   nixbot's root rule held at `jj-*` so that the old watch could stage it; the
   delivery after it restores `luvus/*`.
+- **Architecture**: Recorded [delivery risk](architecture/delivery-risk.md):
+  `luvus-deliver` classifies each delivery with Jev and holds a high-risk one
+  for the owner's approval of that exact commit.
 
 ## 2026-10-27
 

@@ -31,6 +31,16 @@ let
   };
   # Plans, checks, and normalizes change graphs (tools/jj-graph/README.md).
   jjGraph = (import ../../tools/jj-graph { inherit lib pkgs; }).package;
+  # dotfiles' delivery: luvus/integration to main once Jev's risk verdict
+  # allows it and nixbot passes on it, with the `delivery_risk` questions in
+  # jev/questions.nuon.
+  jev = import ../../jev/package.nix { inherit pkgs; };
+  luvusDeliver = pkgs.writeNuScriptBin "luvus-deliver" (
+    builtins.replaceStrings
+      [ "@questions@" "@jev@" "@reach@" ]
+      [ "${../../jev/questions.nuon}" "${jev}/bin/jev" "${../../tools/den-reach.nix}" ]
+      (builtins.readFile ../../tools/luvus-deliver.nu)
+  );
 in
 {
   imports = [ ./ci.nix ];
@@ -139,8 +149,7 @@ in
     (pkgs.writeNuScriptBin "jj-dashboard" (builtins.readFile ../../jj/dashboard.nu))
     (pkgs.writeNuScriptBin "tangled-init" (builtins.readFile ../../jj/tangled-init.nu))
     ci.context-status
-    # dotfiles' delivery: luvus/integration to main once nix-ci passes on it.
-    (pkgs.writeNuScriptBin "luvus-deliver" (builtins.readFile ../../tools/luvus-deliver.nu))
+    luvusDeliver
   ];
 
   dotfiles.retiredHomeFiles = [
