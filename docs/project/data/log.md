@@ -15,6 +15,9 @@ to the current day's group.
   [The staged switch crashes on socket units](bugs/staged-switch-crashes-on-socket-units.md);
   homelab's dead-man reverted `807fe228` when nixbot.socket restarted, and the
   watch now judges units without a restart count or a result.
+- **Delivery**: homelab runs the fixed watch since `1860874b`, delivered with
+  nixbot's root rule held at `jj-*` so that the old watch could stage it; the
+  delivery after it restores `luvus/*`.
 
 ## 2026-10-27
 
