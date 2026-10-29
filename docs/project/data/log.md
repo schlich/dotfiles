@@ -11,6 +11,10 @@ to the current day's group.
 - **Delivery**: The product page, the nixbot, homelab-builds, and
   session-environment docs, and the pull request template describe the luvus
   gate, `luvus-deliver`, and nixbot instead of `ci land`.
+- **Bug**:
+  [The staged switch crashes on socket units](bugs/staged-switch-crashes-on-socket-units.md);
+  homelab's dead-man reverted `807fe228` when nixbot.socket restarted, and the
+  watch now judges units without a restart count or a result.
 
 ## 2026-10-27
 
