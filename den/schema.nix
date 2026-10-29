@@ -134,6 +134,16 @@ let
           the host.
         '';
       };
+      sshPort = mkOption {
+        type = types.nullOr types.port;
+        default = null;
+        example = 2222;
+        description = ''
+          OpenSSH port on targetHost for unattended logins with keys, such
+          as a workstation fetching this canary's reverts. null uses the
+          destination's own port.
+        '';
+      };
     };
   };
 

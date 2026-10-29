@@ -114,6 +114,10 @@ let
           # Tailscale SSH admits root from the tailnet, so activation needs
           # no sudo; homelab's sudo wants a password over Tailscale SSH.
           targetUser = "root";
+          # Port 22 is Tailscale SSH, whose check mode hangs a BatchMode
+          # login; key-based automation uses OpenSSH here
+          # (docs/homelab-builds.md).
+          sshPort = 2222;
         };
         policy = {
           criticality = "critical";
