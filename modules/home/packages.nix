@@ -125,6 +125,7 @@ in
     nerd-fonts.symbols-only
     pandoc
     prek
+    stripe-cli
     wl-clipboard-rs
     gh-stack
     # The repository's wrappers depend on secretspec; keep this copy ahead of
