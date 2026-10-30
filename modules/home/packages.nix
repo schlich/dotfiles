@@ -89,6 +89,7 @@ in
     element-desktop
     discord
     github-desktop
+    zapzap
     marimo
     nodejs
     ty
