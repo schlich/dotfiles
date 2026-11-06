@@ -187,6 +187,8 @@ def "main stop-hook" [] {
       load-log
       | where {|entry| $entry.event == "request" and $entry.session_id? == $session }
       | where {|entry| not (noop-command $entry.command) }
+      # The policy allowed these outright, such as `watch-job` Monitors.
+      | where {|entry| ($entry.decision? | default "") != "allow" }
       | each {|entry| { key: (use-case-key $entry), command: $entry.command } }
       | where {|case| $case.key not-in $seen }
       | uniq-by key

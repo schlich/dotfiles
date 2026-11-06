@@ -3,7 +3,9 @@
 # Deny Claude Code Bash calls that belong in the Nushell MCP tool, ask Jev
 # about the calls the policy leaves open, and log every Bash request and
 # outcome so denials can be reviewed with `claude-bash-audit report` and
-# turned into instruction or policy changes.
+# turned into instruction or policy changes. A Monitor command runs through
+# Bash too, so it is judged as a foreground Bash call, except that the
+# policy's `monitor_allow` commands, such as `watch-job LOG`, are allowed.
 
 # Mirrors jev's credential filter: such command lines are not logged verbatim.
 const credential_pattern = '(KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)[A-Z0-9_]*\s*='
@@ -15,6 +17,8 @@ const text_hint = "Rewrite the text tools as structured Nushell (open, ls, glob,
 const default_hint = "Foreground Bash is disabled. Long commands whose progress matters may use Bash with run_in_background, logging to the scratchpad. If this command truly needs Bash (a TTY, or a harness feature the evaluate tool lacks), stop and tell the user why; every Bash request is logged for review."
 
 const job_hint = "Run it as a Nushell job from the evaluate tool instead: `job-log $log --cwd $workspace { ci land }`, with the log in the scratchpad, then follow it with a Monitor running `watch-job $log`, as the Shell conventions describe."
+
+const monitor_hint = "This guard judges Monitor commands as foreground Bash and allows only `watch-job LOG`, optionally after one `# title` line: run the work as a `job-log` job from the evaluate tool and follow it with that Monitor."
 
 # Hook runners spawn this script with a socket for stdin, and Linux cannot
 # reopen a socket through /dev/stdin, so read the payload from `$in`. That
@@ -39,6 +43,18 @@ def tool-input [payload: record] {
 def extract-command [payload: record] {
   let command = ((tool-input $payload) | get -o command | default null)
   if ($command | describe) == "string" { $command } else { "" }
+}
+
+# Claude Code names the tool on every call; without a name, it is Bash.
+def tool-name [payload: record] {
+  let tool = ($payload | get -o tool_name | default null)
+  if ($tool | describe) == "string" { $tool } else { "Bash" }
+}
+
+# A Monitor call that starts no shell command, such as a WebSocket watch.
+# Claude Code never sends one to a plain Bash matcher, so it is left alone.
+def shell-less-monitor [payload: record] {
+  (tool-name $payload) == "Monitor" and (((tool-input $payload) | get -o command | describe) != "string")
 }
 
 # First program of each pipeline stage or sequenced command, skipping leading
@@ -96,15 +112,24 @@ def base-entry [payload: record, event: string] {
     event: $event
     session_id: ($payload.session_id? | default null)
     tool_use_id: ($payload.tool_use_id? | default null)
+    tool_name: (tool-name $payload)
     agent_type: ($payload.agent_type? | default null)
     cwd: ($payload.cwd? | default null)
     command: (if $command =~ $credential_pattern { "[redacted: credential assignment]" } else { $command })
   }
 }
 
-# Classify a Bash request against the policy. `decision` is "deny", or
-# "defer" to leave it to Jev and the normal permission flow.
-def classify [command: string, background: bool, policy: record] {
+# Classify a Bash request against the policy. `decision` is "deny", "allow"
+# for a Monitor command the policy allows outright, or "defer" to leave it to
+# Jev and the normal permission flow.
+def classify [command: string, background: bool, policy: record, tool: string] {
+  if $tool == "Monitor" {
+    let watcher = ($policy.monitor_allow? | default [] | where {|rule| $command =~ $rule.pattern } | get -o 0)
+    if $watcher != null {
+      return { decision: "allow", rule: $"monitor: ($watcher.why)", reason: $watcher.why }
+    }
+  }
+
   let permissive = ($env.CLAUDE_BASH_GUARD? | default "") == "permissive"
   let allowed = ($policy.allow | where {|rule| $command =~ $rule.pattern } | get -o 0)
 
@@ -170,9 +195,10 @@ def ask-jev [payload: record, jev: string] {
 }
 
 def pre-tool-use [payload: record, policy: record, jev: string] {
+  let tool = (tool-name $payload)
   let command = (extract-command $payload)
   let background = ((tool-input $payload) | get -o run_in_background | default false) == true
-  let verdict = (classify $command $background $policy)
+  let verdict = (classify $command $background $policy $tool)
 
   append-log (
     (base-entry $payload "request")
@@ -187,9 +213,13 @@ def pre-tool-use [payload: record, policy: record, jev: string] {
 
   # On "defer", Jev decides, or without Jev the normal permission flow.
   if $verdict.decision == "deny" {
-    decide "deny" $verdict.reason
+    decide "deny" (if $tool == "Monitor" { $"($monitor_hint) ($verdict.reason)" } else { $verdict.reason })
+  } else if $verdict.decision == "allow" {
+    decide "allow" $verdict.reason
   } else if ($jev | is-not-empty) {
-    ask-jev $payload $jev
+    # Jev judges only Bash calls, so a Monitor command, which the policy
+    # judges as one, goes to Jev as a Bash call.
+    ask-jev (if $tool == "Monitor" { $payload | update tool_name "Bash" } else { $payload }) $jev
   }
 }
 
@@ -210,6 +240,10 @@ def main [
   if ($parsed.error? != null) {
     print --stderr $"prefer-nushell: ($parsed.error)"
     decide "ask" $"The prefer-nushell guard could not inspect this command: ($parsed.error). Confirm before running it."
+    return
+  }
+
+  if (shell-less-monitor $parsed.payload) {
     return
   }
 

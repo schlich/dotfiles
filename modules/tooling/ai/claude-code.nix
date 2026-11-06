@@ -182,8 +182,11 @@ let
   # logs a new use case.
   preferNushellGuard =
     let
+      # A plain `Bash` matcher also runs on Monitor commands, but Claude Code
+      # hands it a Bash call and ignores its `allow`, so the guard could not
+      # let `watch-job` through. Naming Monitor sends it the Monitor call.
       hook = {
-        matcher = "Bash";
+        matcher = "Bash|Monitor";
         hooks = [
           {
             type = "command";
