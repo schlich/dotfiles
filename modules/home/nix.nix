@@ -68,6 +68,9 @@ in
 
       Validation and builds:
         check       Format-check, flake-check, and build Home Manager + NixOS
+        update [INPUT...]
+                    Update flake.lock, every input or the named ones, with
+                    gh's GitHub token
         build       Build an installable with nix-output-monitor (nom)
         nh          Run nh with the supplied arguments
 
@@ -92,6 +95,8 @@ in
 
       Examples:
         nix-suite check
+        nix-suite update
+        nix-suite update nixpkgs home-manager
         nix-suite build path:.#nixosConfigurations.asus.config.system.build.toplevel
         nix-suite tree path:/run/current-system/sw
         nix-suite du --root /run/current-system/sw
@@ -156,6 +161,21 @@ in
         }
       }
 
+      # GitHub allows 60 unauthenticated API requests an hour, fewer than one
+      # update of this flake makes, and Nix then keeps an input on its cached
+      # revision. gh's token raises the limit; Nix reads it from NIX_CONFIG,
+      # so it stays out of nix.conf, the store and the command line.
+      def update [inputs: list<string>] {
+        let token = (^${lib.getExe pkgs.gh} auth token | complete)
+        let config = if $token.exit_code == 0 {
+          [($env.NIX_CONFIG? | default "") $"access-tokens = github.com=($token.stdout | str trim)"] | str join "\n"
+        } else {
+          print --stderr "==> gh has no token (gh auth login); GitHub may rate-limit this update"
+          $env.NIX_CONFIG? | default ""
+        }
+        with-env { NIX_CONFIG: $config } { ^nix flake update ...$inputs --flake path:. }
+      }
+
       def check [] {
         run-step "Nix formatting" { ^nix fmt -- --check }
         run-step "Flake checks" { ^nix flake check path:. }
@@ -173,6 +193,7 @@ in
         match $command {
           "help" => (usage)
           "check" => (check)
+          "update" => (update $args)
           "build" => {
             if ($args | is-empty) {
               error make { msg: "build requires an installable, for example path:.#nixosConfigurations.asus.config.system.build.toplevel" }
