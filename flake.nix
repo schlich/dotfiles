@@ -374,7 +374,7 @@
       );
       # Hosts whose inventory policy marks them disposable still have to
       # evaluate, but GitHub Actions checks them after each push without
-      # blocking: the luvus gate and nixbot build only `checks`.
+      # blocking: the luvus gate and nixbot build only `gateChecks`.
       remoteCheckHosts = lib.filterAttrs (
         _: host: host.policy.criticality == "disposable"
       ) denEval.config.den.hosts.${system};
@@ -1005,6 +1005,17 @@
       // denHostEvaluationChecks
       // denConfigTestChecks;
 
+      # What the luvus gate and nixbot build (nixbot.toml's `attribute`): the
+      # checks, plus the system and home asus switches to right after each
+      # delivery. Building them before a landing turns a closure that fails to
+      # build into a failed gate instead of a failed switch, and leaves them in
+      # homelab's cache and asus's store, so the switch only activates. checks
+      # alone stays light enough for GitHub's runners.
+      gateChecks.${system} = inputs.self.checks.${system} // {
+        desktop-system = denAsus.config.system.build.toplevel;
+        desktop-home = denAsusHome.activationPackage;
+      };
+
       # Checks that report without gating a landing: GitHub Actions' nix-ci
       # workflow builds them after each push, and the luvus gate and nixbot
       # leave them out.
@@ -1027,9 +1038,8 @@
           marimohub-homelab-evaluation = marimohubHomelabEvaluationCheck;
           discord-digest-homelab-evaluation = discordDigestHomelabEvaluationCheck;
           nixbot-homelab-evaluation = nixbotHomelabEvaluationCheck;
-          # The system and home closures build after landing. A revision
-          # whose closure fails to build can land, but no host activates it:
-          # a switch builds the closure before it stages anything.
+          # GitHub builds these closures after each push too. asus's system
+          # and full home also gate a landing, through gateChecks.
           desktop-primary = denAsusPrimary.activationPackage;
           desktop-system = denAsus.config.system.build.toplevel;
           headless-system = denFlake.nixosConfigurations.asus-headless.config.system.build.toplevel;
