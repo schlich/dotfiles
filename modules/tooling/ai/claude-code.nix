@@ -377,6 +377,13 @@ in
       url = "https://stitch.googleapis.com/mcp";
       headersHelper = "${stitchMcpHeaders}/bin/claude-stitch-mcp-headers";
     };
+    # Cloudflare's own API server: the whole Cloudflare API (DNS, zones,
+    # Workers, ...) through two Code Mode tools. Signs in with OAuth via /mcp,
+    # so no token lives here.
+    mcpServers.cloudflare = {
+      type = "http";
+      url = "https://mcp.cloudflare.com/mcp";
+    };
     settings = { };
     context = ./global-agent-instructions.md;
     skills = import ./shared-skills.nix { inherit inputs; };
