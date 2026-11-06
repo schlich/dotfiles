@@ -21,10 +21,12 @@
         # nix-eval-jobs, and runs the real Nix for what it lacks; the daemon
         # and store tools stay Nix. system-switch keeps the real Nix.
         iets.classic.enable = true;
-        # den/aspects/home-manager-host.nix adds the jj-starship and
-        # nushellWith overlays and the Home Manager settings.
+        # den/aspects/home-manager-host.nix adds the nushellWith overlay and
+        # the Home Manager settings. fh and jj-starship come from nixpkgs,
+        # whose cache has them built; their flakes rebuilt them from source
+        # on every nixpkgs update.
         environment.systemPackages = [
-          inputs.fh.packages.x86_64-linux.default
+          pkgs.fh
           pkgs.jj-starship
         ];
       };

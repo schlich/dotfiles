@@ -244,9 +244,7 @@ in
     # Adds a GitHub repository as a flake input; the flake-add skill drives it.
     (pkgs.writeNuScriptBin "flake-add" (
       ''
-        $env.FLAKE_ADD_FH = "${
-          lib.getExe' inputs.fh.packages.${pkgs.stdenv.hostPlatform.system}.default "fh"
-        }"
+        $env.FLAKE_ADD_FH = "${lib.getExe' pkgs.fh "fh"}"
       ''
       + builtins.readFile ../../nushell/flake-add.nu
     ))

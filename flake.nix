@@ -62,20 +62,12 @@
       url = "github:mattpocock/skills";
       flake = false;
     };
-    jj-starship = {
-      url = "github:dmmulroy/jj-starship";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     niri = {
       url = "github:epireyn/niri-flake";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     ai-usagebar = {
       url = "github:akitaonrails/ai-usagebar";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    fh = {
-      url = "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     # Anthropic's official Linux build of Claude Desktop, which nixpkgs lacks.
@@ -242,7 +234,6 @@
   outputs =
     inputs@{
       nixpkgs,
-      jj-starship,
       nushellWith,
       ...
     }:
@@ -252,7 +243,6 @@
         (_final: _prev: {
           codex = inputs.codex.packages.${system}.codex-rs;
         })
-        jj-starship.overlays.default
         nushellWith.overlays.default
       ];
       pkgs = import nixpkgs {
