@@ -196,8 +196,10 @@
 
 - A task's quality gate is the repository's `gateChecks`: the flake checks
   plus the system and home asus switches to after a delivery. Create tasks
-  with `--gate "nix-fast-build --skip-cached --no-nom --flake path:.#gateChecks.x86_64-linux"`,
-  or `--gate "prek run --all-files"` for documentation-only work. Let a
+  with `--gate "nix-fast-build --skip-cached --no-nom --eval-workers 3 --eval-max-memory-size 3072 --flake path:.#gateChecks.x86_64-linux"`,
+  or `--gate "prek run --all-files"` for documentation-only work. The
+  worker limits keep evaluation within asus's memory: with the default
+  eight workers, the two closures pushed one gate past 10 GiB. Let a
   failing gate run to the end: it reports every failed attribute at once,
   so one round of fixes covers them all.
   `luvus task done ID` runs it; a failure holds the task at `review` with the
