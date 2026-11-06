@@ -164,6 +164,11 @@
     tangled = {
       url = "git+https://tangled.org/@tangled.org/core";
       inputs.nixpkgs.follows = "nixpkgs";
+      # Only its non-flake default.nix uses flake-compat. Nix 2.34 cannot
+      # refetch the lix tarball it locks (the locked URL keeps a ?rev= that
+      # the fetch drops), which fails nixbot's prefetch once the source
+      # leaves homelab's store.
+      inputs.flake-compat.follows = "";
     };
     tangled-dash = {
       url = "github:schlich/tangled-dash";
