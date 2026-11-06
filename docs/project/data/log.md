@@ -4,6 +4,28 @@ The history of this workspace, newest first. The `ship` skill appends a dated
 group on every release; any skill that creates or retires a document adds a line
 to the current day's group.
 
+## 2026-11-06
+
+- **Delivery**: Updated every flake input; nixpkgs moved from 2026-10-15 to
+  2026-11-03. Landing it took six fixes: hex's package override dropped (fixed
+  upstream), the Tangled knot's operator email (a newly required option),
+  marimohub patched without an RPATH (patchelf's edit made it segfault),
+  tangled's lix flake-compat dropped (Nix 2.34 cannot refetch it, which failed
+  nixbot's prefetch), tailscale serve units that wait for tailscaled (asus
+  reverted the first switch over t3code-tailscale-serve), and nixpkgs' nushell
+  0.116.1 for the MCP server.
+- **Workflow**: The update spent most of its hours waiting on builds. Nothing
+  built asus's system or home before a switch, so the switch built them on asus;
+  flake inputs that follow nixpkgs rebuilt from source; failures surfaced one
+  round at a time; and Claude restarts killed job-log jobs.
+- **Workflow**: `gateChecks`, the flake checks plus asus's system and home, is
+  what the luvus gate and nixbot build, so a closure that fails to build stops
+  before delivery and the switch finds it built. fh and jj-starship come from
+  nixpkgs' cache, `nix-suite update` passes gh's token to GitHub,
+  `luvus-deliver` fast-forwards the local main that tasks branch from, and a
+  den-config test requires tailscale serve and funnel units to wait for
+  tailscaled (it caught homelab's nixbot-funnel).
+
 ## 2026-10-29
 
 - **Desktop**: Prepared Noctalia Minimizer with Niri shortcuts and persistent
