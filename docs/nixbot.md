@@ -1,7 +1,8 @@
 # nixbot on homelab
 
 [nixbot](https://github.com/Mic92/nixbot), the rewrite of buildbot-nix by its
-author, builds this repository's `checks.x86_64-linux` on homelab whenever
+author, builds this repository's `gateChecks.x86_64-linux` (the flake checks
+plus asus's system and home, `nixbot.toml`'s `attribute`) on homelab whenever
 GitHub receives `main`, a `luvus/*` branch, or a pull request. Its checks gate
 `main`: the `main-checks` ruleset requires `nixbot/nix-eval` and
 `nixbot/nix-build` from its App (`.github/rulesets/`), and `luvus-deliver`

@@ -24,7 +24,7 @@ of its exact commit (AGENTS.md, "Delivery").
 
 ## Validation
 
-- luvus gate: `nix-fast-build --skip-cached --no-nom --flake path:.#checks.x86_64-linux`
+- luvus gate: `nix-fast-build --skip-cached --no-nom --flake path:.#gateChecks.x86_64-linux`
   (`prek run --all-files` for documentation-only work)
 - `prek run --all-files`
 - nixbot: `nixbot/nix-eval` and `nixbot/nix-build` on the branch head

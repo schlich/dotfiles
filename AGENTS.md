@@ -194,9 +194,12 @@
 
 ## Delivery
 
-- A task's quality gate is the repository's flake checks: create tasks with
-  `--gate "nix-fast-build --skip-cached --no-nom --flake path:.#checks.x86_64-linux"`,
-  or `--gate "prek run --all-files"` for documentation-only work.
+- A task's quality gate is the repository's `gateChecks`: the flake checks
+  plus the system and home asus switches to after a delivery. Create tasks
+  with `--gate "nix-fast-build --skip-cached --no-nom --flake path:.#gateChecks.x86_64-linux"`,
+  or `--gate "prek run --all-files"` for documentation-only work. Let a
+  failing gate run to the end: it reports every failed attribute at once,
+  so one round of fixes covers them all.
   `luvus task done ID` runs it; a failure holds the task at `review` with the
   output saved on the task. Run `prek run --all-files` before marking a task
   done either way.
@@ -242,17 +245,19 @@
   Tangled (`tangled`) mirrored `main` through `ci land`; that mirror is
   paused while this repository runs on luvus.
 - nixbot on homelab is the gating CI (`docs/nixbot.md`): it builds
-  `checks.x86_64-linux` for `main`, every `luvus/*` branch (`nixbot.toml`),
-  and pull requests, in homelab's warm store.
+  `gateChecks.x86_64-linux` for `main`, every `luvus/*` branch
+  (`nixbot.toml`), and pull requests, in homelab's warm store, which
+  homelab's cache serves to asus.
 - GitHub Actions (`.github/workflows/nix-ci.yml`) also runs on a push of
   `main` or a `luvus/**` branch, or a pull request, but gates nothing. It
   builds every attribute of `checks.x86_64-linux`, skipping cached outputs; a
   push to `main` skips them, since that commit passed on `luvus/integration`.
   The headless system, the desktop system, and the desktop's primary home
-  are `remoteChecks`, which build after each push without blocking delivery.
-  A closure that fails to build can reach `main`, but no host activates it,
-  since a switch builds before it stages anything. Add a check by adding a
-  flake check.
+  are `remoteChecks`, which it builds after each push without blocking
+  delivery. asus's system and full home gate delivery through `gateChecks`
+  instead: a closure that fails to build stops at the gate rather than at
+  the switch, and the switch after a delivery finds it already built. Add a
+  check by adding a flake check.
 
 ## User-visible progress
 
@@ -330,7 +335,9 @@ plans, features, bugs, specs, architecture, and releases as an IWE graph under
 Repository checks are `nix fmt` and `nix flake check --no-build path:.`. The
 flake checks evaluate the workstation and headless systems, and `remoteChecks`
 build them, so build either only when explicitly requested because they are
-expensive; `nix-fast-build --skip-cached --flake path:.#checks.x86_64-linux` runs the same set as nix-ci and the luvus quality gate.
+expensive; `nix-fast-build --skip-cached --flake path:.#checks.x86_64-linux`
+runs the same set as nix-ci, and `path:.#gateChecks.x86_64-linux` the set the
+luvus quality gate and nixbot build.
 `nixos-rebuild switch` is never an agent validation step.
 
 ## Continuous integration and merge-conflict policy
