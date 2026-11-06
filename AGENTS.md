@@ -58,6 +58,10 @@
 - Use `path:` flake references for local work so new files are included without
   Git staging. For example, `nix build path:.#OUTPUT`. This includes ignored
   files as well; keep generated output and plaintext secrets outside that root.
+- Update flake inputs with `nix-suite update [INPUT...]` rather than a bare
+  `nix flake update`. It passes gh's GitHub token, so the update neither hits
+  GitHub's limit of 60 unauthenticated requests an hour nor leaves inputs on a
+  cached revision.
 - Format Nix changes with `nix fmt`. Do not run Nix builds or other build/test
   validation during agent responses unless the user explicitly requests it.
   When explicitly requested, use the smallest relevant build:
