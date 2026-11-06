@@ -301,7 +301,9 @@
   MCP evaluations. A hook that guards or records shell commands must match
   `Bash|mcp__.*nushell__evaluate` and read `tool_input.input` as well as
   `tool_input.command`; one that tracks background work must also match
-  `Monitor`, whose result carries `taskId`.
+  `Monitor`, whose result carries `taskId`. A PreToolUse `Bash` matcher
+  also gets Monitor commands, but as Bash calls it cannot allow, so a
+  guard that allows any Monitor command must name `Monitor` too.
 - Keep provider-neutral agent skills under `.agents/skills/`. Keep Copilot
   plugins, hooks, and plugin-bundled agent definitions under `copilot/`, and
   wire client exposure through `modules/tooling/ai/`.
