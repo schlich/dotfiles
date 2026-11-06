@@ -180,6 +180,11 @@
   `luvus worktree create BRANCH` for work outside the board. Work only in the
   worktree your task owns; never make a task's edits in the `~/dotfiles`
   main checkout, which other sessions share.
+- A board task branches from the local `main`, which `luvus-deliver`
+  fast-forwards after each delivery; `luvus worktree create` branches from
+  the focused checkout's HEAD, which can be weeks behind. Before the first
+  edit in a new worktree, run `git fetch origin main` and, while the branch
+  has no commits, `git reset --hard origin/main`.
 - Give each task the file globs it will touch (`--paths`), so luvus's path
   leases keep two tasks off the same files, and its dependencies (`--deps`)
   when it needs another task's work first.

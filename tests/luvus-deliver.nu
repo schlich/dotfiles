@@ -185,6 +185,23 @@ def main [script: path, questions: path] {
   let entries = (open --raw $ledger | lines | each { from json })
   $failures = ($failures | append (expect "the ledger keeps each delivery's verdict and approval" ($entries | select risk approved) [[risk approved]; [high false] [high true] [low false]]))
 
+  # Past nixbot's checks, which a gh stub reports as passed, a delivery moves
+  # main on the remote and the local main that luvus starts board tasks from.
+  let bin = ($tmp | path join bin)
+  mkdir $bin
+  [
+    "#!/bin/sh"
+    "case \"$1\" in"
+    "  repo) echo owner/repo ;;"
+    "  api) echo '{\"check_runs\":[{\"name\":\"nixbot\",\"status\":\"completed\",\"conclusion\":\"success\",\"completed_at\":\"2026-01-01T00:00:00Z\"}]}' ;;"
+    "esac"
+  ] | str join "\n" | save ($bin | path join gh)
+  ^chmod +x ($bin | path join gh)
+  let shipped = (do $case shipped { "docs/guide.md": "# Guide\n\nShipped.\n" })
+  let path = ($env.PATH | each {|p| $p | split row (char esep) } | flatten | prepend $bin)
+  with-env { PATH: $path } { do $run "" [--repo $repo] } | ignore
+  $failures = ($failures | append (expect "a delivery fast-forwards main and the local main tasks start from" [(^git -C $origin rev-parse main | str trim) (^git -C $repo rev-parse main | str trim)] [$shipped $shipped]))
+
   rm --recursive $tmp
   if ($failures | is-not-empty) {
     error make --unspanned { msg: $"($failures | length) luvus-deliver checks failed: ($failures | str join ', ')" }
