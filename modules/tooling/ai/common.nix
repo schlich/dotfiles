@@ -78,7 +78,7 @@ in
       nushell = {
         # Pin a Nushell by store path: environments such as dev shells can put
         # an older nu first on PATH, which rejects commands config.nu relies on.
-        command = lib.getExe (pkgs.callPackage ./nushell-mcp.nix { });
+        command = lib.getExe pkgs.nushell;
         # The output limit and the `job-log` command for background jobs.
         args = [
           "--config"
