@@ -4,7 +4,17 @@
 # reads it back; evaluation fails when two claims collide. Each module that
 # claims a port imports this one. A service that runs its own tailscaled,
 # like the Tangled knot, is a separate node and claims nothing here.
-{ config, lib, ... }:
+#
+# A unit that runs `tailscale serve` at start puts waitForBackend in its
+# ExecStartPre. An activation that changes the tailscale package restarts
+# tailscaled, and a serve started before the daemon is back exits 1, which
+# fails the switch even though Restart= recovers it seconds later.
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   inherit (lib) mkOption types;
@@ -17,6 +27,18 @@ let
   claimantsByPort = lib.groupBy (name: toString claims.${name}.port) (lib.attrNames claims);
 in
 {
+  options.dotfiles.tailscale.waitForBackend = mkOption {
+    type = types.path;
+    readOnly = true;
+    default = pkgs.writeShellScript "tailscale-wait-for-backend" ''
+      until ${config.services.tailscale.package}/bin/tailscale status --json 2>/dev/null \
+        | ${pkgs.jq}/bin/jq --exit-status '.BackendState == "Running"' >/dev/null; do
+        sleep 1
+      done
+    '';
+    description = "Script that waits until tailscaled is up and logged in, for a Serve unit's ExecStartPre; pair it with a TimeoutStartSec.";
+  };
+
   options.dotfiles.tailscale.https = mkOption {
     type = types.attrsOf (
       types.submodule {
