@@ -88,7 +88,9 @@ itself.
 
 ### Task 3: Deliver and try it
 
-- [ ] Run the task gate (`luvus task done t40`), which builds the new check.
+- [x] Run the task gate in the t40 worktree, which builds the new check: passed
+  on 2026-11-17, its 27 model tests among the checks. The task has no linked
+  branch, so the gate ran there directly rather than through `luvus task done`.
 - [ ] Deliver through `luvus-deliver`, activate the home, and open OpenCode in a
   JJ repository, a Git worktree, and the home screen.
 
