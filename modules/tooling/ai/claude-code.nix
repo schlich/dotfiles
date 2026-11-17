@@ -182,8 +182,11 @@ let
   # logs a new use case.
   preferNushellGuard =
     let
+      # A plain `Bash` matcher also runs on Monitor commands, but Claude Code
+      # hands it a Bash call and ignores its `allow`, so the guard could not
+      # let `watch-job` through. Naming Monitor sends it the Monitor call.
       hook = {
-        matcher = "Bash";
+        matcher = "Bash|Monitor";
         hooks = [
           {
             type = "command";
@@ -376,6 +379,13 @@ in
       type = "http";
       url = "https://stitch.googleapis.com/mcp";
       headersHelper = "${stitchMcpHeaders}/bin/claude-stitch-mcp-headers";
+    };
+    # Cloudflare's own API server: the whole Cloudflare API (DNS, zones,
+    # Workers, ...) through two Code Mode tools. Signs in with OAuth via /mcp,
+    # so no token lives here.
+    mcpServers.cloudflare = {
+      type = "http";
+      url = "https://mcp.cloudflare.com/mcp";
     };
     settings = { };
     context = ./global-agent-instructions.md;

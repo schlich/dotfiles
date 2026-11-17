@@ -390,6 +390,23 @@ def record-verdict [verdict: record, approved: bool] {
   }
 }
 
+# luvus starts a board task's worktree from the local main branch, which
+# nothing else moves, so tasks began on a main weeks old. Move it to what was
+# delivered, as a fast-forward, unless a checkout has it.
+def advance-local-main [root: string, sha: string] {
+  let checked_out = (^git -C $root worktree list --porcelain | lines | any {|line| $line == "branch refs/heads/main" })
+  let local = (^git -C $root rev-parse --verify --quiet refs/heads/main | complete)
+  if $checked_out {
+    print "Left local main alone: a worktree has it checked out."
+  } else if $local.exit_code != 0 {
+    ^git -C $root update-ref refs/heads/main $sha
+  } else if (^git -C $root merge-base --is-ancestor ($local.stdout | str trim) $sha | complete).exit_code == 0 {
+    ^git -C $root update-ref refs/heads/main $sha ($local.stdout | str trim)
+  } else {
+    print "Left local main alone: it has commits this delivery lacks."
+  }
+}
+
 # The integration branch's head and main's, with main fetched first.
 def endpoints [repo: path, branch: string] {
   let root = (^git -C $repo rev-parse --show-toplevel | str trim)
@@ -479,5 +496,6 @@ def main [
     sleep $poll
   }
   ^git -C $root push --quiet origin $"($sha):refs/heads/main"
+  advance-local-main $root $sha
   print $"Delivered: main is now ($short)."
 }

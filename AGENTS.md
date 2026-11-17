@@ -58,6 +58,10 @@
 - Use `path:` flake references for local work so new files are included without
   Git staging. For example, `nix build path:.#OUTPUT`. This includes ignored
   files as well; keep generated output and plaintext secrets outside that root.
+- Update flake inputs with `nix-suite update [INPUT...]` rather than a bare
+  `nix flake update`. It passes gh's GitHub token, so the update neither hits
+  GitHub's limit of 60 unauthenticated requests an hour nor leaves inputs on a
+  cached revision.
 - Format Nix changes with `nix fmt`. Do not run Nix builds or other build/test
   validation during agent responses unless the user explicitly requests it.
   When explicitly requested, use the smallest relevant build:
@@ -180,6 +184,11 @@
   `luvus worktree create BRANCH` for work outside the board. Work only in the
   worktree your task owns; never make a task's edits in the `~/dotfiles`
   main checkout, which other sessions share.
+- A board task branches from the local `main`, which `luvus-deliver`
+  fast-forwards after each delivery; `luvus worktree create` branches from
+  the focused checkout's HEAD, which can be weeks behind. Before the first
+  edit in a new worktree, run `git fetch origin main` and, while the branch
+  has no commits, `git reset --hard origin/main`.
 - Give each task the file globs it will touch (`--paths`), so luvus's path
   leases keep two tasks off the same files, and its dependencies (`--deps`)
   when it needs another task's work first.
@@ -194,9 +203,14 @@
 
 ## Delivery
 
-- A task's quality gate is the repository's flake checks: create tasks with
-  `--gate "nix-fast-build --skip-cached --no-nom --flake path:.#checks.x86_64-linux"`,
-  or `--gate "prek run --all-files"` for documentation-only work.
+- A task's quality gate is the repository's `gateChecks`: the flake checks
+  plus the system and home asus switches to after a delivery. Create tasks
+  with `--gate "nix-fast-build --skip-cached --no-nom --eval-workers 3 --eval-max-memory-size 3072 --flake path:.#gateChecks.x86_64-linux"`,
+  or `--gate "prek run --all-files"` for documentation-only work. The
+  worker limits keep evaluation within asus's memory: with the default
+  eight workers, the two closures pushed one gate past 10 GiB. Let a
+  failing gate run to the end: it reports every failed attribute at once,
+  so one round of fixes covers them all.
   `luvus task done ID` runs it; a failure holds the task at `review` with the
   output saved on the task. Run `prek run --all-files` before marking a task
   done either way.
@@ -204,7 +218,9 @@
   in luvus's own integration worktree, one task at a time. A conflict aborts
   the merge and marks the task `blocked`: merge `luvus/integration` into the
   task's branch in its worktree, resolve, rerun the gate, and merge again.
-  Never resolve conflicts automatically.
+  Resolve conflicts automatically when the intended result is clear; preserve
+  the changes from both sides and rerun the relevant checks. Ask only when
+  resolving the conflict requires a product decision or unclear intent.
 - `luvus-deliver` delivers `luvus/integration` to `main`. It first judges
   the delivery's risk, which `luvus-deliver risk` previews: code works out
   from Den which hosts each changed file reaches, and Jev judges whether the
@@ -227,7 +243,7 @@
   they approve, rerun `luvus-deliver --approve REV` with the commit it names;
   never pass `--approve` without that approval. Each verdict is kept in
   `~/.local/state/luvus-deliver/risk.jsonl` for review after landing. A
-  failed gate, CI run, or merge conflict stops delivery and is reported.
+  failed gate, CI run, or unresolved merge conflict stops delivery and is reported.
 - Once a task is delivered, remove its worktree with
   `luvus worktree remove PATH`, which refuses while a task, lease, or live
   agent still uses it; the branch stays. Then offer to archive the session
@@ -240,17 +256,19 @@
   Tangled (`tangled`) mirrored `main` through `ci land`; that mirror is
   paused while this repository runs on luvus.
 - nixbot on homelab is the gating CI (`docs/nixbot.md`): it builds
-  `checks.x86_64-linux` for `main`, every `luvus/*` branch (`nixbot.toml`),
-  and pull requests, in homelab's warm store.
+  `gateChecks.x86_64-linux` for `main`, every `luvus/*` branch
+  (`nixbot.toml`), and pull requests, in homelab's warm store, which
+  homelab's cache serves to asus.
 - GitHub Actions (`.github/workflows/nix-ci.yml`) also runs on a push of
   `main` or a `luvus/**` branch, or a pull request, but gates nothing. It
   builds every attribute of `checks.x86_64-linux`, skipping cached outputs; a
   push to `main` skips them, since that commit passed on `luvus/integration`.
   The headless system, the desktop system, and the desktop's primary home
-  are `remoteChecks`, which build after each push without blocking delivery.
-  A closure that fails to build can reach `main`, but no host activates it,
-  since a switch builds before it stages anything. Add a check by adding a
-  flake check.
+  are `remoteChecks`, which it builds after each push without blocking
+  delivery. asus's system and full home gate delivery through `gateChecks`
+  instead: a closure that fails to build stops at the gate rather than at
+  the switch, and the switch after a delivery finds it already built. Add a
+  check by adding a flake check.
 
 ## User-visible progress
 
@@ -283,7 +301,9 @@
   MCP evaluations. A hook that guards or records shell commands must match
   `Bash|mcp__.*nushell__evaluate` and read `tool_input.input` as well as
   `tool_input.command`; one that tracks background work must also match
-  `Monitor`, whose result carries `taskId`.
+  `Monitor`, whose result carries `taskId`. A PreToolUse `Bash` matcher
+  also gets Monitor commands, but as Bash calls it cannot allow, so a
+  guard that allows any Monitor command must name `Monitor` too.
 - Keep provider-neutral agent skills under `.agents/skills/`. Keep Copilot
   plugins, hooks, and plugin-bundled agent definitions under `copilot/`, and
   wire client exposure through `modules/tooling/ai/`.
@@ -328,7 +348,9 @@ plans, features, bugs, specs, architecture, and releases as an IWE graph under
 Repository checks are `nix fmt` and `nix flake check --no-build path:.`. The
 flake checks evaluate the workstation and headless systems, and `remoteChecks`
 build them, so build either only when explicitly requested because they are
-expensive; `nix-fast-build --skip-cached --flake path:.#checks.x86_64-linux` runs the same set as nix-ci and the luvus quality gate.
+expensive; `nix-fast-build --skip-cached --flake path:.#checks.x86_64-linux`
+runs the same set as nix-ci, and `path:.#gateChecks.x86_64-linux` the set the
+luvus quality gate and nixbot build.
 `nixos-rebuild switch` is never an agent validation step.
 
 ## Continuous integration and merge-conflict policy
@@ -340,9 +362,12 @@ worktree. luvus's merge gate integrates finished tasks one at a time in its
 own worktree, and `luvus-deliver` moves `main` only to a commit nixbot
 passed.
 
-Never resolve conflicts automatically. When `luvus task merge` reports a
-conflict, the task is `blocked`: resolve it in the task's worktree, rerun
-the gate, and merge again.
+Resolve merge conflicts automatically when the intended result is clear,
+preserving the changes from both sides. When `luvus task merge` reports a
+conflict, resolve it in the task's worktree, rerun the relevant checks and
+gate, and merge again. Ask the user only when the resolution requires a
+product decision or the intended behavior is unclear; keep the task
+`blocked` until that decision arrives.
 
 Order dependent work with task dependencies (`--deps`): a dependent task
 waits until its dependency is merged into `luvus/integration`. Keep

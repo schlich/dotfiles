@@ -189,6 +189,8 @@ in
     ];
     serviceConfig = {
       Type = "simple";
+      ExecStartPre = config.dotfiles.tailscale.waitForBackend;
+      TimeoutStartSec = "2min";
       ExecStart = "${pkgs.tailscale}/bin/tailscale serve --https=${toString dashboardPort} http://127.0.0.1:4173";
       ExecStop = "${pkgs.tailscale}/bin/tailscale serve --https=${toString dashboardPort} off";
       Restart = "on-failure";

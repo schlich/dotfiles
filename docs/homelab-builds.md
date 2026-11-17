@@ -5,8 +5,10 @@ formatting, quick checks, publication, and delivery coordination on the
 workstation; activation happens only through `system-switch`, after a
 delivery that changes a closure or when the user asks.
 The gating CI is nixbot on homelab ([nixbot.md](nixbot.md)), which builds
-`checks.x86_64-linux` for `main` and every `luvus/*` branch in homelab's own
-store. GitHub Actions (`.github/workflows/nix-ci.yml`) also builds every
+`gateChecks.x86_64-linux` for `main` and every `luvus/*` branch in homelab's
+own store: the flake checks plus asus's system and home, so homelab's cache
+holds both before asus switches. GitHub Actions
+(`.github/workflows/nix-ci.yml`) also builds every
 flake check on each push, and the `remoteChecks` system closures after it,
 but gates nothing. homelab used to run a Tangled spindle; it was retired on
 2026-10-19.

@@ -4,7 +4,9 @@
 # (`marimohub-linux-x64`) on each GitHub release; nixpkgs does not package it.
 # The binary unpacks its JavaScript bundle into a per-build cache directory
 # (MARIMOHUB_SEA_CACHE_DIR) and imports it, so only the ELF interpreter and
-# library path need patching. Bump `version` and `hash` together.
+# library path need patching. Adding an RPATH makes the binary segfault (with
+# patchelf 0.18 and 0.19 alike), so only the interpreter is patched and a
+# wrapper supplies the C++ runtime. Bump `version` and `hash` together.
 pkgs.stdenv.mkDerivation (finalAttrs: {
   pname = "marimohub";
   version = "0.4.14";
@@ -15,15 +17,24 @@ pkgs.stdenv.mkDerivation (finalAttrs: {
   };
 
   dontUnpack = true;
-  # Stripping would discard the appended SEA blob.
+  # Stripping would discard the appended SEA blob, and fixup's RPATH
+  # shrinking would rewrite the ELF.
   dontStrip = true;
+  dontPatchELF = true;
 
-  nativeBuildInputs = [ pkgs.autoPatchelfHook ];
-  buildInputs = [ pkgs.stdenv.cc.cc.lib ];
+  nativeBuildInputs = [ pkgs.makeWrapper ];
 
   installPhase = ''
     runHook preInstall
-    install -Dm755 $src $out/bin/marimohub
+    install -Dm755 $src $out/libexec/marimohub
+    patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" $out/libexec/marimohub
+    makeWrapper $out/libexec/marimohub $out/bin/marimohub \
+      --prefix LD_LIBRARY_PATH : ${
+        lib.makeLibraryPath [
+          pkgs.stdenv.cc.cc.lib
+          pkgs.stdenv.cc.cc.libgcc
+        ]
+      }
     runHook postInstall
   '';
 

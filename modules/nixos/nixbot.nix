@@ -70,7 +70,10 @@ let
   };
 in
 {
-  imports = [ inputs.nixbot.nixosModules.nixbot ];
+  imports = [
+    inputs.nixbot.nixosModules.nixbot
+    ./tailscale-https.nix
+  ];
 
   options.dotfiles.nixbot.registration = lib.mkOption {
     type = lib.types.package;
@@ -146,8 +149,9 @@ in
 
     # GitHub delivers the App's webhooks, and its logins return, only through
     # this Funnel. It needs a one-time `tailscale up` and the tailnet's funnel
-    # node attribute, and retries while tailscaled's backend is not ready at
-    # boot.
+    # node attribute. It waits for tailscaled's backend, which a switch that
+    # changes the tailscale package restarts, and retries if that wait times
+    # out at boot.
     systemd.services.nixbot-funnel = lib.mkIf cfg.enable {
       description = "Tailscale Funnel for nixbot";
       wantedBy = [ "multi-user.target" ];
@@ -165,7 +169,8 @@ in
         RemainAfterExit = true;
         Restart = "on-failure";
         RestartSec = "10s";
-        TimeoutStartSec = "30s";
+        TimeoutStartSec = "2min";
+        ExecStartPre = config.dotfiles.tailscale.waitForBackend;
         ExecStart = "${pkgs.tailscale}/bin/tailscale funnel --bg --https=${toString funnelPort} ${toString port}";
         ExecStop = "${pkgs.tailscale}/bin/tailscale funnel --https=${toString funnelPort} off";
       };

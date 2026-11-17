@@ -7,6 +7,8 @@
 # Calls this policy does not deny go to Jev (`jev bash-guard`), which denies
 # them or leaves them to the normal permission prompt; denied calls never
 # reach Jev.
+# Monitor commands run through Bash, so they are judged as foreground Bash
+# calls, except for the monitor_allow commands, which run without a prompt.
 #
 # Every request is logged; review the log with `claude-bash-audit report`
 # and the bash-feedback skill, then tune this file or the agent instructions.
@@ -37,6 +39,17 @@
     {
       pattern: '^\s*sudo\s'
       why: "Privileged commands need Claude Code's approval prompt; run as `sudo -A`, they then also pass sudoplz's approval dialog"
+    }
+  ]
+
+  # Monitor commands allowed outright: regexes matched against the whole
+  # command, which must leave Bash nothing to expand, redirect, or chain.
+  monitor_allow: [
+    {
+      # watch-job with plain or quoted arguments, after at most one `# title`
+      # line; `\x27` is a single quote.
+      pattern: '^([ \t]*#[^\n]*\n)?[ \t]*watch-job([ \t]+([A-Za-z0-9_./~+@%:,=-]+|\x27[^\x27\n]*\x27|"[^"$`\\!\n]*"))+[ \t]*\n?$'
+      why: "watch-job follows a job-log job, which the Shell conventions run under a Monitor"
     }
   ]
 }

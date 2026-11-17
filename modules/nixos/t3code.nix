@@ -67,6 +67,8 @@ in
       after = [ "tailscaled.service" ];
       serviceConfig = {
         Type = "simple";
+        ExecStartPre = config.dotfiles.tailscale.waitForBackend;
+        TimeoutStartSec = "2min";
         ExecStart = "${tailscale} serve --https=${port} http://127.0.0.1:${port}";
         ExecStop = "${tailscale} serve --https=${port} off";
         Restart = "on-failure";

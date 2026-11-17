@@ -16,6 +16,11 @@ let
 in
 
 {
+  home.packages = [ inputs.noc-minimizer.packages.${pkgs.stdenv.hostPlatform.system}.default ];
+  dotfiles.nixpkgsWatch.noctalia-minimizer = {
+    version = "1.0.0";
+    reason = "replace the noc-minimizer flake package with nixpkgs";
+  };
   # Warn through a desktop notification half an hour before a Claude or Codex
   # usage window resets.
   systemd.user.services.usage-reset-alert = {
@@ -215,8 +220,17 @@ in
             "felipeartur/ai-usagebar"
             "thepunkoff/pomodoro"
             "schlich/niri-hints"
+            "local/minimizer"
           ];
           source = [
+            {
+              name = "minimizer";
+              kind = "path";
+              location = "${
+                inputs.noc-minimizer.packages.${pkgs.stdenv.hostPlatform.system}.default
+              }/share/noctalia-minimizer/plugins";
+              enabled = true;
+            }
             {
               name = "community";
               kind = "git";

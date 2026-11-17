@@ -59,7 +59,7 @@ jobs:
             case "$file" in
               # Skill frontmatter, the IWE project graph (`iwe normalize`
               # formats it), and the knowledge base: Prek excludes these too.
-              .agents/*|.codex/*|workbench/knowledge/*|docs/project/*) ;;
+              .agents/*|.codex/*|.github/prompts/*|copilot/plugins/*|workbench/knowledge/*|docs/project/*) ;;
               # pnpm generates this YAML lockfile; generic formatting reports
               # a rewrite even when its formatted bytes are unchanged.
               */pnpm-lock.yaml|pnpm-lock.yaml) ;;

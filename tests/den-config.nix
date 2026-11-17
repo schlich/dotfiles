@@ -147,6 +147,30 @@ let
     };
   };
 
+  # A unit that runs `tailscale serve` or `tailscale funnel` when the system
+  # starts it fails a switch that restarts tailscaled before the daemon is
+  # back, even though Restart= recovers it seconds later: asus reverted the
+  # 2026-11-03 nixpkgs update over t3code-tailscale-serve. Every such unit
+  # waits for the backend first (waitForBackend, modules/nixos/tailscale-https.nix).
+  tailscaleServeTests = config: {
+    testTailscaleServeUnitsWaitForTheBackend = {
+      expr = builtins.attrNames (
+        lib.filterAttrs (
+          _: unit:
+          let
+            start = toString (lib.toList (unit.serviceConfig.ExecStart or ""));
+            pre = map toString (lib.toList (unit.serviceConfig.ExecStartPre or [ ]));
+          in
+          unit.enable
+          && unit.wantedBy != [ ]
+          && (lib.hasInfix "/bin/tailscale serve " start || lib.hasInfix "/bin/tailscale funnel " start)
+          && !(lib.elem (toString (config.dotfiles.tailscale.waitForBackend or "")) pre)
+        ) config.systemd.services
+      );
+      expected = [ ];
+    };
+  };
+
   # A standalone home follows the host it is named for: the desktop home only
   # on a workstation, ci's traces only where the viewer runs, and the T3 Code
   # server, on loopback, only where the inventory runs it. Den keys a home's
@@ -187,6 +211,7 @@ let
         lib.optionalAttrs host.deploy.enable (deployTests name config)
         // lib.optionalAttrs (host.profile.remote && name != "homelab") (remoteClientTests config)
         // lib.optionalAttrs host.services.t3code (t3codeTests name config)
+        // lib.optionalAttrs config.services.tailscale.enable (tailscaleServeTests config)
         // (hostTests.${name} or (_: { })) config
         // lib.concatMapAttrs (
           userName: _: homeTests host userName homeConfigurations."${userName}@${name}".config

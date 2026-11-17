@@ -22,7 +22,7 @@ const plugins = Object.fromEntries(
   }),
 );
 
-function hookCommand(name, extraEnv = {}) {
+function hookCommand(name, extraEnv = {}, tool = "Bash") {
   const dir = plugins[name];
   if (!dir) throw new Error(`no plugin directory given for ${name}`);
   const env = {
@@ -40,16 +40,28 @@ function hookCommand(name, extraEnv = {}) {
     : join(dir, "hooks.json");
   const hooks = JSON.parse(readFileSync(file, "utf8")).hooks;
   // Claude Code uses PreToolUse with nested hooks; Copilot uses preToolUse.
-  // Claude Code reads a matcher as a regex over the whole tool name.
+  // Claude Code reads a matcher as a regex over the whole tool name. A
+  // Monitor call reaches a hook as itself only through a matcher that names
+  // Monitor; a plain Bash matcher gets it as a Bash call and cannot allow it.
   const claude = hooks.PreToolUse?.find((entry) =>
-    new RegExp(`^(?:${entry.matcher})$`).test("Bash"),
+    new RegExp(`^(?:${entry.matcher})$`).test(tool),
   )?.hooks?.[0]?.command;
   const copilot = hooks.preToolUse?.find(
     (entry) => entry.matcher === "bash",
   )?.command;
   const command = claude ?? copilot;
-  if (!command) throw new Error(`${name} declares no Bash PreToolUse command`);
+  if (!command)
+    throw new Error(`${name} declares no ${tool} PreToolUse command`);
   return { command, env };
+}
+
+// The tool a case's payload calls; Copilot and malformed payloads count as Bash.
+function payloadTool(stdin) {
+  try {
+    return JSON.parse(stdin).tool_name ?? "Bash";
+  } catch {
+    return "Bash";
+  }
 }
 
 const scratch = mkdtempSync(join(tmpdir(), "pretooluse-hooks-"));
@@ -137,12 +149,24 @@ const nushellPayload = (input) =>
     tool_input: { input },
     cwd: "/tmp",
   });
+// A Monitor call as Claude Code sends it to a matcher that names Monitor:
+// `source` is `{ command }` or a WebSocket watch's `{ ws }`.
+const monitorPayload = (source, { session = "test" } = {}) =>
+  JSON.stringify({
+    session_id: session,
+    hook_event_name: "PreToolUse",
+    tool_name: "Monitor",
+    tool_use_id: "toolu_test",
+    tool_input: { ...source, description: "test watch", timeout_ms: 1800000 },
+    cwd: "/tmp",
+  });
 const copilotPayload = (command) =>
   JSON.stringify({ toolName: "bash", toolArgs: { command } });
 
 // `decision`: null means the hook stays silent; `stderr` is a required prefix
 // for the one-line diagnostic, or null when stderr must be empty; `env` adds
-// to the hook's environment; `jev` marks a call prefer-nushell sends to Jev.
+// to the hook's environment; `jev` marks a call prefer-nushell sends to Jev;
+// `logged: false` marks a call prefer-nushell leaves out of its log.
 const cases = [
   {
     hook: "jj-guard",
@@ -383,6 +407,75 @@ const cases = [
     stdin: claudePayload("cat x | iwe create note --content -"),
     decision: "deny",
   },
+  // Monitor commands, which the guard judges as foreground Bash except for
+  // the `watch-job LOG` Monitor that follows every job-log job.
+  {
+    hook: "prefer-nushell",
+    name: "allows a watch-job Monitor",
+    stdin: monitorPayload(
+      { command: "watch-job /tmp/scratchpad/gate.log" },
+      { session: "watcher" },
+    ),
+    decision: "allow",
+    reason: /watch-job/,
+  },
+  {
+    hook: "prefer-nushell",
+    name: "allows a titled watch-job Monitor with flags",
+    stdin: monitorPayload(
+      {
+        command:
+          "# Watch the quality gate\nwatch-job --pattern '(?i)error|fail' --replay /tmp/scratchpad/gate.log",
+      },
+      { session: "watcher" },
+    ),
+    decision: "allow",
+    reason: /watch-job/,
+  },
+  {
+    hook: "prefer-nushell",
+    name: "denies a Monitor that chains a command after watch-job",
+    stdin: monitorPayload({ command: "watch-job /tmp/gate.log; rm -rf ~" }),
+    decision: "deny",
+    reason: /allows only `watch-job LOG`/,
+  },
+  {
+    hook: "prefer-nushell",
+    name: "denies a command substitution in a watch-job Monitor",
+    stdin: monitorPayload({ command: 'watch-job "$(id)"' }),
+    decision: "deny",
+  },
+  {
+    hook: "prefer-nushell",
+    name: "denies a tail Monitor",
+    stdin: monitorPayload({
+      command: "tail -f build.log | grep --line-buffered ERROR",
+    }),
+    decision: "deny",
+    reason: /allows only `watch-job LOG`[\s\S]*uses tail, grep/,
+  },
+  {
+    hook: "prefer-nushell",
+    name: "denies watch-job in foreground Bash",
+    stdin: claudePayload("watch-job /tmp/gate.log"),
+    decision: "deny",
+    reason: /^Foreground Bash is disabled/,
+  },
+  {
+    hook: "prefer-nushell",
+    name: "leaves a sudo Monitor to Jev as a Bash call",
+    stdin: monitorPayload({ command: "sudo -A systemctl status nixbot" }),
+    decision: "ask",
+    reason: /^Jev stub/,
+    jev: true,
+  },
+  {
+    hook: "prefer-nushell",
+    name: "ignores a WebSocket Monitor",
+    stdin: monitorPayload({ ws: { url: "wss://events.example.test/stream" } }),
+    decision: null,
+    logged: false,
+  },
   {
     hook: "prefer-nushell",
     name: "asks on malformed JSON",
@@ -493,7 +586,7 @@ const results = await Promise.all(
         testCase.stdin,
         transport.mode,
         transport.delay,
-        hookCommand(testCase.hook, testCase.env),
+        hookCommand(testCase.hook, testCase.env, payloadTool(testCase.stdin)),
       ),
     })),
   ),
@@ -510,8 +603,8 @@ for (const { testCase, transport, result } of results) {
     console.log(`     stderr: ${JSON.stringify(result.stderr)}`);
   }
 }
-// Every well-formed prefer-nushell payload appends one log line; a malformed
-// one only reports on stderr.
+// Every well-formed prefer-nushell payload appends one log line, unless it
+// starts no shell command; a malformed one only reports on stderr.
 const logPath = join(
   process.env.HOME,
   ".local",
@@ -520,7 +613,10 @@ const logPath = join(
   "bash-requests.jsonl",
 );
 const expectedLines = results.filter(
-  ({ testCase }) => testCase.hook === "prefer-nushell" && !testCase.stderr,
+  ({ testCase }) =>
+    testCase.hook === "prefer-nushell" &&
+    !testCase.stderr &&
+    testCase.logged !== false,
 ).length;
 const logged = existsSync(logPath)
   ? readFileSync(logPath, "utf8").trim().split("\n").map(JSON.parse)
@@ -539,25 +635,31 @@ if (!logged.some((entry) => entry.event === "ran")) {
 }
 // Jev sees each deferred call once per transport and nothing the policy
 // denied, so a denial never costs a model call or loses its reason to Jev's.
+// Jev judges only Bash calls, so a deferred Monitor command reaches it as one.
 const jevExpected = results
   .filter(({ testCase }) => testCase.jev)
   .map(({ testCase }) => JSON.parse(testCase.stdin).tool_input.command)
   .sort();
-const jevAsked = (
-  existsSync(jevCalls)
-    ? readFileSync(jevCalls, "utf8").trim().split("\n").map(JSON.parse)
-    : []
-)
+const jevPayloads = existsSync(jevCalls)
+  ? readFileSync(jevCalls, "utf8").trim().split("\n").map(JSON.parse)
+  : [];
+const jevAsked = jevPayloads
   .map((payload) => payload.tool_input?.command)
   .sort();
-if (JSON.stringify(jevAsked) === JSON.stringify(jevExpected)) {
+const jevNotBash = jevPayloads
+  .filter((payload) => payload.tool_name !== "Bash")
+  .map((payload) => payload.tool_input?.command);
+if (
+  JSON.stringify(jevAsked) === JSON.stringify(jevExpected) &&
+  jevNotBash.length === 0
+) {
   console.log(
     `ok   prefer-nushell: asks Jev about only the ${jevExpected.length} deferred calls`,
   );
 } else {
   failures += 1;
   console.log(
-    `FAIL prefer-nushell: Jev was asked about ${JSON.stringify(jevAsked)}, expected ${JSON.stringify(jevExpected)}`,
+    `FAIL prefer-nushell: Jev was asked about ${JSON.stringify(jevAsked)}, expected ${JSON.stringify(jevExpected)}; sent as other tools than Bash: ${JSON.stringify(jevNotBash)}`,
   );
 }
 
@@ -589,6 +691,11 @@ const stopCases = [
   {
     name: "stays silent for a session with only a no-op probe",
     stdin: stopPayload("noop"),
+    block: null,
+  },
+  {
+    name: "stays silent for a session with only allowed Monitors",
+    stdin: stopPayload("watcher"),
     block: null,
   },
   {

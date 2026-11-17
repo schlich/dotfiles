@@ -62,20 +62,12 @@
       url = "github:mattpocock/skills";
       flake = false;
     };
-    jj-starship = {
-      url = "github:dmmulroy/jj-starship";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     niri = {
       url = "github:epireyn/niri-flake";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     ai-usagebar = {
       url = "github:akitaonrails/ai-usagebar";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    fh = {
-      url = "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     # Anthropic's official Linux build of Claude Desktop, which nixpkgs lacks.
@@ -164,6 +156,11 @@
     tangled = {
       url = "git+https://tangled.org/@tangled.org/core";
       inputs.nixpkgs.follows = "nixpkgs";
+      # Only its non-flake default.nix uses flake-compat. Nix 2.34 cannot
+      # refetch the lix tarball it locks (the locked URL keeps a ?rev= that
+      # the fetch drops), which fails nixbot's prefetch once the source
+      # leaves homelab's store.
+      inputs.flake-compat.follows = "";
     };
     tangled-dash = {
       url = "github:schlich/tangled-dash";
@@ -226,12 +223,17 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.osc7501-nu.follows = "osc7501-nu";
     };
+    # Noctalia Minimizer: reversible window minimization for Niri (Noctalia
+    # Shell plugin)
+    noc-minimizer = {
+      url = "github:SwashX-dev/Noc-minimizer";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
     inputs@{
       nixpkgs,
-      jj-starship,
       nushellWith,
       ...
     }:
@@ -241,7 +243,6 @@
         (_final: _prev: {
           codex = inputs.codex.packages.${system}.codex-rs;
         })
-        jj-starship.overlays.default
         nushellWith.overlays.default
       ];
       pkgs = import nixpkgs {
@@ -373,7 +374,7 @@
       );
       # Hosts whose inventory policy marks them disposable still have to
       # evaluate, but GitHub Actions checks them after each push without
-      # blocking: the luvus gate and nixbot build only `checks`.
+      # blocking: the luvus gate and nixbot build only `gateChecks`.
       remoteCheckHosts = lib.filterAttrs (
         _: host: host.policy.criticality == "disposable"
       ) denEval.config.den.hosts.${system};
@@ -1004,6 +1005,17 @@
       // denHostEvaluationChecks
       // denConfigTestChecks;
 
+      # What the luvus gate and nixbot build (nixbot.toml's `attribute`): the
+      # checks, plus the system and home asus switches to right after each
+      # delivery. Building them before a landing turns a closure that fails to
+      # build into a failed gate instead of a failed switch, and leaves them in
+      # homelab's cache and asus's store, so the switch only activates. checks
+      # alone stays light enough for GitHub's runners.
+      gateChecks.${system} = inputs.self.checks.${system} // {
+        desktop-system = denAsus.config.system.build.toplevel;
+        desktop-home = denAsusHome.activationPackage;
+      };
+
       # Checks that report without gating a landing: GitHub Actions' nix-ci
       # workflow builds them after each push, and the luvus gate and nixbot
       # leave them out.
@@ -1026,9 +1038,8 @@
           marimohub-homelab-evaluation = marimohubHomelabEvaluationCheck;
           discord-digest-homelab-evaluation = discordDigestHomelabEvaluationCheck;
           nixbot-homelab-evaluation = nixbotHomelabEvaluationCheck;
-          # The system and home closures build after landing. A revision
-          # whose closure fails to build can land, but no host activates it:
-          # a switch builds the closure before it stages anything.
+          # GitHub builds these closures after each push too. asus's system
+          # and full home also gate a landing, through gateChecks.
           desktop-primary = denAsusPrimary.activationPackage;
           desktop-system = denAsus.config.system.build.toplevel;
           headless-system = denFlake.nixosConfigurations.asus-headless.config.system.build.toplevel;

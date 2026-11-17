@@ -48,6 +48,8 @@ in
         ssh_listen_addr = sshAddr;
       };
       atproto.plc_directory = "https://plc.directory";
+      # Served publicly by the knot's describeKnot endpoint.
+      contact.email = "ty.schlich@gmail.com";
       # Jujutsu's Git backend cannot read SHA-256 repositories, so keep the
       # format every existing clone uses.
       git.object_format = "sha1";
