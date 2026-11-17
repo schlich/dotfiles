@@ -78,8 +78,8 @@ Where it is declared:
   the log. The unit's wrapper drops those lines and keeps the rest
   (`t3f logs`).
 - **Explicit PATH.** T3 reads PATH from the login shell with `nu -ilc`,
-  which works without a terminal because config.nu sets `GPG_TTY` only when
-  stdin is one (`modules/home/services.nix`). The unit still sets its own
+  which works without a terminal now that Home Manager's gpg-agent
+  integration wraps its `tty` call in `try`. The unit still sets its own
   PATH, with the profile, as the fallback that finds `claude`, `codex` and
   `opencode` if that lookup fails; T3 logs "Failed to read PATH from login
   shell" when it does.

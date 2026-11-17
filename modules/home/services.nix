@@ -30,12 +30,9 @@ in
 {
   services = {
     home-manager.autoUpgrade.useFlake = true;
-    # The module's Nushell integration runs `$env.GPG_TTY = (tty)`
-    # unguarded, which aborts config.nu, and so `nu -l -c`, without a
-    # terminal. The guarded line below replaces it.
     gpg-agent = {
       enable = true;
-      enableNushellIntegration = false;
+      enableNushellIntegration = true;
     };
     gnome-keyring.enable = true;
     # The module still writes the unit, whose tray.target dependency follows
@@ -46,9 +43,6 @@ in
       tray = "auto";
     };
   };
-  programs.nushell.extraConfig = ''
-    if (is-terminal --stdin) { $env.GPG_TTY = (tty) }
-  '';
   xdg.configFile."udiskie/config.yml".enable = lib.mkForce false;
   dotfiles.retiredHomeFiles = [ ".config/udiskie/config.yml" ];
 
