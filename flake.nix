@@ -119,7 +119,11 @@
       flake = false;
     };
     antithesis-skills = {
-      url = "github:antithesishq/antithesis-skills";
+      # Pinned before 2026-11-12, when upstream moved its core skills
+      # (setup, workload, launch, triage, debug, ...) to
+      # github:antithesishq/antithesis-plugin. Unpin once
+      # modules/tooling/ai/shared-skills.nix takes them from the plugin.
+      url = "github:antithesishq/antithesis-skills/4ee2746a46703185dc5cf6864cb1961db74d28eb";
       flake = false;
     };
     hegel-skill = {
