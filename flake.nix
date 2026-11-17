@@ -134,11 +134,6 @@
       url = "github:altryne/jevify";
       flake = false;
     };
-    # No flake upstream; bump the tag to update IWE.
-    iwe = {
-      url = "github:iwe-org/iwe/iwe-v0.24.2";
-      flake = false;
-    };
     # Built from its own lock file, without its flake's separate nixpkgs; bump
     # the tag to update jj-hunk.
     jj-hunk = {
@@ -301,11 +296,13 @@
       '';
       lib = nixpkgs.lib;
       bombadil = import ./lib/bombadil.nix { inherit lib pkgs; };
-      iwe = import ./modules/tooling/knowledge/iwe-package.nix { inherit inputs lib pkgs; };
       marimohub = import ./modules/tooling/knowledge/marimohub-package.nix { inherit lib pkgs; };
       ciDashboard = import ./tools/ci-dashboard/checks.nix { inherit lib pkgs; };
       jjGraph = import ./tools/jj-graph { inherit lib pkgs; };
-      workbench = import ./workbench { inherit pkgs lib iwe; };
+      workbench = import ./workbench {
+        inherit pkgs lib;
+        inherit (pkgs) iwe;
+      };
       workbenchImages = lib.mapAttrs' (
         name: environment: lib.nameValuePair "workbench-image-${name}" environment.image
       ) workbench.environments;
