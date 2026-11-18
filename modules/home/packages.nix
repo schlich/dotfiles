@@ -140,7 +140,7 @@ in
     cachix
     cachixSeed
     inputs.xs.packages.${pkgs.stdenv.hostPlatform.system}.default
-    inputs.ai-usagebar.packages.${pkgs.stdenv.hostPlatform.system}.default
+    (import ../programs/ai-usagebar-package.nix { inherit inputs pkgs; })
     inputs.tangled-dash.packages.${pkgs.stdenv.hostPlatform.system}.default
     (import ../programs/luvus-package.nix { inherit inputs lib pkgs; })
     (import ../tooling/ai/fieldnotes-package.nix { inherit inputs lib pkgs; })

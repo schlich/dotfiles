@@ -23,6 +23,13 @@
   # keyboard input to processes running as this user (modules/programs/hex.nix).
   users.users.schlich.extraGroups = [ "input" ];
 
+  # The Realtek Bluetooth controller (USB 13d3:3556) gets reset by xHCI
+  # ("invalid context state") while autosuspended, and the MX Master 3S then
+  # fails to reconnect until it is paired again under a new address.
+  boot.extraModprobeConfig = ''
+    options btusb enable_autosuspend=n
+  '';
+
   networking.hostName = "asus";
   networking.networkmanager = {
     enable = true;

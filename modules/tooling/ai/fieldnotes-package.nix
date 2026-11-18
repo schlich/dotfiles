@@ -13,7 +13,7 @@ in
 inputs.fieldnotes.packages.${system}.default.override {
   runtimeTools = [
     pkgs.gh
-    inputs.ai-usagebar.packages.${system}.default
+    (import ../../programs/ai-usagebar-package.nix { inherit inputs pkgs; })
     pkgs.iwe
   ];
 }

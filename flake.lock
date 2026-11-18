@@ -43,16 +43,17 @@
     "antithesis-skills": {
       "flake": false,
       "locked": {
-        "lastModified": 1794523937,
-        "narHash": "sha256-zAsmBfSbJUq5TG9kOr15OZ4vR9mV3cXiCbrGXXq/o/g=",
+        "lastModified": 1793371499,
+        "narHash": "sha256-shGzivu2y/yzC0fOYmDKHnl6++8PLhJoeeaonP/ilzE=",
         "owner": "antithesishq",
         "repo": "antithesis-skills",
-        "rev": "380dc0132f1d0fba812b76685a337ee7e227eb66",
+        "rev": "4ee2746a46703185dc5cf6864cb1961db74d28eb",
         "type": "github"
       },
       "original": {
         "owner": "antithesishq",
         "repo": "antithesis-skills",
+        "rev": "4ee2746a46703185dc5cf6864cb1961db74d28eb",
         "type": "github"
       }
     },

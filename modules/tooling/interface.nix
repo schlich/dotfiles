@@ -40,11 +40,11 @@ let
     options = {
       source = mkOption {
         type = types.path;
-        description = "Source file for an OpenCode plugin.";
+        description = "Source file or directory for an OpenCode plugin.";
       };
       target = mkOption {
         type = types.str;
-        description = "Plugin filename in OpenCode's global plugin directory.";
+        description = "Plugin file or directory name in OpenCode's global plugin directory.";
       };
     };
   };
