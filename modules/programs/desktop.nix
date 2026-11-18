@@ -31,7 +31,7 @@ in
       Environment = [
         "PATH=${
           lib.makeBinPath [
-            inputs.ai-usagebar.packages.${pkgs.stdenv.hostPlatform.system}.default
+            (import ./ai-usagebar-package.nix { inherit inputs pkgs; })
             pkgs.libnotify
           ]
         }"
