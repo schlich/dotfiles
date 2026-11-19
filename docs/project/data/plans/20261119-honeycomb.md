@@ -59,12 +59,15 @@ discard muscle memory before the new grammar is proven on one tool.
 
 ### Task 2: One key grammar, exported
 
-**Files:** Modify: `modules/programs/input-stack.nix`, `docs/input.md`
+**Files:** Modify: `modules/programs/input-stack.nix`, `lib/honeycomb/`,
+`niri/binds.nix`, `docs/input.md`
 
-- [ ] Add the six direction keys, the two depth keys, and the `NORMAL` and
+- [x] Add the six direction keys, the two depth keys, and the `NORMAL` and
   `SELECT` mode names to the exported `input-stack.json`, from `lib/honeycomb`.
-- [ ] Fail evaluation when a context binds one of the eight keys to anything but
-  its honeycomb meaning within that context's namespace.
+- [x] Fail evaluation when a context declares a chord for a seat that ends on a
+  key other than the seat's (`dotfiles.input.navigation`). A context that
+  declares nothing is not checked, so Task 4 adds each tool's entry as it adopts
+  the keys.
 
 ### Task 3: Niri binds as a tree
 
