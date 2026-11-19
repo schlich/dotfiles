@@ -273,7 +273,7 @@ spawn-sh-at-startup "exec terminal --class niri.terminal --directory \"$HOME\""
 // Keep choice groups, such as the desktop coding agents, in one tabbed column.
 spawn-sh-at-startup "exec niri-desk watch-choices"
 
-// Publish the focus context and its keys for the status bar's hint line
+// Publish the mode and the navigation hints the bars show around the screen
 // (Noctalia plugin schlich/niri-hints).
 spawn-sh-at-startup "exec niri-keymap hints"
 

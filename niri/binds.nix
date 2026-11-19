@@ -344,6 +344,8 @@ assert lib.assertMsg (chords == lib.unique chords)
     // {
       centre = key.inward;
     };
+  # The key that leads outward, to the list of sessions.
+  out = key.outward;
   # What niri loads: the hand-written settings, then the generated binds.
   config = builtins.readFile ./config.kdl + "\n" + kdl;
 }

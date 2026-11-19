@@ -24,9 +24,12 @@ in [input.md](input.md). The limit of six that shapes all of this is in
    (Mod+Shift+W).
 1. **Two columns fit the screen.** Widths are ½, ⅔ or full (Mod+R). Focus
    scrolls only when the next column would not fit.
-1. **Six at a time.** The binds are six cells of at most six members, and
-   the bar's hint line names the mode and at most six keys that work in it.
-   Mod+/ draws every bind as an emoji keyboard.
+1. **Six at a time.** The binds are six cells of at most six members.
+1. **A hint sits where its key points.** The bars show only navigation: Y
+   and U in the top corners, H and L on the side bars, N and M in the bottom
+   corners, J at the bottom centre with the mode, and K at the top centre.
+   Each names the area its key selects, and the focused area's hint is lit.
+   Mod+/ draws every other bind as an emoji keyboard.
 
 ## The areas
 
