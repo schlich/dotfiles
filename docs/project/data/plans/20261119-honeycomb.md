@@ -68,18 +68,19 @@ discard muscle memory before the new grammar is proven on one tool.
 
 ### Task 3: Niri binds as a tree
 
-**Files:** Modify: `niri/config.kdl`, `niri/keymap.nu`,
-`niri/keymap-emoji.nuon`, `niri/session.nu`, `docs/niri.md`
+**Files:** Create: `niri/binds.nix`. Modify: `niri/config.kdl`,
+`niri/keymap.nu`, `niri/keymap-emoji.nuon`, `niri/session.nu`,
+`niri/workspace-overview.nu`, `modules/programs/desktop.nix`, `docs/niri.md`
 
-- [ ] Group the binds into at most six named cells of at most six verbs or cells
-  each, and generate the `binds` block from that tree.
-- [ ] Lay the areas out as one centre and six neighbours, reached with Mod plus
-  a direction key, and cycle sessions in spiral order.
-- [ ] Split motions from verbs: Mod plus a motion selects a column, window or
-  area; a verb acts on the selection, and `SELECT` extends it.
-- [ ] Decide where niri's active keys are shown. The author's rule forbids the
-  Noctalia bar and leaves the compositor's display undecided, so this step needs
-  their answer before it starts.
+- [x] Group the binds into six named cells of at most six members each, and
+  generate the `binds` block from that tree (`niri/binds.nix`).
+- [x] Lay the areas out as one centre and six neighbours, each reached with
+  Mod+Alt plus its direction key. Cycling sessions was dropped, not moved to
+  spiral order: the launcher covers it.
+- [x] Split motions from verbs: Mod selects, Shift acts on the selection. niri
+  has no modes of its own, so there is no `SELECT`; Shift stands in for it.
+- [x] Show niri's mode and at most six keys on the Noctalia bar, as the author
+  decided on 2026-11-19 (`schlich/niri-hints`).
 
 ### Task 4: Terminal, multiplexer, editor and file manager
 

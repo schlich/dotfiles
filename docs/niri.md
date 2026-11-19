@@ -1,83 +1,96 @@
 # Using niri
 
-How the workstation desktop is meant to be driven. `niri/config.kdl` and
-`niri/session.nu` enforce these rules; the rules explain why the binds are
-shaped the way they are. The panel is a laptop screen that fits two columns.
+How the workstation desktop is meant to be driven. `niri/binds.nix` holds the
+binds as a tree, `niri/config.kdl` the other settings, and `niri/session.nu`
+the areas and sessions. The panel is a laptop screen that fits two columns.
 Which keys Niri may claim, and which it leaves to the terminal and editor, is
-in [input.md](input.md).
+in [input.md](input.md). The limit of six that shapes all of this is in
+[lib/honeycomb/README.md](../lib/honeycomb/README.md).
 
 ## Doctrine
 
-1. **A workspace is a task.** A login starts with one workspace and one
-   terminal. A session (`niri-desk restore NAME`, or a project from the
-   session launcher) names the next empty workspace, so workspaces number in
-   the order they were opened; Mod+1–9 reach them by index, laid out like
-   the numpad (7 8 9 / 4 5 6 / 1 2 3). Apps open on the workspace that has
-   focus, so go to the workspace first, then open.
+1. **Select, then act.** Mod plus a key selects something. Adding Shift acts
+   on the selection: it carries the column or window along the same motion,
+   or gives the verb's other form. Adding Ctrl makes the motion cross
+   monitors.
+1. **Seven areas, one centre.** `home` sits in the middle and `work`,
+   `research`, `nix`, `ai`, `xr` and `life` sit around it. Mod+Alt plus a
+   direction key selects the area in that direction, from anywhere, so each
+   area has one key for good. Projects opened from the session launcher take
+   workspaces of their own.
 1. **A column is a role. A tab is an alternative.** Windows you use together
    sit side by side. Windows that do the same job share one tabbed column:
    the coding agents (Mod+A), JJ and GitHub (Mod+G), or any app's own windows
-   (Mod+Alt+W).
+   (Mod+Shift+W).
 1. **Two columns fit the screen.** Widths are ½, ⅔ or full (Mod+R). Focus
-   scrolls only when the next column would not fit, and a lone window
-   centres itself.
-1. **Jump; don't scroll.**
-   - Mod+digit goes to an area; pressing it again goes back.
-   - Mod+Tab returns to the previous window, on any workspace.
-   - Alt+Tab is the one window switcher, most recent first.
-   - Mod+O, the top-left corner, or a three-finger swipe up shows the
-     overview.
-1. **The usable keys are on screen.** Mod+Shift+/ lists one key per action.
+   scrolls only when the next column would not fit.
+1. **Six at a time.** The binds are six cells of at most six members, and
+   the bar's hint line names the mode and at most six keys that work in it.
    Mod+/ draws every bind as an emoji keyboard.
+
+## The areas
+
+```text
+        Y xr        U life
+   H ai       J home       L work
+        N nix       M research
+```
+
+Mod+Alt+K, outward, opens the session launcher: this map with the areas that
+are open, and the projects.
+
+## Keys
+
+| Cell   | Member     | Key                                 | With Shift                    |
+| ------ | ---------- | ----------------------------------- | ----------------------------- |
+| Window | West, east | Mod+H, Mod+L                        | Carry the column              |
+|        | In, out    | Mod+J, Mod+K: next, previous window | Carry the window              |
+|        | Back       | Mod+Tab                             |                               |
+|        | Overview   | Mod+O                               |                               |
+| Area   | Six areas  | Mod+Alt+Y U H L N M                 | Carry the column there        |
+|        | Centre     | Mod+Alt+J                           | Carry the column there        |
+|        | Sessions   | Mod+Alt+K                           |                               |
+| Open   | Terminal   | Mod+Return                          | Restore the session's layout  |
+|        | Launcher   | Mod+Space                           |                               |
+|        | Browser    | Mod+B                               |                               |
+|        | Agents     | Mod+A                               | Float one over this workspace |
+|        | VCS        | Mod+G                               |                               |
+|        | Notes      | Mod+N                               | Capture into today            |
+| Shape  | Width      | Mod+R: ½ → ⅔ → full                 | Window height                 |
+|        | Fill       | Mod+F                               | Fullscreen                    |
+|        | Float      | Mod+V                               | Select floating or tiled      |
+|        | Tabs       | Mod+W                               | Gather alternatives into tabs |
+|        | Stack      | Mod+\[, Mod+\]: into, out of column |                               |
+|        | Away       | Mod+Q close, Mod+X minimise         | Mod+Shift+X: minimised        |
+| IO     | Record     | Mod+M                               | Discard the take              |
+|        | Dictate    | Mod+D                               | Settings                      |
+|        | Screenshot | Print, Ctrl+Print, Alt+Print        |                               |
+|        | Volume     | The volume keys                     |                               |
+|        | Brightness | The brightness keys                 |                               |
+| System | Panel      | Mod+S                               | Shell settings                |
+|        | Keys       | Mod+/                               | niri's own list               |
+|        | Guard      | Mod+Escape: pass keys through       | Lock the screen               |
+|        | Screens    |                                     | Mod+Shift+P: screens off      |
+|        | Quit       |                                     | Mod+Shift+E                   |
+
+Mod+Ctrl+H/J/K/L selects a monitor, and adding Shift carries the column to
+it. Alt+Tab and Alt+\` are niri's window switcher. The arrow keys, the mouse
+thumb buttons and Mod plus the wheel repeat the window motions; they are
+hidden from the overlay so that it lists one key per action.
 
 ## Daily routine
 
-1. **Mod+digit** goes to the workspace.
-1. **Mod+Shift+Return** rebuilds its session layout if it is a session and
-   empty.
+1. **Mod+Alt plus a direction** selects the area.
+1. **Mod+Shift+Return** rebuilds its session layout if it is empty.
 1. **Mod+A** brings the agents beside the work, or **Mod+Shift+A** floats
    one over it.
 1. **Mod+R** sizes the focused column, and **Mod+F** gives it the whole
    panel.
 1. **Mod+Tab** goes back to wherever you just were.
 
-## Canonical keys
+## What went away
 
-| Group    | Key                 | Action                                      |
-| -------- | ------------------- | ------------------------------------------- |
-| Jump     | Mod+1…9             | Area (again: back)                          |
-|          | Mod+0               | Session launcher                            |
-|          | Mod+Tab             | Previous window                             |
-|          | Alt+Tab / Alt+\`    | Recent windows / recent windows of this app |
-|          | Mod+U / Mod+I       | Next / previous session with windows        |
-|          | Mod+Alt+H/J/K/L     | Neighbouring area on the grid               |
-|          | Mod+O               | Overview                                    |
-| Arrange  | Mod+H/J/K/L         | Focus column / window                       |
-|          | Mod+Shift+H/J/K/L   | Move column / window                        |
-|          | Mod+Shift+1…9       | Send column to area                         |
-|          | Mod+[ / Mod+]       | Pull window into, or out of, a column       |
-|          | Mod+V / Mod+Shift+V | Float / switch between floating and tiled   |
-| Size     | Mod+R               | ½ → ⅔ → full                                |
-|          | Mod+Shift+R         | Window height ½ ↔ full in a stack          |
-|          | Mod+F / Mod+Ctrl+F  | Maximise / fill the remaining width         |
-|          | Mod+C               | Centre column                               |
-| Sessions | Mod+Return          | Terminal in this session                    |
-|          | Mod+Shift+Return    | Restore session layout                      |
-|          | Mod+N / Mod+Shift+N | Area notes / capture a note                 |
-| Stacks   | Mod+A / Mod+Shift+A | Agents stack / peek at an agent             |
-|          | Mod+G               | VCS stack                                   |
-|          | Mod+W               | Show column as tabs                         |
-|          | Mod+Alt+W           | Gather this window's alternatives into tabs |
-|          | Mod+Alt+1…4         | Tab 1–4 of this column                      |
-
-The arrow, Page and wheel versions of these keys still work. They are hidden
-from the overlay so that it lists one key per action.
-
-## Habits to unlearn
-
-- **Scrolling the strip to find a window.** Use Mod+Tab, Alt+Tab or Mod+O
-  instead.
-- **Opening an app and then moving it.** Go to the area first.
-- **Thin side-by-side columns.** If a third window needs to be visible, it is
-  probably an alternative: tab it with Mod+\[ or Mod+Alt+W.
-- **Mod+Tab for the last workspace.** Press that area's digit again instead.
+The digits, the keypad grid, Mod+U and Mod+I, Mod+Home and Mod+End, Mod+C,
+the comma and period, the fine width and height steps, and the numbered
+tabs. Each was a second way to do something a direction key or a preset
+already does.

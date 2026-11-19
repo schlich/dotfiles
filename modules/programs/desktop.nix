@@ -196,9 +196,10 @@ in
               "network_rx"
               "network_tx"
             ];
-            # Keybinding hints stay out of the desktop bar; the niri-hints
-            # plugin stays installed until a replacement is chosen.
+            # The hint line (noctalia/plugins/niri-hints) names niri's mode
+            # and the keys that work in it, six at most (keymap.nu hints).
             center = [
+              "schlich/niri-hints:hints"
               "codex_usage"
               "claude_usage"
             ];
@@ -266,7 +267,7 @@ in
           privacy.hide_inactive = true;
           workspaces = {
             # A vertical bar has no room for names, and pill_scale cannot widen
-            # the pills, so each pill shows niri's Mod+<digit> number and keeps
+            # the pills, so each pill shows niri's workspace number and keeps
             # the workspace's name in the tooltip.
             style = "regular";
             show_labels = true;

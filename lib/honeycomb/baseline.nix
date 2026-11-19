@@ -32,6 +32,5 @@
   "dir:workbench" = 9;
   "dir:xr-workbench/web" = 16;
   "flake:inputs" = 52;
-  "niri:binds" = 169;
   "niri:window-rules" = 7;
 }

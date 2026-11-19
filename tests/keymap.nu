@@ -79,6 +79,17 @@ def main [script: path] {
   let narrow = (do $replay [] [80 30])
   $failures = ($failures | append (expect "a narrow pane asks for more width" ($narrow.screen | str contains "Widen the window to 115 columns") true))
 
+  # The bar's hint line: six hints at most in any context, under the base
+  # mode's shared name, and only for keys that are bound.
+  let hint_code = $"source '($script)'
+    { most: \($hint_sets | values | each { length } | math max\), status: \(hint-status \(load-binds '($kdl)' []\) normal\) } | to nuon"
+  let hint_run = (^nu --no-config-file -c $hint_code | complete)
+  if $hint_run.exit_code != 0 { error make --unspanned { msg: $"hint-status failed:\n($hint_run.stderr)" } }
+  let hints = ($hint_run.stdout | from nuon)
+  $failures = ($failures | append (expect "no context lists more than six hints" ($hints.most <= 6) true))
+  $failures = ($failures | append (expect "the base mode is NORMAL" $hints.status.mode NORMAL))
+  $failures = ($failures | append (expect "an unbound key gives no hint" ($hints.status.hints | get key) [Mod+H/L Mod+J/K Mod+Alt+YU·HL·NM]))
+
   rm --recursive $tmp
   if ($failures | is-not-empty) {
     error make --unspanned { msg: $"($failures | length) keymap checks failed: ($failures | str join ', ')" }
