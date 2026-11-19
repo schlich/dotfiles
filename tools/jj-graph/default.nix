@@ -1,6 +1,7 @@
 # jj-graph: the package, whose build runs its lints and tests, and the model
 # checks of its Quint specifications. Each sees only the files it needs, so
 # an edit elsewhere in the repository rebuilds none of them.
+# nixpkgs-watch: not a workaround: this repository's own tool.
 { lib, pkgs }:
 
 let

@@ -18,6 +18,7 @@ in
 {
   home.packages = [ inputs.noc-minimizer.packages.${pkgs.stdenv.hostPlatform.system}.default ];
   dotfiles.nixpkgsWatch.noctalia-minimizer = {
+    input = "noc-minimizer";
     version = "1.0.0";
     reason = "replace the noc-minimizer flake package with nixpkgs";
   };

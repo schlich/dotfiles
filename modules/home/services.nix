@@ -28,6 +28,12 @@ let
 in
 
 {
+  dotfiles.nixpkgsWatch.cross-stream = {
+    input = "xs";
+    inherit (xs) version;
+    reason = "replace the xs input's package (cross.stream) with pkgs.cross-stream in modules/home, modules/nixos/cross-stream.nix, and modules/tooling/ai, and drop the xs input";
+  };
+
   services = {
     home-manager.autoUpgrade.useFlake = true;
     gpg-agent = {

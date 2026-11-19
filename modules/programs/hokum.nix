@@ -40,6 +40,7 @@ in
 
   dotfiles.nixpkgsWatch.hokum = {
     inherit (hokum) version;
+    repo = "anomalyco/hokum";
     reason = "replace modules/programs/hokum-package.nix with pkgs.hokum in hokum.nix";
   };
 }

@@ -38,6 +38,18 @@ in
 {
   imports = [ ../../programs/ci.nix ];
 
+  dotfiles.nixpkgsWatch = {
+    sudoplz = {
+      inherit (sudoplz) version;
+      repo = "crypdick/sudoplz";
+      reason = "replace modules/tooling/ai/sudoplz.nix, a build of upstream's main, with pkgs.sudoplz in modules/tooling/ai/common.nix";
+    };
+    jj-mcp = {
+      inherit (pkgs.callPackage ./jj-mcp { }) version;
+      reason = "replace modules/tooling/ai/jj-mcp, a build of the npm release, with pkgs.jj-mcp in modules/tooling/ai/common.nix";
+    };
+  };
+
   home.packages = [
     # Copilot's and OpenCode's chrome-devtools server starts through npx.
     pkgs.nodejs
