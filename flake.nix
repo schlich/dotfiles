@@ -239,6 +239,12 @@
       url = "github:SwashX-dev/Noc-minimizer";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # Continuum IDE, the user's fork of T3 Code
+    # (modules/tooling/ai/continuum-ide.nix)
+    continuum-ide = {
+      url = "github:schlich/continuum-ide/continuum/game-dev-update";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =

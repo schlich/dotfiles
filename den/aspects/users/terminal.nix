@@ -27,6 +27,7 @@
     ../../../modules/tooling/knowledge/iwe.nix
     ../../../modules/tooling/ai/plugins.nix
     ../../../modules/tooling/ai/t3code.nix
+    ../../../modules/tooling/ai/continuum-ide.nix
     ../../../modules/tooling/ai/opencode.nix
     ../../../modules/tooling/ai/opencode-desktop.nix
     ../../../modules/tooling/ai/claude-desktop.nix

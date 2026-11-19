@@ -221,6 +221,27 @@
         "type": "github"
       }
     },
+    "continuum-ide": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1795117221,
+        "narHash": "sha256-6xWHJOCfMfwra0EcVwF5Qe6ztVZHLPT9VQ9tEpPxZ2g=",
+        "owner": "schlich",
+        "repo": "continuum-ide",
+        "rev": "5712b21006e8c80f404a4dd36a0bb8cb11cd8cb6",
+        "type": "github"
+      },
+      "original": {
+        "owner": "schlich",
+        "ref": "continuum/game-dev-update",
+        "repo": "continuum-ide",
+        "type": "github"
+      }
+    },
     "crane": {
       "locked": {
         "lastModified": 1790899423,
@@ -1706,6 +1727,7 @@
         "ci": "ci",
         "clan-core": "clan-core",
         "codex": "codex",
+        "continuum-ide": "continuum-ide",
         "den": "den",
         "dicta": "dicta",
         "effective-html": "effective-html",
