@@ -33,6 +33,20 @@ everything else reaches the shell or Helix unchanged.
 An outer layer does not claim a key merely because it sees it first. Niri
 leaves plain Ctrl+C, Ctrl+Z, Ctrl+D and other terminal editing keys alone.
 
+## One set of navigation keys
+
+Every context moves with the same eight keys
+([lib/honeycomb/README.md](../lib/honeycomb/README.md)): `H` `L` `Y` `U` `N`
+`M` for the six directions, `J` inward and `K` outward, each behind the
+context's own leader. A context declares the chords it binds to them in
+`dotfiles.input.navigation.NAME`, by seat. Evaluation fails when a chord
+ends on a key other than its seat's, so a direction never means a different
+key in a different tool. Niri's entry comes from `niri/binds.nix`; the other
+contexts have none until they adopt the keys.
+
+The exported JSON carries the keys, the mode names (`NORMAL`, `SELECT`) and
+each context's navigation chords.
+
 ## Adding a context
 
 Add one entry to `dotfiles.input.contexts` with a stable `name`, its

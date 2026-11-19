@@ -62,6 +62,31 @@ rec {
     escape = "Escape";
   };
 
+  # Given { context = { seat = [ chord ]; }; }, every chord that ends on a
+  # key other than its seat's, as a sentence. A direction must mean the same
+  # key in every tool.
+  strayChords =
+    navigation:
+    let
+      keyOf = chord: lib.toLower (lib.last (lib.splitString "+" chord));
+      stray =
+        context: seat: chord:
+        if !(keys ? ${seat}) then
+          [ "${context} names a seat, ${seat}, that does not exist" ]
+        else
+          lib.optional (
+            keyOf chord != keys.${seat}
+          ) "${context} binds ${seat} to ${chord}, not to ${lib.toUpper keys.${seat}}";
+    in
+    lib.concatLists (
+      lib.mapAttrsToList (
+        context: seats:
+        lib.concatLists (
+          lib.mapAttrsToList (seat: chords: lib.unique (lib.concatMap (stray context seat) chords)) seats
+        )
+      ) navigation
+    );
+
   origin = hex 0 0;
   hex = q: r: { inherit q r; };
   add = a: b: hex (a.q + b.q) (a.r + b.r);

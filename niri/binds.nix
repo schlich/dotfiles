@@ -346,6 +346,19 @@ assert lib.assertMsg (chords == lib.unique chords)
     };
   # The key that leads outward, to the list of sessions.
   out = key.outward;
+  # The chords on each navigation seat, for the input stack
+  # (modules/programs/input-stack.nix): Mod moves among windows on four of
+  # them, and Mod+Alt among areas on all eight.
+  navigation = lib.mapAttrs (
+    seat: letter:
+    lib.optional (lib.elem seat [
+      "w"
+      "e"
+      "inward"
+      "outward"
+    ]) "Mod+${letter}"
+    ++ [ "Mod+Alt+${letter}" ]
+  ) key;
   # What niri loads: the hand-written settings, then the generated binds.
   config = builtins.readFile ./config.kdl + "\n" + kdl;
 }
