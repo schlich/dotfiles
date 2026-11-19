@@ -11,7 +11,6 @@
     ./desktop/input-stack.nix
     ./vcs/jj-hunk.nix
     ./multiplexers/luvus.nix
-    ./multiplexers/rex.nix
     ./shell/shell.nix
     ./ssh/ssh.nix
     ./vcs/vcs.nix

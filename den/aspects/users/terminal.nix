@@ -22,6 +22,7 @@
   den.aspects.user-desktop.homeManager.imports = [
     ../../../modules/tooling/terminals/kitty.nix
     ../../../modules/tooling/terminals/ghostty.nix
+    ../../../modules/tooling/terminals/rex.nix
     ../../../modules/tooling/editors/helix.nix
     ../../../modules/tooling/keymap-checks.nix
     ../../../modules/tooling/knowledge/iwe.nix
