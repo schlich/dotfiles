@@ -70,6 +70,12 @@
       url = "github:akitaonrails/ai-usagebar";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # Hokum, the notification daemon, which nixpkgs lacks. Its flake is on the
+    # default branch only; v0.1.3 predates it.
+    hokum = {
+      url = "github:anomalyco/hokum";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     # Anthropic's official Linux build of Claude Desktop, which nixpkgs lacks.
     llm-agents = {
       url = "github:numtide/llm-agents.nix";

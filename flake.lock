@@ -894,6 +894,26 @@
         "type": "github"
       }
     },
+    "hokum": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1794283352,
+        "narHash": "sha256-sEyAtBmHE2OkkRP0qU/eg2QwTCiuyEWasGQQVP6Pn6A=",
+        "owner": "anomalyco",
+        "repo": "hokum",
+        "rev": "e2e31b146792da21b9c6c691703433a6d2d72bbe",
+        "type": "github"
+      },
+      "original": {
+        "owner": "anomalyco",
+        "repo": "hokum",
+        "type": "github"
+      }
+    },
     "home-manager": {
       "inputs": {
         "nixpkgs": [
@@ -1695,6 +1715,7 @@
         "grill-me": "grill-me",
         "hegel-skill": "hegel-skill",
         "hex": "hex",
+        "hokum": "hokum",
         "home-manager": "home-manager",
         "humanlayer-skills": "humanlayer-skills",
         "iets": "iets",
