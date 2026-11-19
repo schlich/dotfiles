@@ -20,15 +20,21 @@ everything else reaches the shell or Helix unchanged.
 
 - Niri owns machine-level and window-management actions on Super. Its one
   exception is the window switcher, Alt+Tab and Alt+\`.
-- Ghostty owns splits and tabs on Alt (Alt+H/J/K/L, Alt+F, Alt+[ and ]).
-  Splits and tabs replaced Zellij's panes and tabs on the same keys.
+- Ghostty owns splits and tabs on Alt: Alt+H/J/K/L for splits, Alt+Y and
+  Alt+U for the tab to the left and right, Alt+F to zoom. Ghostty has no
+  status line, so it cannot show its keys or a mode; it has no modes, and
+  its keys are the same eight as everywhere else.
 - Luvus owns agent panes, workspaces and its orchestration board behind
   Ctrl+Space. Its status row names the mode (`NORMAL` at rest) and lists the
   keys that follow the prefix; pressing the prefix twice sends it to the pane.
   It binds no direct shortcuts, so Alt stays with Ghostty.
   `modules/programs/luvus.nix` takes its prefix from this stack.
 - Helix owns editor actions. Space is its native command namespace, and
-  Alt+N/I/O stay with it.
+  Alt+N/I/O stay with it. Its statusline names the mode in full (`NORMAL`,
+  `INSERT`, `SELECT`), and its own popup lists the keys after a prefix.
+- Yazi takes the whole terminal while it runs and needs no leader. Its
+  status bar names the mode in full, and its own popup lists the keys after
+  a prefix.
 
 An outer layer does not claim a key merely because it sees it first. Niri
 leaves plain Ctrl+C, Ctrl+Z, Ctrl+D and other terminal editing keys alone.
@@ -41,8 +47,18 @@ Every context moves with the same eight keys
 context's own leader. A context declares the chords it binds to them in
 `dotfiles.input.navigation.NAME`, by seat. Evaluation fails when a chord
 ends on a key other than its seat's, so a direction never means a different
-key in a different tool. Niri's entry comes from `niri/binds.nix`; the other
-contexts have none until they adopt the keys.
+key in a different tool. Niri's entry comes from `niri/binds.nix`.
+
+| Keys | Niri (Mod, Mod+Alt)  | Ghostty (Alt) | Luvus (prefix) | Helix (Space W) | Yazi          |
+| ---- | -------------------- | ------------- | -------------- | --------------- | ------------- |
+| H, L | Column; area         | Split         | Pane           | Split           | Parent, child |
+| J, K | Window in the column | Split         | Pane           | Split           | List          |
+| Y, U | Area                 | Tab           | Tab            | Buffer          |               |
+| N, M | Area                 |               | Workspace      |                 |               |
+
+Y and U sit under whatever runs along the top: tabs, or the bufferline. A
+tool binds only the keys it has something for. Inside a buffer Helix keeps
+its own motions, and Helix's and Yazi's own menus keep their own lengths.
 
 The exported JSON carries the keys, the mode names (`NORMAL`, `SELECT`) and
 each context's navigation chords.

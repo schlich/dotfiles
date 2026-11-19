@@ -91,12 +91,14 @@ discard muscle memory before the new grammar is proven on one tool.
 `modules/programs/luvus.nix`, `modules/tooling/editors/helix.nix`,
 `modules/programs/yazi.nix`, `tests/bombadil/`
 
-- [ ] Give each tool the same direction and depth keys behind its leader, with
-  the mode and the live keys on its own hint line.
-- [ ] Keep Helix's native motions inside buffers; apply the direction keys to
-  its window, buffer and picker navigation.
-- [ ] Extend the Bombadil keymap checks to assert at most six choices per level
-  and `Esc` to `NORMAL`.
+- [x] Give each tool the same direction and depth keys behind its leader. Each
+  declares them in `dotfiles.input.navigation`, which the check from Task 2
+  holds to the shared keys. Ghostty has no status line and shows nothing.
+- [x] Keep Helix's native motions inside buffers; Y and U in its window menu
+  move between buffers. Its pickers are unchanged.
+- [x] The Bombadil keymap checks expect the full mode names and `Esc` to
+  `NORMAL`. They do not assert six choices per level: Helix's and Yazi's own
+  menus are longer, and trimming them is out of scope.
 
 ### Task 5: Den and modules
 
