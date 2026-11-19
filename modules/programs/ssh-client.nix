@@ -4,7 +4,14 @@
 # config it does not own; -F skips only that ownership check. The sandbox
 # also hides host /etc/ssh, so the system config is included rather than
 # relied on, and ssh ignores the include when the file is missing.
-{ lib, pkgs }:
+#
+# `includes` go first, ahead of every Host block: a Match block such as Rex's
+# TERM guard only works there, and ssh keeps the first value it sees.
+{
+  lib,
+  pkgs,
+  includes ? [ ],
+}:
 
 let
   wrapWithConfig = import ../../lib/wrap-with-config.nix { inherit lib pkgs; };
@@ -23,6 +30,7 @@ wrapWithConfig {
   flags = [
     "-F"
     (pkgs.writeText "ssh_config" ''
+      ${lib.concatMapStrings (file: "Include ${file}\n") includes}
       Host tangled.org
         HostName tangled.org
         User git
