@@ -76,8 +76,11 @@ in
   ];
 
   # niri falls back to /etc/niri/config.kdl when ~/.config/niri/config.kdl is
-  # absent, and reloads it when a switch moves /etc/static. Its binds run the
-  # niri-desk commands Home Manager installs (modules/home/files.nix).
+  # absent, and reloads it when a switch moves /etc/static. The file is
+  # niri/config.kdl followed by the binds niri/binds.nix renders, which run
+  # the niri-desk commands Home Manager installs (modules/home/files.nix).
   # homelab sets its own config, which takes precedence over this default.
-  environment.etc."niri/config.kdl".source = lib.mkDefault ../../niri/config.kdl;
+  environment.etc."niri/config.kdl".source = lib.mkDefault (
+    pkgs.writeText "niri-config.kdl" (import ../../niri/binds.nix { inherit lib; }).config
+  );
 }

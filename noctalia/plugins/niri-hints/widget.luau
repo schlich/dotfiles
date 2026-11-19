@@ -8,7 +8,7 @@ local statusPath = (noctalia.getenv("XDG_RUNTIME_DIR") or "/tmp") .. "/niri-hint
 local function readStatus()
   local raw = noctalia.readFile(statusPath)
   local status = raw and noctalia.json.decode(raw)
-  return status or { mode = "normal", hints = {} }
+  return status or { mode = "NORMAL", hints = {} }
 end
 
 function update()

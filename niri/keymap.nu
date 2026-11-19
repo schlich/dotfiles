@@ -1,9 +1,9 @@
 # An emoji keyboard of the niri binds (Mod+Slash, `niri-desk keymap`).
 #
-# Reads the `binds { }` block of config.kdl, groups binds into layers by their
-# modifiers, and draws one layer per `tui` page as an ANSI keyboard: the main
-# block, the navigation cluster, and the numpad that holds the Johnny Decimal
-# grid. Each bound key shows the emoji of its action from keymap-emoji.nuon,
+# Reads the `binds { }` block of the installed config.kdl (rendered from
+# niri/binds.nix), groups binds into layers by their modifiers, and draws one
+# layer per `tui` page as an ANSI keyboard: the main block, the navigation
+# cluster, and the numpad. Each bound key shows the emoji of its action from keymap-emoji.nuon,
 # and a legend below names every bind of the layer, including mouse and media
 # binds that have no keycap. A key bound twice in one layer shows 💥.
 #
@@ -71,7 +71,7 @@ def parse-rows [] {
   }
 }
 
-# `spawn-sh "exec niri-desk grid left";` reads `run session grid left`.
+# `spawn-sh "exec niri-desk area work";` reads `run session area work`.
 def normalise [action: string] {
   $action
   | str trim
@@ -209,27 +209,28 @@ def default-config [] {
   $env.NIRI_CONFIG? | default (if ($user | path exists) { $user } else { '/etc/niri/config.kdl' })
 }
 
-# The keys that matter in each focus context, with short labels for the bar.
-# A hint whose key is no longer bound in config.kdl drops out, and a hint
-# without a label falls back to the bind's hotkey-overlay-title. Overview keys
-# are niri's own, and Alt+Tab may live in the recent-windows block instead of
-# binds, so those always show.
+# The keys that matter in each focus context, with short labels for the bar:
+# six at most, so the line can be taken in at a glance. A hint whose key is
+# no longer bound drops out, and a hint without a label falls back to the
+# bind's hotkey-overlay-title. Overview keys are niri's own, and a hint that
+# stands for several chords (the two column keys, the six area keys) is not
+# one bind, so those always show.
 const hint_sets = {
-  normal: [[key label]; [Mod+1…9 area] [Mod+Tab back] [Alt+Tab recent] [Mod+A agents] [Mod+G vcs] [Mod+O overview] [Mod+Alt+M minimize] [Mod+Ctrl+M minimized] [Mod+Slash keymap]]
-  empty: [[key label]; [Mod+Return terminal] [Mod+Shift+Return "restore layout"] [Mod+0 launcher] [Mod+A agents] [Mod+Ctrl+M minimized]]
-  single: [[key label]; [Mod+R width] [Mod+F maximise] [Mod+Return terminal] [Mod+A agents] [Mod+Tab back] [Mod+Alt+M minimize] [Mod+Ctrl+M minimized]]
-  stack: [[key label]; [Mod+J next] [Mod+K previous] [Mod+W tabs] [Mod+Period expel] [Mod+Shift+R height] [Mod+Alt+M minimize] [Mod+Ctrl+M minimized]]
-  floating: [[key label]; [Mod+V tile] [Mod+Shift+V "to tiled"] [Mod+Q close] [Mod+Alt+M minimize] [Mod+Ctrl+M minimized]]
+  normal: [[key label]; [Mod+H/L column] [Mod+J/K window] [Mod+Alt+YU·HL·NM area] [Mod+Tab back] [Mod+A agents] [Mod+Slash keys]]
+  empty: [[key label]; [Mod+Return terminal] [Mod+Shift+Return "restore layout"] [Mod+Space launcher] [Mod+A agents] [Mod+Alt+YU·HL·NM area] [Mod+Alt+K sessions]]
+  single: [[key label]; [Mod+R width] [Mod+F maximise] [Mod+Return terminal] [Mod+A agents] [Mod+Tab back] [Mod+X minimise]]
+  stack: [[key label]; [Mod+J/K window] [Mod+W tabs] [Mod+BracketRight "pull out"] [Mod+Shift+R height] [Mod+X minimise] [Mod+Shift+X minimised]]
+  floating: [[key label]; [Mod+V tile] [Mod+Shift+V "to tiled"] [Mod+Q close] [Mod+X minimise]]
   overview: [[key label]; [←↓↑→ move] [Return pick] [Escape close]]
 }
-const always_shown = [Mod+1…9 Alt+Tab ←↓↑→ Return Escape]
+const always_shown = [Mod+H/L Mod+J/K Mod+Alt+YU·HL·NM ←↓↑→ Return Escape]
 
 def niri-json [query: string] {
   ^niri msg --json $query | from json
 }
 
-# normal (the base mode's shared name), empty, single, stack, floating or
-# overview, from niri's focus.
+# normal (the base mode's shared name, shown as NORMAL), empty, single,
+# stack, floating or overview, from niri's focus.
 def focus-context [] {
   if (niri-json overview-state).is_open { return 'overview' }
   let focused = (niri-json focused-window)
@@ -248,8 +249,9 @@ def hint-status [binds: list, mode: string] {
     $hint_sets | get $mode
     | where {|h| $h.key in $always_shown or $h.key in $titles.key }
     | each {|h| $h | update label { default ($titles | where key == $h.key | get 0?.title) } }
+    | first 6
   )
-  { mode: $mode, hints: $hints }
+  { mode: ($mode | str upcase), hints: $hints }
 }
 
 # The bar's hint line (Noctalia plugin niri-hints): follows niri's event

@@ -861,7 +861,9 @@
               nativeBuildInputs = [ pkgs.niri ];
             }
             ''
-              niri validate --config ${./niri/config.kdl}
+              niri validate --config ${
+                pkgs.writeText "niri-config.kdl" (import ./niri/binds.nix { inherit lib; }).config
+              }
               touch "$out"
             '';
         nushell-agent =
