@@ -717,6 +717,36 @@
       # CI runs every attribute here as its own job, so a new check needs no
       # workflow change. Run the same set locally with `nix-fast-build`.
       checks.${system} = {
+        # The hexagon arithmetic behind the rule of six (lib/honeycomb).
+        honeycomb-tests =
+          let
+            tests = import ./lib/honeycomb/tests.nix { inherit lib; };
+            failures = lib.runTests tests;
+          in
+          pkgs.writeText "honeycomb-tests" (
+            assert lib.assertMsg (failures == [ ])
+              "honeycomb-tests failed:\n${lib.generators.toPretty { } failures}";
+            lib.concatMapStrings (test: "${test}\n") (builtins.attrNames tests)
+          );
+        # No collection may pass six members, and the ones that already do
+        # (lib/honeycomb/baseline.nix) may only shrink.
+        honeycomb-census =
+          let
+            honeycomb = import ./lib/honeycomb { inherit lib; };
+            census = import ./lib/honeycomb/census.nix {
+              inherit lib;
+              root = ./.;
+            };
+            result = honeycomb.audit {
+              inherit census;
+              baseline = import ./lib/honeycomb/baseline.nix;
+            };
+          in
+          pkgs.writeText "honeycomb-census" (
+            assert lib.assertMsg (honeycomb.clean result)
+              "honeycomb-census failed:\n${honeycomb.report result}";
+            builtins.toJSON census
+          );
         quota-advisor = pkgs.runCommand "quota-advisor-check" { nativeBuildInputs = [ pkgs.python3 ]; } ''
           cd ${./tools/quota-advisor}
           PYTHONPATH=src python3 -m unittest discover -s tests -v
