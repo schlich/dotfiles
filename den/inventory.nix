@@ -112,6 +112,7 @@ let
           opencodeServer = true;
           # The always-on execution environment of the agent fleet.
           t3code = true;
+          rex = true;
           crossStream = true;
         };
         deploy = {

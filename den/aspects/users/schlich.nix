@@ -18,6 +18,12 @@
       )
       (
         { home, ... }:
+        lib.optionalAttrs home.host.services.rex {
+          homeManager.imports = [ ../../../modules/tooling/terminals/rex.nix ];
+        }
+      )
+      (
+        { home, ... }:
         lib.optionalAttrs home.host.services.nixObservability {
           includes = [ den.aspects.nix-observability-home ];
         }

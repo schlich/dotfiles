@@ -72,6 +72,7 @@ let
       paseo = "the Paseo daemon";
       opencodeServer = "the OpenCode HTTP server";
       t3code = "the T3 Code server, an execution environment for the agent fleet";
+      rex = "the personal Rex terminal server for the host's home user";
       crossStream = "the system cross.stream service, for hosts without the Home Manager one";
     };
   };
