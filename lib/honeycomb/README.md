@@ -27,10 +27,10 @@ direction keys ring `J` and `K`, the way a cell's neighbours ring it:
 ```text
    Y   U          nw  ne
  H  J K  L       w  in out  e
-   B   N          sw  se
+   N   M          sw  se
 ```
 
-- `H` `L` `Y` `U` `B` `N` select the member in that direction.
+- `H` `L` `Y` `U` `N` `M` select the member in that direction.
 - `J` goes into the selected member; `K` goes back out to its parent.
 
 A path of directions is an address: `se`, then `e`, names one leaf for good,

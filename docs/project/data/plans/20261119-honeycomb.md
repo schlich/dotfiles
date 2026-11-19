@@ -33,7 +33,7 @@ sections in `AGENTS.md`, and at runtime 50 local branches and 18 worktrees.
 ## Approach
 
 Treat every collection as a hexagonal cell with at most six members, and every
-domain as a tree of such cells. Six direction keys (`H` `L` `Y` `U` `B` `N`)
+domain as a tree of such cells. Six direction keys (`H` `L` `Y` `U` `N` `M`)
 select a member, `J` enters it and `K` leaves, in every tool; verbs act on the
 selection. A flake check counts the collections and holds a baseline of the ones
 already over six, which may only shrink, so each later task pays off entries

@@ -40,14 +40,15 @@ rec {
   };
 
   # The six direction keys ring J and K on a staggered keyboard: H and L on
-  # the home row, Y and U above, B and N below. J and K are left for depth.
+  # the home row, Y and U above, N and M below, all under the right hand.
+  # J and K are left for depth.
   keys = {
     w = "h";
     e = "l";
     nw = "y";
     ne = "u";
-    sw = "b";
-    se = "n";
+    sw = "n";
+    se = "m";
     inward = "j";
     outward = "k";
   };
