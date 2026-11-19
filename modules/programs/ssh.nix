@@ -6,7 +6,7 @@
 }:
 
 let
-  # Rex's ssh guard (programs/rex.nix) makes ssh from a Rex terminal send
+  # Rex's ssh guard (tooling/terminals/rex.nix) makes ssh from a Rex terminal send
   # TERM=xterm-256color to hosts without the xterm-rex entry. Home Manager's
   # programs.ssh would carry it, but this config lives on the wrapper instead.
   rex = lib.attrByPath [ "programs" "rex" ] { enable = false; } config;
