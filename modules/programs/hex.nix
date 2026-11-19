@@ -9,5 +9,9 @@
 {
   imports = [ inputs.hex.homeManagerModules.default ];
 
-  programs.hex.enable = true;
+  # Off while HEX 3.4.0 cannot build on homelab: one of its compile steps
+  # stays silent past nixbot's 1200 s limit (and over an hour unbounded),
+  # failing gateChecks desktop-home. Turn it back on once it builds; until
+  # then Mod+D and Mod+Shift+D in niri/config.kdl start nothing.
+  programs.hex.enable = false;
 }
