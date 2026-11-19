@@ -728,8 +728,8 @@
               "honeycomb-tests failed:\n${lib.generators.toPretty { } failures}";
             lib.concatMapStrings (test: "${test}\n") (builtins.attrNames tests)
           );
-        # No collection may pass six members, and the ones that already do
-        # (lib/honeycomb/baseline.nix) may only shrink.
+        # No collection may newly pass six members. The ones that already do
+        # (lib/honeycomb/baseline.nix) warn when they grow, until regrouped.
         honeycomb-census =
           let
             honeycomb = import ./lib/honeycomb { inherit lib; };
@@ -745,7 +745,9 @@
           pkgs.writeText "honeycomb-census" (
             assert lib.assertMsg (honeycomb.clean result)
               "honeycomb-census failed:\n${honeycomb.report result}";
-            builtins.toJSON census
+            lib.warnIf (result.grown != { })
+              "honeycomb: collections already over six grew: ${honeycomb.growth result}"
+              (builtins.toJSON census)
           );
         quota-advisor = pkgs.runCommand "quota-advisor-check" { nativeBuildInputs = [ pkgs.python3 ]; } ''
           cd ${./tools/quota-advisor}

@@ -64,12 +64,14 @@ pointy-top hexagons:
 inputs, niri's binds and window rules, and the sections of `AGENTS.md`. The
 `honeycomb-census` flake check fails when:
 
-- a collection passes six without an entry in `baseline.nix`;
-- a recorded collection grows; or
+- a collection passes six without an entry in `baseline.nix`; or
 - a recorded collection shrinks or is paid off and its entry was not updated.
 
-`baseline.nix` is therefore the list of debts, and it only gets shorter. Pay
-one off by grouping its members under names a person would look for, not by
+A recorded collection that grows only prints an evaluation warning, so work
+elsewhere is not blocked while that collection waits for its regrouping.
+Once a collection is regrouped and its entry removed, the limit is firm.
+
+`baseline.nix` is therefore the list of debts. Pay one off by grouping its members under names a person would look for, not by
 splitting files alphabetically.
 
 Collections that only exist at runtime (branches, worktrees, agent sessions,
