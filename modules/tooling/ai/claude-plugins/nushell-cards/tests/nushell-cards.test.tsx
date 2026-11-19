@@ -8,7 +8,7 @@ import {
   monitoredLog,
   parseOutcome,
   splitSource,
-} from "../hooks/register.tsx";
+} from "../hooks/register";
 
 const EVALUATE = "mcp__plugin_hm_nushell__evaluate";
 const LOG = "/tmp/scratch/build.log";
