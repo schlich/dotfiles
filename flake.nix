@@ -874,6 +874,17 @@
               ${pkgs.nushell}/bin/nu --no-config-file ${./tests/keymap.nu} ${src}/niri/keymap.nu
               touch "$out"
             '';
+        nushell-envrc-nu =
+          pkgs.runCommand "nushell-envrc-nu-check"
+            {
+              nativeBuildInputs = [ pkgs.nushell ];
+            }
+            ''
+              export HOME="$TMPDIR/home"
+              mkdir -p "$HOME"
+              ${pkgs.nushell}/bin/nu --no-config-file ${./tests/envrc-nu.nu} ${./nushell/envrc-nu.nu}
+              touch "$out"
+            '';
         nushell-parse =
           let
             # profile-drift.nu is a fragment the flake completes, so check

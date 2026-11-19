@@ -164,6 +164,13 @@ in
         use ${inputs.osc7501-nu}/pst
         pst jobs install
       '')
+      # A project's .envrc.nu loads as the `envrc` overlay once direnv has
+      # loaded the project. Its hooks wrap direnv's prompt hook, which the
+      # direnv module adds with mkAfter (1500), so they install after it.
+      (lib.mkOrder 1600 ''
+        source ${../../nushell/envrc-nu.nu}
+        setup-envrc-nu
+      '')
     ];
   };
 
