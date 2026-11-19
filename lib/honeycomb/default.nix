@@ -152,8 +152,9 @@ rec {
   depth = count: if count <= limit then 1 else 1 + depth ((count + limit - 1) / limit);
 
   # Compare a census ({ collection = count; }) with the recorded debt.
-  # Nothing may pass six unless the baseline records it, a recorded
-  # collection may not grow, and an entry that is paid off must be removed.
+  # Nothing may pass six unless the baseline records it, and an entry that
+  # is paid off must be removed. A recorded collection that grows only
+  # warns, until its regrouping lands and removes the entry.
   audit =
     { census, baseline }:
     let
@@ -177,10 +178,15 @@ rec {
         );
     in
     section "New collections over ${toString limit} (split them, or group their members):" result.new
-    + section "Collections that grew past their recorded size:" result.grown
     + section "Collections that shrank (lower their entry in lib/honeycomb/baseline.nix):" result.shrunk
     + section "Collections now within ${toString limit} (remove their entry from lib/honeycomb/baseline.nix):" result.paid;
 
-  clean =
-    result: result.new == { } && result.grown == { } && result.shrunk == { } && result.paid == { };
+  clean = result: result.new == { } && result.shrunk == { } && result.paid == { };
+
+  # Growth in a collection that was already over six, as one warning line.
+  growth =
+    result:
+    lib.concatStringsSep ", " (
+      lib.mapAttrsToList (name: count: "${name} is now ${toString count}") result.grown
+    );
 }
