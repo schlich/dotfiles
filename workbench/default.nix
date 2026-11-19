@@ -1,6 +1,7 @@
 # The executable-knowledge workbench: Nix environments named by document
 # frontmatter (`environment: NAME`), their marimohub sandbox images, and the
 # `workbench` CLI that runs a document in the environment it declares.
+# nixpkgs-watch: not a workaround: builds this repository's own iwe-bridge.
 {
   pkgs,
   lib,

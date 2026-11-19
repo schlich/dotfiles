@@ -1,11 +1,13 @@
 {
+  inputs,
   lib,
   pkgs,
   ...
 }:
 
 let
-  hokum = import ./hokum-package.nix { inherit lib pkgs; };
+  # Upstream's own package, which tracks its Cargo.lock without hashes to keep.
+  hokum = inputs.hokum.packages.${pkgs.stdenv.hostPlatform.system}.default;
 in
 {
   # Hokum is the notification daemon, with sound and Bluetooth panes and a
@@ -40,6 +42,6 @@ in
 
   dotfiles.nixpkgsWatch.hokum = {
     inherit (hokum) version;
-    reason = "replace modules/programs/hokum-package.nix with pkgs.hokum in hokum.nix";
+    reason = "replace the hokum input's package with pkgs.hokum in modules/programs/hokum.nix and drop the hokum input";
   };
 }

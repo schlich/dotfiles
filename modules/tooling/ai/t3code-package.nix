@@ -77,6 +77,7 @@ in
   };
 
   config.dotfiles.nixpkgsWatch.t3code = {
+    input = "nixpkgs-t3code";
     inherit (t3code) version;
     reason = "take t3code from pkgs in modules/tooling/ai/t3code-package.nix and drop the nixpkgs-t3code input";
   };

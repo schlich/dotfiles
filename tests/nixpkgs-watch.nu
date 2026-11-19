@@ -175,6 +175,172 @@ def main [script: path, questions: path] {
   let retried = (with-env { HOME: $tmp, XDG_STATE_HOME: $retry_state } { open ($retry_state | path join nixpkgs-watch report.json) })
   $failures = ($failures | append (expect "the retried run finds the related PR" ($retried.entries.0.related) [506]))
 
+  # Coverage: which lines are workarounds, and what covers them.
+  let call = {|code| nu --no-config-file -c $"use ($module) *; ($code) | to nuon" | from nuon }
+  let nix = ([
+    "{ inputs, pkgs }:"
+    "let"
+    "  a = inputs.foo.packages.${pkgs.system}.default;"
+    "  # inputs.commented.packages.x"
+    "  b = pkgs.callPackage \"${inputs.bar}/nix/pkg.nix\" { };"
+    "  c = pkgs.hello.overrideAttrs { doCheck = false; };"
+    "  d = inputs.nixpkgs.legacyPackages.x.hello;"
+    "in [ a b c d ]"
+  ] | str join "\n")
+  $failures = ($failures | append (expect "sites finds inputs, sources, and overrides" (do $call $"($nix | to nuon) | sites | select line input") [
+    { line: 3, input: foo }
+    { line: 5, input: bar }
+    { line: 6, input: null }
+  ]))
+  $failures = ($failures | append (expect "named-for strips -package and reads directories" (do $call "[modules/programs/hokum-package.nix modules/tooling/ai/jj-mcp/default.nix tools/foo/package.nix x/sudoplz.nix] | each { named-for $in }") [hokum jj-mcp foo sudoplz]))
+  let declared = { entries: { foo: { package: foo, input: foo } }, exempt: { bar: "the user's own" } }
+  let uncovered = {|text file| do $call $"($text | to nuon) | uncovered ($file | to nuon) ($declared | to nuon) | each {|s| $s.line | default none }" }
+  $failures = ($failures | append (expect "an unwatched override is uncovered" (do $uncovered $nix modules/x.nix) [6]))
+  $failures = ($failures | append (expect "an entry named for the file covers it" (do $uncovered $nix modules/foo-package.nix) []))
+  $failures = ($failures | append (expect "a comment naming an entry covers it" (do $uncovered $"# nixpkgs-watch: foo\n($nix)" modules/x.nix) []))
+  $failures = ($failures | append (expect "a comment naming no entry does not" (do $uncovered $"# nixpkgs-watch: baz\n($nix)" modules/x.nix) [7 none]))
+  $failures = ($failures | append (expect "not a workaround covers it" (do $uncovered $"# nixpkgs-watch: not a workaround: local\n($nix)" modules/x.nix) []))
+  let declaring = $"($nix)\n{ dotfiles.nixpkgsWatch.hello.reason = \"r\"; }"
+  $failures = ($failures | append (expect "a declaration covers the file" (do $uncovered $declaring modules/x.nix) []))
+  let no_foo = { entries: {}, exempt: { bar: "the user's own" } }
+  $failures = ($failures | append (expect "an input needs an entry even where one is declared" (do $call $"($declaring | to nuon) | uncovered modules/x.nix ($no_foo | to nuon) | get input") [foo]))
+
+  let coverage_dir = ($tmp | path join repo)
+  mkdir ($coverage_dir | path join modules)
+  $nix | save ($coverage_dir | path join modules x.nix)
+  $declared | to json | save ($tmp | path join declared.json)
+  let coverage = {|| ^nu --no-config-file $script coverage $coverage_dir ($tmp | path join declared.json) | complete }
+  let run = (do $coverage)
+  $failures = ($failures | append (expect "coverage fails on an uncovered workaround" [$run.exit_code ($run.stdout | str contains "modules/x.nix:6")] [1 true]))
+  $"# nixpkgs-watch: not a workaround: a test\n($nix)" | save --force ($coverage_dir | path join modules x.nix)
+  $failures = ($failures | append (expect "coverage passes once it is covered" (do $coverage | get exit_code) 0))
+
+  # Upstream lookups.
+  let urls = [https://github.com/o/r/pull/12 https://github.com/o/r/commit/abc123 https://example.com/x]
+  $failures = ($failures | append (expect "parse-fix reads pull requests and commits" (do $call $"($urls | to nuon) | each {|url| { fix: \(parse-fix $url\) } }") [
+    { fix: { repo: o/r, kind: pull, id: "12" } }
+    { fix: { repo: o/r, kind: commit, id: abc123 } }
+    { fix: null }
+  ]))
+  let forked = { package: codex, fix: "https://github.com/o/codex/commit/abc", nixpkgs: "0.169.0", reason: "drop the fork" }
+  $failures = ($failures | append (expect "a fork's unreleased commit stays quiet" (do $call $"fix-events ($forked | to nuon) {state: unreleased} [] | length") 0))
+  $failures = ($failures | append (expect "and its release is the way out" (do $call $"fix-events ($forked | to nuon) {state: released} [{key: 'codex!fix', status: unreleased}] | get kind") [ready]))
+  let flake = "{\n  nixConfig = {\n    extra-substituters = [\n      \"https://a.cachix.org\"\n      \"https://cache.nixos.org/\"\n    ];\n    extra-trusted-public-keys = [ \"a.cachix.org-1:x\" ];\n  };\n  nixConfig.substituters = \"https://b.example https://c.example\";\n}"
+  $failures = ($failures | append (expect "substituters-in reads nixConfig" (do $call $"($flake | to nuon) | substituters-in") [https://a.cachix.org https://cache.nixos.org https://b.example https://c.example]))
+  let boards = [
+    [title existing];
+    ["opencode-desktop: use nixpkgs' opencode-desktop" ["opencode: use nixpkgs' opencode and opencode-desktop"]]
+    ["opencode: use nixpkgs' opencode" ["opencode-desktop: use nixpkgs' opencode-desktop"]]
+    ["fh: use nixpkgs' fh" ["fh, jj-starship: use nixpkgs' cached builds"]]
+    ["fh: drop the override, fixed upstream" ["fh, jj-starship: use nixpkgs' cached builds"]]
+  ]
+  $failures = ($failures | append (expect "on-board matches the package and the way out" (do $call $"($boards | to nuon) | each {|c| on-board $c.title $c.existing }") [true false true false]))
+
+  # The whole check against stubbed gh, nix, curl, and luvus: hex overrides
+  # an input whose upstream fix and cached build the check finds; tool is a
+  # local build whose upstream appears on FlakeHub and gains a flake.nix.
+  let bin = ($tmp | path join bin)
+  mkdir $bin
+  let src = ($tmp | path join hex-src)
+  mkdir $src
+  "{ nixConfig.extra-substituters = [ \"https://hex.cachix.org\" ]; }" | save ($src | path join flake.nix)
+  let board = ($tmp | path join board.json)
+  let added = ($tmp | path join added)
+  [
+    "#!/bin/sh"
+    "case \"$2\" in"
+    "  repos/anomalyco/hex/pulls/7) echo '{\"state\":\"closed\",\"merged_at\":\"2026-11-01T00:00:00Z\",\"merge_commit_sha\":\"m7\"}' ;;"
+    "  repos/anomalyco/hex/compare/m7...v3.4.0) if [ -n \"$RELEASED\" ]; then echo ahead; else echo diverged; fi ;;"
+    "  repos/acme/tool/contents/flake.nix) echo flake.nix ;;"
+    "  *) echo 'HTTP 404: Not Found' >&2; exit 1 ;;"
+    "esac"
+  ] | str join "\n" | save ($bin | path join gh)
+  [
+    "#!/bin/sh"
+    "case \"$1\" in"
+    "  eval) echo /nix/store/aaaa-hex-3.4.0 ;;"
+    $"  flake\) echo '{\"storePath\":\"($src)\"}' ;;"
+    "  path-info) [ \"$3\" = https://hex.cachix.org ] ;;"
+    "esac"
+  ] | str join "\n" | save ($bin | path join nix)
+  [
+    "#!/bin/sh"
+    "for a; do url=$a; done"
+    "case \"$url\" in */acme/tool) echo 200 ;; *) echo 404 ;; esac"
+  ] | str join "\n" | save ($bin | path join curl)
+  [
+    "#!/bin/sh"
+    "if [ -n \"$LUVUS_FAIL\" ]; then echo 'luvus: server not running' >&2; exit 1; fi"
+    $"if [ \"$2\" = list ]; then cat ($board); exit 0; fi"
+    $"printf '%s\\n' \"$3\" >> ($added)"
+  ] | str join "\n" | save ($bin | path join luvus)
+  ^chmod +x ...(glob ($bin | path join '*'))
+  { result: { tasks: [{ title: "atuin: use nixpkgs' atuin" }] } } | to json | save $board
+
+  let upstream_status = ($tmp | path join upstream-status.json)
+  let common = { version: null, nixpkgs: null, ready: false, fix: null, input: null, attr: default, repo: null, locked: null, rev: null, follows: false, onFlakehub: false, files: [], system: x86_64-linux }
+  {
+    hex: ($common | merge { name: hex, package: hex, nixpkgs: "3.4.0", reason: "drop the cargoDeps override in hex.nix", fix: "https://github.com/anomalyco/hex/pull/7", input: hex, attr: hex, repo: anomalyco/hex, locked: "github:anomalyco/hex/abc", rev: abc, follows: true, onFlakehub: true, files: [modules/programs/hex.nix] })
+    tool: ($common | merge { name: tool, package: tool, version: "1.0", reason: "replace tool-package.nix", repo: acme/tool, files: [modules/tool.nix] })
+  } | to json | save $upstream_status
+  "" | save --force $fixture
+  let upstream_state = ($tmp | path join upstream-state)
+  mkdir ($upstream_state | path join nixpkgs-watch)
+  [] | to json | save ($upstream_state | path join nixpkgs-watch seen.json)
+  let upstream_check = {|state, released, luvus_fail|
+    with-env {
+      HOME: $tmp
+      XDG_STATE_HOME: $state
+      NIXPKGS_WATCH_STATUS: $upstream_status
+      NIXPKGS_WATCH_NPR: $npr
+      NIXPKGS_WATCH_NOTIFY: $notify
+      NIXPKGS_WATCH_GH: ($bin | path join gh)
+      NIXPKGS_WATCH_NIX: ($bin | path join nix)
+      NIXPKGS_WATCH_CURL: ($bin | path join curl)
+      NIXPKGS_WATCH_LUVUS: ($bin | path join luvus)
+      NIXPKGS_WATCH_REPO: $tmp
+      NIXPKGS_WATCH_GATE: "true"
+      FAIL: ""
+      RELEASED: $released
+      LUVUS_FAIL: $luvus_fail
+    } { ^nu --no-config-file $script check --notify --queue-tasks | complete }
+  }
+  let added_titles = {|| if ($added | path exists) { open --raw $added | lines } else { [] } }
+  rm --force $notes
+
+  let run = (do $upstream_check $upstream_state "" "1")
+  $failures = ($failures | append (expect "an upstream check exits cleanly" $run.exit_code 0))
+  let report = (open ($upstream_state | path join nixpkgs-watch report.json))
+  $failures = ($failures | append (expect "it reports the fix, the cache, FlakeHub, and the flake" ($report.entries | select package upstream) [
+    { package: hex, upstream: ["fix merged" "cached: hex.cachix.org"] }
+    { package: tool, upstream: ["on FlakeHub" "has a flake"] }
+  ]))
+  $failures = ($failures | append (expect "each finding is an event" ($report.events | each { $"($in.package) ($in.kind)" }) ["hex fix-merged" "hex cached" "tool flakehub" "tool flake"]))
+  $failures = ($failures | append (expect "a luvus failure queues nothing and notifies" [(do $added_titles) (do $summaries | last)] [[] "nixpkgs-watch could not queue a luvus task"]))
+
+  rm --force $notes
+  let run = (do $upstream_check $upstream_state "" "")
+  $failures = ($failures | append (expect "a queueing check exits cleanly" $run.exit_code 0))
+  $failures = ($failures | append (expect "the next run queues the cached build's task" (do $added_titles) ["hex: substitute upstream's cached build"]))
+  $failures = ($failures | append (expect "findings are not repeated" (do $summaries) ["nixpkgs-watch queued a task"]))
+
+  rm --force $notes
+  do $upstream_check $upstream_state "1" "" | ignore
+  $failures = ($failures | append (expect "a released fix queues its task once" (do $added_titles) ["hex: substitute upstream's cached build" "hex: drop the override, fixed upstream"]))
+  $failures = ($failures | append (expect "and notifies that the workaround can go" (do $summaries) ["nixpkgs: hex" "nixpkgs-watch queued a task"]))
+  do $upstream_check $upstream_state "1" "" | ignore
+  $failures = ($failures | append (expect "a queued task is not queued again" (do $added_titles | length) 2))
+
+  # A task someone already put on the board is recorded, not duplicated.
+  let board_state = ($tmp | path join board-state)
+  mkdir ($board_state | path join nixpkgs-watch)
+  [] | to json | save ($board_state | path join nixpkgs-watch seen.json)
+  { result: { tasks: [{ title: "hex: substitute upstream's cached build and drop follows" }] } } | to json | save --force $board
+  rm --force $added
+  do $upstream_check $board_state "" "" | ignore
+  $failures = ($failures | append (expect "a task already on the board is not added" (do $added_titles) []))
+  $failures = ($failures | append (expect "and is recorded as done" (open ($board_state | path join nixpkgs-watch tasks.json)) ["hex: substitute upstream's cached build"]))
+
   rm --recursive $tmp
   if ($failures | is-not-empty) {
     error make --unspanned { msg: $"($failures | length) nixpkgs-watch checks failed: ($failures | str join ', ')" }

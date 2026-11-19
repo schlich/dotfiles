@@ -145,4 +145,17 @@ in
     (import ../programs/luvus-package.nix { inherit inputs lib pkgs; })
     (import ../tooling/ai/fieldnotes-package.nix { inherit inputs lib pkgs; })
   ];
+
+  dotfiles.nixpkgsWatch = {
+    acreom = {
+      inherit (acreomApp) version;
+      repo = "Acreom/app";
+      reason = "replace acreomApp, the release AppImage modules/home/packages.nix wraps, with pkgs.acreom";
+    };
+    openchamber = {
+      inherit (pkgs.callPackage ./openchamber.nix { }) version;
+      reason = "replace modules/home/openchamber.nix, a build of the npm release, with pkgs.openchamber in modules/home/packages.nix";
+    };
+    ai-usagebar.reason = "replace modules/programs/ai-usagebar-package.nix (the ai-usagebar input's package, with sqlite added and its tests skipped) with pkgs.ai-usagebar, and drop the ai-usagebar input";
+  };
 }

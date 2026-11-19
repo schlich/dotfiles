@@ -52,6 +52,8 @@ in
   };
 
   config = {
+    dotfiles.nixpkgsWatch.luvus.reason = "replace modules/programs/luvus-package.nix (the luvus input's package, rewrapped so its runtime tools follow PATH instead of leading it) with pkgs.luvus, rewrapping that too if its wrapper prepends, and drop the luvus input";
+
     dotfiles.luvus.settings = {
       inherit prefix;
       # Follow Ghostty's palette, as the editor and shell do.
