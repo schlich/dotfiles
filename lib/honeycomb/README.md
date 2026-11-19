@@ -31,7 +31,8 @@ direction keys ring `J` and `K`, the way a cell's neighbours ring it:
 ```
 
 - `H` `L` `Y` `U` `N` `M` select the member in that direction.
-- `J` goes into the selected member; `K` goes back out to its parent.
+- `J` goes into the selected member; `K` goes back out to its parent. Where
+  a tool has a stack and no levels, they step down and up it.
 
 A path of directions is an address: `se`, then `e`, names one leaf for good,
 so a place can be learned by hand, not by reading a list.

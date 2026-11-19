@@ -97,6 +97,14 @@ in
           implementation = config.dotfiles.primary.editor;
           scope = "modal";
         }
+        # Yazi takes the whole terminal while it runs, and its keys need no
+        # leader.
+        {
+          name = "files";
+          implementation = "yazi";
+          scope = "modal";
+          leader = "none";
+        }
       ];
       description = "Input contexts in order from outermost to innermost.";
     };

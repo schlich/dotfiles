@@ -15,18 +15,21 @@ let
   ghosttyConfig = keyValue.generate "ghostty-config" {
     copy-on-select = true;
     font-family = "Monaspace Krypton";
-    # Splits and tabs replace Zellij panes and tabs, on the Alt keys Zellij
-    # used; Niri columns and workspaces carry layouts and sessions. Alt+n/i/o
-    # and Alt+arrows stay with Helix (sibling and selection moves).
+    # Splits and tabs on Alt, with the honeycomb's keys
+    # (lib/honeycomb/README.md): H and L for the split to the west and east,
+    # J and K down and up the stack, and Y and U, the keys under the tab
+    # bar, for the tab to the left and right. Niri columns and areas carry
+    # layouts and sessions. Alt+n/i/o and Alt+arrows stay with Helix
+    # (sibling and selection moves); Alt+U is taken from Helix's `earlier`.
     keybind = [
       "alt+h=goto_split:left"
       "alt+l=goto_split:right"
       "alt+j=goto_split:down"
       "alt+k=goto_split:up"
+      "alt+y=previous_tab"
+      "alt+u=next_tab"
       "alt+f=toggle_split_zoom"
       "alt+equal=equalize_splits"
-      "alt+bracket_left=previous_tab"
-      "alt+bracket_right=next_tab"
       # Defaults that take keys inner programs expect: Alt+digit picks a
       # result in Atuin's search, and Ctrl+Enter submits in agent prompts.
     ]
@@ -63,6 +66,17 @@ in
     # bat's wrapper in modules/programs/cli.nix builds Ghostty's syntax into
     # its cache instead.
     installBatSyntax = false;
+  };
+
+  # Ghostty has no status line, so it cannot show these keys itself;
+  # docs/input.md says so.
+  dotfiles.input.navigation.terminal = lib.mkIf (config.dotfiles.primary.terminal == "ghostty") {
+    w = [ "Alt+H" ];
+    e = [ "Alt+L" ];
+    inward = [ "Alt+J" ];
+    outward = [ "Alt+K" ];
+    nw = [ "Alt+Y" ];
+    ne = [ "Alt+U" ];
   };
 
   dotfiles.retiredHomeFiles = [ ".config/ghostty/config" ];
