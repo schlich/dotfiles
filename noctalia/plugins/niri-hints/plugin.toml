@@ -1,12 +1,31 @@
 id          = "schlich/niri-hints"
 name        = "niri hints"
-version     = "0.1.0"
-plugin_api  = 3
+version     = "0.2.0"
+plugin_api  = 9
 author      = "schlich"
 license     = "MIT"
 icon        = "keyboard"
-description = "The niri focus context as a mode, and the keys that work in it."
+description = "niri's navigation keys, each shown on the screen edge it points to."
 
 [[widget]]
-id    = "hints"
+id    = "seat"
 entry = "widget.luau"
+
+  # Which navigation key this instance shows: one of the six directions, or
+  # the two depth keys. Place each instance on the bar its direction faces.
+  [[widget.setting]]
+  key     = "seat"
+  type    = "select"
+  label_key = "settings.seat.label"
+  description_key = "settings.seat.description"
+  default = "in"
+  options = [
+    { value = "nw", label_key = "settings.seat.options.nw" },
+    { value = "ne", label_key = "settings.seat.options.ne" },
+    { value = "w", label_key = "settings.seat.options.w" },
+    { value = "e", label_key = "settings.seat.options.e" },
+    { value = "sw", label_key = "settings.seat.options.sw" },
+    { value = "se", label_key = "settings.seat.options.se" },
+    { value = "in", label_key = "settings.seat.options.in" },
+    { value = "out", label_key = "settings.seat.options.out" },
+  ]

@@ -11,11 +11,11 @@ let
   # their siblings with `path self`. niri reads config.kdl from
   # /etc/niri/config.kdl (modules/nixos/desktop.nix).
   niriBinds = import ../../niri/binds.nix { inherit lib; };
-  # Where each area sits and which key points there, for the launcher.
+  # Where each area sits and which key points there, for the launcher and
+  # the bar's navigation hints.
   niriAreas = pkgs.writeText "niri-areas.json" (
     builtins.toJSON {
-      inherit (niriBinds) areas;
-      inherit (niriBinds) keys;
+      inherit (niriBinds) areas keys out;
     }
   );
   niriDesk = pkgs.runCommandLocal "niri-desk" { nativeBuildInputs = [ pkgs.makeWrapper ]; } ''
