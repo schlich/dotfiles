@@ -192,12 +192,6 @@
       url = "github:schlich/dicta";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    # Local dictation (Linux beta); not in nixpkgs.
-    hex = {
-      url = "github:anomalyco/hex";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.home-manager.follows = "home-manager";
-    };
     fieldnotes = {
       url = "github:schlich/fieldnotes";
       inputs.nixpkgs.follows = "nixpkgs";
