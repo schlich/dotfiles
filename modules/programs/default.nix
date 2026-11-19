@@ -11,6 +11,7 @@
     ./input-stack.nix
     ./jj-hunk.nix
     ./luvus.nix
+    ./rex.nix
     ./shell.nix
     ./ssh.nix
     ./vcs.nix

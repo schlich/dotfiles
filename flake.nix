@@ -176,6 +176,13 @@
       url = "github:schlich/tangled-dash";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # Rex, the multiplexer for all work (prebuilt, snapshot channel); not in
+    # nixpkgs. flake.lock pins the exact release; `nix flake update rex`
+    # moves to the newest snapshot.
+    rex = {
+      url = "https://pkgs.superlogical.com/rex/nix/snapshot.tar.gz";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     # Mission control TUI for AI coding agents; not in nixpkgs.
     luvus = {
       url = "github:RizRiyz/luvus";
