@@ -9,7 +9,7 @@ let
   # The niri session scripts as commands: the binds (niri/binds.nix) run
   # `niri-desk SUBCOMMAND` and `niri-keymap hints`, and the scripts find
   # their siblings with `path self`. niri reads config.kdl from
-  # /etc/niri/config.kdl (modules/nixos/desktop.nix).
+  # /etc/niri/config.kdl (modules/nixos/workstation/desktop.nix).
   niriBinds = import ../../niri/binds.nix { inherit lib; };
   # Where each area sits and which key points there, for the launcher and
   # the bar's navigation hints.

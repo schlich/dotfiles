@@ -1,4 +1,4 @@
-# nixbot on homelab (modules/nixos/nixbot.nix) builds gateChecks.x86_64-linux
+# nixbot on homelab (modules/nixos/builds/nixbot.nix) builds gateChecks.x86_64-linux
 # on main, on pull requests, and, from this list, on luvus/integration and
 # task branches, whose `nixbot/nix-eval` and `nixbot/nix-build` checks the
 # main-checks ruleset requires. gateChecks is the flake checks plus the system

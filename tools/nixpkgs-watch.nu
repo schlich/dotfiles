@@ -1,5 +1,5 @@
 # Watch nixpkgs and upstream for the packages this home works around
-# (dotfiles.nixpkgsWatch in modules/home/nixpkgs-watch.nix), so each
+# (dotfiles.nixpkgsWatch in modules/home/nix/nixpkgs-watch.nix), so each
 # workaround goes once nixpkgs or upstream catches up.
 #
 #   nixpkgs-watch                       the last report
@@ -623,7 +623,7 @@ def "main coverage" [
     "a flake input; an entry named for the file, such as foo for foo-package.nix,"
     "covers that file), a `# nixpkgs-watch: NAME` comment naming an entry declared"
     "elsewhere, `# nixpkgs-watch: not a workaround: REASON`, or, for a flake input"
-    "of your own, dotfiles.nixpkgsWatchExempt (modules/home/nixpkgs-watch.nix)."
+    "of your own, dotfiles.nixpkgsWatchExempt (modules/home/nix/nixpkgs-watch.nix)."
   ] | str join "\n")
   error make --unspanned { msg: $"($missing | length) workarounds have no nixpkgs watch" }
 }

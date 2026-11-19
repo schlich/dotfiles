@@ -92,7 +92,7 @@ def insert-block [flake: path, name: string, url: string, block: list<string>, f
 # Where each kind of output usually goes in the dotfiles repository.
 def wiring [name: string, is_flake: bool, outputs: any] {
     if not $is_flake {
-        return [$"Not a flake: use files as \"${inputs.($name)}/PATH\"; agent skills go in modules/tooling/ai/shared-skills.nix."]
+        return [$"Not a flake: use files as \"${inputs.($name)}/PATH\"; agent skills go in modules/tooling/ai/shared/shared-skills.nix."]
     }
     if $outputs == null {
         return ["Outputs not inspected (--no-show): run `nix flake show` on the URL to see them."]
@@ -110,7 +110,7 @@ def wiring [name: string, is_flake: bool, outputs: any] {
         ...($packages | each {|p| $"Package: add inputs.($name).packages.${pkgs.stdenv.hostPlatform.system}.($p) to home.packages in modules/home/packages.nix." })
         ...($home_modules | each {|m| $"Home Manager module: `imports = [ ($m) ];` in a module under modules/programs/, as dicta.nix does." })
         ...($nixos_modules | each {|m| $"NixOS module: inputs.($name).nixosModules.($m) belongs in a Den aspect for the hosts that need it." })
-        ...($overlays | each {|o| $"Overlay: inputs.($name).overlays.($o) goes in the overlay list in den/aspects/home-manager-host.nix." })
+        ...($overlays | each {|o| $"Overlay: inputs.($name).overlays.($o) goes in the overlay list in den/aspects/users/home-manager-host.nix." })
     ] | default --empty ["The flake exports nothing for this repository to wire; check `nix flake show` by hand."]
 }
 

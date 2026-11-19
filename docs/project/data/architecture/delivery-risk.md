@@ -43,8 +43,8 @@ chose Jev as the classifier.
   keys, access to a host or to main) and a five-level breakage Score. It reads
   the clipped diff without secrets, credential lines, documentation, or
   comment-only edits, which describe access or storage without changing either,
-  and each file's policy risk: the highest risk `den/policy.nix` gives an aspect
-  the file reaches.
+  and each file's policy risk: the highest risk `den/model/policy.nix` gives an
+  aspect the file reaches.
 - Code decides. High risk is a concern Noul at or above `min_concern`, breakage
   at or above `max_breakage`, a path under `secrets/`, `hosts/`, or
   `.github/rulesets/`, a change to the classifier or its `delivery_risk`
@@ -65,8 +65,8 @@ chose Jev as the classifier.
   and adding an input that renumbered the lock's nodes counted unchanged inputs
   as updated until locks were compared by content.
 
-Rejected: a table of path globs to risk levels next to `den/policy.nix`, which
-was the first proposal (the author preferred Jev's judgment to rules to
+Rejected: a table of path globs to risk levels next to `den/model/policy.nix`,
+which was the first proposal (the author preferred Jev's judgment to rules to
 maintain); a hand-kept map of aspects to hosts (Den already knows, and the map
 would drift); asking Jev which hosts a change reaches (code can compute it
 exactly); counting every change to several hosts as high, as `AGENTS.md` stated

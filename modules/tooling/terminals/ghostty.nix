@@ -63,7 +63,7 @@ in
   programs.ghostty = lib.mkIf (config.dotfiles.primary.terminal == "ghostty") {
     enable = true;
     package = ghostty;
-    # bat's wrapper in modules/programs/cli.nix builds Ghostty's syntax into
+    # bat's wrapper in modules/programs/shell/cli.nix builds Ghostty's syntax into
     # its cache instead.
     installBatSyntax = false;
   };

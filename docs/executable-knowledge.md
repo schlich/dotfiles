@@ -125,7 +125,7 @@ itself, computes reactively, and reports the store path of its interpreter.
 - **Tailscale Serve on 9443, never Funnel.** `proxy-header` auth trusts
   `Tailscale-User-Login`, which only Serve sets for a signed-in tailnet user.
   The hub claims 9443 in `dotfiles.tailscale.https`
-  (`modules/nixos/tailscale-https.nix`), clear of the CI dashboard's 8443 and
+  (`modules/nixos/fleet/tailscale-https.nix`), clear of the CI dashboard's 8443 and
   of Funnel's ports, and evaluation fails if another service on the node
   claims the same port.
 

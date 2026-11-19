@@ -10,7 +10,7 @@ sources:
   resource: https://stately.ai/docs/packages/mcp
   title: Stately MCP server configuration
 - id: mcp-module
-  resource: ../../../../modules/tooling/ai/common.nix
+  resource: ../../../../modules/tooling/ai/shared/common.nix
   title: Shared MCP server configuration
 stage: done
 completed: 2026-10-16
@@ -33,7 +33,7 @@ to the Nix store.
 
 ### Task: Configure the shared remote server
 
-**Files:** Modify `modules/tooling/ai/common.nix`.
+**Files:** Modify `modules/tooling/ai/shared/common.nix`.
 
 - [x] Add the hosted Stately MCP endpoint alongside the shared servers.
 
@@ -56,5 +56,5 @@ dotfiles product's runtime behavior.
 
 Verified anchor points (line numbers as of 2026-10-16):
 
-- `modules/tooling/ai/common.nix:48` — shared MCP server definitions.
-- `modules/tooling/ai/common.nix:95` — Stately endpoint.
+- `modules/tooling/ai/shared/common.nix:48` — shared MCP server definitions.
+- `modules/tooling/ai/shared/common.nix:95` — Stately endpoint.

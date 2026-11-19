@@ -7,10 +7,10 @@ generated:
   at: 2026-10-16T21:20:00Z
 sources:
 - id: ci-traces-module
-  resource: modules/programs/ci.nix
+  resource: modules/programs/vcs/ci.nix
   title: ci package carrying the traces endpoint
 - id: viewer-module
-  resource: modules/nixos/nix-observability.nix
+  resource: modules/nixos/fleet/nix-observability.nix
   title: Local OpenTelemetry viewer and its ci endpoint
 ---
 

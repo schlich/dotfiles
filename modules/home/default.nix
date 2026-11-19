@@ -4,10 +4,10 @@
 
 {
   imports = [
-    ./ci-trace.nix
-    ./nix.nix
-    ./nixpkgs-watch.nix
-    ./retired-files.nix
-    ./session.nix
+    ./nix/ci-trace.nix
+    ./nix/nix.nix
+    ./nix/nixpkgs-watch.nix
+    ./session/retired-files.nix
+    ./session/session.nix
   ];
 }

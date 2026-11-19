@@ -137,7 +137,7 @@ let
       };
       expected = {
         owner = lib.head (builtins.attrNames (homesOf name));
-        linger = if hosts.${name}.profile.portable then null else true;
+        linger = if hosts.${name}.hardware.portable then null else true;
         claim = {
           port = 3773;
           funnel = false;
@@ -151,7 +151,7 @@ let
   # starts it fails a switch that restarts tailscaled before the daemon is
   # back, even though Restart= recovers it seconds later: asus reverted the
   # 2026-11-03 nixpkgs update over t3code-tailscale-serve. Every such unit
-  # waits for the backend first (waitForBackend, modules/nixos/tailscale-https.nix).
+  # waits for the backend first (waitForBackend, modules/nixos/fleet/tailscale-https.nix).
   tailscaleServeTests = config: {
     testTailscaleServeUnitsWaitForTheBackend = {
       expr = builtins.attrNames (

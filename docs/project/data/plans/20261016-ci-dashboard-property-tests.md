@@ -32,7 +32,7 @@ state the page's invariants as Bombadil properties.
 **Files:** `tools/ci-dashboard/feeds.mjs`, `tools/ci-dashboard/feeds.test.mjs`,
 `tools/ci-dashboard/fake/`, `tools/ci-dashboard/checks.nix`,
 `tests/bombadil/ci-dashboard.ts`, `tools/ci-dashboard/index.html`, `flake.nix`,
-`modules/nixos/homelab.nix`.
+`modules/nixos/homelab/homelab.nix`.
 
 - [x] Hegel properties for every export of `feeds.mjs`, an adversarial review of
   the contract, and a scale probe (`ci-dashboard-feeds`, gating).

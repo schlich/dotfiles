@@ -2,19 +2,19 @@
 
 {
   imports = [
-    ./cli.nix
-    ./desktop.nix
-    ./devenv.nix
-    ./dicta.nix
-    ./hex.nix
-    ./hokum.nix
-    ./input-stack.nix
-    ./jj-hunk.nix
-    ./luvus.nix
-    ./rex.nix
-    ./shell.nix
-    ./ssh.nix
-    ./vcs.nix
-    ./yazi.nix
+    ./shell/cli.nix
+    ./desktop/desktop.nix
+    ./shell/devenv.nix
+    ./desktop/dicta.nix
+    ./desktop/hex.nix
+    ./desktop/hokum.nix
+    ./desktop/input-stack.nix
+    ./vcs/jj-hunk.nix
+    ./multiplexers/luvus.nix
+    ./multiplexers/rex.nix
+    ./shell/shell.nix
+    ./ssh/ssh.nix
+    ./vcs/vcs.nix
+    ./shell/yazi.nix
   ];
 }

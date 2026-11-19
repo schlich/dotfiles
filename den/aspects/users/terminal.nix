@@ -7,13 +7,13 @@
   den.aspects.user-shell.homeManager.imports = [
     ../../../modules/home
     ../../../modules/tooling/interface.nix
-    ../../../modules/programs/cli.nix
-    ../../../modules/programs/shell.nix
-    ../../../modules/programs/ssh.nix
-    ../../../modules/programs/vcs.nix
-    ../../../modules/programs/yazi.nix
+    ../../../modules/programs/shell/cli.nix
+    ../../../modules/programs/shell/shell.nix
+    ../../../modules/programs/ssh/ssh.nix
+    ../../../modules/programs/vcs/vcs.nix
+    ../../../modules/programs/shell/yazi.nix
     # The Claude Code CLI with its skills, hooks and MCP servers.
-    ../../../modules/tooling/ai/claude-code.nix
+    ../../../modules/tooling/ai/claude/claude-code.nix
   ];
 
   # Workstations only: terminals, editors, agent clients, desktop apps and
@@ -25,17 +25,17 @@
     ../../../modules/tooling/editors/helix.nix
     ../../../modules/tooling/keymap-checks.nix
     ../../../modules/tooling/knowledge/iwe.nix
-    ../../../modules/tooling/ai/plugins.nix
-    ../../../modules/tooling/ai/t3code.nix
-    ../../../modules/tooling/ai/continuum-ide.nix
-    ../../../modules/tooling/ai/opencode.nix
-    ../../../modules/tooling/ai/opencode-desktop.nix
-    ../../../modules/tooling/ai/claude-desktop.nix
-    ../../../modules/tooling/ai/codex.nix
-    ../../../modules/tooling/ai/copilot.nix
+    ../../../modules/tooling/ai/shared/plugins.nix
+    ../../../modules/tooling/ai/clients/t3code/t3code.nix
+    ../../../modules/tooling/ai/clients/continuum-ide.nix
+    ../../../modules/tooling/ai/clients/opencode.nix
+    ../../../modules/tooling/ai/clients/opencode-desktop.nix
+    ../../../modules/tooling/ai/claude/claude-desktop.nix
+    ../../../modules/tooling/ai/clients/codex.nix
+    ../../../modules/tooling/ai/clients/copilot.nix
     ../../../modules/home/files.nix
     ../../../modules/home/packages.nix
-    ../../../modules/home/services.nix
+    ../../../modules/home/session/services.nix
     ../../../modules/programs
   ];
 }

@@ -1,32 +1,32 @@
 {
   imports = [
-    ./schema.nix
-    ./policy.nix
+    ./model/schema.nix
+    ./model/policy.nix
     ./inventory.nix
-    ./aspects/base.nix
-    ./aspects/paseo.nix
-    ./aspects/t3code.nix
-    ./aspects/cross-stream.nix
-    ./aspects/marimohub.nix
-    ./aspects/workstation.nix
-    ./aspects/server.nix
-    ./aspects/system-files.nix
-    ./aspects/deploy-policy.nix
-    ./aspects/fleet-network.nix
-    ./aspects/wsl.nix
-    ./aspects/desktop-niri.nix
-    ./aspects/laptop.nix
-    ./aspects/development.nix
-    ./aspects/nix-observability.nix
-    ./aspects/remote.nix
-    ./aspects/secrets.nix
-    ./aspects/gpu-amd.nix
-    ./aspects/xr.nix
-    ./aspects/home-manager-host.nix
+    ./aspects/roles/base.nix
+    ./aspects/services/paseo.nix
+    ./aspects/services/t3code.nix
+    ./aspects/services/cross-stream.nix
+    ./aspects/services/marimohub.nix
+    ./aspects/roles/workstation.nix
+    ./aspects/roles/server.nix
+    ./aspects/fleet/system-files.nix
+    ./aspects/fleet/deploy-policy.nix
+    ./aspects/fleet/fleet-network.nix
+    ./aspects/roles/wsl.nix
+    ./aspects/desktop/desktop-niri.nix
+    ./aspects/desktop/laptop.nix
+    ./aspects/roles/development.nix
+    ./aspects/services/nix-observability.nix
+    ./aspects/fleet/remote.nix
+    ./aspects/fleet/secrets.nix
+    ./aspects/desktop/gpu-amd.nix
+    ./aspects/desktop/xr.nix
+    ./aspects/users/home-manager-host.nix
     ./aspects/users/core.nix
     ./aspects/users/terminal.nix
     ./aspects/users/schlich.nix
-    ./aspects/host-platforms.nix
+    ./aspects/fleet/host-platforms.nix
     ./hosts.nix
   ];
 }

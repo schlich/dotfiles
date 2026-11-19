@@ -7,7 +7,7 @@ generated:
   at: 2026-10-29T09:10:00Z
 sources:
 - id: module
-  resource: modules/nixos/nixbot.nix
+  resource: modules/nixos/builds/nixbot.nix
   title: nixbot's service settings on homelab, its branch rules among them
 - id: toml
   resource: nixbot.toml
@@ -40,21 +40,22 @@ nixbot takes two lists of branch globs. `build_branches` in the repository's
 `registerGCRoots` is read only from the service's own `branches` rules
 (`BranchConfigDict.do_register_gcroot` in nixbot's `config.py`). The move to
 luvus changed `nixbot.toml` from `jj-*` to `luvus/*` (`7db5f2c0`) but left
-`branches.topics.matchGlob = "jj-*"` in `modules/nixos/nixbot.nix`, a rule no
-pushed branch matches any more.
+`branches.topics.matchGlob = "jj-*"` in `modules/nixos/builds/nixbot.nix`, a
+rule no pushed branch matches any more.
 
 ## Fix
 
-`branches.topics.matchGlob` is `luvus/*` (`modules/nixos/nixbot.nix:118`), the
-glob `nixbot.toml` builds (`nixbot.toml:7`), and both files say that the two
-must agree. Roots are per attribute, so a branch's newer result stands in for
-main's until main builds again, as it did for jj topics. The fix reaches homelab
-when it is delivered and the canary deploys it.
+`branches.topics.matchGlob` is `luvus/*`
+(`modules/nixos/builds/nixbot.nix:118`), the glob `nixbot.toml` builds
+(`nixbot.toml:7`), and both files say that the two must agree. Roots are per
+attribute, so a branch's newer result stands in for main's until main builds
+again, as it did for jj topics. The fix reaches homelab when it is delivered and
+the canary deploys it.
 
 ## Key references
 
 Verified anchor points (line numbers as of 2026-10-29):
 
-- `modules/nixos/nixbot.nix:117` — `branches.topics`
+- `modules/nixos/builds/nixbot.nix:117` — `branches.topics`
 - `nixbot.toml:7` — `build_branches`
 - `docs/nixbot.md:17` — what nixbot builds and roots

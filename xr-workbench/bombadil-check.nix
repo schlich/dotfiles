@@ -43,12 +43,12 @@ let
   # The bridge's configuration catalog (FILES in server.py) and the
   # inventories it reads.
   fixtureFiles = [
-    "den/aspects/xr.nix"
+    "den/aspects/desktop/xr.nix"
     "templates/devenv/devenv.nix"
     "templates/default/flake.nix"
     "den/inventory.nix"
     "flake.nix"
-    "modules/nixos/base.nix"
+    "modules/nixos/base/base.nix"
     "docs/architecture.md"
     "AGENTS.md"
     ".agents/skills/example/SKILL.md"

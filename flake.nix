@@ -6,7 +6,7 @@
     # T3 Code 0.1.4, the first release with linked environments and
     # delegate_task, from the nixpkgs commit that packaged it
     # (NixOS/nixpkgs#580444); the locked nixpkgs still ships 0.0.45.
-    # modules/tooling/ai/t3code-package.nix takes only t3code from it.
+    # modules/tooling/ai/clients/t3code/t3code-package.nix takes only t3code from it.
     nixpkgs-t3code.url = "github:NixOS/nixpkgs/1a1a6e280ff8f744a0bf5e2fb32a1fb1775b54e5";
     # Build Codex from the fork that contains the execution-tool transcript renderer.
 
@@ -128,7 +128,7 @@
       # Pinned before 2026-11-12, when upstream moved its core skills
       # (setup, workload, launch, triage, debug, ...) to
       # github:antithesishq/antithesis-plugin. Unpin once
-      # modules/tooling/ai/shared-skills.nix takes them from the plugin.
+      # modules/tooling/ai/shared/shared-skills.nix takes them from the plugin.
       url = "github:antithesishq/antithesis-skills/4ee2746a46703185dc5cf6864cb1961db74d28eb";
       flake = false;
     };
@@ -221,7 +221,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     # Which nixpkgs pull requests touch a package and which channels they
-    # reached; modules/home/nixpkgs-watch.nix runs it. Not in nixpkgs.
+    # reached; modules/home/nix/nixpkgs-watch.nix runs it. Not in nixpkgs.
     npr = {
       url = "github:manic-systems/npr";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -247,7 +247,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     # Continuum IDE, the user's fork of T3 Code
-    # (modules/tooling/ai/continuum-ide.nix)
+    # (modules/tooling/ai/clients/continuum-ide.nix)
     continuum-ide = {
       url = "github:schlich/continuum-ide/continuum/game-dev-update";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -355,6 +355,7 @@
         builtins.toJSON (
           lib.mapAttrs (_: host: {
             profile = host.profile;
+            hardware = host.hardware;
             policy = host.policy;
             users = lib.mapAttrs (_: user: {
               classes = user.classes;
@@ -465,7 +466,7 @@
         }\n"
       );
       # What nixbot-register registers and writes, from homelab's
-      # modules/nixos/nixbot.nix: the GitHub App manifest, the topic nixbot
+      # modules/nixos/builds/nixbot.nix: the GitHub App manifest, the topic nixbot
       # imports, and where the App's IDs and secrets go.
       nixbotRegistration = denFlake.nixosConfigurations.homelab.config.dotfiles.nixbot.registration;
       nixbotRegister = import ./tools/nixbot-register {
@@ -478,7 +479,7 @@
         builtins.unsafeDiscardStringContext "${
           (denFlake.nixosConfigurations.homelab.extendModules {
             modules = [
-              ./modules/nixos/workbench-hub.nix
+              ./modules/nixos/services/workbench-hub.nix
               { services.marimohub.auth.allowedEmailDomains = [ "example.com" ]; }
             ];
           }).config.system.build.toplevel.drvPath

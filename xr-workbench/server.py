@@ -17,12 +17,12 @@ from mcp_trace import EVENTS, diagram
 
 
 FILES = {
-    "den/aspects/xr.nix": True,
+    "den/aspects/desktop/xr.nix": True,
     "templates/devenv/devenv.nix": True,
     "templates/default/flake.nix": True,
     "den/inventory.nix": False,
     "flake.nix": False,
-    "modules/nixos/base.nix": False,
+    "modules/nixos/base/base.nix": False,
     "docs/architecture.md": False,
 }
 COMMANDS = {
@@ -98,7 +98,7 @@ class Workbench:
                         name
                         for name in [
                             "AGENTS.md",
-                            "modules/tooling/ai/global-agent-instructions.md",
+                            "modules/tooling/ai/shared/global-agent-instructions.md",
                         ]
                         if (self.repo / name).is_file()
                     ],
