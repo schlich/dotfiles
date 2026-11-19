@@ -1,6 +1,6 @@
 { config, inputs, ... }:
 
-# dicta, the tape recorder for spoken review notes: Mod+M in niri/config.kdl
+# dicta, the tape recorder for spoken review notes: Mod+M in niri/binds.nix
 # records a take, the Claude Code hook (on with programs.claude-code) attaches
 # it to the next prompt, and desktop.nix places the bar's recorder light.
 {

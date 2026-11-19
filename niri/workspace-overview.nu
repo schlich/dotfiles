@@ -1,7 +1,11 @@
-# The session launcher (Mod+0; see `session.nu overview`): lists sessions by
-# the Mod+<digit> that reaches them, the Johnny Decimal areas and categories from
-# the knowledge base's hubs, and ~/Projects by workspace tag, then leaves a shell
-# where `project DIR` opens one. Run `overview` to list again.
+# The session launcher (Mod+Alt+K; see `session.nu overview`): draws the seven
+# areas where their keys sit, lists the Johnny Decimal areas and categories
+# from the knowledge base's hubs and ~/Projects by workspace tag, then leaves
+# a shell where `project DIR` opens one. Run `overview` to list again.
+
+# The areas by direction, and the key for each direction, written beside this
+# script from niri/binds.nix when it is installed (modules/home/files.nix).
+const areas_file = path self areas.json
 
 def workspace_snapshot [] {
     let result = (^niri msg --json workspaces | complete)
@@ -9,31 +13,34 @@ def workspace_snapshot [] {
         print $"Niri workspace query failed: ($result.stderr | str trim)"
         return
     }
-
-    # The focused output's workspaces, drawn as the numpad grid Mod+KP_N uses.
     let workspaces = ($result.stdout | from json)
     let output = ($workspaces | where is_focused | get 0?.output)
     let here = ($workspaces | where output == $output)
-    let cell = {|index|
-        let workspace = ($here | where idx == $index | get 0?)
-        let marker = if $workspace == null { " " } else if $workspace.is_focused { "●" } else { " " }
-        let name = if $workspace == null { "·" } else { $workspace.name | default "(unnamed)" }
-        $"($marker)($index) ($name | str substring 0..<16)" | fill --width 22
+    if not ($areas_file | path exists) {
+        print $"Sessions: ($here | where name != null | get name | str join ', ')"
+        return
     }
 
-    print "Sessions (Mod+KP_N, Mod+Alt+H/J/K/L to step)"
-    for row in [[7 8 9] [4 5 6] [1 2 3]] {
-        print $"  ($row | each {|index| do $cell $index } | str join ' ')"
+    # ● is the focused area, ○ one with a workspace, · one not visited yet.
+    let seats = (open $areas_file)
+    let cell = {|direction|
+        let name = ($seats.areas | get $direction)
+        let workspace = ($here | where name == $name | get 0?)
+        let marker = if $workspace == null { "·" } else if $workspace.is_focused { "●" } else { "○" }
+        $"($marker) ($seats.keys | get $direction) ($name)" | fill --width 14
     }
-    let beyond = ($here | where idx > 9 and name != null)
-    if ($beyond | is-not-empty) {
-        print $"  Beyond the grid: ($beyond | get name | str join ', ')"
+    print "Areas (Mod+Alt+key selects, add Shift to carry the column)"
+    print $"         (do $cell nw)(do $cell ne)"
+    print $"  (do $cell w)(do $cell centre)(do $cell e)"
+    print $"         (do $cell sw)(do $cell se)"
+    let others = ($here | where name != null and name not-in ($seats.areas | values))
+    if ($others | is-not-empty) {
+        print $"  Projects open: ($others | get name | str join ', ')"
     }
 }
 
-# The Johnny Decimal system: each area's hub in the knowledge base, by the
-# Mod+<digit> that reaches it, with the categories its list names ("- 83 Money" or
-# "- [83 Money](83-money.md)").
+# The Johnny Decimal system: each area's hub in the knowledge base, with the
+# categories its list names ("- 83 Money" or "- [83 Money](83-money.md)").
 def system_snapshot [] {
     let root = ($env.KB_ROOT? | default ($env.HOME | path join kb))
     let hubs = (glob $"($root)/[0-9][0-9]-[0-9][0-9]-*.md" | sort)
@@ -60,11 +67,22 @@ def project_snapshot [] {
         let frontmatter = (open --raw $note | parse --regex '(?s)^---\n(?P<yaml>.*?)\n---' | get 0?.yaml)
         if $frontmatter != null { try { $frontmatter | from yaml | select path workspaces } catch { null } }
     } | compact)
-    let order = [work research xr nix ai shell career personal inbox]
-    for workspace in $order {
-        let names = ($notes | where $workspace in $it.workspaces | get path | path basename | sort -i)
+    # Each area with the tags it gathers; notes still carry the tags of the
+    # nine places the areas replaced.
+    let tags = [
+        [area tags];
+        [home [home shell inbox]]
+        [work [work]]
+        [research [research]]
+        [nix [nix]]
+        [ai [ai]]
+        [xr [xr]]
+        [life [life career personal]]
+    ]
+    for row in $tags {
+        let names = ($notes | where {|note| $row.tags | any {|tag| $tag in $note.workspaces } } | get path | path basename | sort -i)
         if ($names | is-not-empty) {
-            print $"  ($workspace): ($names | str join ' · ')"
+            print $"  ($row.area): ($names | str join ' · ')"
         }
     }
 
@@ -74,7 +92,7 @@ def project_snapshot [] {
     if ($untagged | is-not-empty) {
         print $"  untagged: ($untagged | sort -i | str join ' · ')"
     }
-    print "\n`project NAME` opens a project session. Mod+0 closes this."
+    print "\n`project NAME` opens a project session. Mod+Alt+K closes this."
 }
 
 def overview [] {

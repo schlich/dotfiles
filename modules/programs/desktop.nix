@@ -116,8 +116,18 @@ in
             shadow = true;
             capsule = true;
             capsule_fill = "surface_variant";
-            start = [ "launcher" ];
-            center = [ "taskbar" ];
+            # niri's navigation hints (noctalia/plugins/niri-hints) sit on the
+            # edge each key points to: Y and U in this bar's corners, K in
+            # its middle, H and L on the side bars, N, J and M along the
+            # bottom. Only navigation is shown; Mod+/ has the other keys.
+            start = [
+              "hint_nw"
+              "launcher"
+            ];
+            center = [
+              "hint_out"
+              "taskbar"
+            ];
             # dicta's recorder light (programs/dicta.nix) leads, so REC and
             # its keys sit in view.
             end = [
@@ -128,6 +138,7 @@ in
               "group:tools"
               "thepunkoff/pomodoro:widget"
               "clock"
+              "hint_ne"
             ];
             capsule_group = [
               {
@@ -167,12 +178,31 @@ in
             capsule = false;
             # Unset lanes fall back to Noctalia's default widgets, so clear them.
             start = [ ];
-            center = [ "workspaces" ];
+            center = [
+              "hint_w"
+              "workspaces"
+            ];
             end = [ ];
             dead_zone.actions = {
               scroll_up = "exec niri msg action focus-workspace-up";
               scroll_down = "exec niri msg action focus-workspace-down";
             };
+          };
+
+          # The east edge holds only the hint for the key that points there.
+          east = {
+            position = "right";
+            thickness = 28;
+            margin_ends = 320;
+            margin_edge = 10;
+            padding = 6;
+            background_opacity = 0.86;
+            radius = 14;
+            shadow = true;
+            capsule = false;
+            start = [ ];
+            center = [ "hint_e" ];
+            end = [ ];
           };
 
           # Telemetry, AI usage, and the system controls.
@@ -189,6 +219,7 @@ in
             capsule = true;
             capsule_fill = "surface_variant";
             start = [
+              "hint_sw"
               "cpu"
               "cpu_temp"
               "memory"
@@ -196,9 +227,9 @@ in
               "network_rx"
               "network_tx"
             ];
-            # Keybinding hints stay out of the desktop bar; the niri-hints
-            # plugin stays installed until a replacement is chosen.
+            # The inward hint also names niri's mode.
             center = [
+              "hint_in"
               "codex_usage"
               "claude_usage"
             ];
@@ -211,6 +242,7 @@ in
               "brightness"
               "battery"
               "session"
+              "hint_se"
             ];
           };
         };
@@ -255,85 +287,107 @@ in
           auto-start-breaks = false;
         };
 
-        widget = {
-          # Tabbed niri columns hide their windows, so list this workspace's windows.
-          taskbar = {
-            only_active_workspace = true;
-            show_window_title = true;
-            window_title_max_width = 140;
-            taskbar_max_width = 720;
+        widget =
+          # One hint per navigation key, named for the seat it shows.
+          lib.listToAttrs (
+            map
+              (
+                seat:
+                lib.nameValuePair "hint_${seat}" {
+                  type = "schlich/niri-hints:seat";
+                  inherit seat;
+                }
+              )
+              [
+                "nw"
+                "ne"
+                "w"
+                "e"
+                "sw"
+                "se"
+                "in"
+                "out"
+              ]
+          )
+          // {
+            # Tabbed niri columns hide their windows, so list this workspace's windows.
+            taskbar = {
+              only_active_workspace = true;
+              show_window_title = true;
+              window_title_max_width = 140;
+              taskbar_max_width = 720;
+            };
+            privacy.hide_inactive = true;
+            workspaces = {
+              # A vertical bar has no room for names, and pill_scale cannot widen
+              # the pills, so each pill shows niri's workspace number and keeps
+              # the workspace's name in the tooltip.
+              style = "regular";
+              show_labels = true;
+              label_source = "id";
+              hide_when_empty = true;
+              labels_only_when_occupied = true;
+              max_label_chars = 13;
+              pill_scale = 1.0;
+              active_pill_size = 2.75;
+              inactive_pill_size = 1.15;
+              focused_color = "primary";
+              occupied_color = "secondary";
+              empty_color = "outline";
+              urgent_color = "error";
+            };
+            # `both` adds the pace beside the reset countdown: ↑N is N
+            # percentage points ahead of the window's elapsed time, ↓N behind.
+            codex_usage = {
+              type = "felipeartur/ai-usagebar:bar";
+              vendor = "openai";
+              visualization = "gauge";
+              extras = "both";
+              show_name = true;
+            };
+            claude_usage = {
+              type = "felipeartur/ai-usagebar:bar";
+              vendor = "anthropic";
+              visualization = "gauge";
+              extras = "both";
+              show_name = true;
+            };
+            cpu = {
+              type = "sysmon";
+              stat = "cpu_usage";
+              visualization = "graph";
+              show_value = true;
+            };
+            cpu_temp = {
+              type = "sysmon";
+              stat = "cpu_temp";
+              visualization = "none";
+              show_value = true;
+            };
+            disk = {
+              type = "sysmon";
+              stat = "disk_used_pct";
+              path = "/";
+              visualization = "gauge";
+              show_value = true;
+            };
+            memory = {
+              type = "sysmon";
+              stat = "ram_pct";
+              visualization = "gauge";
+              show_value = true;
+            };
+            network_rx = {
+              type = "sysmon";
+              stat = "net_rx";
+              network_speed_compact = true;
+            };
+            network_tx = {
+              type = "sysmon";
+              stat = "net_tx";
+              network_speed_compact = true;
+            };
           };
-          privacy.hide_inactive = true;
-          workspaces = {
-            # A vertical bar has no room for names, and pill_scale cannot widen
-            # the pills, so each pill shows niri's Mod+<digit> number and keeps
-            # the workspace's name in the tooltip.
-            style = "regular";
-            show_labels = true;
-            label_source = "id";
-            hide_when_empty = true;
-            labels_only_when_occupied = true;
-            max_label_chars = 13;
-            pill_scale = 1.0;
-            active_pill_size = 2.75;
-            inactive_pill_size = 1.15;
-            focused_color = "primary";
-            occupied_color = "secondary";
-            empty_color = "outline";
-            urgent_color = "error";
-          };
-          # `both` adds the pace beside the reset countdown: ↑N is N
-          # percentage points ahead of the window's elapsed time, ↓N behind.
-          codex_usage = {
-            type = "felipeartur/ai-usagebar:bar";
-            vendor = "openai";
-            visualization = "gauge";
-            extras = "both";
-            show_name = true;
-          };
-          claude_usage = {
-            type = "felipeartur/ai-usagebar:bar";
-            vendor = "anthropic";
-            visualization = "gauge";
-            extras = "both";
-            show_name = true;
-          };
-          cpu = {
-            type = "sysmon";
-            stat = "cpu_usage";
-            visualization = "graph";
-            show_value = true;
-          };
-          cpu_temp = {
-            type = "sysmon";
-            stat = "cpu_temp";
-            visualization = "none";
-            show_value = true;
-          };
-          disk = {
-            type = "sysmon";
-            stat = "disk_used_pct";
-            path = "/";
-            visualization = "gauge";
-            show_value = true;
-          };
-          memory = {
-            type = "sysmon";
-            stat = "ram_pct";
-            visualization = "gauge";
-            show_value = true;
-          };
-          network_rx = {
-            type = "sysmon";
-            stat = "net_rx";
-            network_speed_compact = true;
-          };
-          network_tx = {
-            type = "sysmon";
-            stat = "net_tx";
-            network_speed_compact = true;
-          };
-        };
       };
     };
     wlogout.enable = true;

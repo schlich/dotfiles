@@ -21,7 +21,6 @@ input {
             options "caps:swapescape"
         }
 
-        // The numpad digits address the workspace grid (Mod+KP_1..9).
         numlock
     }
 
@@ -105,11 +104,12 @@ input {
 }
 
 // No workspaces are declared, so a login starts with one workspace. A
-// session (niri/session.nu) names the next empty workspace when it is opened
-// from the session launcher (Mod+0); Mod+<digit> reaches workspaces by index.
-// Version control, coding agents and the session launcher are not workspaces
-// but stacks or overlays within one: Mod+G, Mod+A and Mod+0. Mod+O is Niri's
-// own overview of every workspace.
+// session (niri/session.nu) names the next empty workspace when it is first
+// visited: one of the seven areas (Mod+Alt plus its direction key), or a
+// project from the session launcher (Mod+Alt+K). Version control, coding
+// agents and the session launcher are not workspaces but stacks or overlays
+// within one: Mod+G, Mod+A and Mod+Alt+K. Mod+O is Niri's own overview of
+// every workspace.
 
 // Settings that influence how windows are positioned and sized.
 // Find more information on the wiki:
@@ -265,7 +265,6 @@ layout {
 // Add lines like this to spawn processes at startup.
 // Note that running niri as a session supports xdg-desktop-autostart,
 // which may be more convenient to use.
-// See the binds section below for more spawn examples.
 // spawn-at-startup "noctalia-shell"
 
 // One plain terminal on the first workspace.
@@ -274,7 +273,7 @@ spawn-sh-at-startup "exec terminal --class niri.terminal --directory \"$HOME\""
 // Keep choice groups, such as the desktop coding agents, in one tabbed column.
 spawn-sh-at-startup "exec niri-desk watch-choices"
 
-// Publish the focus context and its keys for the status bar's hint line
+// Publish the mode and the navigation hints the bars show around the screen
 // (Noctalia plugin schlich/niri-hints).
 spawn-sh-at-startup "exec niri-keymap hints"
 
@@ -339,7 +338,7 @@ window-rule {
   clip-to-geometry true
 }
 
-// The session launcher (Mod+0) floats over whichever workspace summoned it.
+// The session launcher (Mod+Alt+K) floats over whichever workspace summoned it.
 window-rule {
   match app-id=r#"^niri\.overview$"#
   open-floating true
@@ -367,8 +366,7 @@ window-rule {
 // Desktop coding agents are a choice group, so
 // `session.nu watch-choices` keeps them in one tabbed column beside the work,
 // Mod+A brings that column to the focused workspace, Mod+Shift+A floats one
-// over it instead (`session.nu peek`), and Mod+J/K or Mod+Alt+1..4 switch
-// agents.
+// over it instead (`session.nu peek`), and Mod+J/K switch agents.
 window-rule {
   match app-id=r#"^com\.t3tools\.T3Code$"#
   default-column-width { proportion 0.4; }
@@ -404,361 +402,4 @@ window-rule {
     clip-to-geometry true
 }
 
-binds {
-    // Keys consist of modifiers separated by + signs, followed by an XKB key name
-    // in the end. To find an XKB name for a particular key, you may use a program
-    // like wev.
-    //
-    // "Mod" is a special modifier equal to Super when running on a TTY, and to Alt
-    // when running as a winit window.
-    //
-    // Most actions that you can bind here can also be invoked programmatically with
-    // `niri msg action do-something`.
-
-    // Mod-Shift-/, which is usually the same as Mod-?, opens a curated
-    // shortcut reference. Labels identify the object each shortcut affects so
-    // the overlay remains useful in the current window/workspace context.
-    Mod+Shift+Slash { show-hotkey-overlay; }
-    // Mod-/ draws the same binds as an emoji keyboard, one modifier layer at a
-    // time (niri/keymap.nu; emoji in niri/keymap-emoji.nuon).
-    Mod+Slash hotkey-overlay-title="Keymap: emoji keyboard of these binds" { spawn-sh "exec niri-desk keymap"; }
-
-    // Applications and session controls.
-    // Workspaces are terminal sessions (niri/session.nu): Mod+Return opens a
-    // shell in the session's directory, Mod+Shift+Return rebuilds its layout.
-    Mod+Return hotkey-overlay-title="Terminal in this session" { spawn-sh "exec niri-desk open"; }
-    Mod+Shift+Return hotkey-overlay-title="Restore session layout" { spawn-sh "exec niri-desk restore"; }
-    Mod+Alt+Return hotkey-overlay-title="Terminal stacked in this column" { spawn-sh "exec niri-desk open --stack"; }
-    Mod+Space { spawn-sh "noctalia msg panel-toggle launcher"; }
-    Mod+S { spawn-sh "noctalia msg panel-toggle control-center"; }
-    Mod+Shift+S { spawn-sh "noctalia msg settings-toggle"; }
-    Mod+B { spawn "google-chrome" "--profile-directory=Default"; }
-    // Mod+Alt+H/J/K/L belong to the session grid below, so lock sits on Esc's
-    // family: Mod+Escape toggles passthrough, Mod+Shift+Escape leaves the desk.
-    Mod+Shift+Escape hotkey-overlay-title="Lock screen" { spawn "swaylock"; }
-    // Alt+Tab is niri's recent-windows switcher (see recent-windows above).
-
-    // You can also use a shell. Do this if you need pipes, multiple commands, etc.
-    // Note: the entire command goes as a single argument in the end.
-    // Mod+T { spawn "bash" "-c" "notify-send hello && exec alacritty"; }
-
-    // Example volume keys mappings for PipeWire & WirePlumber.
-    // The allow-when-locked=true property makes them work even when the session is locked.
-    // XF86AudioRaiseVolume allow-when-locked=true { spawn "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "0.1+"; }
-    // XF86AudioLowerVolume allow-when-locked=true { spawn "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "0.1-"; }
-    // XF86AudioMute        allow-when-locked=true { spawn "wpctl" "set-mute" "@DEFAULT_AUDIO_SINK@" "toggle"; }
-    // XF86AudioMicMute     allow-when-locked=true { spawn "wpctl" "set-mute" "@DEFAULT_AUDIO_SOURCE@" "toggle"; }
-    // Audio & Brightness
-    XF86AudioRaiseVolume allow-when-locked=true { spawn-sh "noctalia msg volume-up"; }
-    XF86AudioLowerVolume allow-when-locked=true { spawn-sh "noctalia msg volume-down"; }
-    XF86AudioMute allow-when-locked=true { spawn-sh "noctalia msg volume-mute"; }
-    XF86MonBrightnessUp allow-when-locked=true { spawn-sh "noctalia msg brightness-up"; }
-    XF86MonBrightnessDown allow-when-locked=true { spawn-sh "noctalia msg brightness-down"; }
-
-    Mod+Q { close-window; }
-
-    // Navigate with arrows or HJKL; add Shift to move the focused column/window.
-    // HJKL is canonical: the arrow, Page and wheel twins below keep working
-    // but stay out of the hotkey overlay (hotkey-overlay-title=null), so it
-    // lists one key per action.
-    Mod+Left  hotkey-overlay-title=null { focus-column-left; }
-    Mod+Down  hotkey-overlay-title=null { focus-window-down; }
-    Mod+Up    hotkey-overlay-title=null { focus-window-up; }
-    Mod+Right hotkey-overlay-title=null { focus-column-right; }
-    Mod+H     { focus-column-left; }
-    Mod+J     { focus-window-down; }
-    Mod+K     { focus-window-up; }
-    Mod+L     { focus-column-right; }
-
-    Mod+Shift+Left  hotkey-overlay-title=null { move-column-left; }
-    Mod+Shift+Down  hotkey-overlay-title=null { move-window-down; }
-    Mod+Shift+Up    hotkey-overlay-title=null { move-window-up; }
-    Mod+Shift+Right hotkey-overlay-title=null { move-column-right; }
-    Mod+Shift+H     { move-column-left; }
-    Mod+Shift+J     { move-window-down; }
-    Mod+Shift+K     { move-window-up; }
-    Mod+Shift+L     { move-column-right; }
-
-    // Alternative commands that move across workspaces when reaching
-    // the first or last window in a column.
-    // Mod+J     { focus-window-or-workspace-down; }
-    // Mod+K     { focus-window-or-workspace-up; }
-    // Mod+Ctrl+J     { move-window-down-or-to-workspace-down; }
-    // Mod+Ctrl+K     { move-window-up-or-to-workspace-up; }
-
-    Mod+Home { focus-column-first; }
-    Mod+End { focus-column-last; }
-    Mod+Ctrl+Home { move-column-to-first; }
-    Mod+Ctrl+End { move-column-to-last; }
-
-    Mod+Ctrl+Left  hotkey-overlay-title=null { focus-monitor-left; }
-    Mod+Ctrl+Down  hotkey-overlay-title=null { focus-monitor-down; }
-    Mod+Ctrl+Up    hotkey-overlay-title=null { focus-monitor-up; }
-    Mod+Ctrl+Right hotkey-overlay-title=null { focus-monitor-right; }
-    Mod+Ctrl+H     { focus-monitor-left; }
-    Mod+Ctrl+J     { focus-monitor-down; }
-    Mod+Ctrl+K     { focus-monitor-up; }
-    Mod+Ctrl+L     { focus-monitor-right; }
-
-    Mod+Shift+Ctrl+Left  hotkey-overlay-title=null { move-column-to-monitor-left; }
-    Mod+Shift+Ctrl+Down  hotkey-overlay-title=null { move-column-to-monitor-down; }
-    Mod+Shift+Ctrl+Up    hotkey-overlay-title=null { move-column-to-monitor-up; }
-    Mod+Shift+Ctrl+Right hotkey-overlay-title=null { move-column-to-monitor-right; }
-    Mod+Shift+Ctrl+H     { move-column-to-monitor-left; }
-    Mod+Shift+Ctrl+J     { move-column-to-monitor-down; }
-    Mod+Shift+Ctrl+K     { move-column-to-monitor-up; }
-    Mod+Shift+Ctrl+L     { move-column-to-monitor-right; }
-
-    // Alternatively, there are commands to move just a single window:
-    // Mod+Shift+Ctrl+Left  { move-window-to-monitor-left; }
-    // ...
-
-    // And you can also move a whole workspace to another monitor:
-    // Mod+Shift+Ctrl+Left  { move-workspace-to-monitor-left; }
-    // ...
-
-    // Page keys use Niri's native navigation; U/I skip empty workspaces.
-    Mod+Page_Down hotkey-overlay-title=null { focus-workspace-down; }
-    Mod+Page_Up   hotkey-overlay-title=null { focus-workspace-up; }
-    Mod+U         hotkey-overlay-title="Next session with windows" { spawn-sh "exec niri-desk workspace down"; }
-    Mod+I         hotkey-overlay-title="Previous session with windows" { spawn-sh "exec niri-desk workspace up"; }
-    Mod+Ctrl+U { move-column-to-workspace-down; }
-    Mod+Ctrl+I { move-column-to-workspace-up; }
-
-    // Logitech thumb buttons focus the column to the left and right.
-    MouseBack    hotkey-overlay-title=null { focus-column-left; }
-    MouseForward hotkey-overlay-title=null { focus-column-right; }
-
-    // Alternatively, there are commands to move just a single window:
-    // Mod+Ctrl+U { move-window-to-workspace-down; }
-    // ...
-
-    Mod+Shift+Page_Down hotkey-overlay-title=null { move-workspace-down; }
-    Mod+Shift+Page_Up   hotkey-overlay-title=null { move-workspace-up; }
-    Mod+Shift+U         { move-workspace-down; }
-    Mod+Shift+I         { move-workspace-up; }
-
-    // You can bind mouse wheel scroll ticks using the following syntax.
-    // These binds will change direction based on the natural-scroll setting.
-    //
-    // To avoid scrolling through workspaces really fast, you can use
-    // the cooldown-ms property. The bind will be rate-limited to this value.
-    // You can set a cooldown on any bind, but it's most useful for the wheel.
-    Mod+WheelScrollDown      cooldown-ms=150 hotkey-overlay-title=null { focus-workspace-down; }
-    Mod+WheelScrollUp        cooldown-ms=150 hotkey-overlay-title=null { focus-workspace-up; }
-    Mod+Ctrl+WheelScrollDown cooldown-ms=150 hotkey-overlay-title=null { move-column-to-workspace-down; }
-    Mod+Ctrl+WheelScrollUp   cooldown-ms=150 hotkey-overlay-title=null { move-column-to-workspace-up; }
-
-    // Leave the bare wheel unbound: binding WheelScrollLeft/Right without
-    // modifiers stopped all vertical scrolling (2026.10.20.2).
-    Mod+WheelScrollRight      hotkey-overlay-title=null { focus-column-right; }
-    Mod+WheelScrollLeft       hotkey-overlay-title=null { focus-column-left; }
-    Mod+Ctrl+WheelScrollRight hotkey-overlay-title=null { move-column-right; }
-    Mod+Ctrl+WheelScrollLeft  hotkey-overlay-title=null { move-column-left; }
-
-    // Usually scrolling up and down with Shift in applications results in
-    // horizontal scrolling; these binds replicate that.
-    Mod+Shift+WheelScrollDown      hotkey-overlay-title=null { focus-column-right; }
-    Mod+Shift+WheelScrollUp        hotkey-overlay-title=null { focus-column-left; }
-    Mod+Ctrl+Shift+WheelScrollDown hotkey-overlay-title=null { move-column-right; }
-    Mod+Ctrl+Shift+WheelScrollUp   hotkey-overlay-title=null { move-column-left; }
-
-    // Similarly, you can bind touchpad scroll "ticks".
-    // Touchpad scrolling is continuous, so for these binds it is split into
-    // discrete intervals.
-    // These binds are also affected by touchpad's natural-scroll, so these
-    // example binds are "inverted", since we have natural-scroll enabled for
-    // touchpads by default.
-    // Mod+TouchpadScrollDown { spawn "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "0.02+"; }
-    // Mod+TouchpadScrollUp   { spawn "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "0.02-"; }
-
-    // Mod+KP_<digit> (or Mod+<digit>) focuses the workspace at that index,
-    // Mod+Shift+KP_<digit> (or Mod+Shift+<digit>) moves the focused column
-    // there, and Mod+Alt+H/J/K/L or the arrows step across indices 1-9 as a
-    // numpad grid. Mod+0, the key under the grid, opens the session launcher.
-    Mod+KP_1 { focus-workspace 1; }
-    Mod+KP_2 { focus-workspace 2; }
-    Mod+KP_3 { focus-workspace 3; }
-    Mod+KP_4 { focus-workspace 4; }
-    Mod+KP_5 { focus-workspace 5; }
-    Mod+KP_6 { focus-workspace 6; }
-    Mod+KP_7 { focus-workspace 7; }
-    Mod+KP_8 { focus-workspace 8; }
-    Mod+KP_9 { focus-workspace 9; }
-    Mod+KP_0 hotkey-overlay-title="Session launcher" { spawn-sh "exec niri-desk overview"; }
-    Mod+Shift+KP_1 { move-column-to-workspace 1; }
-    Mod+Shift+KP_2 { move-column-to-workspace 2; }
-    Mod+Shift+KP_3 { move-column-to-workspace 3; }
-    Mod+Shift+KP_4 { move-column-to-workspace 4; }
-    Mod+Shift+KP_5 { move-column-to-workspace 5; }
-    Mod+Shift+KP_6 { move-column-to-workspace 6; }
-    Mod+Shift+KP_7 { move-column-to-workspace 7; }
-    Mod+Shift+KP_8 { move-column-to-workspace 8; }
-    Mod+Shift+KP_9 { move-column-to-workspace 9; }
-    Mod+1 { focus-workspace 1; }
-    Mod+2 { focus-workspace 2; }
-    Mod+3 { focus-workspace 3; }
-    Mod+4 { focus-workspace 4; }
-    Mod+5 { focus-workspace 5; }
-    Mod+6 { focus-workspace 6; }
-    Mod+7 { focus-workspace 7; }
-    Mod+8 { focus-workspace 8; }
-    Mod+9 { focus-workspace 9; }
-    Mod+0 hotkey-overlay-title="Session launcher" { spawn-sh "exec niri-desk overview"; }
-    Mod+Shift+1 { move-column-to-workspace 1; }
-    Mod+Shift+2 { move-column-to-workspace 2; }
-    Mod+Shift+3 { move-column-to-workspace 3; }
-    Mod+Shift+4 { move-column-to-workspace 4; }
-    Mod+Shift+5 { move-column-to-workspace 5; }
-    Mod+Shift+6 { move-column-to-workspace 6; }
-    Mod+Shift+7 { move-column-to-workspace 7; }
-    Mod+Shift+8 { move-column-to-workspace 8; }
-    Mod+Shift+9 { move-column-to-workspace 9; }
-    Mod+Alt+H     hotkey-overlay-title="Grid: session to the left" { spawn-sh "exec niri-desk grid left"; }
-    Mod+Alt+L     hotkey-overlay-title="Grid: session to the right" { spawn-sh "exec niri-desk grid right"; }
-    Mod+Alt+K     hotkey-overlay-title="Grid: session above" { spawn-sh "exec niri-desk grid up"; }
-    Mod+Alt+J     hotkey-overlay-title="Grid: session below" { spawn-sh "exec niri-desk grid down"; }
-    Mod+Alt+Left  hotkey-overlay-title=null { spawn-sh "exec niri-desk grid left"; }
-    Mod+Alt+Right hotkey-overlay-title=null { spawn-sh "exec niri-desk grid right"; }
-    Mod+Alt+Up    hotkey-overlay-title=null { spawn-sh "exec niri-desk grid up"; }
-    Mod+Alt+Down  hotkey-overlay-title=null { spawn-sh "exec niri-desk grid down"; }
-
-    // Niri's overview: every workspace zoomed out. The session launcher (the
-    // grid, ~/Projects by workspace tag, and `project DIR`) is Mod+0.
-    Mod+O repeat=false hotkey-overlay-title="Overview: all workspaces" { toggle-overview; }
-
-    // Letters are stacks within the focused workspace, named for what they
-    // hold. Mod+G focuses this workspace's VCS stack (Git/GitHub), opening it
-    // if needed; again switches between its JJ and GitHub tabs.
-    Mod+G hotkey-overlay-title="VCS stack: JJ / GitHub" { spawn-sh "exec niri-desk vcs"; }
-    // Mod+A brings the coding agents' stack here, starting T3 Code if none is
-    // open; again switches between agents. Mod+Shift+A peeks instead: it
-    // floats the last used agent over this workspace without reflowing its
-    // columns, and again docks it back. While peeking, Mod+A swaps agents.
-    Mod+A hotkey-overlay-title="Agents stack: T3 Code" { spawn-sh "exec niri-desk agents"; }
-    Mod+Shift+A hotkey-overlay-title="Peek at an agent" { spawn-sh "exec niri-desk peek agents"; }
-    // Mod+N opens this workspace's notes: its hub in ~/kb, or the index
-    // outside the nine places. Mod+Shift+N captures a new note into today's
-    // daily note, floating over this workspace; again brings it back here.
-    Mod+N hotkey-overlay-title="Notes: this area's hub" { spawn-sh "exec niri-desk notes"; }
-    Mod+Shift+N hotkey-overlay-title="New note: capture to today" { spawn-sh "exec niri-desk capture"; }
-
-    // Mod+M is dicta's tape recorder: it starts a spoken note about the
-    // focused window and the selected text, and again stops and transcribes
-    // it. Mod+Shift+M discards the take. The bar shows REC and these keys
-    // while recording. Niri cannot bind Esc to discard without taking Esc
-    // from every app, so discard has its own chord.
-    Mod+M repeat=false hotkey-overlay-title="Recorder: start or stop a spoken note" { spawn "dicta" "toggle"; }
-    Mod+Shift+M repeat=false hotkey-overlay-title="Recorder: discard this take" { spawn "dicta" "cancel"; }
-    Mod+Alt+M repeat=false hotkey-overlay-title="Minimize window" { spawn "noctalia" "msg" "plugin" "local/minimizer:actions" "all" "minimize"; }
-    Mod+Ctrl+M repeat=false hotkey-overlay-title="Minimized windows" { spawn "noctalia" "msg" "plugin" "local/minimizer:actions" "all" "windows"; }
-
-    // Mod+D is HEX's dictation, which types what you say into the focused
-    // field: it starts listening, and again stops and types; Esc cancels.
-    // HEX reads the keyboard itself and does not start with the session, so
-    // this bind starts its service on the first press and otherwise only
-    // keeps Mod+D from reaching the focused window. HEX's shortcut must be
-    // Super+D in Toggle mode, set once in its Settings (Mod+Shift+D). Its
-    // pill shows while it listens.
-    Mod+D repeat=false hotkey-overlay-title="Dictate: start or stop typing by voice" { spawn-sh "systemctl --user is-active --quiet hex.service || exec hex start"; }
-    Mod+Shift+D repeat=false hotkey-overlay-title="Dictate: settings, shortcut, and model" { spawn "hex" "app"; }
-
-    // Alternatively, there are commands to move just a single window:
-    // Mod+Ctrl+1 { move-window-to-workspace 1; }
-
-    // Jumps back to the previously focused window, across workspaces. The
-    // previous workspace is the area's own key again
-    // (workspace-auto-back-and-forth).
-    Mod+Tab hotkey-overlay-title="Back to the previous window" { focus-window-previous; }
-
-    // The following binds move the focused window in and out of a column.
-    // If the window is alone, they will consume it into the nearby column to the side.
-    // If the window is already in a column, they will expel it out.
-    Mod+BracketLeft { consume-or-expel-window-left; }
-    Mod+BracketRight { consume-or-expel-window-right; }
-
-    // Consume one window from the right to the bottom of the focused column.
-    Mod+Comma  { consume-window-into-column; }
-    // Expel the bottom window from the focused column to the right.
-    Mod+Period { expel-window-from-column; }
-
-    Mod+R { switch-preset-column-width; }
-    Mod+Shift+R { switch-preset-window-height; }
-    Mod+Ctrl+R { reset-window-height; }
-    Mod+F { maximize-column; }
-    Mod+Shift+F { fullscreen-window; }
-
-    // Expand the focused column to space not taken up by other fully visible columns.
-    // Makes the column "fill the rest of the space".
-    Mod+Ctrl+F { expand-column-to-available-width; }
-
-    Mod+C { center-column; }
-
-    // Finer width adjustments.
-    // This command can also:
-    // * set width in pixels: "1000"
-    // * adjust width in pixels: "-5" or "+5"
-    // * set width as a percentage of screen width: "25%"
-    // * adjust width as a percentage of screen width: "-10%" or "+10%"
-    // Pixel sizes use logical, or scaled, pixels. I.e. on an output with scale 2.0,
-    // set-column-width "100" will make the column occupy 200 physical screen pixels.
-    Mod+Minus { set-column-width "-10%"; }
-    Mod+Equal { set-column-width "+10%"; }
-
-    // Finer height adjustments when in column with other windows.
-    Mod+Shift+Minus { set-window-height "-10%"; }
-    Mod+Shift+Equal { set-window-height "+10%"; }
-
-    // Move the focused window between the floating and the tiling layout.
-    Mod+V { toggle-window-floating; }
-    Mod+Shift+V { switch-focus-between-floating-and-tiling; }
-
-    // Toggle tabbed column display mode.
-    // Windows in this column will appear as vertical tabs,
-    // rather than stacked on top of each other.
-    Mod+W { toggle-column-tabbed-display; }
-
-    // Alternatives for the same job (same app, or a choice group in
-    // session.nu) belong in one tabbed column; gather them into this one.
-    Mod+Alt+W hotkey-overlay-title="Tab this window's choices together" { spawn-sh "exec niri-desk stack-choices"; }
-
-    // Jump straight to a window, or tab, of the focused column by position.
-    Mod+Alt+1 hotkey-overlay-title="Window 1 of this column" { focus-window-in-column 1; }
-    Mod+Alt+2 hotkey-overlay-title="Window 2 of this column" { focus-window-in-column 2; }
-    Mod+Alt+3 hotkey-overlay-title="Window 3 of this column" { focus-window-in-column 3; }
-    Mod+Alt+4 hotkey-overlay-title="Window 4 of this column" { focus-window-in-column 4; }
-
-    // Cycle the windows, or tabs, of the focused column with the wheel.
-    Mod+Alt+WheelScrollDown cooldown-ms=150 hotkey-overlay-title=null { focus-window-down; }
-    Mod+Alt+WheelScrollUp   cooldown-ms=150 hotkey-overlay-title=null { focus-window-up; }
-
-    // Actions to switch layouts.
-    // Note: if you uncomment these, make sure you do NOT have
-    // a matching layout switch hotkey configured in xkb options above.
-    // Having both at once on the same hotkey will break the switching,
-    // since it will switch twice upon pressing the hotkey (once by xkb, once by niri).
-    // Mod+Space       { switch-layout "next"; }
-    // Mod+Shift+Space { switch-layout "prev"; }
-
-    Print { screenshot; }
-    Ctrl+Print { screenshot-screen; }
-    Alt+Print { screenshot-window; }
-
-    // Applications such as remote-desktop clients and software KVM switches may
-    // request that niri stops processing the keyboard shortcuts defined here
-    // so they may, for example, forward the key presses as-is to a remote machine.
-    // It's a good idea to bind an escape hatch to toggle the inhibitor,
-    // so a buggy application can't hold your session hostage.
-    //
-    // The allow-inhibiting=false property can be applied to other binds as well,
-    // which ensures niri always processes them, even when an inhibitor is active.
-    Mod+Escape allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
-
-    // The quit action will show a confirmation dialog to avoid accidental exits.
-    Mod+Shift+E { quit; }
-    Ctrl+Alt+Delete { spawn "missioncenter"; }
-
-    // Powers off the monitors. To turn them back on, do any input like
-    // moving the mouse or pressing any other key.
-    Mod+Shift+P { power-off-monitors; }
-}
+// The binds block is generated from niri/binds.nix and appended to this file.

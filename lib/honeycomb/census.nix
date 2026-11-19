@@ -50,12 +50,20 @@ let
     builtins.length (builtins.filter (line: builtins.match pattern line != null) (linesOf file));
 
   lock = builtins.fromJSON (builtins.readFile (root + "/flake.lock"));
+
+  # niri's binds are a tree (niri/binds.nix): count its cells, and each
+  # cell's members.
+  niri = (import (root + "/niri/binds.nix") { inherit lib; }).tree;
+  cellSizes =
+    prefix: cell:
+    lib.optionals (cell ? cells) (
+      [ (lib.nameValuePair "${prefix}:${cell.name}" (builtins.length cell.cells)) ]
+      ++ lib.concatMap (cellSizes prefix) cell.cells
+    );
 in
-lib.listToAttrs (directories "")
+lib.listToAttrs (directories "" ++ cellSizes "niri" niri)
 // {
   "flake:inputs" = builtins.length (builtins.attrNames lock.nodes.${lock.root}.inputs);
-  "niri:binds" =
-    matching "[[:space:]]+(Mod|Alt|Ctrl|Super|Shift|XF86|Print)[A-Za-z0-9+_]*[[:space:]].*[{].*" "niri/config.kdl";
   "niri:window-rules" = matching "window-rule .*" "niri/config.kdl";
   "agents:sections" = matching "## .*" "AGENTS.md";
 }

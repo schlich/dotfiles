@@ -101,6 +101,23 @@ in
     expected = "c";
   };
 
+  testStrayChordsNameEachMismatch = {
+    expr = honeycomb.strayChords {
+      desktop = {
+        w = [
+          "Mod+H"
+          "Mod+Alt+H"
+        ];
+        sw = [ "Mod+Alt+B" ];
+      };
+      terminal.up = [ "Alt+K" ];
+    };
+    expected = [
+      "desktop binds sw to Mod+Alt+B, not to N"
+      "terminal names a seat, up, that does not exist"
+    ];
+  };
+
   testCrowdedNamesOnlyCellsOverSix = {
     expr = honeycomb.crowded (
       cell "root" [

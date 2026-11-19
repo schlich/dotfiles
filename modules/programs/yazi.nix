@@ -1,4 +1,9 @@
-{ lib, pkgs, ... }:
+{
+  lib,
+  options,
+  pkgs,
+  ...
+}:
 
 let
   wrapWithConfig = import ../../lib/wrap-with-config.nix { inherit lib pkgs; };
@@ -85,6 +90,30 @@ in
           };
         }
         {
+          # The status bar names the mode in full, as every tool here does:
+          # the preset's Status:mode with its three-letter label spelled out.
+          name = "init.lua";
+          path = pkgs.writeText "yazi-init.lua" ''
+            function Status:mode()
+            	local mode
+            	if self._tab.mode.is_select then
+            		mode = "SELECT"
+            	elseif self._tab.mode.is_unset then
+            		mode = "UNSET"
+            	else
+            		mode = "NORMAL"
+            	end
+
+            	local style = self:style()
+            	return ui.Line {
+            		ui.Span(th.status.sep_left.open):fg(style.main:bg()):bg(App.bg()),
+            		ui.Span(" " .. mode .. " "):style(style.main),
+            		ui.Span(th.status.sep_left.close):fg(style.main:bg()):bg(style.alt:bg()),
+            	}
+            end
+          '';
+        }
+        {
           name = "plugins/piper.yazi";
           path = pkgs.yaziPlugins.piper;
         }
@@ -109,8 +138,22 @@ in
     };
   };
 
-  dotfiles.retiredHomeFiles = [
-    ".config/yazi/yazi.toml"
-    ".config/yazi/keymap.toml"
-  ];
+  dotfiles = {
+    retiredHomeFiles = [
+      ".config/yazi/yazi.toml"
+      ".config/yazi/keymap.toml"
+    ];
+  }
+  # Yazi's own keys already match the honeycomb's four straight directions:
+  # H and L move between the parent and child columns, J and K down and up
+  # the list. Y is its yank, so the diagonals stay unbound. The shell home
+  # on servers has Yazi and no input stack.
+  // lib.optionalAttrs (options.dotfiles ? input) {
+    input.navigation.files = {
+      w = [ "H" ];
+      e = [ "L" ];
+      inward = [ "J" ];
+      outward = [ "K" ];
+    };
+  };
 }

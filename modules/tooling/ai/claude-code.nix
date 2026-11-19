@@ -387,7 +387,15 @@ in
       type = "http";
       url = "https://mcp.cloudflare.com/mcp";
     };
-    settings = { };
+    # Claude Code owns settings.json, so activation merges only the declared
+    # keys into it, and a declared array replaces the runtime one. The ask
+    # list is declared so a blanket `Bash` rule cannot creep back: ask rules
+    # apply whatever a hook returns, and Claude Code checks Monitor commands
+    # against Bash rules, so `Bash` overrode the prefer-nushell guard's allow
+    # for `watch-job` Monitors. The guard decides every other Bash call;
+    # privileged commands keep their approval prompt.
+    mutableSettings = true;
+    settings.permissions.ask = [ "Bash(sudo *)" ];
     context = ./global-agent-instructions.md;
     skills = import ./shared-skills.nix { inherit inputs; };
     agents.trunk-triage = lib.replaceStrings [ "Use GPT-5.6 Luna for" ] [ "Use this agent for" ] (

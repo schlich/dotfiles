@@ -54,8 +54,34 @@ in
   config = {
     dotfiles.nixpkgsWatch.luvus.reason = "replace modules/programs/luvus-package.nix (the luvus input's package, rewrapped so its runtime tools follow PATH instead of leading it) with pkgs.luvus, rewrapping that too if its wrapper prepends, and drop the luvus input";
 
+    # After the prefix, the honeycomb's keys (lib/honeycomb/README.md). Luvus
+    # already puts panes on H, L, J and K; these move tabs to Y and U, the
+    # keys under the tab bar, and workspaces to N and M. Rebinding a command
+    # drops its other default keys, and the two commands that held Y and M
+    # move to their capitals' neighbours.
+    dotfiles.input.navigation.multiplexer = lib.mkIf (multiplexer != null) (
+      lib.mapAttrs (_: key: [ "${multiplexer.leader}+${key}" ]) {
+        w = "H";
+        e = "L";
+        inward = "J";
+        outward = "K";
+        nw = "Y";
+        ne = "U";
+        sw = "N";
+        se = "M";
+      }
+    );
+
     dotfiles.luvus.settings = {
       inherit prefix;
+      keybindings = {
+        prev_tab = "y";
+        next_tab = "u";
+        prev_node = "n";
+        next_node = "m";
+        copy_mode = "C";
+        open_mission = "O";
+      };
       # Follow Ghostty's palette, as the editor and shell do.
       theme = "terminal";
       language = "en";

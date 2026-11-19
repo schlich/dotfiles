@@ -60,6 +60,15 @@ let
     "terminal"
     "editor"
   ];
+
+  # The eight navigation keys every context shares (lib/honeycomb): six
+  # directions and two depths.
+  honeycomb = import ../../lib/honeycomb { inherit lib; };
+  # Every chord a context declares for a seat that ends on another key.
+  strayChords = honeycomb.strayChords cfg.navigation;
+  unknownNavigation = builtins.filter (name: !(builtins.elem name names)) (
+    builtins.attrNames cfg.navigation
+  );
 in
 {
   options.dotfiles.input = {
@@ -88,13 +97,46 @@ in
           implementation = config.dotfiles.primary.editor;
           scope = "modal";
         }
+        # Yazi takes the whole terminal while it runs, and its keys need no
+        # leader.
+        {
+          name = "files";
+          implementation = "yazi";
+          scope = "modal";
+          leader = "none";
+        }
       ];
       description = "Input contexts in order from outermost to innermost.";
+    };
+    navigation = mkOption {
+      type = types.attrsOf (types.attrsOf (types.listOf types.str));
+      default = { };
+      example = {
+        terminal.w = [ "Alt+H" ];
+      };
+      description = ''
+        The chords each context binds to the shared navigation keys, by
+        context name and then by seat: the six directions (`w`, `e`, `nw`,
+        `ne`, `sw`, `se`), `inward` and `outward`. Evaluation fails when a
+        chord ends on a key other than the seat's, so a direction means the
+        same key in every tool.
+      '';
     };
   };
 
   config = mkIf cfg.enable {
+    # Niri's navigation comes from its bind tree.
+    dotfiles.input.navigation.desktop = (import ../../niri/binds.nix { inherit lib; }).navigation;
+
     assertions = [
+      {
+        assertion = strayChords == [ ];
+        message = "Navigation keys differ from the honeycomb's: ${lib.concatStringsSep "; " strayChords}";
+      }
+      {
+        assertion = unknownNavigation == [ ];
+        message = "Navigation is declared for contexts that do not exist: ${lib.concatStringsSep ", " unknownNavigation}";
+      }
       {
         assertion = missing == [ ];
         message = "Input stack is missing required contexts: ${lib.concatStringsSep ", " missing}";
@@ -120,8 +162,12 @@ in
     # The static hierarchy, for hint bars and mode indicators to read.
     xdg.dataFile."input-stack.json".source = pkgs.writeText "input-stack.json" (
       builtins.toJSON {
-        version = 1;
+        version = 2;
         propagation = "outer contexts consume only their own namespace before forwarding inward";
+        # The navigation grammar every context shares.
+        honeycomb = {
+          inherit (honeycomb) limit keys modes;
+        };
         contexts = map (context: {
           inherit (context)
             name
@@ -129,6 +175,7 @@ in
             scope
             leader
             ;
+          navigation = cfg.navigation.${context.name} or { };
         }) contexts;
       }
     );

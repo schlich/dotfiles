@@ -59,27 +59,31 @@ discard muscle memory before the new grammar is proven on one tool.
 
 ### Task 2: One key grammar, exported
 
-**Files:** Modify: `modules/programs/input-stack.nix`, `docs/input.md`
+**Files:** Modify: `modules/programs/input-stack.nix`, `lib/honeycomb/`,
+`niri/binds.nix`, `docs/input.md`
 
-- [ ] Add the six direction keys, the two depth keys, and the `NORMAL` and
+- [x] Add the six direction keys, the two depth keys, and the `NORMAL` and
   `SELECT` mode names to the exported `input-stack.json`, from `lib/honeycomb`.
-- [ ] Fail evaluation when a context binds one of the eight keys to anything but
-  its honeycomb meaning within that context's namespace.
+- [x] Fail evaluation when a context declares a chord for a seat that ends on a
+  key other than the seat's (`dotfiles.input.navigation`). A context that
+  declares nothing is not checked, so Task 4 adds each tool's entry as it adopts
+  the keys.
 
 ### Task 3: Niri binds as a tree
 
-**Files:** Modify: `niri/config.kdl`, `niri/keymap.nu`,
-`niri/keymap-emoji.nuon`, `niri/session.nu`, `docs/niri.md`
+**Files:** Create: `niri/binds.nix`. Modify: `niri/config.kdl`,
+`niri/keymap.nu`, `niri/keymap-emoji.nuon`, `niri/session.nu`,
+`niri/workspace-overview.nu`, `modules/programs/desktop.nix`, `docs/niri.md`
 
-- [ ] Group the binds into at most six named cells of at most six verbs or cells
-  each, and generate the `binds` block from that tree.
-- [ ] Lay the areas out as one centre and six neighbours, reached with Mod plus
-  a direction key, and cycle sessions in spiral order.
-- [ ] Split motions from verbs: Mod plus a motion selects a column, window or
-  area; a verb acts on the selection, and `SELECT` extends it.
-- [ ] Decide where niri's active keys are shown. The author's rule forbids the
-  Noctalia bar and leaves the compositor's display undecided, so this step needs
-  their answer before it starts.
+- [x] Group the binds into six named cells of at most six members each, and
+  generate the `binds` block from that tree (`niri/binds.nix`).
+- [x] Lay the areas out as one centre and six neighbours, each reached with
+  Mod+Alt plus its direction key. Cycling sessions was dropped, not moved to
+  spiral order: the launcher covers it.
+- [x] Split motions from verbs: Mod selects, Shift acts on the selection. niri
+  has no modes of its own, so there is no `SELECT`; Shift stands in for it.
+- [x] Show niri's mode and at most six keys on the Noctalia bar, as the author
+  decided on 2026-11-19 (`schlich/niri-hints`).
 
 ### Task 4: Terminal, multiplexer, editor and file manager
 
@@ -87,12 +91,14 @@ discard muscle memory before the new grammar is proven on one tool.
 `modules/programs/luvus.nix`, `modules/tooling/editors/helix.nix`,
 `modules/programs/yazi.nix`, `tests/bombadil/`
 
-- [ ] Give each tool the same direction and depth keys behind its leader, with
-  the mode and the live keys on its own hint line.
-- [ ] Keep Helix's native motions inside buffers; apply the direction keys to
-  its window, buffer and picker navigation.
-- [ ] Extend the Bombadil keymap checks to assert at most six choices per level
-  and `Esc` to `NORMAL`.
+- [x] Give each tool the same direction and depth keys behind its leader. Each
+  declares them in `dotfiles.input.navigation`, which the check from Task 2
+  holds to the shared keys. Ghostty has no status line and shows nothing.
+- [x] Keep Helix's native motions inside buffers; Y and U in its window menu
+  move between buffers. Its pickers are unchanged.
+- [x] The Bombadil keymap checks expect the full mode names and `Esc` to
+  `NORMAL`. They do not assert six choices per level: Helix's and Yazi's own
+  menus are longer, and trimming them is out of scope.
 
 ### Task 5: Den and modules
 

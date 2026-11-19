@@ -13,9 +13,10 @@ web or desktop apps built for the user.
 - Always show the current mode, for example as a labeled indicator in the
   tool's own status line or hint line, so the user never has to guess which
   keymap is active.
-- Never put keybinding hints or mode indicators in the desktop shell's bar
-  (Noctalia). How to show the compositor's (niri's) active keybinds is still
-  undecided: do not add a display for them, and say so instead.
+- The desktop shell's bars (Noctalia) show the compositor's (niri's) mode
+  and its navigation keys only, each hint on the screen edge its key points
+  to. Never put another tool's keybinding hints or mode indicator there:
+  those stay inside the tool that owns them.
 - Toggle modes the same way everywhere. Use one consistent key or chord to
   enter each kind of mode. Make pressing that key again, or `Esc`, return to
   the base mode, and give the base mode the same name in every tool. Do not

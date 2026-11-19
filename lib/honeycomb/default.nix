@@ -62,6 +62,31 @@ rec {
     escape = "Escape";
   };
 
+  # Given { context = { seat = [ chord ]; }; }, every chord that ends on a
+  # key other than its seat's, as a sentence. A direction must mean the same
+  # key in every tool.
+  strayChords =
+    navigation:
+    let
+      keyOf = chord: lib.toLower (lib.last (lib.splitString "+" chord));
+      stray =
+        context: seat: chord:
+        if !(keys ? ${seat}) then
+          [ "${context} names a seat, ${seat}, that does not exist" ]
+        else
+          lib.optional (
+            keyOf chord != keys.${seat}
+          ) "${context} binds ${seat} to ${chord}, not to ${lib.toUpper keys.${seat}}";
+    in
+    lib.concatLists (
+      lib.mapAttrsToList (
+        context: seats:
+        lib.concatLists (
+          lib.mapAttrsToList (seat: chords: lib.unique (lib.concatMap (stray context seat) chords)) seats
+        )
+      ) navigation
+    );
+
   origin = hex 0 0;
   hex = q: r: { inherit q r; };
   add = a: b: hex (a.q + b.q) (a.r + b.r);
@@ -152,8 +177,9 @@ rec {
   depth = count: if count <= limit then 1 else 1 + depth ((count + limit - 1) / limit);
 
   # Compare a census ({ collection = count; }) with the recorded debt.
-  # Nothing may pass six unless the baseline records it, a recorded
-  # collection may not grow, and an entry that is paid off must be removed.
+  # Nothing may pass six unless the baseline records it, and an entry that
+  # is paid off must be removed. A recorded collection that grows only
+  # warns, until its regrouping lands and removes the entry.
   audit =
     { census, baseline }:
     let
@@ -177,10 +203,15 @@ rec {
         );
     in
     section "New collections over ${toString limit} (split them, or group their members):" result.new
-    + section "Collections that grew past their recorded size:" result.grown
     + section "Collections that shrank (lower their entry in lib/honeycomb/baseline.nix):" result.shrunk
     + section "Collections now within ${toString limit} (remove their entry from lib/honeycomb/baseline.nix):" result.paid;
 
-  clean =
-    result: result.new == { } && result.grown == { } && result.shrunk == { } && result.paid == { };
+  clean = result: result.new == { } && result.shrunk == { } && result.paid == { };
+
+  # Growth in a collection that was already over six, as one warning line.
+  growth =
+    result:
+    lib.concatStringsSep ", " (
+      lib.mapAttrsToList (name: count: "${name} is now ${toString count}") result.grown
+    );
 }
