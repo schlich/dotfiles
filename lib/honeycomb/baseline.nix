@@ -31,7 +31,8 @@
   "dir:tools/jj-graph/tests" = 10;
   "dir:workbench" = 9;
   "dir:xr-workbench/web" = 16;
-  "flake:inputs" = 52;
+  # 53 since rex was added (2026-11-19), by the user's choice.
+  "flake:inputs" = 53;
   "niri:binds" = 169;
   "niri:window-rules" = 7;
 }
