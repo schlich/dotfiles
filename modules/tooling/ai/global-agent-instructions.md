@@ -6,13 +6,16 @@ multiplexers, editors, file managers, window managers, launchers, TUIs, and
 web or desktop apps built for the user.
 
 - Whenever keybindings are active in the current context and state, show the
-  shortcuts available there on screen. Follow Zellij's model: a persistent
-  hint bar or status line lists the keys that work in the current mode and
-  changes as the mode or focus changes. A help overlay the user has to open
-  does not meet this rule.
+  shortcuts available there on screen, inside the tool that owns them. Follow
+  Zellij's model: the tool's own hint line or status line lists the keys that
+  work in the current mode and changes as the mode or focus changes. A help
+  overlay the user has to open does not meet this rule.
 - Always show the current mode, for example as a labeled indicator in the
-  status bar or hint line, so the user never has to guess which keymap is
-  active.
+  tool's own status line or hint line, so the user never has to guess which
+  keymap is active.
+- Never put keybinding hints or mode indicators in the desktop shell's bar
+  (Noctalia). How to show the compositor's (niri's) active keybinds is still
+  undecided: do not add a display for them, and say so instead.
 - Toggle modes the same way everywhere. Use one consistent key or chord to
   enter each kind of mode. Make pressing that key again, or `Esc`, return to
   the base mode, and give the base mode the same name in every tool. Do not
@@ -21,7 +24,7 @@ web or desktop apps built for the user.
 - When configuring or building something with keybindings, include the
   on-screen hints and mode indicator. If a tool cannot display them, say so
   and propose the closest alternative, such as a which-key popup that appears
-  automatically after a leader key or a status-bar module.
+  automatically after a leader key.
 
 # Shell conventions
 

@@ -195,10 +195,9 @@ in
               "network_rx"
               "network_tx"
             ];
-            # The hint line (noctalia/plugins/niri-hints) names niri's focus
-            # context as the mode and lists the keys that work in it.
+            # Keybinding hints stay out of the desktop bar; the niri-hints
+            # plugin stays installed until a replacement is chosen.
             center = [
-              "schlich/niri-hints:hints"
               "codex_usage"
               "claude_usage"
             ];
