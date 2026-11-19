@@ -138,19 +138,36 @@
 ## Workarounds for nixpkgs
 
 - When this repository takes a package from another flake input, builds it
-  itself, or overrides it because nixpkgs lags or lacks it, declare
+  itself, or overrides it because nixpkgs lags, lacks, or ships it without
+  something this configuration needs, declare
   `dotfiles.nixpkgsWatch.<attribute>` in the same module, with `version` set
   to the version the workaround provides and `reason` naming what to remove.
-  Remove the entry with the workaround. `modules/home/nixpkgs-watch.nix`
-  documents the option.
+  For an override that patches a package or turns on a feature, set `fix` to
+  the upstream pull request or commit whose release ends it. `input` names
+  the flake input it comes from (by default the input of the entry's name),
+  and `repo` a local build's GitHub repository. Remove the entry with the
+  workaround. `modules/home/nixpkgs-watch.nix` documents the options.
+- The `nixpkgs-watch-coverage` flake check fails on a workaround nothing
+  covers: a flake input's package, a local build of upstream source, or an
+  `overrideAttrs`. An entry named for a file (`foo` for `foo-package.nix`)
+  covers it; a file whose entry lives elsewhere says `# nixpkgs-watch: NAME`,
+  and one that is no workaround says
+  `# nixpkgs-watch: not a workaround: REASON`. A flake input of the user's own
+  goes in `dotfiles.nixpkgsWatchExempt` with its reason.
 - A build warning starting "nixpkgs now ships" means the locked nixpkgs has
   caught up: propose removing that workaround as its own topic.
-- `nixpkgs-watch` prints the last daily npr report (open pull requests, ones
-  that reached unstable, failures, and `related` ones that only mention the
-  package but that Jev judged, from the title, to bear on the workaround);
-  `nixpkgs-watch check` refreshes it. Read
-  it when the user asks about a watched package or before updating the
-  nixpkgs input.
+- The daily timer queues a luvus task for each workaround that can go: when
+  nixpkgs ships it, when nixpkgs' release (or the locked input) contains its
+  `fix`, or when upstream's own build of an input that follows this flake's
+  nixpkgs is in cache.nixos.org, FlakeHub Cache, or a cache upstream's
+  flake.nix declares. It never starts them, and skips one already on the
+  board for the same package and way out.
+- `nixpkgs-watch` prints the last daily report (open pull requests, ones that
+  reached unstable, failures, `related` ones that only mention the package but
+  that Jev judged, from the title, to bear on the workaround, and what
+  upstream offers: the fix's state, a cached build, a FlakeHub release, a new
+  flake.nix); `nixpkgs-watch check` refreshes it. Read it when the user asks
+  about a watched package or before updating the nixpkgs input.
 
 ## Privileged command approval
 

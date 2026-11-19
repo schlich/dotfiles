@@ -57,8 +57,11 @@ Then follow the report's `next`:
 | `overlays.*` | the overlay list in `den/aspects/home-manager-host.nix` |
 | not a flake (skills, scripts) | `"${inputs.NAME}/PATH"`; skills go in `modules/tooling/ai/shared-skills.nix` |
 
-When the input replaces or overrides something nixpkgs ships, declare
-`dotfiles.nixpkgsWatch.NAME` in the same module.
+When the input's packages replace, override, or add to what nixpkgs ships,
+declare `dotfiles.nixpkgsWatch.NAME` in the same module, with `input` when
+NAME is not the input's name; the `nixpkgs-watch-coverage` flake check fails
+otherwise. An input of the user's own goes in `dotfiles.nixpkgsWatchExempt`
+instead.
 
 `flake-add` writes `flake.nix` itself, so Claude Code's checkpoints do not
 cover that edit; Git does, so commit before running it. A `flake.nix` whose
