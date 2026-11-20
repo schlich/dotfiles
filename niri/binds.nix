@@ -233,6 +233,9 @@ let
       (with' "repeat=false" (
         bind "Mod+Shift+D" "Dictate: settings, shortcut, and model" ''spawn "hex" "app"''
       ))
+      # The mouse's thumb button, which logid sends as F20 (hosts/asus). It
+      # runs the transcript through HEX's Output steps, as the shortcut does.
+      (with' "repeat=false" (twin "F20" ''spawn-sh "hex start >/dev/null && exec hex dictation toggle"''))
     ])
     (member "screenshot" [
       (bind "Print" "Screenshot: pick a region" "screenshot")

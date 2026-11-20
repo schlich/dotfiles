@@ -1,5 +1,8 @@
-{ ... }:
+{ pkgs, ... }:
 
+let
+  libconfig = (pkgs.formats.libconfig { }).lib;
+in
 {
   system.nixos.tags = [ "asus" ];
 
@@ -29,6 +32,27 @@
   boot.extraModprobeConfig = ''
     options btusb enable_autosuspend=n
   '';
+
+  # The MX Master 3S's thumb (gesture) button sends nothing until a HID++
+  # driver diverts it. logid turns it into F20, which niri binds to HEX
+  # dictation (niri/binds.nix, the "dictate" member).
+  services.logiops = {
+    enable = true;
+    config.devices = libconfig.mkList [
+      {
+        name = "MX Master 3S";
+        buttons = libconfig.mkList [
+          {
+            cid = libconfig.mkHex 195; # 0xc3, the gesture button
+            action = {
+              type = "Keypress";
+              keys = libconfig.mkArray [ "KEY_F20" ];
+            };
+          }
+        ];
+      }
+    ];
+  };
 
   networking.hostName = "asus";
   networking.networkmanager = {
