@@ -56,6 +56,75 @@ rec {
     outward = "o";
   };
 
+  # The seven areas everything is filed under: home at the centre and six
+  # around it, in compass order. Every tool that groups work groups it by
+  # these: niri's area workspaces (niri/binds.nix), the knowledge base's
+  # hubs, and Claude's sidebar sections (`honeycomb sidebar`). `folders` are
+  # directories under $HOME whose sessions belong to the area, the first one
+  # the area's workspace opens in; `absorbs` names sidebar sections the area
+  # took over.
+  areas = [
+    {
+      cell = "centre";
+      name = "home";
+      title = "Home";
+      hub = "index";
+      folders = [ ];
+      absorbs = [ "Desktop & terminal" ];
+    }
+    {
+      cell = "e";
+      name = "work";
+      title = "Work";
+      hub = "work";
+      folders = [ ];
+      absorbs = [ ];
+    }
+    {
+      cell = "se";
+      name = "research";
+      title = "Research";
+      hub = "research";
+      folders = [ "kb" ];
+      absorbs = [ "Knowledge base" ];
+    }
+    {
+      cell = "sw";
+      name = "nix";
+      title = "Nix";
+      hub = "nix";
+      folders = [ "dotfiles" ];
+      absorbs = [
+        "Hosts & Nix"
+        "CI & landing"
+      ];
+    }
+    {
+      cell = "w";
+      name = "ai";
+      title = "AI & agents";
+      hub = "ai";
+      folders = [ ];
+      absorbs = [ "Agent tooling" ];
+    }
+    {
+      cell = "nw";
+      name = "xr";
+      title = "XR";
+      hub = "xr";
+      folders = [ ];
+      absorbs = [ ];
+    }
+    {
+      cell = "ne";
+      name = "life";
+      title = "Life";
+      hub = "personal";
+      folders = [ ];
+      absorbs = [ "Stuff for friends" ];
+    }
+  ];
+
   # Select first, then act: a motion moves or extends the selection, and a
   # verb applies to whatever is selected. The base mode has one name
   # everywhere, and Esc returns to it.

@@ -790,6 +790,23 @@
               ${pkgs.nushell}/bin/nu --no-config-file ${./tests/keymap.nu} ${src}/niri/keymap.nu
               touch "$out"
             '';
+        # `honeycomb sidebar` and `sessions` refiling a fixture of Claude's
+        # sidebar by area (lib/honeycomb/runtime).
+        nushell-honeycomb =
+          pkgs.runCommand "nushell-honeycomb-check"
+            {
+              nativeBuildInputs = [ pkgs.nushell ];
+            }
+            ''
+              export HOME="$TMPDIR/home"
+              mkdir -p "$HOME"
+              ${pkgs.nushell}/bin/nu --no-config-file ${./lib/honeycomb/runtime/tests.nu} ${./lib/honeycomb/runtime/honeycomb.nu} ${
+                pkgs.writeText "honeycomb-areas.json" (
+                  builtins.toJSON (import ./lib/honeycomb { inherit lib; }).areas
+                )
+              }
+              touch "$out"
+            '';
         nushell-parse =
           let
             # profile-drift.nu is a fragment the flake completes, so check

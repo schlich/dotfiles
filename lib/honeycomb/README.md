@@ -75,11 +75,46 @@ work is under way is counted by the `honeycomb` command, in any Git
 repository:
 
 - `honeycomb census` counts the open topics (branches trunk does not hold
-  yet), the task worktrees and the open luvus tasks, and says which pass six.
+  yet), the task worktrees, the open luvus tasks and luvus's workspaces, and
+  Claude's live sessions in each area, and says which pass six.
 - `honeycomb prune` lists the branches trunk already holds, with their
-  worktrees, and `--yes` removes them. It leaves a worktree with uncommitted
-  work, or one luvus says is in use.
+  worktrees, and `--yes` removes them and closes the luvus workspaces open on
+  them. It leaves a worktree with uncommitted work, or one luvus says is in
+  use.
 - `jj topics` lists the same open topics in a Jujutsu repository.
+
+## Seven areas
+
+Work is filed under seven areas, `areas` in `default.nix`: home at the
+centre and six around it, the same flower as one cell and its neighbours.
+Every tool that groups work groups it by these, so one map serves them all:
+
+| Area        | Cell   | niri (Mod+Alt) | Knowledge base hub | Claude sidebar |
+| ----------- | ------ | -------------- | ------------------ | -------------- |
+| Home        | centre | I              | `index`            | Home           |
+| Work        | e      | L              | `work`             | Work           |
+| Research    | se     | M              | `research`         | Research       |
+| Nix         | sw     | N              | `nix`              | Nix            |
+| AI & agents | w      | H              | `ai`               | AI & agents    |
+| XR          | nw     | Y              | `xr`               | XR             |
+| Life        | ne     | U              | `personal`         | Life           |
+
+niri seats each area on its direction (`niri/binds.nix`) and opens it in
+the area's first folder (`niri/session.nu`). Claude's sidebar mirrors the
+flower on the in-out axis: pinned sessions, then the seven areas, then the
+unfiled list, which is the outward side where new sessions arrive.
+
+- `honeycomb sidebar` shows the sidebar refiled by area, and `--apply`
+  writes it, keeping a copy of the old file, while the Claude desktop app is
+  closed. The sections an area `absorbs` merge into it. An unfiled session
+  joins the area whose folders hold its directory, else the area most of its
+  project's filed sessions are in, so dragging one session into a section
+  files its project from then on. Project folders stay out of this public
+  repository; the sidebar is where they are filed.
+- `honeycomb sessions` lists each area's live sessions and the ones to
+  archive: those whose directory is gone, and those past the sixth most
+  recently active in their area. `--archive` archives them, also with the
+  app closed.
 
 The tiling is that three-dimensional space seen along its diagonal. One step
 along each of the three axes together returns to where it started, which is
