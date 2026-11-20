@@ -4,8 +4,6 @@
   inputs = {
     # Build Codex from the fork that contains the execution-tool transcript renderer.
     codex.url = "github:schlich/codex/d0e6fb56b19d";
-    # Upstream packages OpenCode 2; nixpkgs still ships 1.x.
-    opencode.url = "github:anomalyco/opencode/v2.0.30";
     # Anthropic's official Linux build of Claude Desktop, which nixpkgs lacks.
     llm-agents.url = "github:numtide/llm-agents.nix";
     # Continuum IDE, the user's fork of T3 Code

@@ -254,7 +254,6 @@
         "continuum-ide": "continuum-ide",
         "llm-agents": "llm-agents",
         "nixpkgs-t3code": "nixpkgs-t3code",
-        "opencode": "opencode",
         "paseo": "paseo"
       },
       "locked": {
@@ -1783,25 +1782,6 @@
         "owner": "YPares",
         "ref": "master",
         "repo": "nushellWith",
-        "type": "github"
-      }
-    },
-    "opencode": {
-      "inputs": {
-        "nixpkgs": "nixpkgs"
-      },
-      "locked": {
-        "lastModified": 1792093702,
-        "narHash": "sha256-w8OJztN6XRZs5lhDneJ3VAOtCEuP/gzFU9kzUQJU01E=",
-        "owner": "anomalyco",
-        "repo": "opencode",
-        "rev": "f16ef9ad8878279ea2be3cfab7baeed97aef61aa",
-        "type": "github"
-      },
-      "original": {
-        "owner": "anomalyco",
-        "ref": "v2.0.30",
-        "repo": "opencode",
         "type": "github"
       }
     },
