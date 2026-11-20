@@ -20,7 +20,7 @@
   };
 
   # HEX's Wayland hotkeys read every /dev/input/event* node, which exposes all
-  # keyboard input to processes running as this user (modules/programs/hex.nix).
+  # keyboard input to processes running as this user (modules/programs/desktop/hex.nix).
   users.users.schlich.extraGroups = [ "input" ];
 
   # The Realtek Bluetooth controller (USB 13d3:3556) gets reset by xHCI

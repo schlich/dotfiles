@@ -12,7 +12,7 @@ pkgs.testers.runNixOSTest {
   nodes.machine =
     { lib, pkgs, ... }:
     {
-      imports = [ ../modules/nixos/system-switch.nix ];
+      imports = [ ../modules/nixos/fleet/system-switch.nix ];
 
       services.openssh.enable = true;
       # Committing installs the boot loader; the VM boots its kernel directly.

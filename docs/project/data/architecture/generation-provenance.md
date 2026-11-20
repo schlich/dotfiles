@@ -12,7 +12,7 @@ sources:
   resource: deploy/generation.nu
   title: The generation command
 - id: home-activate
-  resource: modules/home/nix.nix
+  resource: modules/home/nix/nix.nix
   title: home-activate, which writes the Home Manager log
 ---
 

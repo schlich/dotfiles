@@ -30,14 +30,14 @@ client still pairs with the server before it can do anything.
 
 Where it is declared:
 
-| Piece                                  | File                                                                        |
-| -------------------------------------- | --------------------------------------------------------------------------- |
-| Which hosts run a server               | `den/inventory.nix` (`services.t3code`)                                     |
-| Package (0.1.4, pinned)                | `flake.nix` input `nixpkgs-t3code`, `modules/tooling/ai/t3code-package.nix` |
-| User unit, MCP entries, desktop client | `modules/tooling/ai/t3code-server.nix`                                      |
-| Linger and Tailscale Serve             | `modules/nixos/t3code.nix`                                                  |
-| Den wiring and fleet URLs              | `den/aspects/t3code.nix`                                                    |
-| Nushell helpers (`t3f`)                | `modules/tooling/ai/scripts/t3f.nu`                                         |
+| Piece                                  | File                                                                                       |
+| -------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Which hosts run a server               | `den/inventory.nix` (`services.t3code`)                                                    |
+| Package (0.1.4, pinned)                | `flake.nix` input `nixpkgs-t3code`, `modules/tooling/ai/clients/t3code/t3code-package.nix` |
+| User unit, MCP entries, desktop client | `modules/tooling/ai/clients/t3code/t3code-server.nix`                                      |
+| Linger and Tailscale Serve             | `modules/nixos/services/t3code.nix`                                                        |
+| Den wiring and fleet URLs              | `den/aspects/services/t3code.nix`                                                          |
+| Nushell helpers (`t3f`)                | `modules/tooling/ai/scripts/t3f.nu`                                                        |
 
 ### Why these choices
 

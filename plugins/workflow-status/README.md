@@ -1,7 +1,7 @@
 # Workflow status
 
 An OpenCode TUI plugin that keeps the agentic workflow around a session in
-view and current. `modules/tooling/ai/plugins.nix` installs it as
+view and current. `modules/tooling/ai/shared/plugins.nix` installs it as
 `~/.config/opencode/plugins/workflow-status`, a directory whose `tui.tsx`
 entry OpenCode's TUI loads; its server skips a directory without a server
 entry.

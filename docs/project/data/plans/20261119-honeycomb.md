@@ -59,7 +59,7 @@ discard muscle memory before the new grammar is proven on one tool.
 
 ### Task 2: One key grammar, exported
 
-**Files:** Modify: `modules/programs/input-stack.nix`, `lib/honeycomb/`,
+**Files:** Modify: `modules/programs/desktop/input-stack.nix`, `lib/honeycomb/`,
 `niri/binds.nix`, `docs/input.md`
 
 - [x] Add the six direction keys, the two depth keys, and the `NORMAL` and
@@ -73,7 +73,8 @@ discard muscle memory before the new grammar is proven on one tool.
 
 **Files:** Create: `niri/binds.nix`. Modify: `niri/config.kdl`,
 `niri/keymap.nu`, `niri/keymap-emoji.nuon`, `niri/session.nu`,
-`niri/workspace-overview.nu`, `modules/programs/desktop.nix`, `docs/niri.md`
+`niri/workspace-overview.nu`, `modules/programs/desktop/desktop.nix`,
+`docs/niri.md`
 
 - [x] Group the binds into six named cells of at most six members each, and
   generate the `binds` block from that tree (`niri/binds.nix`).
@@ -88,8 +89,8 @@ discard muscle memory before the new grammar is proven on one tool.
 ### Task 4: Terminal, multiplexer, editor and file manager
 
 **Files:** Modify: `modules/tooling/terminals/ghostty.nix`,
-`modules/programs/luvus.nix`, `modules/tooling/editors/helix.nix`,
-`modules/programs/yazi.nix`, `tests/bombadil/`
+`modules/programs/multiplexers/luvus.nix`, `modules/tooling/editors/helix.nix`,
+`modules/programs/shell/yazi.nix`, `tests/bombadil/`
 
 - [x] Give each tool the same direction and depth keys behind its leader. Each
   declares them in `dotfiles.input.navigation`, which the check from Task 2
@@ -102,14 +103,20 @@ discard muscle memory before the new grammar is proven on one tool.
 
 ### Task 5: Den and modules
 
-**Files:** Modify: `den/aspects/`, `den/profile.nix`, `den/schema.nix`,
-`modules/nixos/`, `modules/home/`, `modules/programs/`, `modules/tooling/ai/`
+**Files:** Modify: `den/aspects/`, `den/model/profile.nix`,
+`den/model/schema.nix`, `modules/nixos/`, `modules/home/`, `modules/programs/`,
+`modules/tooling/ai/`
 
-- [ ] Group the 22 aspects and 36 NixOS modules into at most six named groups
-  each, by what a person looks for (for example fleet, builds, agents, desktop,
-  safety, base), keeping every host's closure unchanged.
-- [ ] Split the eight profile facts into hardware facts and capability facts.
-- [ ] Prove no host changed with `nix-suite diff` per host before delivery.
+- [x] Group the aspects and the NixOS, home, program and AI modules into at most
+  six named groups each (`modules/README.md` lists them); `den/` itself gains
+  `model/` for its schema, policy and profile. The `scripts` and `tests`
+  directories under `modules/tooling/ai` are still over six.
+- [x] Split the profile: `hardware` holds the GPU and whether the machine is
+  portable, and `profile` the six facts about its use.
+- [x] Prove no host changed. Every system's and home's derivation was compared
+  before and after with nix-diff, not built: the move changes only text that
+  names a moved file (comments in embedded scripts, and the paths
+  `nixpkgs-watch` records), and the profile split changes no derivation at all.
 
 ### Task 6: Flake inputs and the repository root
 
@@ -122,8 +129,8 @@ discard muscle memory before the new grammar is proven on one tool.
 
 ### Task 7: Runtime collections
 
-**Files:** Create: `tools/honeycomb.nu`. Modify: `modules/programs/vcs.nix`,
-`modules/programs/luvus.nix`
+**Files:** Create: `tools/honeycomb.nu`. Modify: `modules/programs/vcs/vcs.nix`,
+`modules/programs/multiplexers/luvus.nix`
 
 - [ ] `honeycomb census` counts branches, worktrees, luvus tasks, agent sessions
   and windows per area, and names the ones over six.
@@ -159,11 +166,11 @@ Verified anchor points (line numbers as of 2026-11-19):
 
 - `niri/config.kdl:407` — the `binds` block.
 - `niri/keymap.nu:14` — `niri-keymap hints`, the always-on hint source.
-- `modules/programs/input-stack.nix:67` — `dotfiles.input.contexts`.
+- `modules/programs/desktop/input-stack.nix:67` — `dotfiles.input.contexts`.
 - `modules/tooling/editors/helix.nix:68` — Helix `keys`.
 - `modules/tooling/terminals/ghostty.nix:21` — Ghostty `keybind`.
-- `modules/programs/yazi.nix:92` — yazi `keymap.toml`.
-- `den/profile.nix:76` — `behaviorAspects`.
-- `den/schema.nix:68` — `servicesType`.
+- `modules/programs/shell/yazi.nix:92` — yazi `keymap.toml`.
+- `den/model/profile.nix:76` — `behaviorAspects`.
+- `den/model/schema.nix:68` — `servicesType`.
 - `flake.nix:4` — `inputs`.
 - `flake.nix:719` — `checks`, with the two honeycomb checks.

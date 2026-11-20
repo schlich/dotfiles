@@ -12,7 +12,7 @@ an unreleased workflow here, run `CI_SCRIPT=/path/to/ci.nu ci ...`.
 
 The workflow is opt-in per repository. A repository opts in when JJ's config
 sets `ci.enable = true` there: `jj config set --repo ci.enable true` for one
-clone, or its path in `dotfiles.ci.repositories` (`modules/programs/ci.nix`),
+clone, or its path in `dotfiles.ci.repositories` (`modules/programs/vcs/ci.nix`),
 which scopes the key to every clone and workspace there through
 `--when.repositories` in the wrapped jj's config. `ci-enabled` reads the key.
 The Claude Code context-status hooks

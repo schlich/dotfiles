@@ -21,7 +21,7 @@ in
   ];
 
   # discord-digest's DISCORD_TOKEN= and ANTHROPIC_API_KEY= lines
-  # (modules/nixos/discord-digest.nix).
+  # (modules/nixos/homelab/discord-digest.nix).
   "discord-digest/env.age".publicKeys = [
     admin
     homelab

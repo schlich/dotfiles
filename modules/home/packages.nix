@@ -79,7 +79,7 @@ let
 in
 {
   home.packages = with pkgs; [
-    (callPackage ./openchamber.nix { })
+    (callPackage ./openchamber/openchamber.nix { })
     xdg-user-dirs
     bubblewrap
     antigravity-cli
@@ -140,10 +140,10 @@ in
     cachix
     cachixSeed
     inputs.xs.packages.${pkgs.stdenv.hostPlatform.system}.default
-    (import ../programs/ai-usagebar-package.nix { inherit inputs pkgs; })
+    (import ../programs/desktop/ai-usagebar-package.nix { inherit inputs pkgs; })
     inputs.tangled-dash.packages.${pkgs.stdenv.hostPlatform.system}.default
-    (import ../programs/luvus-package.nix { inherit inputs lib pkgs; })
-    (import ../tooling/ai/fieldnotes-package.nix { inherit inputs lib pkgs; })
+    (import ../programs/multiplexers/luvus-package.nix { inherit inputs lib pkgs; })
+    (import ../tooling/ai/claude/fieldnotes-package.nix { inherit inputs lib pkgs; })
   ];
 
   dotfiles.nixpkgsWatch = {
@@ -153,9 +153,9 @@ in
       reason = "replace acreomApp, the release AppImage modules/home/packages.nix wraps, with pkgs.acreom";
     };
     openchamber = {
-      inherit (pkgs.callPackage ./openchamber.nix { }) version;
-      reason = "replace modules/home/openchamber.nix, a build of the npm release, with pkgs.openchamber in modules/home/packages.nix";
+      inherit (pkgs.callPackage ./openchamber/openchamber.nix { }) version;
+      reason = "replace modules/home/openchamber/openchamber.nix, a build of the npm release, with pkgs.openchamber in modules/home/packages.nix";
     };
-    ai-usagebar.reason = "replace modules/programs/ai-usagebar-package.nix (the ai-usagebar input's package, with sqlite added and its tests skipped) with pkgs.ai-usagebar, and drop the ai-usagebar input";
+    ai-usagebar.reason = "replace modules/programs/desktop/ai-usagebar-package.nix (the ai-usagebar input's package, with sqlite added and its tests skipped) with pkgs.ai-usagebar, and drop the ai-usagebar input";
   };
 }

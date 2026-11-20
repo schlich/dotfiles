@@ -1,0 +1,24 @@
+{
+  config,
+  inputs,
+  ...
+}:
+{
+  den.aspects.desktop-niri = {
+    meta = config.myConfig.aspectPolicy.desktop-niri;
+    nixos =
+      { config, ... }:
+      {
+        imports = [
+          inputs.niri.nixosModules.niri
+          ../../../modules/nixos/workstation/desktop.nix
+        ];
+        assertions = [
+          {
+            assertion = config.programs.niri.enable;
+            message = "desktop=niri requires the Niri session module.";
+          }
+        ];
+      };
+  };
+}

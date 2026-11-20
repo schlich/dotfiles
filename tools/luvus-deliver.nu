@@ -245,7 +245,7 @@ def judge [state: record, config: record] {
 
 const risk_levels = [low medium high critical]
 
-# The highest risk den/policy.nix assigns an aspect a file reaches, or null;
+# The highest risk den/model/policy.nix assigns an aspect a file reaches, or null;
 # Den's host composition reaches every aspect.
 def policy-risk [found: record, risks: record] {
   let named = if $found.composition { $risks | values } else { $found.aspects | each {|aspect| $risks | get -o $aspect } }
@@ -326,7 +326,7 @@ def classify [root: string, base: string, head: string] {
     | append (if ($hosts | length) >= 2 and ($answers == null or $answers.breakage >= $config.several_hosts_min_breakage) {
       [$"it reaches several hosts: ($hosts | str join ', ')"]
     } else { [] })
-    # ...and always through configuration den/policy.nix rates high or
+    # ...and always through configuration den/model/policy.nix rates high or
     # critical, such as deployment or servers.
     | append ($files | where {|file|
       $file.policy_risk in [high critical] and (($file.systems ++ ($file.homes | each { split row "@" | last })) | uniq | where {|host| $host in $deployed } | length) >= 2

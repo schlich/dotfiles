@@ -6,8 +6,6 @@
   "dir:." = 34;
   "dir:.agents/skills" = 7;
   "dir:.github" = 7;
-  "dir:den" = 7;
-  "dir:den/aspects" = 22;
   "dir:deploy" = 7;
   "dir:docs" = 15;
   "dir:docs/project" = 7;
@@ -15,10 +13,6 @@
   "dir:docs/project/data/architecture" = 10;
   "dir:docs/project/data/plans" = 12;
   "dir:jj" = 8;
-  "dir:modules/home" = 11;
-  "dir:modules/nixos" = 36;
-  "dir:modules/programs" = 21;
-  "dir:modules/tooling/ai" = 23;
   "dir:modules/tooling/ai/scripts" = 13;
   "dir:modules/tooling/ai/tests" = 10;
   "dir:tests" = 13;

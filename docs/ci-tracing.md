@@ -34,7 +34,7 @@ sit on `build N` tracks with their phases (`configurePhase`,
 
 ## Reading traces locally
 
-`ci-trace`, installed by `modules/home/ci-trace.nix`, reads the artifacts
+`ci-trace`, installed by `modules/home/nix/ci-trace.nix`, reads the artifacts
 through `gh` and caches them under `~/.cache/ci-trace`:
 
 ```nu

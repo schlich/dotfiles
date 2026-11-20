@@ -7,7 +7,7 @@
   hostKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILtCmIzvRPo258IXL6rs+awqFQMVZiFnhYPTnWZf9lO4";
   user = "nix-builder";
   # Each client's key, which the client generates itself and publishes at
-  # /run/homelab-builder.pub; see modules/nixos/homelab-builder-client.nix.
+  # /run/homelab-builder.pub; see modules/nixos/builds/homelab-builder-client.nix.
   clientKeys = [
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBbY5pKgfFnAD7XMOq1eRwXbXGkSE+sSgIcMLXqv4i3p nix-builder@asus"
   ];

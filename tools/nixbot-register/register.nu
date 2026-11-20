@@ -1,5 +1,5 @@
 # nixbot-register: create nixbot's GitHub App from the manifest in
-# modules/nixos/nixbot.nix and write what turning nixbot on needs into this
+# modules/nixos/builds/nixbot.nix and write what turning nixbot on needs into this
 # checkout: the App's IDs in hosts/homelab/nixbot.nix and its secrets,
 # encrypted with age for the recipients secrets/secrets.nix lists, in
 # secrets/nixbot/. Secrets travel only through memory and stdin: none is

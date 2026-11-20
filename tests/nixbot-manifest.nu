@@ -1,5 +1,5 @@
 # The nixbot-app-manifest check: the GitHub App manifest nixbot-register
-# registers (modules/nixos/nixbot.nix) asks for exactly the permissions and
+# registers (modules/nixos/builds/nixbot.nix) asks for exactly the permissions and
 # events docs/nixbot.md says nixbot needs, and keeps the App private.
 use std/assert
 
