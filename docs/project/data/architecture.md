@@ -32,3 +32,5 @@ rejected are as valuable as the one you picked.*
 [ci opt-in](architecture/ci-opt-in.md)
 
 [Delivery risk](architecture/delivery-risk.md)
+
+[Workaround watch](architecture/workaround-watch.md)

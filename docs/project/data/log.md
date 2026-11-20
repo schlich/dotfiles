@@ -4,6 +4,19 @@ The history of this workspace, newest first. The `ship` skill appends a dated
 group on every release; any skill that creates or retires a document adds a line
 to the current day's group.
 
+## 2026-11-19
+
+- **Desktop**: Prepared the switch from Hex's upstream flake to the pinned
+  nixpkgs `anomaly-hex` release. Home Manager provides the on-demand user unit
+  used by the existing Niri shortcuts.
+- **Architecture**: [Workaround watch](architecture/workaround-watch.md). A
+  flake check now fails on a flake input's package, local build, or
+  overrideAttrs that no `dotfiles.nixpkgsWatch` entry covers; entries gain an
+  upstream `fix`, and the daily check also asks public caches for upstream's own
+  build of an input and FlakeHub for a local build's repository. The timer
+  queues a luvus task for each workaround that can go. Twelve workarounds that
+  had no entry gained one.
+
 ## 2026-11-06
 
 - **Delivery**: Updated every flake input; nixpkgs moved from 2026-10-15 to

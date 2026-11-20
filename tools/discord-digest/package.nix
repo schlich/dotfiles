@@ -1,5 +1,6 @@
 # discord-digest from nixpkgs' Python packages. The tests run in the check
 # phase, so building the package is its flake check.
+# nixpkgs-watch: not a workaround: this repository's own tool.
 { lib, python3Packages }:
 
 python3Packages.buildPythonApplication {

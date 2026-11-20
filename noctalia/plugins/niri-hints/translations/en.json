@@ -1,0 +1,18 @@
+{
+  "settings": {
+    "seat": {
+      "label": "Seat",
+      "description": "The direction this hint points in. Place the widget on the bar that direction faces.",
+      "options": {
+        "nw": "North-west",
+        "ne": "North-east",
+        "w": "West",
+        "e": "East",
+        "sw": "South-west",
+        "se": "South-east",
+        "in": "Inward, the centre",
+        "out": "Outward"
+      }
+    }
+  }
+}

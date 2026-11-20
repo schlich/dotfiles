@@ -27,6 +27,16 @@ evaluate tool in the worktree that owns the task. It accepts `OWNER/REPO`,
 and `--rev` pins a branch, tag, or commit. `--comment` replaces the flake's
 description with a reason the input exists.
 
+This repository's inputs are grouped in flakes of at most six under
+`lib/inputs` (`lib/honeycomb/README.md`), so `--group` is required here: the
+group the input belongs with, such as `terminal/shell` or
+`agents/skills/web`. Run `flake-add` without it to list the groups and how
+full each is. A full group means a new one: add a directory with its own
+`flake.nix` beside the others, named for what a person would look for, and
+list it in its parent's inputs. The input block goes into the group's
+`flake.nix`; what the input follows goes into the root `flake.nix`, which
+alone can reach other groups. Modules still read it as `inputs.NAME`.
+
 The report's `follows` lists the shared inputs it will make the flake follow,
 and `unfollowed` lists the rest. Pass `--keep nixpkgs` (comma-separated) when
 the flake needs its own pin, such as a Rust toolchain newer than the
@@ -54,11 +64,14 @@ Then follow the report's `next`:
 | `packages.x86_64-linux.*` | `home.packages` in `modules/home/packages.nix` |
 | `homeManagerModules.*` | `imports` in a module under `modules/programs/`, as `dicta.nix` does |
 | `nixosModules.*` | a Den aspect for the hosts that need it |
-| `overlays.*` | the overlay list in `den/aspects/home-manager-host.nix` |
-| not a flake (skills, scripts) | `"${inputs.NAME}/PATH"`; skills go in `modules/tooling/ai/shared-skills.nix` |
+| `overlays.*` | the overlay list in `den/aspects/users/home-manager-host.nix` |
+| not a flake (skills, scripts) | `"${inputs.NAME}/PATH"`; skills go in `modules/tooling/ai/shared/shared-skills.nix` |
 
-When the input replaces or overrides something nixpkgs ships, declare
-`dotfiles.nixpkgsWatch.NAME` in the same module.
+When the input's packages replace, override, or add to what nixpkgs ships,
+declare `dotfiles.nixpkgsWatch.NAME` in the same module, with `input` when
+NAME is not the input's name; the `nixpkgs-watch-coverage` flake check fails
+otherwise. An input of the user's own goes in `dotfiles.nixpkgsWatchExempt`
+instead.
 
 `flake-add` writes `flake.nix` itself, so Claude Code's checkpoints do not
 cover that edit; Git does, so commit before running it. A `flake.nix` whose

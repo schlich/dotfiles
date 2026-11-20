@@ -44,7 +44,7 @@ const layouts = {
 # Choices are alternatives for the same job, so they share one tabbed column
 # on a workspace, while windows used together stay side by side. Windows of
 # one app are choices; these groups also join different apps. `watch-choices`
-# keeps each group tabbed automatically, and `stack-choices` (Mod+Alt+W)
+# keeps each group tabbed automatically, and `stack-choices` (Mod+Shift+W)
 # gathers the focused window's choices on demand.
 const choice_groups = {
   agents: '^com\.t3tools\.T3Code$'
@@ -84,27 +84,35 @@ def project-directory [] {
 }
 
 # The knowledge base: an IWE workspace whose `<range>-<session>.md` notes are
-# the hubs of the pinned workspaces below, plus an index.
+# the hubs of the areas below, plus an index.
 def kb-root [] {
   $env.KB_ROOT? | default $"($env.HOME)/kb"
 }
 
-# Sessions with a fixed name and layout, each given a workspace when first
-# restored. The overview is not a session. Research maintains the knowledge base; other areas without a single
-# repository open a plain shell in the home directory.
+# The seven areas (honeycomb's `areas`, written to areas.json beside this
+# script): sessions with a fixed name and layout, each given a workspace when
+# first visited. `home` is the centre and the other six sit around it;
+# niri/binds.nix seats them and binds Mod+Alt plus a direction key to each.
+# An area opens in its first folder, else the home directory, with the
+# layout named for it below, else a plain shell.
+const areas_file = path self areas.json
+const area_layouts = { research: kb, nix: dotfiles }
+
+def flower [] {
+  if ($areas_file | path exists) { open $areas_file | get flower } else { [] }
+}
+
 def presets [] {
-  let area = { layout: area, directory: $env.HOME }
-  {
-    work: $area
-    research: { layout: kb, directory: (kb-root) }
-    xr: $area
-    nix: { layout: dotfiles, directory: $"($env.HOME)/dotfiles" }
-    ai: $area
-    shell: $area
-    career: $area
-    personal: $area
-    inbox: $area
-  }
+  flower | each {|area|
+    let folder = ($area.folders | get 0?)
+    let directory = if $folder == null { $env.HOME } else { $env.HOME | path join $folder }
+    { $area.name: { layout: ($area_layouts | get --optional $area.name | default area), directory: $directory } }
+  } | reduce --fold {} {|it, acc| $acc | merge $it }
+}
+
+# The knowledge-base hub of each area.
+def hub-names [] {
+  flower | each {|area| { $area.name: $area.hub } } | reduce --fold {} {|it, acc| $acc | merge $it }
 }
 
 # A preset, else a session opened with `project`.
@@ -157,27 +165,17 @@ def focused-workspace [] {
   $focused
 }
 
-# Move between occupied workspaces on the focused output, skipping empty named
-# workspaces and Niri's trailing empty workspace.
-def "main workspace" [direction: string] {
-  let focused = (focused-workspace)
-  let workspaces = (niri-json workspaces | where output == $focused.output)
-  let candidates = match $direction {
-    "down" => {
-      $workspaces
-      | where {|workspace| $workspace.idx > $focused.idx and $workspace.active_window_id != null }
-      | sort-by idx
-    }
-    "up" => {
-      $workspaces
-      | where {|workspace| $workspace.idx < $focused.idx and $workspace.active_window_id != null }
-      | sort-by idx --reverse
-    }
-    _ => { error make { msg: $"unknown workspace direction '($direction)'" } }
+# Select an area (Mod+Alt plus its direction key), giving it a workspace on
+# the first visit. --carry takes the focused column along (add Shift).
+def "main area" [name: string, --carry] {
+  if (presets | get --optional $name) == null {
+    error make { msg: $"'($name)' is not an area; use one of (presets | columns | str join ', ')" }
   }
-  let destination = ($candidates | get 0?)
-  if $destination != null {
-    niri-action focus-workspace $destination.idx
+  ensure-workspace $name
+  if $carry {
+    niri-action move-column-to-workspace $name
+  } else {
+    niri-action focus-workspace $name
   }
 }
 
@@ -247,31 +245,10 @@ def "main restore" [session?: string] {
   restore $session
 }
 
-# Step to the neighbouring session on the numpad grid (Mod+Alt+H/J/K/L):
-# 7 8 9 on top, 1 2 3 at the bottom, so up is +3 and right is +1. At an edge,
-# or outside the grid, stay put.
-def "main grid" [direction: string] {
-  let index = (focused-workspace | get idx)
-  if $index < 1 or $index > 9 {
-    return
-  }
-  let row = (($index - 1) // 3)
-  let column = (($index - 1) mod 3)
-  let target = match $direction {
-    "left" => { if $column > 0 { $index - 1 } }
-    "right" => { if $column < 2 { $index + 1 } }
-    "up" => { if $row < 2 { $index + 3 } }
-    "down" => { if $row > 0 { $index - 3 } }
-    _ => { error make { msg: $"unknown direction '($direction)'; use left, right, up or down" } }
-  }
-  if $target != null {
-    niri-action focus-workspace $target
-  }
-}
-
-# Toggle the session launcher (Mod+0): a floating shell over the focused
-# workspace that lists sessions by number and projects, where `project DIR`
-# opens one. It closes when dismissed and is rebuilt fresh each time.
+# Toggle the session launcher (Mod+Alt+O, outward from the areas): a floating
+# shell over the focused workspace that draws the areas and lists projects,
+# where `project DIR` opens one. It closes when dismissed and is rebuilt
+# fresh each time.
 def "main overview" [] {
   let workspace = (focused-workspace)
   let open = (niri-json windows | where app_id == "niri.overview" | get 0?)
@@ -437,7 +414,7 @@ def gather-choices [id: int] {
   niri-action set-column-display tabbed
 }
 
-# Tab the focused window's choices together (Mod+Alt+W).
+# Tab the focused window's choices together (Mod+Shift+W).
 def "main stack-choices" [] {
   let focused = (niri-json focused-window)
   if $focused == null {
@@ -687,7 +664,8 @@ def "main vcs" [] {
 # 80-89-personal.md for `personal`); other workspaces get the index.
 def area-hub [session: any] {
   let root = (kb-root)
-  let hubs = if $session == null { [] } else { glob $"($root)/[0-9][0-9]-[0-9][0-9]-($session).md" }
+  let hub = if $session == null { null } else { hub-names | get --optional $session | default $session }
+  let hubs = if $hub == null { [] } else { glob $"($root)/[0-9][0-9]-[0-9][0-9]-($hub).md" }
   $hubs | get 0? | default ($root | path join index.md)
 }
 
@@ -739,5 +717,5 @@ def "main keymap" [] {
 }
 
 def main [] {
-  print "Usage: niri-desk (restore [SESSION] | overview | keymap | grid DIRECTION | open [--stack] | project [DIR] | forget [SESSION] | vcs | agents | peek [GROUP] [--next] | notes | capture | stack-choices | watch-choices | workspace (up | down))"
+  print "Usage: niri-desk (area NAME [--carry] | restore [SESSION] | overview | keymap | open [--stack] | project [DIR] | forget [SESSION] | vcs | agents | peek [GROUP] [--next] | notes | capture | stack-choices | watch-choices)"
 }

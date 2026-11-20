@@ -14,7 +14,7 @@
 # deploy/StagedSwitch.tla models these processes; its flake check proves
 # the guarantees above for every interleaving of them, kills, and reboots.
 #
-# DEPLOY_CONFIG names the JSON settings modules/nixos/system-switch.nix
+# DEPLOY_CONFIG names the JSON settings modules/nixos/fleet/system-switch.nix
 # writes: the host, the repository, the state directory, and the host's
 # health probes. The running system's settings judge the candidate, so a
 # candidate cannot weaken its own watch.
@@ -311,7 +311,7 @@ def render-report [entry: record, breached: list, diagnostics: record] {
         "This revision passed every pre-land check, so the watch found what they"
         "missed. Add the check that would have caught it before deployment, a flake"
         "check or an assertion in tests/deploy-revert.nix, and fill in the failure"
-        "record in docs/ci-failure-review.md. `deploy-reverts` tallies which checks"
+        "record in docs/delivery/ci-failure-review.md. `deploy-reverts` tallies which checks"
         "cause reverts, so the most frequent gap is the next one to close."
         ""
     ] | str join "\n"

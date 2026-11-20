@@ -3,7 +3,7 @@
 The Fieldnotes dashboard lives in its own repository,
 [schlich/fieldnotes](https://github.com/schlich/fieldnotes), and comes in
 through the `fieldnotes` flake input with the tools its panels read from
-(`modules/tooling/ai/fieldnotes-package.nix`). Homelab opens it full screen
+(`modules/tooling/ai/claude/fieldnotes-package.nix`). Homelab opens it full screen
 when its graphical session starts; `fieldnotes` runs it anywhere else,
 including over SSH.
 

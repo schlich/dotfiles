@@ -1,8 +1,8 @@
-# T3 Code fleet helpers (modules/tooling/ai/t3code-server.nix): thin, typed
+# T3 Code fleet helpers (modules/tooling/ai/clients/t3code/t3code-server.nix): thin, typed
 # wrappers over `t3`, systemd and each server's discovery endpoint. The
 # server does the orchestration; these only gather what it reports and pass
 # work to it. $env.T3F_CONFIG names the fleet: this host, the unit, the port
-# and every fleet server's tailnet URL. docs/T3-FLEET.md describes the fleet.
+# and every fleet server's tailnet URL. docs/agents/T3-FLEET.md describes the fleet.
 
 def t3f-config []: nothing -> record {
     let path = ($env.T3F_CONFIG? | default '')

@@ -186,7 +186,7 @@
     }
   }
   # Claude Code permission dialogs; thresholds and class tiers live in
-  # modules/tooling/ai/trust-policy.nuon.
+  # modules/tooling/ai/shared/trust-policy.nuon.
   route: {
     questions: {
       action_class: {

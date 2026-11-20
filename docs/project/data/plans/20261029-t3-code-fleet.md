@@ -16,7 +16,7 @@ sources:
   resource: https://github.com/NixOS/nixpkgs/pull/580444
   title: 't3code: 0.1.2 -> 0.1.4'
 - id: fleet-doc
-  resource: docs/T3-FLEET.md
+  resource: docs/agents/T3-FLEET.md
   title: The fleet's architecture, setup and verification
 ---
 
@@ -50,16 +50,17 @@ machine).
 
 ### Task 1: Package and service
 
-**Files:** Create: `modules/tooling/ai/t3code-package.nix`,
-`modules/tooling/ai/t3code-server.nix`, `modules/nixos/t3code.nix`,
-`den/aspects/t3code.nix`, `modules/tooling/ai/scripts/t3f.nu`; Modify:
-`flake.nix`, `modules/tooling/ai/t3code.nix`, `den/schema.nix`,
-`den/profile.nix`, `den/inventory.nix`, `den/default.nix`,
+**Files:** Create: `modules/tooling/ai/clients/t3code/t3code-package.nix`,
+`modules/tooling/ai/clients/t3code/t3code-server.nix`,
+`modules/nixos/services/t3code.nix`, `den/aspects/services/t3code.nix`,
+`modules/tooling/ai/scripts/t3f.nu`; Modify: `flake.nix`,
+`modules/tooling/ai/clients/t3code/t3code.nix`, `den/model/schema.nix`,
+`den/model/profile.nix`, `den/inventory.nix`, `den/default.nix`,
 `den/aspects/users/schlich.nix`, `tests.nix`, `tests/den-config.nix`
 
 - [x] Pin 0.1.4 and share one package between the app and the server.
 - [x] Add the `t3code` service fact, aspect, units and tests.
-- [x] Document the fleet in `docs/T3-FLEET.md`.
+- [x] Document the fleet in `docs/agents/T3-FLEET.md`.
 
 ### Task 2: Roll out and verify
 
@@ -74,13 +75,13 @@ machine).
 
 ## Spec changes
 
-None — the fleet's behavior is recorded in `docs/T3-FLEET.md`.
+None — the fleet's behavior is recorded in `docs/agents/T3-FLEET.md`.
 
 ## Verification
 
 `nix fmt`, the flake checks (`den-config-tests-*`, `den-inventory-tests`, the
 home's `t3code-bash-env` check), a smoke test of the unit against a throwaway T3
-home, then the rollout steps in `docs/T3-FLEET.md`.
+home, then the rollout steps in `docs/agents/T3-FLEET.md`.
 
 ## Out of scope
 
@@ -93,5 +94,5 @@ Verified anchor points (line numbers as of 2026-10-29):
 
 - `den/inventory.nix:75` — asus runs the server
 - `den/inventory.nix:114` — homelab runs the server
-- `modules/tooling/ai/t3code-server.nix:1` — the user unit
-- `modules/nixos/t3code.nix:1` — linger and Tailscale Serve
+- `modules/tooling/ai/clients/t3code/t3code-server.nix:1` — the user unit
+- `modules/nixos/services/t3code.nix:1` — linger and Tailscale Serve

@@ -38,7 +38,8 @@ Build the local adapter and responsive dashboard, then review both wide and
 narrow layouts and exercise the primary controls in the browser.
 
 **Files:** `tools/ci-dashboard/index.html`, `tools/ci-dashboard/server.mjs`,
-`modules/nixos/homelab.nix`, `docs/project/data/features/ci-nix-dashboard.md`,
+`modules/nixos/homelab/homelab.nix`,
+`docs/project/data/features/ci-nix-dashboard.md`,
 `docs/project/data/architecture/ci-nix-dashboard.md`.
 
 - [x] Implement the read-only local server and dashboard.

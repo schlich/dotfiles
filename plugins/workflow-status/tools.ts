@@ -1,4 +1,4 @@
-// The programs the workflow-status plugin runs. modules/tooling/ai/plugins.nix
+// The programs the workflow-status plugin runs. modules/tooling/ai/shared/plugins.nix
 // replaces this file with one naming them by store path; these bare names
 // fall back to PATH when the plugin runs from a checkout.
 export default {

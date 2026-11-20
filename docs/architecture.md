@@ -30,7 +30,7 @@ standalone, apart from the system: an inventory user with `home = true`
 `homeConfigurations."USER@HOST"`, the name `nh home switch` looks up for that
 user on that host. `den/inventory.nix` builds each home from its host's
 package set and passes the evaluated system as `osConfig`, so home modules
-still read system facts; `den/aspects/home-manager-host.nix` adds the overlays
+still read system facts; `den/aspects/users/home-manager-host.nix` adds the overlays
 those homes need to exactly those hosts. No system embeds or activates a
 home, so applying a change is two steps, the system and then the home, and
 Clan and a plain `system-switch` change only the system (see "Applying a
@@ -255,7 +255,7 @@ open an agent on its report. `deploy-reverts` lists the log and tallies the
 checks that caused reverts. That tally is the feedback loop: each revert marks
 a regression the pre-deploy checks missed, and the next check to write is the
 one that would have caught the most frequent cause (see
-`docs/ci-failure-review.md`). `tests/deploy-revert.nix`, in `remoteChecks`, runs
+`docs/delivery/ci-failure-review.md`). `tests/deploy-revert.nix`, in `remoteChecks`, runs
 a broken candidate, a healthy one, and a killed watch through the real script
 in a VM.
 

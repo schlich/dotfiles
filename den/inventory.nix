@@ -12,12 +12,14 @@ let
     profile = {
       role = "workstation";
       desktop = "none";
-      gpu = "none";
-      portable = false;
       development = false;
       xr = false;
       secrets = false;
       remote = false;
+    };
+    hardware = {
+      gpu = "none";
+      portable = false;
     };
     services = {
       jjCiWebhook = false;
@@ -29,7 +31,7 @@ let
     };
     # Clan logs in as the everyday user and escalates with sudo.
     deploy.targetUser = "schlich";
-    # Every host joins the same tailnet; den/aspects/fleet-network.nix
+    # Every host joins the same tailnet; den/aspects/fleet/fleet-network.nix
     # derives each one's address from it.
     network.tailnet = "tail338351.ts.net";
     policy = {
@@ -41,7 +43,7 @@ let
     };
   };
 
-  asusHardware.profile = {
+  asusHardware.hardware = {
     gpu = "amd";
     portable = true;
   };
@@ -71,7 +73,7 @@ let
           jjCiWebhook = true;
           nixObservability = true;
           # An execution environment while the laptop is awake; the desktop
-          # app is its client (docs/T3-FLEET.md).
+          # app is its client (docs/agents/T3-FLEET.md).
           t3code = true;
         };
         # Deployed in place: `clan machines update asus` over ssh to localhost.
@@ -102,16 +104,17 @@ let
           role = "server";
           # A local session for debugging on the machine itself.
           desktop = "niri";
-          gpu = "intel";
           remote = true;
           # nixbot's GitHub App secrets, decrypted with homelab's host key.
           secrets = true;
         };
+        hardware.gpu = "intel";
         services = {
           paseo = true;
           opencodeServer = true;
           # The always-on execution environment of the agent fleet.
           t3code = true;
+          rex = true;
           crossStream = true;
         };
         deploy = {
@@ -122,7 +125,7 @@ let
           targetUser = "root";
           # Port 22 is Tailscale SSH, whose check mode hangs a BatchMode
           # login; key-based automation uses OpenSSH here
-          # (docs/homelab-builds.md).
+          # (docs/delivery/homelab-builds.md).
           sshPort = 2222;
         };
         policy = {
@@ -142,7 +145,7 @@ let
 
   inventory = lib.mapAttrs (_: layers: lib.foldl' lib.recursiveUpdate fleet layers) hostLayers;
 
-  profileTools = import ./profile.nix { inherit lib; };
+  profileTools = import ./model/profile.nix { inherit lib; };
 
   withInstantiate = lib.mapAttrs (
     _: host:

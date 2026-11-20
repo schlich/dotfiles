@@ -18,12 +18,18 @@
       )
       (
         { home, ... }:
+        lib.optionalAttrs home.host.services.rex {
+          homeManager.imports = [ ../../../modules/tooling/terminals/rex.nix ];
+        }
+      )
+      (
+        { home, ... }:
         lib.optionalAttrs home.host.services.nixObservability {
           includes = [ den.aspects.nix-observability-home ];
         }
       )
       # The T3 Code server runs in the home of the host's one user with a
-      # home (den/aspects/t3code.nix).
+      # home (den/aspects/services/t3code.nix).
       (
         { home, ... }:
         lib.optionalAttrs home.host.services.t3code {

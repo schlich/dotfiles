@@ -2,241 +2,72 @@
   description = "Modular Home Manager and NixOS configuration";
 
   inputs = {
-    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
-    # T3 Code 0.1.4, the first release with linked environments and
-    # delegate_task, from the nixpkgs commit that packaged it
-    # (NixOS/nixpkgs#580444); the locked nixpkgs still ships 0.0.45.
-    # modules/tooling/ai/t3code-package.nix takes only t3code from it.
-    nixpkgs-t3code.url = "github:NixOS/nixpkgs/1a1a6e280ff8f744a0bf5e2fb32a1fb1775b54e5";
-    # Build Codex from the fork that contains the execution-tool transcript renderer.
+    # Each group is a flake of at most six inputs or further groups
+    # (lib/honeycomb/README.md). `nix flake update terminal/shell/xs` updates
+    # one input.
+    system.url = "path:./lib/inputs/system";
+    builds.url = "path:./lib/inputs/builds";
+    desktop.url = "path:./lib/inputs/desktop";
+    terminal.url = "path:./lib/inputs/terminal";
+    agents.url = "path:./lib/inputs/agents";
 
-    codex = {
-      url = "github:schlich/codex/d0e6fb56b19d";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.rust-overlay.follows = "rust-overlay";
-    };
-    # The fork's Rust toolchain requires a newer overlay than its own lockfile.
-    rust-overlay.url = "github:oxalica/rust-overlay/a110337465cfb76e3806b81b9db3094c3e6e770a";
-    home-manager = {
-      url = "github:nix-community/home-manager";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    den = {
-      url = "github:denful/den/v0.18.0";
-    };
-    # Pushes Den's hosts over ssh (clan below), alongside system-switch,
-    # which pulls GitHub's main on the host itself.
-    clan-core = {
-      url = "https://git.clan.lol/clan/clan-core/archive/main.tar.gz";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    impermanence = {
-      url = "github:nix-community/impermanence";
-      inputs.nixpkgs.follows = "";
-      inputs.home-manager.follows = "";
-    };
-    gen-inspect = {
-      url = "github:sini/gen-inspect";
-    };
-    nushellWith = {
-      url = "github:YPares/nushellWith/master";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    marimo-pair = {
-      url = "github:marimo-team/marimo-pair";
-      flake = false;
-    };
-    marimo-skills = {
-      url = "github:marimo-team/skills";
-      flake = false;
-    };
-    gh-stack = {
-      url = "github:github/gh-stack";
-      flake = false;
-    };
-    grill-me = {
-      url = "github:udecode/plate";
-      flake = false;
-    };
-    mattpocock-skills = {
-      url = "github:mattpocock/skills";
-      flake = false;
-    };
-    niri = {
-      url = "github:epireyn/niri-flake";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    ai-usagebar = {
-      url = "github:akitaonrails/ai-usagebar";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    # Anthropic's official Linux build of Claude Desktop, which nixpkgs lacks.
-    llm-agents = {
-      url = "github:numtide/llm-agents.nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    # Numtide's Rust reimplementation of the Nix client, which nixpkgs lacks.
-    iets = {
-      url = "github:numtide/iets";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    # Upstream packages Atuin 18.24; nixpkgs still ships 18.23.
-    atuin = {
-      url = "github:atuinsh/atuin/v18.24.0";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    # Upstream packages OpenCode 2; nixpkgs still ships 1.x.
-    opencode = {
-      url = "github:anomalyco/opencode/v2.0.30";
-    };
-    paseo = {
-      url = "github:getpaseo/paseo/main";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    # grpc:// stores: homelab's daemon and every remote host's client plugin.
-    nix-grpc-store = {
-      url = "github:Mic92/nix-grpc-store";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    modern-web-guidance = {
-      url = "github:GoogleChrome/modern-web-guidance";
-      flake = false;
-    };
-    archify = {
-      url = "github:tt-a1i/archify";
-      flake = false;
-    };
-    typesafe-skills = {
-      url = "github:typesafe-ai/skills";
-      flake = false;
-    };
-    effective-html = {
-      url = "github:plannotator/effective-html";
-      flake = false;
-    };
-    autoresearch = {
-      url = "github:uditgoenka/autoresearch";
-      flake = false;
-    };
-    antithesis-skills = {
-      # Pinned before 2026-11-12, when upstream moved its core skills
-      # (setup, workload, launch, triage, debug, ...) to
-      # github:antithesishq/antithesis-plugin. Unpin once
-      # modules/tooling/ai/shared-skills.nix takes them from the plugin.
-      url = "github:antithesishq/antithesis-skills/4ee2746a46703185dc5cf6864cb1961db74d28eb";
-      flake = false;
-    };
-    hegel-skill = {
-      url = "github:hegeldev/hegel-skill";
-      flake = false;
-    };
-    humanlayer-skills = {
-      url = "github:humanlayer/skills";
-      flake = false;
-    };
-    jevify = {
-      url = "github:altryne/jevify";
-      flake = false;
-    };
-    # Built from its own lock file, without its flake's separate nixpkgs; bump
-    # the tag to update jj-hunk.
-    jj-hunk = {
-      url = "github:laulauland/jj-hunk/v0.5.1";
-      flake = false;
-    };
-    iwe-skills = {
-      url = "github:iwe-org/skills";
-      flake = false;
-    };
-    meta-quest-agentic-tools = {
-      url = "github:meta-quest/agentic-tools";
-      flake = false;
-    };
-    tangled = {
-      url = "git+https://tangled.org/@tangled.org/core";
-      inputs.nixpkgs.follows = "nixpkgs";
-      # Only its non-flake default.nix uses flake-compat. Nix 2.34 cannot
-      # refetch the lix tarball it locks (the locked URL keeps a ?rev= that
-      # the fetch drops), which fails nixbot's prefetch once the source
-      # leaves homelab's store.
-      inputs.flake-compat.follows = "";
-    };
-    tangled-dash = {
-      url = "github:schlich/tangled-dash";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    # Mission control TUI for AI coding agents; not in nixpkgs.
-    luvus = {
-      url = "github:RizRiyz/luvus";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    dicta = {
-      url = "github:schlich/dicta";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    # Local dictation (Linux beta); not in nixpkgs.
-    hex = {
-      url = "github:anomalyco/hex";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.home-manager.follows = "home-manager";
-    };
-    fieldnotes = {
-      url = "github:schlich/fieldnotes";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    xs = {
-      url = "github:cablehead/xs";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    ptyZZZ = {
-      url = "github:cablehead/ptyZZZ";
-      flake = false;
-    };
-    nixbot = {
-      url = "github:Mic92/nixbot";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    # Decrypts secrets/*.age at activation on hosts whose inventory sets
-    # profile.secrets, with the host's OpenSSH key (secrets/secrets.nix).
-    agenix = {
-      url = "github:ryantm/agenix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    # Which nixpkgs pull requests touch a package and which channels they
-    # reached; modules/home/nixpkgs-watch.nix runs it. Not in nixpkgs.
-    npr = {
-      url = "github:manic-systems/npr";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    # The `pst` Nushell module (OSC 7501 program status) that ci reports its
-    # phases with and the shell imports; the ci input follows it.
-    osc7501-nu = {
-      url = "github:schlich/osc7501.nu";
-      flake = false;
-    };
-    # The `ci` trunk workflow with its companions and `ci tower`, hosted on
-    # Tangled and fetched from its GitHub mirror. Every workspace runs the
-    # version this lock pins; `nix flake update ci` moves to a newer one.
-    ci = {
-      url = "github:schlich/ci";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.osc7501-nu.follows = "osc7501-nu";
-    };
-    # Noctalia Minimizer: reversible window minimization for Niri (Noctalia
-    # Shell plugin)
-    noc-minimizer = {
-      url = "github:SwashX-dev/Noc-minimizer";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    # What follows what across the groups, which only the root can say.
+    system.inputs.home-manager.inputs.nixpkgs.follows = "system/nixpkgs";
+    system.inputs.clan-core.inputs.nixpkgs.follows = "system/nixpkgs";
+    system.inputs.impermanence.inputs.nixpkgs.follows = "";
+    system.inputs.impermanence.inputs.home-manager.follows = "";
+    system.inputs.agenix.inputs.nixpkgs.follows = "system/nixpkgs";
+    builds.inputs.iets.inputs.nixpkgs.follows = "system/nixpkgs";
+    builds.inputs.nix-grpc-store.inputs.nixpkgs.follows = "system/nixpkgs";
+    builds.inputs.nixbot.inputs.nixpkgs.follows = "system/nixpkgs";
+    builds.inputs.npr.inputs.nixpkgs.follows = "system/nixpkgs";
+    desktop.inputs.niri.inputs.nixpkgs.follows = "system/nixpkgs";
+    desktop.inputs.noc-minimizer.inputs.nixpkgs.follows = "system/nixpkgs";
+    desktop.inputs.hokum.inputs.nixpkgs.follows = "system/nixpkgs";
+    desktop.inputs.dicta.inputs.nixpkgs.follows = "system/nixpkgs";
+    desktop.inputs.ai-usagebar.inputs.nixpkgs.follows = "system/nixpkgs";
+    terminal.inputs.luvus.inputs.nixpkgs.follows = "system/nixpkgs";
+    terminal.inputs.shell.inputs.nushellWith.inputs.nixpkgs.follows = "system/nixpkgs";
+    terminal.inputs.shell.inputs.atuin.inputs.nixpkgs.follows = "system/nixpkgs";
+    terminal.inputs.shell.inputs.xs.inputs.nixpkgs.follows = "system/nixpkgs";
+    terminal.inputs.shell.inputs.rex.inputs.nixpkgs.follows = "system/nixpkgs";
+    terminal.inputs.vcs.inputs.ci.inputs.nixpkgs.follows = "system/nixpkgs";
+    terminal.inputs.vcs.inputs.ci.inputs.osc7501-nu.follows = "terminal/shell/osc7501-nu";
+    terminal.inputs.vcs.inputs.tangled.inputs.nixpkgs.follows = "system/nixpkgs";
+    # Only its non-flake default.nix uses flake-compat. Nix 2.34 cannot
+    # refetch the lix tarball it locks (the locked URL keeps a ?rev= that
+    # the fetch drops), which fails nixbot's prefetch once the source
+    # leaves homelab's store.
+    terminal.inputs.vcs.inputs.tangled.inputs.flake-compat.follows = "";
+    terminal.inputs.vcs.inputs.tangled-dash.inputs.nixpkgs.follows = "system/nixpkgs";
+    agents.inputs.fieldnotes.inputs.nixpkgs.follows = "system/nixpkgs";
+    agents.inputs.clients.inputs.codex.inputs.nixpkgs.follows = "system/nixpkgs";
+    agents.inputs.clients.inputs.codex.inputs.rust-overlay.follows = "builds/rust-overlay";
+    agents.inputs.clients.inputs.llm-agents.inputs.nixpkgs.follows = "system/nixpkgs";
+    agents.inputs.clients.inputs.continuum-ide.inputs.nixpkgs.follows = "system/nixpkgs";
+    agents.inputs.clients.inputs.paseo.inputs.nixpkgs.follows = "system/nixpkgs";
   };
 
   outputs =
-    inputs@{
-      nixpkgs,
-      nushellWith,
-      ...
-    }:
+    groups:
     let
+      # The rest of this file, and every module, sees the groups' sources
+      # under one flat `inputs`, by name.
+      inputGroups = [
+        "system"
+        "builds"
+        "desktop"
+        "terminal"
+        "agents"
+      ];
+      inputs = builtins.foldl' (all: group: all // groups.${group}.sources) {
+        inherit (groups) self;
+      } inputGroups;
+      # Where each input sits among the groups: `terminal/shell/xs`.
+      inputPaths = builtins.foldl' (
+        all: group: all // builtins.mapAttrs (_: path: "${group}/${path}") groups.${group}.paths
+      ) { } inputGroups;
+      inherit (inputs) nixpkgs nushellWith;
       system = "x86_64-linux";
       overlays = [
         (_final: _prev: {
@@ -250,8 +81,8 @@
       };
       nixUnitInputArgs = lib.concatStringsSep "\\\n  " (
         lib.mapAttrsToList (
-          name: input: "--override-input ${lib.escapeShellArg name} ${lib.escapeShellArg "${input}"}"
-        ) inputs
+          name: path: "--override-input ${lib.escapeShellArg path} ${lib.escapeShellArg "${inputs.${name}}"}"
+        ) inputPaths
       );
       jjCi = inputs.ci.packages.${system}.ci;
       jjCiLifecycle = inputs.ci.packages.${system}.jj-ci-lifecycle;
@@ -300,13 +131,11 @@
       '';
       lib = nixpkgs.lib;
       bombadil = import ./lib/bombadil.nix { inherit lib pkgs; };
+      inherit (pkgs) iwe;
       marimohub = import ./modules/tooling/knowledge/marimohub-package.nix { inherit lib pkgs; };
       ciDashboard = import ./tools/ci-dashboard/checks.nix { inherit lib pkgs; };
       jjGraph = import ./tools/jj-graph { inherit lib pkgs; };
-      workbench = import ./workbench {
-        inherit pkgs lib;
-        inherit (pkgs) iwe;
-      };
+      workbench = import ./workbench { inherit pkgs lib iwe; };
       workbenchImages = lib.mapAttrs' (
         name: environment: lib.nameValuePair "workbench-image-${name}" environment.image
       ) workbench.environments;
@@ -333,6 +162,7 @@
         builtins.toJSON (
           lib.mapAttrs (_: host: {
             profile = host.profile;
+            hardware = host.hardware;
             policy = host.policy;
             users = lib.mapAttrs (_: user: {
               classes = user.classes;
@@ -443,7 +273,7 @@
         }\n"
       );
       # What nixbot-register registers and writes, from homelab's
-      # modules/nixos/nixbot.nix: the GitHub App manifest, the topic nixbot
+      # modules/nixos/builds/nixbot.nix: the GitHub App manifest, the topic nixbot
       # imports, and where the App's IDs and secrets go.
       nixbotRegistration = denFlake.nixosConfigurations.homelab.config.dotfiles.nixbot.registration;
       nixbotRegister = import ./tools/nixbot-register {
@@ -456,7 +286,7 @@
         builtins.unsafeDiscardStringContext "${
           (denFlake.nixosConfigurations.homelab.extendModules {
             modules = [
-              ./modules/nixos/workbench-hub.nix
+              ./modules/nixos/services/workbench-hub.nix
               { services.marimohub.auth.allowedEmailDomains = [ "example.com" ]; }
             ];
           }).config.system.build.toplevel.drvPath
@@ -702,6 +532,38 @@
       # CI runs every attribute here as its own job, so a new check needs no
       # workflow change. Run the same set locally with `nix-fast-build`.
       checks.${system} = {
+        # The hexagon arithmetic behind the rule of six (lib/honeycomb).
+        honeycomb-tests =
+          let
+            tests = import ./lib/honeycomb/tests.nix { inherit lib; };
+            failures = lib.runTests tests;
+          in
+          pkgs.writeText "honeycomb-tests" (
+            assert lib.assertMsg (failures == [ ])
+              "honeycomb-tests failed:\n${lib.generators.toPretty { } failures}";
+            lib.concatMapStrings (test: "${test}\n") (builtins.attrNames tests)
+          );
+        # No collection may newly pass six members. The ones that already do
+        # (lib/honeycomb/baseline.nix) warn when they grow, until regrouped.
+        honeycomb-census =
+          let
+            honeycomb = import ./lib/honeycomb { inherit lib; };
+            census = import ./lib/honeycomb/census.nix {
+              inherit lib;
+              root = ./.;
+            };
+            result = honeycomb.audit {
+              inherit census;
+              baseline = import ./lib/honeycomb/baseline.nix;
+            };
+          in
+          pkgs.writeText "honeycomb-census" (
+            assert lib.assertMsg (honeycomb.clean result)
+              "honeycomb-census failed:\n${honeycomb.report result}";
+            lib.warnIf (result.grown != { })
+              "honeycomb: collections already over six grew: ${honeycomb.growth result}"
+              (builtins.toJSON census)
+          );
         quota-advisor = pkgs.runCommand "quota-advisor-check" { nativeBuildInputs = [ pkgs.python3 ]; } ''
           cd ${./tools/quota-advisor}
           PYTHONPATH=src python3 -m unittest discover -s tests -v
@@ -750,6 +612,20 @@
               python tests/rendered.py "$TMPDIR/demo.html" ${workbenchDemo.name}
               touch "$out"
             '';
+        # Every group flake under lib/inputs declares exactly what flake.lock
+        # holds for it; Nix would otherwise ignore the difference.
+        inputs-locked =
+          let
+            stale = import ./lib/inputs/locked.nix {
+              inherit lib;
+              root = ./.;
+            };
+          in
+          pkgs.writeText "inputs-locked" (
+            assert lib.assertMsg (stale == [ ])
+              "inputs-locked failed:\n${lib.concatMapStrings (line: "  ${line}\n") stale}";
+            "every group's inputs are locked\n"
+          );
         den-inventory-tests =
           pkgs.runCommand "den-inventory-tests"
             {
@@ -788,7 +664,7 @@
         '';
         home-manager = homeCheck;
         # nixbot's App manifest asks GitHub for exactly the permissions and
-        # events docs/nixbot.md says nixbot needs, and nixbot-register builds.
+        # events docs/delivery/nixbot.md says nixbot needs, and nixbot-register builds.
         nixbot-app-manifest =
           pkgs.runCommand "nixbot-app-manifest-check"
             {
@@ -797,7 +673,7 @@
             ''
               export HOME="$TMPDIR/home"
               mkdir -p "$HOME"
-              ${pkgs.nushell}/bin/nu --no-config-file ${./tests/nixbot-manifest.nu} ${./docs/nixbot.md} ${nixbotRegistration}
+              ${pkgs.nushell}/bin/nu --no-config-file ${./tests/nixbot-manifest.nu} ${./docs/delivery/nixbot.md} ${nixbotRegistration}
               test -x ${nixbotRegister}/bin/nixbot-register
               touch "$out"
             '';
@@ -807,7 +683,9 @@
               nativeBuildInputs = [ pkgs.niri ];
             }
             ''
-              niri validate --config ${./niri/config.kdl}
+              niri validate --config ${
+                pkgs.writeText "niri-config.kdl" (import ./niri/binds.nix { inherit lib; }).config
+              }
               touch "$out"
             '';
         nushell-agent =
@@ -910,6 +788,24 @@
               export HOME="$TMPDIR/home"
               mkdir -p "$HOME"
               ${pkgs.nushell}/bin/nu --no-config-file ${./tests/keymap.nu} ${src}/niri/keymap.nu
+              touch "$out"
+            '';
+        # `honeycomb sidebar`, `sessions`, `flower` and `hub apply` on a
+        # fixture of Claude's sidebar, and the phone's hub on requests as
+        # Tailscale Serve passes them on (lib/honeycomb/runtime).
+        nushell-honeycomb =
+          pkgs.runCommand "nushell-honeycomb-check"
+            {
+              nativeBuildInputs = [ pkgs.nushell ];
+            }
+            ''
+              export HOME="$TMPDIR/home"
+              mkdir -p "$HOME"
+              ${pkgs.nushell}/bin/nu --no-config-file ${./lib/honeycomb/runtime/tests.nu} ${./lib/honeycomb/runtime/honeycomb.nu} ${
+                pkgs.writeText "honeycomb-areas.json" (
+                  builtins.toJSON (import ./lib/honeycomb { inherit lib; }).areas
+                )
+              } ${./lib/honeycomb/runtime/hub/server.nu} ${lib.getExe pkgs.http-nu}
               touch "$out"
             '';
         nushell-parse =
