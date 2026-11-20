@@ -6,7 +6,7 @@
 }:
 let
   # The hosts whose inventory runs a Rex server, and where each one answers
-  # on the tailnet: modules/nixos/services/rex.nix publishes the server there
+  # on the tailnet: modules/nixos/services/user-servers/rex.nix publishes the server there
   # over HTTPS.
   port = 7297;
   socket = "rex/serve.sock";
@@ -21,7 +21,7 @@ in
   # run from boot.
   den.aspects.rex = {
     meta = config.myConfig.aspectPolicy.remote;
-    nixos.imports = [ ../../../modules/nixos/services/rex.nix ];
+    nixos.imports = [ ../../../modules/nixos/services/user-servers/rex.nix ];
     includes = [
       (
         { host, ... }:

@@ -19,7 +19,7 @@ let
   tailscale = "${config.services.tailscale.package}/bin/tailscale";
 in
 {
-  imports = [ ../fleet/tailscale-https.nix ];
+  imports = [ ../../fleet/tailscale-https.nix ];
 
   options.dotfiles.rex = {
     user = mkOption {

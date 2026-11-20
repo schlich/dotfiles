@@ -9,7 +9,7 @@
 # The T3 Code server of this user: the execution environment that the
 # desktop app, the phone, linked environments and outside agents connect to,
 # as a systemd user unit on ~/.t3. It listens on loopback only; the system
-# half (modules/nixos/services/t3code.nix) keeps the user lingering, so it runs from
+# half (modules/nixos/services/user-servers/t3code.nix) keeps the user lingering, so it runs from
 # boot and survives logout, and publishes it to the tailnet over HTTPS. Nix
 # owns the version, so T3's own `t3 service install` and `t3 update` stay
 # unused: a second server on ~/.t3 would only be refused by the first one's
