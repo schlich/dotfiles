@@ -3,7 +3,7 @@
 # checkout: the App's IDs in hosts/homelab/nixbot.nix and its secrets,
 # encrypted with age for the recipients secrets/secrets.nix lists, in
 # secrets/nixbot/. Secrets travel only through memory and stdin: none is
-# printed or passed as an argument. docs/nixbot.md has the procedure.
+# printed or passed as an argument. docs/delivery/nixbot.md has the procedure.
 
 const API = "https://api.github.com"
 
@@ -134,5 +134,5 @@ def main [
 
   print ""
   print "Then gate, merge, and deliver the task; homelab turns nixbot on when it deploys main."
-  print "A replaced App also needs the main-checks ruleset changed first: see docs/nixbot.md."
+  print "A replaced App also needs the main-checks ruleset changed first: see docs/delivery/nixbot.md."
 }

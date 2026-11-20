@@ -255,7 +255,7 @@ open an agent on its report. `deploy-reverts` lists the log and tallies the
 checks that caused reverts. That tally is the feedback loop: each revert marks
 a regression the pre-deploy checks missed, and the next check to write is the
 one that would have caught the most frequent cause (see
-`docs/ci-failure-review.md`). `tests/deploy-revert.nix`, in `remoteChecks`, runs
+`docs/delivery/ci-failure-review.md`). `tests/deploy-revert.nix`, in `remoteChecks`, runs
 a broken candidate, a healthy one, and a killed watch through the real script
 in a VM.
 

@@ -1,6 +1,8 @@
 # Repository workflows
 
-## Shell conventions
+## Shell
+
+### Shell conventions
 
 - The user's interactive and configured shell is Nushell. When producing
   user-facing shell commands, scripts, aliases, or templates, use valid
@@ -14,7 +16,26 @@
   multi-line external commands, put the command and each argument on its own
   line without trailing backslashes.
 
+### Privileged command approval
+
+- When a command needs elevated privileges, request tool-level escalation with
+  a user-facing justification so the host presents an inline approval control
+  in the current chat session. Do not require the user to leave the session
+  to approve it.
+- In a shell without a terminal, such as Claude Code's Bash tool, use
+  `sudo -A`: `SUDO_ASKPASS` points at sudoplz, which shows the command in a
+  dialog and supplies the stored password only on approval.
+- Inside the Claude desktop app's sandbox, no-new-privileges defeats
+  `sudo`; use `run0 --background= /absolute/path/COMMAND` instead, which
+  polkit approves in a dialog. Absolute paths are required: the transient
+  unit's `PATH` lacks the NixOS system profile.
+- Never pass a sudo password through chat, command arguments, stdin, or
+  environment variables. If inline escalation is unavailable, tell the user
+  to run the command themselves or enable approval handling in the client.
+
 ## Configuration
+
+### Configuration
 
 - This repository is a Nix flake. Keep tooling, shell wrappers, agent assets,
   and workflow enablement declarative through `flake.nix`, `home.nix`, and
@@ -70,6 +91,60 @@
   `nix build path:.#nixosConfigurations.asus.config.system.build.toplevel`
   for system changes.
 
+### Configuration factory architecture
+
+- Host files and `den/inventory.nix` describe facts; reusable behavior belongs in focused Den aspects.
+- Avoid hostname conditionals. Add a typed profile field and a reusable aspect when a capability is genuinely shared.
+- The `master` aspect resolves host facts into behavior. Prefer extending a focused aspect over expanding a catch-all module.
+- Inspect the pinned Den API before using schema, aspect, policy, or output features: read it with the Nix MCP server's `flake-inputs` action (`type: ls` or `read`, `query: "den:PATH"`), which resolves the revision in `flake.lock`.
+- Every declared host must evaluate. A host whose `policy.criticality` is `disposable` evaluates in `remoteChecks`, which GitHub Actions reports without blocking a landing, as do previews of a host with modules it has not adopted yet; every other host gates it through `checks`. Keep policy and aspect metadata machine-readable so affected hosts, risk, checks, and reviewer domains can be identified.
+- Do not silently alter boot, storage, filesystem, encryption, swap, or security configuration. These are high-risk changes and generated hardware files remain host-local.
+- Never put plaintext secrets in the repository or Nix store. Preserve encrypted inputs and recovery paths.
+- Switch the current system only through `system-switch` from delivered `main`: after a delivery as "Applying configuration" describes, or when the user asks. Never use `nixos-rebuild test` or another activation outside it. The canary's own deployment timer (`policy.autoDeploy`) switches homelab on its own, and enabling it for another host is a policy change for the user to request.
+- The architecture and safe recovery flow are documented in `docs/architecture.md`.
+
+Repository checks are `nix fmt` and `nix flake check --no-build path:.`. The
+flake checks evaluate the workstation and headless systems, and `remoteChecks`
+build them, so build either only when explicitly requested because they are
+expensive; `nix-fast-build --skip-cached --flake path:.#checks.x86_64-linux`
+runs the same set as nix-ci, and `path:.#gateChecks.x86_64-linux` the set the
+luvus quality gate and nixbot build.
+`nixos-rebuild switch` is never an agent validation step.
+
+### Workarounds for nixpkgs
+
+- When this repository takes a package from another flake input, builds it
+  itself, or overrides it because nixpkgs lags, lacks, or ships it without
+  something this configuration needs, declare
+  `dotfiles.nixpkgsWatch.<attribute>` in the same module, with `version` set
+  to the version the workaround provides and `reason` naming what to remove.
+  For an override that patches a package or turns on a feature, set `fix` to
+  the upstream pull request or commit whose release ends it. `input` names
+  the flake input it comes from (by default the input of the entry's name),
+  and `repo` a local build's GitHub repository. Remove the entry with the
+  workaround. `modules/home/nix/nixpkgs-watch.nix` documents the options.
+- The `nixpkgs-watch-coverage` flake check fails on a workaround nothing
+  covers: a flake input's package, a local build of upstream source, or an
+  `overrideAttrs`. An entry named for a file (`foo` for `foo-package.nix`)
+  covers it; a file whose entry lives elsewhere says `# nixpkgs-watch: NAME`,
+  and one that is no workaround says
+  `# nixpkgs-watch: not a workaround: REASON`. A flake input of the user's own
+  goes in `dotfiles.nixpkgsWatchExempt` with its reason.
+- A build warning starting "nixpkgs now ships" means the locked nixpkgs has
+  caught up: propose removing that workaround as its own topic.
+- The daily timer queues a luvus task for each workaround that can go: when
+  nixpkgs ships it, when nixpkgs' release (or the locked input) contains its
+  `fix`, or when upstream's own build of an input that follows this flake's
+  nixpkgs is in cache.nixos.org, FlakeHub Cache, or a cache upstream's
+  flake.nix declares. It never starts them, and skips one already on the
+  board for the same package and way out.
+- `nixpkgs-watch` prints the last daily report (open pull requests, ones that
+  reached unstable, failures, `related` ones that only mention the package but
+  that Jev judged, from the title, to bear on the workaround, and what
+  upstream offers: the fix's state, a cached build, a FlakeHub release, a new
+  flake.nix); `nixpkgs-watch check` refreshes it. Read it when the user asks
+  about a watched package or before updating the nixpkgs input.
+
 ## Applying configuration
 
 - When Nix configuration edits are ready to apply, identify whether they affect
@@ -87,7 +162,7 @@
   while the host's health checks are watched, and a breach reverts it and
   writes a report under `/var/lib/nixos-switch-main/reports/`. When a switch
   reverts, read that report and `deploy-reverts`, and propose the pre-deploy
-  check that would have caught the regression (`docs/ci-failure-review.md`).
+  check that would have caught the regression (`docs/delivery/ci-failure-review.md`).
   `deploy-reverts causes` has Jev judge every report's root cause and ranks
   causes by how many reverts a pre-deploy check could have caught; read the
   reports behind the top cause before proposing a check.
@@ -135,58 +210,9 @@
   system and shows them, but it is a build, so run it only when the user asks.
   `nix-suite last [N]` shows what recent switches changed.
 
-## Workarounds for nixpkgs
+## Version control and delivery
 
-- When this repository takes a package from another flake input, builds it
-  itself, or overrides it because nixpkgs lags, lacks, or ships it without
-  something this configuration needs, declare
-  `dotfiles.nixpkgsWatch.<attribute>` in the same module, with `version` set
-  to the version the workaround provides and `reason` naming what to remove.
-  For an override that patches a package or turns on a feature, set `fix` to
-  the upstream pull request or commit whose release ends it. `input` names
-  the flake input it comes from (by default the input of the entry's name),
-  and `repo` a local build's GitHub repository. Remove the entry with the
-  workaround. `modules/home/nix/nixpkgs-watch.nix` documents the options.
-- The `nixpkgs-watch-coverage` flake check fails on a workaround nothing
-  covers: a flake input's package, a local build of upstream source, or an
-  `overrideAttrs`. An entry named for a file (`foo` for `foo-package.nix`)
-  covers it; a file whose entry lives elsewhere says `# nixpkgs-watch: NAME`,
-  and one that is no workaround says
-  `# nixpkgs-watch: not a workaround: REASON`. A flake input of the user's own
-  goes in `dotfiles.nixpkgsWatchExempt` with its reason.
-- A build warning starting "nixpkgs now ships" means the locked nixpkgs has
-  caught up: propose removing that workaround as its own topic.
-- The daily timer queues a luvus task for each workaround that can go: when
-  nixpkgs ships it, when nixpkgs' release (or the locked input) contains its
-  `fix`, or when upstream's own build of an input that follows this flake's
-  nixpkgs is in cache.nixos.org, FlakeHub Cache, or a cache upstream's
-  flake.nix declares. It never starts them, and skips one already on the
-  board for the same package and way out.
-- `nixpkgs-watch` prints the last daily report (open pull requests, ones that
-  reached unstable, failures, `related` ones that only mention the package but
-  that Jev judged, from the title, to bear on the workaround, and what
-  upstream offers: the fix's state, a cached build, a FlakeHub release, a new
-  flake.nix); `nixpkgs-watch check` refreshes it. Read it when the user asks
-  about a watched package or before updating the nixpkgs input.
-
-## Privileged command approval
-
-- When a command needs elevated privileges, request tool-level escalation with
-  a user-facing justification so the host presents an inline approval control
-  in the current chat session. Do not require the user to leave the session
-  to approve it.
-- In a shell without a terminal, such as Claude Code's Bash tool, use
-  `sudo -A`: `SUDO_ASKPASS` points at sudoplz, which shows the command in a
-  dialog and supplies the stored password only on approval.
-- Inside the Claude desktop app's sandbox, no-new-privileges defeats
-  `sudo`; use `run0 --background= /absolute/path/COMMAND` instead, which
-  polkit approves in a dialog. Absolute paths are required: the transient
-  unit's `PATH` lacks the NixOS system profile.
-- Never pass a sudo password through chat, command arguments, stdin, or
-  environment variables. If inline escalation is unavailable, tell the user
-  to run the command themselves or enable approval handling in the client.
-
-## Version control
+### Version control
 
 - This repository takes writes through Git, driven by luvus. jj and `ci` are
   set aside here; they stay installed for other repositories, so their
@@ -218,7 +244,7 @@
   switch. Leave them alone unless the user asks: they hold earlier work,
   some of it the user's.
 
-## Delivery
+### Delivery
 
 - A task's quality gate is the repository's `gateChecks`: the flake checks
   plus the system and home asus switches to after a delivery. Create tasks
@@ -272,7 +298,7 @@
   review, but deliver through `luvus-deliver`, never GitHub's merge button.
   Tangled (`tangled`) mirrored `main` through `ci land`; that mirror is
   paused while this repository runs on luvus.
-- nixbot on homelab is the gating CI (`docs/nixbot.md`): it builds
+- nixbot on homelab is the gating CI (`docs/delivery/nixbot.md`): it builds
   `gateChecks.x86_64-linux` for `main`, every `luvus/*` branch
   (`nixbot.toml`), and pull requests, in homelab's warm store, which
   homelab's cache serves to asus.
@@ -287,20 +313,29 @@
   the switch, and the switch after a delivery finds it already built. Add a
   check by adding a flake check.
 
-## User-visible progress
+### Continuous integration and merge-conflict policy
 
-- Run routine inspection and formatting without dedicated updates. Do not run
-  build or test validation unless the user explicitly requests it.
-- Do not name skills, tools, commands, or repository policies merely to show
-  compliance.
-- For routine multi-step work, provide one short outcome-oriented update before
-  starting. Add another only for a material result, decision, blocker, or
-  long-running status.
-- Mention an exact command only when the user asks, it fails, produces an
-  unexpected change, requires approval, or materially affects the result.
-- Group routine formatting and checks under “Validating the change.”
+Keep active work continuously integrated: branch each task from
+`origin/main`, merge `origin/main` into a long-running task branch when it
+falls behind or conflicts, and never let two concurrent actors share one
+worktree. luvus's merge gate integrates finished tasks one at a time in its
+own worktree, and `luvus-deliver` moves `main` only to a commit nixbot
+passed.
+
+Resolve merge conflicts automatically when the intended result is clear,
+preserving the changes from both sides. When `luvus task merge` reports a
+conflict, resolve it in the task's worktree, rerun the relevant checks and
+gate, and merge again. Ask the user only when the resolution requires a
+product decision or the intended behavior is unclear; keep the task
+`blocked` until that decision arrives.
+
+Order dependent work with task dependencies (`--deps`): a dependent task
+waits until its dependency is merged into `luvus/integration`. Keep
+unrelated, conflict-free work in separate tasks.
 
 ## Agents
+
+### Agents
 
 - Use the `trunk-triage` agent (GPT-5.6 Luna) only for read-only repository
   status, pipeline and pull request summaries, and formatting-only fixes.
@@ -327,8 +362,21 @@
 - Run sessions for this repository locally, through Remote Control, or over
   SSH on a host with the same agent configuration. Do not start or hand off
   a cloud session for it: cloud sessions cannot reach this machine's luvus
-  server or activate a host. See `docs/claude-session-environments.md`, which
+  server or activate a host. See `docs/agents/claude-session-environments.md`, which
   also covers SSH failures inside a sandboxed local session.
+
+### User-visible progress
+
+- Run routine inspection and formatting without dedicated updates. Do not run
+  build or test validation unless the user explicitly requests it.
+- Do not name skills, tools, commands, or repository policies merely to show
+  compliance.
+- For routine multi-step work, provide one short outcome-oriented update before
+  starting. Add another only for a material result, decision, blocker, or
+  long-running status.
+- Mention an exact command only when the user asks, it fails, produces an
+  unexpected change, requires approval, or materially affects the result.
+- Group routine formatting and checks under “Validating the change.”
 
 ## Project memory
 
@@ -349,43 +397,3 @@ plans, features, bugs, specs, architecture, and releases as an IWE graph under
   rewrites the loose notes beside it in `docs/`.
 - `iwe schema validate` and a no-op `iwe normalize` in `docs/project/` gate any
   change to the graph.
-
-## Configuration factory architecture
-
-- Host files and `den/inventory.nix` describe facts; reusable behavior belongs in focused Den aspects.
-- Avoid hostname conditionals. Add a typed profile field and a reusable aspect when a capability is genuinely shared.
-- The `master` aspect resolves host facts into behavior. Prefer extending a focused aspect over expanding a catch-all module.
-- Inspect the pinned Den API before using schema, aspect, policy, or output features: read it with the Nix MCP server's `flake-inputs` action (`type: ls` or `read`, `query: "den:PATH"`), which resolves the revision in `flake.lock`.
-- Every declared host must evaluate. A host whose `policy.criticality` is `disposable` evaluates in `remoteChecks`, which GitHub Actions reports without blocking a landing, as do previews of a host with modules it has not adopted yet; every other host gates it through `checks`. Keep policy and aspect metadata machine-readable so affected hosts, risk, checks, and reviewer domains can be identified.
-- Do not silently alter boot, storage, filesystem, encryption, swap, or security configuration. These are high-risk changes and generated hardware files remain host-local.
-- Never put plaintext secrets in the repository or Nix store. Preserve encrypted inputs and recovery paths.
-- Switch the current system only through `system-switch` from delivered `main`: after a delivery as "Applying configuration" describes, or when the user asks. Never use `nixos-rebuild test` or another activation outside it. The canary's own deployment timer (`policy.autoDeploy`) switches homelab on its own, and enabling it for another host is a policy change for the user to request.
-- The architecture and safe recovery flow are documented in `docs/architecture.md`.
-
-Repository checks are `nix fmt` and `nix flake check --no-build path:.`. The
-flake checks evaluate the workstation and headless systems, and `remoteChecks`
-build them, so build either only when explicitly requested because they are
-expensive; `nix-fast-build --skip-cached --flake path:.#checks.x86_64-linux`
-runs the same set as nix-ci, and `path:.#gateChecks.x86_64-linux` the set the
-luvus quality gate and nixbot build.
-`nixos-rebuild switch` is never an agent validation step.
-
-## Continuous integration and merge-conflict policy
-
-Keep active work continuously integrated: branch each task from
-`origin/main`, merge `origin/main` into a long-running task branch when it
-falls behind or conflicts, and never let two concurrent actors share one
-worktree. luvus's merge gate integrates finished tasks one at a time in its
-own worktree, and `luvus-deliver` moves `main` only to a commit nixbot
-passed.
-
-Resolve merge conflicts automatically when the intended result is clear,
-preserving the changes from both sides. When `luvus task merge` reports a
-conflict, resolve it in the task's worktree, rerun the relevant checks and
-gate, and merge again. Ask the user only when the resolution requires a
-product decision or the intended behavior is unclear; keep the task
-`blocked` until that decision arrives.
-
-Order dependent work with task dependencies (`--deps`): a dependent task
-waits until its dependency is merged into `luvus/integration`. Keep
-unrelated, conflict-free work in separate tasks.

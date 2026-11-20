@@ -2,7 +2,7 @@
 # off while appId is null; `nixbot-register` creates the App from the manifest
 # in modules/nixos/builds/nixbot.nix, writes its IDs here, and encrypts its secrets
 # into secrets/nixbot/ for homelab. Landing both turns nixbot on.
-# docs/nixbot.md has the steps.
+# docs/delivery/nixbot.md has the steps.
 {
   # The App's numeric "App ID".
   appId = 5386637;

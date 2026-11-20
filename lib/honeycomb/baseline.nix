@@ -2,12 +2,10 @@
 # The honeycomb-census check lets these shrink and never grow; delete an
 # entry once its collection is within six. README.md explains the rule.
 {
-  "agents:sections" = 12;
   "dir:." = 34;
   "dir:.agents/skills" = 7;
   "dir:.github" = 7;
   "dir:deploy" = 7;
-  "dir:docs" = 15;
   "dir:docs/project" = 7;
   "dir:docs/project/data" = 20;
   "dir:docs/project/data/architecture" = 10;

@@ -21,8 +21,8 @@ sources:
 
 ## Symptom
 
-`docs/nixbot.md` said nixbot roots each topic's outputs until it lands, but
-nothing nixbot built for `luvus/integration` or a task branch was rooted on
+`docs/delivery/nixbot.md` said nixbot roots each topic's outputs until it lands,
+but nothing nixbot built for `luvus/integration` or a task branch was rooted on
 homelab. A garbage collection between nixbot's build of `luvus/integration` and
 delivery could drop those outputs, so main's build of the same commit, or the
 next luvus gate's `--skip-cached` lookup in Harmonia, would rebuild them.
@@ -58,4 +58,4 @@ Verified anchor points (line numbers as of 2026-10-29):
 
 - `modules/nixos/builds/nixbot.nix:117` — `branches.topics`
 - `nixbot.toml:7` — `build_branches`
-- `docs/nixbot.md:17` — what nixbot builds and roots
+- `docs/delivery/nixbot.md:17` — what nixbot builds and roots

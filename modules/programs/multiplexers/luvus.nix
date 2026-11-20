@@ -17,7 +17,7 @@ let
   jsonFormat = pkgs.formats.json { };
   luvus = import ./luvus-package.nix { inherit inputs lib pkgs; };
 
-  # The prefix is the multiplexer's leader in the input stack (docs/input.md).
+  # The prefix is the multiplexer's leader in the input stack (docs/desktop/input.md).
   multiplexer = lib.findFirst (
     context: context.implementation == "luvus"
   ) null config.dotfiles.input.contexts;

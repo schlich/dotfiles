@@ -12,7 +12,7 @@ rewrite or bypass the commit that nixbot tested.
 `main-checks.json` describes the active personal-repository ruleset. It blocks
 deleting `main` and rewriting it with a non-fast-forward push, and it requires
 the `nixbot/nix-eval` and `nixbot/nix-build` check runs, which nixbot on
-homelab reports on every commit it builds (`docs/nixbot.md`). Each names
+homelab reports on every commit it builds (`docs/delivery/nixbot.md`). Each names
 nixbot's GitHub App as its `integration_id`, so only that App can satisfy it.
 That admits only commits nixbot built, without a pull request rule, which
 would reject the push. GitHub Actions still builds every push but gates

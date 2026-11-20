@@ -837,7 +837,7 @@
         '';
         home-manager = homeCheck;
         # nixbot's App manifest asks GitHub for exactly the permissions and
-        # events docs/nixbot.md says nixbot needs, and nixbot-register builds.
+        # events docs/delivery/nixbot.md says nixbot needs, and nixbot-register builds.
         nixbot-app-manifest =
           pkgs.runCommand "nixbot-app-manifest-check"
             {
@@ -846,7 +846,7 @@
             ''
               export HOME="$TMPDIR/home"
               mkdir -p "$HOME"
-              ${pkgs.nushell}/bin/nu --no-config-file ${./tests/nixbot-manifest.nu} ${./docs/nixbot.md} ${nixbotRegistration}
+              ${pkgs.nushell}/bin/nu --no-config-file ${./tests/nixbot-manifest.nu} ${./docs/delivery/nixbot.md} ${nixbotRegistration}
               test -x ${nixbotRegister}/bin/nixbot-register
               touch "$out"
             '';

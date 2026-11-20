@@ -180,5 +180,5 @@ jobs:
             echo '- **TigerBeetle transaction guarantee:** If this involves TigerBeetle or ledger-style state, should transaction boundaries, atomicity, idempotency, or transfer invariants be modeled and tested?'
             echo '- **Architecture:** What design change would make the invalid state harder to represent or the guarantee easier to verify? Record why the chosen mechanism fits.'
             echo
-            echo 'These are options to assess, not mandatory technologies. Choose the smallest applicable durable guarantee; explain when none adds value. See [CI failure review guide](../blob/main/docs/ci-failure-review.md).'
+            echo 'These are options to assess, not mandatory technologies. Choose the smallest applicable durable guarantee; explain when none adds value. See [CI failure review guide](../blob/main/docs/delivery/ci-failure-review.md).'
           } >> "$GITHUB_STEP_SUMMARY"

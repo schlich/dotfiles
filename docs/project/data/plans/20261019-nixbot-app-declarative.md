@@ -64,9 +64,9 @@ already serves 8443 on homelab's node.
 
 ### Task 4: Tests and docs
 
-- [x] `nixbot-app-manifest` check against `docs/nixbot.md`'s tables.
+- [x] `nixbot-app-manifest` check against `docs/delivery/nixbot.md`'s tables.
 - [x] Placeholder secrets in `nixbot-homelab-evaluation`.
-- [x] Rewrite `docs/nixbot.md`'s go-live section.
+- [x] Rewrite `docs/delivery/nixbot.md`'s go-live section.
 
 ### Task 5: Go live (the user)
 
@@ -96,4 +96,4 @@ Verified anchor points (line numbers as of 2026-10-19):
 - flake.nix:394 — `nixbotHomelabEvaluationCheck`
 - flake.nix:734 — `nixbot-app-manifest`
 - tests/nixbot-manifest.nu:29 — check `main`
-- docs/nixbot.md:25 — "What the App may do"
+- docs/delivery/nixbot.md:25 — "What the App may do"

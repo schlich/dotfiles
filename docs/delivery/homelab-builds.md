@@ -42,4 +42,4 @@ uses Tailscale SSH and requests a separate authentication check, so
 automation that uses ordinary SSH keys should select the OpenSSH port.
 
 See [Nix's distributed-build setup](https://nix.dev/tutorials/nixos/distributed-builds-setup.html)
-and [the activation policy](architecture.md).
+and [the activation policy](../architecture.md).
