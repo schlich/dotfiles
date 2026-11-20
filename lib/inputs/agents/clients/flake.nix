@@ -13,7 +13,6 @@
     # delegate_task, from the nixpkgs commit that packaged it
     # (NixOS/nixpkgs#580444); the locked nixpkgs still ships 0.0.45.
     # modules/tooling/ai/clients/t3code/t3code-package.nix takes only t3code from it.
-    nixpkgs-t3code.url = "github:NixOS/nixpkgs/1a1a6e280ff8f744a0bf5e2fb32a1fb1775b54e5";
     paseo.url = "github:getpaseo/paseo/main";
   };
 

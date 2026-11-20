@@ -1,5 +1,4 @@
 {
-  inputs,
   lib,
   pkgs,
   ...
@@ -7,7 +6,7 @@
 
 let
   # Upstream's own package, which tracks its Cargo.lock without hashes to keep.
-  hokum = inputs.hokum.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  inherit (pkgs) hokum;
 in
 {
   # Hokum is the notification daemon, with sound and Bluetooth panes and a
@@ -40,8 +39,4 @@ in
     Install.WantedBy = [ "graphical-session.target" ];
   };
 
-  dotfiles.nixpkgsWatch.hokum = {
-    inherit (hokum) version;
-    reason = "replace the hokum input's package with pkgs.hokum in modules/programs/desktop/hokum.nix and drop the hokum input";
-  };
 }

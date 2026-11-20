@@ -1,11 +1,10 @@
 {
-  inputs,
   lib,
   pkgs,
   ...
 }:
 
-# T3 Code from the nixpkgs-t3code input (flake.nix), the one package the
+# T3 Code from the system's nixpkgs, the one package the
 # desktop client (t3code.nix) and the fleet server (t3code-server.nix) both
 # run, so `t3`, the app and the service always match. The wrapper prepends
 # nothing to PATH: Claude Code and Codex sign in with their subscriptions
@@ -14,13 +13,11 @@
 # (vcs.nix, cli.nix).
 
 let
-  nixpkgsT3code =
-    inputs.nixpkgs-t3code.legacyPackages.${pkgs.stdenv.hostPlatform.system}.t3code.override
-      {
-        enableCodex = false;
-        enableGit = false;
-        enableGitHub = false;
-      };
+  nixpkgsT3code = pkgs.t3code.override {
+    enableCodex = false;
+    enableGit = false;
+    enableGitHub = false;
+  };
   # T3 Connect, which carries push notifications to the phone, needs three
   # public values that official builds embed and nixpkgs' build lacks ("T3
   # Connect is unavailable in builds without public configuration"). The
@@ -53,7 +50,7 @@ in
     package = lib.mkOption {
       type = lib.types.package;
       default = t3code;
-      defaultText = lib.literalExpression "inputs.nixpkgs-t3code.legacyPackages.\${system}.t3code";
+      defaultText = lib.literalExpression "pkgs.t3code";
       readOnly = true;
       description = "The T3 Code package that provides both `t3` and `t3code-desktop`.";
     };
@@ -74,11 +71,5 @@ in
         '';
       };
     };
-  };
-
-  config.dotfiles.nixpkgsWatch.t3code = {
-    input = "nixpkgs-t3code";
-    inherit (t3code) version;
-    reason = "take t3code from pkgs in modules/tooling/ai/clients/t3code/t3code-package.nix and drop the nixpkgs-t3code input";
   };
 }

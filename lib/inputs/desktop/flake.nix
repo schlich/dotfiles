@@ -8,7 +8,6 @@
     noc-minimizer.url = "github:SwashX-dev/Noc-minimizer";
     # Hokum, the notification daemon, which nixpkgs lacks. Its flake is on the
     # default branch only; v0.1.3 predates it.
-    hokum.url = "github:anomalyco/hokum";
     dicta.url = "github:schlich/dicta";
     ai-usagebar.url = "github:akitaonrails/ai-usagebar";
   };

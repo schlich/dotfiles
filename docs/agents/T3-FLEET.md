@@ -33,7 +33,7 @@ Where it is declared:
 | Piece                                  | File                                                                                       |
 | -------------------------------------- | ------------------------------------------------------------------------------------------ |
 | Which hosts run a server               | `den/inventory.nix` (`services.t3code`)                                                    |
-| Package (0.1.4, pinned)                | `flake.nix` input `nixpkgs-t3code`, `modules/tooling/ai/clients/t3code/t3code-package.nix` |
+| Package                               | `pkgs.t3code` in `modules/tooling/ai/clients/t3code/t3code-package.nix` |
 | User unit, MCP entries, desktop client | `modules/tooling/ai/clients/t3code/t3code-server.nix`                                      |
 | Linger and Tailscale Serve             | `modules/nixos/services/user-servers/t3code.nix`                                           |
 | Den wiring and fleet URLs              | `den/aspects/services/t3code.nix`                                                          |
@@ -236,9 +236,8 @@ branch, pull request and auto-pull features act on the Git side only.
 
 ## Updates and rollback
 
-- **Update.** Move `nixpkgs-t3code` to a newer nixpkgs revision that ships
-  the release (`nix flake lock --override-input nixpkgs-t3code github:NixOS/nixpkgs/REV`), or delete the input and the override once
-  `nixpkgs-watch` says the main nixpkgs ships it. Deliver and activate as
+- **Update.** Update the system's nixpkgs pin to a revision that ships the
+  desired T3 Code release. Deliver and activate as
   usual; activation restarts the server. Do not use `t3 update`, the in-app
   updater or `t3 service install`.
 - **Rollback.** Revert the commit (or the input), deliver, and activate; or

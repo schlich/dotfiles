@@ -9,7 +9,7 @@ let
   wrapWithConfig = import ../../../lib/wrap-with-config.nix { inherit lib pkgs; };
   toml = pkgs.formats.toml { };
 
-  atuinPackage = import ./atuin-package.nix { inherit inputs pkgs; };
+  atuinPackage = pkgs.atuin;
   atuin = wrapWithConfig {
     package = atuinPackage;
     # The daemon that `autostart` launches inherits the variable.
@@ -110,11 +110,6 @@ in
   # config.nu sources Atuin's init scripts below, so Home Manager's atuin
   # module is not needed.
   home.packages = [ atuin ];
-
-  dotfiles.nixpkgsWatch.atuin = {
-    inherit (atuinPackage) version;
-    reason = "use pkgs.atuin where modules/programs/shell/atuin-package.nix is imported (shell.nix, tooling/ai/common.nix), delete that file, and drop the atuin input";
-  };
 
   programs.carapace = {
     enable = true;

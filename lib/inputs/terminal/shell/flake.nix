@@ -4,7 +4,6 @@
   inputs = {
     nushellWith.url = "github:YPares/nushellWith/master";
     # Upstream packages Atuin 18.24; nixpkgs still ships 18.23.
-    atuin.url = "github:atuinsh/atuin/v18.24.0";
     xs.url = "github:cablehead/xs";
     # The `pst` Nushell module (OSC 7501 program status) that ci reports its
     # phases with and the shell imports; the ci input follows it.

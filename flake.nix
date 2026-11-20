@@ -23,12 +23,10 @@
     builds.inputs.npr.inputs.nixpkgs.follows = "system/nixpkgs";
     desktop.inputs.niri.inputs.nixpkgs.follows = "system/nixpkgs";
     desktop.inputs.noc-minimizer.inputs.nixpkgs.follows = "system/nixpkgs";
-    desktop.inputs.hokum.inputs.nixpkgs.follows = "system/nixpkgs";
     desktop.inputs.dicta.inputs.nixpkgs.follows = "system/nixpkgs";
     desktop.inputs.ai-usagebar.inputs.nixpkgs.follows = "system/nixpkgs";
     terminal.inputs.luvus.inputs.nixpkgs.follows = "system/nixpkgs";
     terminal.inputs.shell.inputs.nushellWith.inputs.nixpkgs.follows = "system/nixpkgs";
-    terminal.inputs.shell.inputs.atuin.inputs.nixpkgs.follows = "system/nixpkgs";
     terminal.inputs.shell.inputs.xs.inputs.nixpkgs.follows = "system/nixpkgs";
     terminal.inputs.shell.inputs.rex.inputs.nixpkgs.follows = "system/nixpkgs";
     terminal.inputs.vcs.inputs.ci.inputs.nixpkgs.follows = "system/nixpkgs";

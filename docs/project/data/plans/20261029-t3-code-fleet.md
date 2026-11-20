@@ -39,6 +39,11 @@ root-run Tailscale Serve publishes the loopback listener at
 `https://HOST.TAILNET:3773/`) and a home half (the `t3code-server` user unit,
 modelled on upstream's, with a direnv `BASH_ENV` hook, MCP entries for Claude
 Code and Codex, a client-only desktop launcher and the `t3f` Nushell helpers).
+
+The package now comes from the system nixpkgs pin, alongside Atuin and Hokum.
+The separate inputs and their nixpkgs watch entries were removed. The T3 Connect
+wrapper still provides the public relay and OAuth settings.
+
 Push notifications use T3 Connect in publish-only mode, without a tunnel.
 Rejected: `t3 service install` (imperative, self-updating, pins one store path),
 `--tailscale-serve` (needs Tailscale operator rights for the user and its

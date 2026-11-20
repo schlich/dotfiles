@@ -8,7 +8,7 @@
 
 let
   inherit (pkgs) iwe;
-  atuin = import ../../../programs/shell/atuin-package.nix { inherit inputs pkgs; };
+  inherit (pkgs) atuin;
   kbRoot = config.dotfiles.paths.kb;
   xs = inputs.xs.packages.${pkgs.stdenv.hostPlatform.system}.default;
   # iwec serves the workspace in its working directory.
