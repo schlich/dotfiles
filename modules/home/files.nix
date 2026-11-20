@@ -68,6 +68,10 @@ in
       desktop = "${life}/Downloads";
       publicShare = "${life}/Downloads";
       templates = "${life}/Downloads";
+      # Projects live in the six area folders (~/AREA/NAME), which no single
+      # XDG dir fits. Home Manager otherwise defaults this to ~/Projects and
+      # recreates it on every activation.
+      projects = null;
     };
 
   dotfiles.retiredHomeFiles = [
