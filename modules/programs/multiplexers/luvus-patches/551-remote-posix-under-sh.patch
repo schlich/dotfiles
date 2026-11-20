@@ -1,0 +1,352 @@
+diff --git a/src/machine/command.rs b/src/machine/command.rs
+index 1c114e3..bb4ff82 100644
+--- a/src/machine/command.rs
++++ b/src/machine/command.rs
+@@ -33,6 +33,34 @@ pub(crate) fn append(command: &mut Command, binary: &str, args: &[&str]) -> anyh
+     Ok(())
+ }
+ 
++/// The remote command line that runs a fixed POSIX `script` under `sh`, with
++/// `args` as its `$1`, `$2`, and so on.
++///
++/// OpenSSH hands this line to the remote user's login shell, which need not be
++/// POSIX: Nushell, for one, rejects POSIX loops, tests, and `'\''` escapes. So
++/// the line uses only words that POSIX shells and Nushell both read literally:
++/// the script travels as one single-quoted word with no single quote inside,
++/// and `sh` restores it with its `printf %b` builtin before running it. The
++/// remote host needs nothing but `sh`.
++pub(crate) fn posix_script(script: &str, args: &[&str]) -> anyhow::Result<String> {
++    if args.iter().any(|arg| {
++        arg.is_empty()
++            || !arg
++                .bytes()
++                .all(|byte| byte.is_ascii_alphanumeric() || b"._-+".contains(&byte))
++    }) {
++        anyhow::bail!("invalid remote machine command argument");
++    }
++    // `printf %b` turns `\\` back into `\` and `\0047` into `'`.
++    let encoded = script.replace('\\', "\\\\").replace('\'', "\\0047");
++    let mut line = format!("sh -c 'eval \"$(printf %b \"$0\")\"' '{encoded}'");
++    for arg in args {
++        line.push(' ');
++        line.push_str(arg);
++    }
++    Ok(line)
++}
++
+ fn windows_script(binary: &str, args: &[&str]) -> String {
+     let binary = binary.replace('\'', "''");
+     format!(
+@@ -71,6 +99,69 @@ exit $code
+ mod tests {
+     use super::*;
+ 
++    /// Quotes, backslash escapes, `%`, expansions, and several lines, as the
++    /// fixed remote scripts use them.
++    const AWKWARD: &str = r#"set -eu
++printf '%s|%s\n' "$1" "$2"
++printf '%s\n' 'it'"'"'s 100% \done'
++x='a\\b'; printf '%s\n' "$x"
++[ -n "${HOME:-}" ] && printf 'home\n'
++"#;
++    #[cfg(unix)]
++    const AWKWARD_OUT: &str = "0.14.3|ab+1\nit's 100% \\done\na\\\\b\nhome\n";
++
++    #[test]
++    fn posix_script_sends_no_single_quote_inside_the_script() {
++        let line = posix_script(AWKWARD, &["0.14.3", "ab+1"]).unwrap();
++        assert_eq!(line.matches('\'').count(), 4, "{line}");
++        assert!(line.ends_with("' 0.14.3 ab+1"), "{line}");
++    }
++
++    #[test]
++    fn posix_script_rejects_arguments_a_login_shell_would_interpret() {
++        for arg in ["", "a b", "a'b", "$HOME", "a;b", "a\nb"] {
++            assert!(posix_script("true", &[arg]).is_err(), "{arg:?}");
++        }
++    }
++
++    /// Run the line the way OpenSSH does: as the `-c` command of the remote
++    /// login shell.
++    #[cfg(unix)]
++    fn run_as_login_shell(shell: &str, line: &str) -> Option<std::process::Output> {
++        let mut command = Command::new(shell);
++        if shell == "nu" {
++            command.arg("--no-config-file");
++        }
++        command.arg("-c").arg(line).env("HOME", "/nonexistent-home");
++        match command.output() {
++            Ok(output) => Some(output),
++            // Nushell is optional on CI hosts; POSIX `sh` is not.
++            Err(error) if shell == "nu" && error.kind() == std::io::ErrorKind::NotFound => None,
++            Err(error) => panic!("{shell}: {error}"),
++        }
++    }
++
++    #[cfg(unix)]
++    #[test]
++    fn posix_script_runs_unchanged_under_posix_and_nushell_login_shells() {
++        let line = posix_script(AWKWARD, &["0.14.3", "ab+1"]).unwrap();
++        for shell in ["sh", "nu"] {
++            let Some(output) = run_as_login_shell(shell, &line) else {
++                continue;
++            };
++            assert!(
++                output.status.success(),
++                "{shell}: {}",
++                String::from_utf8_lossy(&output.stderr)
++            );
++            assert_eq!(
++                String::from_utf8_lossy(&output.stdout),
++                AWKWARD_OUT,
++                "{shell}"
++            );
++        }
++    }
++
+     #[cfg(windows)]
+     #[test]
+     fn windows_binary_stream_child() {
+diff --git a/src/machine/provision.rs b/src/machine/provision.rs
+index bd82dfc..84f16c1 100644
+--- a/src/machine/provision.rs
++++ b/src/machine/provision.rs
+@@ -299,7 +299,11 @@ pub(super) fn install(
+ 
+ fn detect_target(destination: &str) -> Result<DetectedTarget> {
+     let mut posix = super::ssh::ssh_command(destination, true);
+-    posix.arg("uname -s; uname -m; printf '%s\\n' \"$HOME\"");
++    // Under `sh`, whatever the login shell: Nushell's own `uname` has no `-s`.
++    posix.arg(super::command::posix_script(
++        "uname -s; uname -m; printf '%s\\n' \"$HOME\"",
++        &[],
++    )?);
+     let output = super::ssh::run_bounded_with_input(posix, PROVISION_TIMEOUT, None)?;
+     if let Some(error) = super::ssh::transport_failure(destination, &output) {
+         return Err(error);
+@@ -556,14 +560,11 @@ fn install_local(
+         &format!("v{}/{checksum}", env!("CARGO_PKG_VERSION")),
+     )?;
+     record_plan(&planned)?;
+-    let remote_command = format!(
+-        "sh -c {} -- {} {} {} {}",
+-        quote_posix(INSTALL_LOCAL_POSIX),
+-        env!("CARGO_PKG_VERSION"),
+-        checksum,
++    let remote_command = local_install_command(
++        &checksum,
+         crate::ipc::protocol::PROTOCOL_VERSION,
+         super::MACHINE_ENDPOINT_VERSION,
+-    );
++    )?;
+     let mut command = super::ssh::ssh_command(destination, true);
+     command.arg(remote_command);
+     let output = super::ssh::run_bounded_with_owned_input(command, PROVISION_TIMEOUT, Some(bytes))?;
+@@ -580,8 +581,18 @@ fn install_local(
+     ensure_planned_path(&planned, installed_path(destination, output.stdout)?)
+ }
+ 
+-fn quote_posix(value: &str) -> String {
+-    format!("'{}'", value.replace('\'', "'\"'\"'"))
++/// The remote command for [`INSTALL_LOCAL_POSIX`], which reads the binary
++/// from stdin.
++fn local_install_command(checksum: &str, protocol: u32, endpoint: u32) -> Result<String> {
++    super::command::posix_script(
++        INSTALL_LOCAL_POSIX,
++        &[
++            env!("CARGO_PKG_VERSION"),
++            checksum,
++            &protocol.to_string(),
++            &endpoint.to_string(),
++        ],
++    )
+ }
+ 
+ fn install_posix(destination: &str) -> Result<String> {
+@@ -807,14 +818,12 @@ mod tests {
+         )
+         .into_bytes();
+         let checksum = format!("{:x}", Sha256::digest(&fixture));
+-        let remote_command = format!(
+-            "sh -c {} -- {} {} {} {}",
+-            quote_posix(INSTALL_LOCAL_POSIX),
+-            env!("CARGO_PKG_VERSION"),
+-            checksum,
++        let remote_command = local_install_command(
++            &checksum,
+             crate::ipc::protocol::PROTOCOL_VERSION,
+             crate::machine::MACHINE_ENDPOINT_VERSION,
+-        );
++        )
++        .unwrap();
+         let mut command = std::process::Command::new("sh");
+         command.arg("-c").arg(remote_command).env("HOME", &home);
+         let output = super::super::ssh::run_bounded_with_owned_input(
+diff --git a/src/machine/ssh.rs b/src/machine/ssh.rs
+index 25f14ee..c319b2c 100644
+--- a/src/machine/ssh.rs
++++ b/src/machine/ssh.rs
+@@ -249,10 +249,14 @@ fn provision_allowed(profile: &MachineProfile, approved: bool) -> bool {
+ 
+ fn discover_binary(destination: &str) -> Result<String> {
+     let mut command = ssh_command(destination, true);
+-    // OpenSSH already invokes the remote login shell. Passing this fixed
+-    // script as the only command argument preserves it as one command string;
+-    // no profile or user data is interpolated into it.
+-    command.arg(posix_discovery_script());
++    // OpenSSH invokes the remote login shell, which need not be POSIX, so the
++    // fixed script runs under `sh`; no profile or user data is interpolated
++    // into it. cmd.exe and PowerShell reject the line, which leads below to
++    // the Windows discovery attempt as before.
++    command.arg(super::command::posix_script(
++        &posix_discovery_script(),
++        &[],
++    )?);
+     let output = run_bounded(command, PROBE_TIMEOUT)?;
+     if let Some(error) = transport_failure(destination, &output) {
+         return Err(error);
+@@ -952,9 +956,10 @@ mod tests {
+         std::fs::create_dir_all(&home).unwrap();
+         // System-wide locations are left out so a Luvus installed on this
+         // machine cannot turn the expected miss into a hit.
++        let line = super::super::command::posix_script(&discovery_script_with(""), &[]).unwrap();
+         let output = Command::new("sh")
+             .arg("-c")
+-            .arg(discovery_script_with(""))
++            .arg(line)
+             .env("HOME", &home)
+             .output()
+             .unwrap();
+diff --git a/src/main.rs b/src/main.rs
+index 115f141..de073da 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -960,34 +960,27 @@ fn remote_fallback_ssh_command(args: &[String]) -> Result<Command> {
+     }
+ 
+     let mut bridge_args = Vec::new();
+-    if let Some(name) = session::active_name() {
+-        bridge_args.push("--session".to_string());
+-        bridge_args.push(name);
++    let name;
++    if let Some(active) = session::active_name() {
++        name = active;
++        bridge_args.extend(["--session", name.as_str()]);
+     } else if session::explicit_session_requested() {
+-        bridge_args.push("--session".to_string());
+-        bridge_args.push(session::DEFAULT_SESSION_NAME.to_string());
+-    }
+-    bridge_args.push("remote-client-bridge".to_string());
+-    let bridge_args = bridge_args
+-        .iter()
+-        .map(|arg| posix_shell_quote(arg))
+-        .collect::<Vec<_>>()
+-        .join(" ");
+-    let script = format!(
+-        "for luvus_bin in \"$HOME/.local/bin/luvus\" \"$HOME/.cargo/bin/luvus\" \
+-         \"$HOME/.nix-profile/bin/luvus\" /usr/local/bin/luvus \
+-         /opt/homebrew/bin/luvus /home/linuxbrew/.linuxbrew/bin/luvus; do \
+-         if [ -x \"$luvus_bin\" ]; then exec \"$luvus_bin\" {bridge_args}; fi; done; \
+-         printf '%s\\n' 'luvus remote: executable not found in common install locations' >&2; \
+-         exit 127"
+-    );
+-    cmd.arg(host).arg(script).stderr(Stdio::inherit());
++        bridge_args.extend(["--session", session::DEFAULT_SESSION_NAME]);
++    }
++    bridge_args.push("remote-client-bridge");
++    // The remote login shell need not be POSIX, so the search runs under `sh`.
++    let line = machine::command::posix_script(REMOTE_FALLBACK_SCRIPT, &bridge_args)?;
++    cmd.arg(host).arg(line).stderr(Stdio::inherit());
+     Ok(cmd)
+ }
+ 
+-fn posix_shell_quote(value: &str) -> String {
+-    format!("'{}'", value.replace('\'', "'\\''"))
+-}
++/// Finds Luvus in the official installer's locations and execs it with this
++/// script's arguments.
++const REMOTE_FALLBACK_SCRIPT: &str = r#"for luvus_bin in "$HOME/.local/bin/luvus" "$HOME/.cargo/bin/luvus" "$HOME/.nix-profile/bin/luvus" /usr/local/bin/luvus /opt/homebrew/bin/luvus /home/linuxbrew/.linuxbrew/bin/luvus; do
++  if [ -x "$luvus_bin" ]; then exec "$luvus_bin" "$@"; fi
++done
++printf '%s\n' 'luvus remote: executable not found in common install locations' >&2
++exit 127"#;
+ 
+ fn server_running(sock: &Path) -> bool {
+     ipc::transport::endpoint_exists(sock, Duration::from_millis(50))
+@@ -2189,21 +2182,64 @@ mod tests {
+             ]
+         );
+         assert_eq!(actual[7], "devbox");
+-        let script = &actual[8];
+-        assert!(script.contains("\"$HOME/.local/bin/luvus\""));
+-        assert!(script.contains("\"$HOME/.cargo/bin/luvus\""));
+-        assert!(script.contains("\"$HOME/.nix-profile/bin/luvus\""));
+-        assert!(script.contains("/usr/local/bin/luvus"));
+-        assert!(script.contains("/opt/homebrew/bin/luvus"));
+-        assert!(script.contains("/home/linuxbrew/.linuxbrew/bin/luvus"));
+-        assert!(script.contains("'--session' 'api' 'remote-client-bridge'"));
+-        assert!(script.ends_with("exit 127"));
++        let line = &actual[8];
++        assert!(line.starts_with("sh -c "), "{line}");
++        assert!(line.contains("\"$HOME/.local/bin/luvus\""));
++        assert!(line.contains("\"$HOME/.cargo/bin/luvus\""));
++        assert!(line.contains("\"$HOME/.nix-profile/bin/luvus\""));
++        assert!(line.contains("/usr/local/bin/luvus"));
++        assert!(line.contains("/opt/homebrew/bin/luvus"));
++        assert!(line.contains("/home/linuxbrew/.linuxbrew/bin/luvus"));
++        assert!(line.contains("exit 127"));
++        assert!(
++            line.ends_with("' --session api remote-client-bridge"),
++            "{line}"
++        );
+     }
+ 
++    /// The fallback reaches the remote login shell as one command line. It must
++    /// exec the installed binary with the bridge arguments under a POSIX login
++    /// shell and under Nushell, which rejects POSIX loops.
++    #[cfg(unix)]
+     #[test]
+-    fn remote_bridge_shell_arguments_are_single_quoted() {
+-        assert_eq!(posix_shell_quote("plain"), "'plain'");
+-        assert_eq!(posix_shell_quote("team's"), "'team'\\''s'");
++    fn remote_bridge_fallback_runs_under_posix_and_nushell_login_shells() {
++        let _env = crate::persist::test_env("remote-fallback-shells");
++        let home = crate::persist::config_dir().join("home");
++        let bin = home.join(".local/bin");
++        std::fs::create_dir_all(&bin).unwrap();
++        let fake = bin.join("luvus");
++        std::fs::write(&fake, "#!/bin/sh\nprintf '%s|' \"$@\"\n").unwrap();
++        use std::os::unix::fs::PermissionsExt;
++        std::fs::set_permissions(&fake, std::fs::Permissions::from_mode(0o755)).unwrap();
++        let line = machine::command::posix_script(
++            REMOTE_FALLBACK_SCRIPT,
++            &["--session", "api", "remote-client-bridge"],
++        )
++        .unwrap();
++        for shell in ["sh", "nu"] {
++            let mut command = Command::new(shell);
++            if shell == "nu" {
++                command.arg("--no-config-file");
++            }
++            let output = match command.arg("-c").arg(&line).env("HOME", &home).output() {
++                Ok(output) => output,
++                // Nushell is optional on CI hosts; POSIX `sh` is not.
++                Err(error) if shell == "nu" && error.kind() == std::io::ErrorKind::NotFound => {
++                    continue
++                }
++                Err(error) => panic!("{shell}: {error}"),
++            };
++            assert!(
++                output.status.success(),
++                "{shell}: {}",
++                String::from_utf8_lossy(&output.stderr)
++            );
++            assert_eq!(
++                String::from_utf8_lossy(&output.stdout),
++                "--session|api|remote-client-bridge|",
++                "{shell}"
++            );
++        }
+     }
+ 
+     /// Manual benchmark of the server render hot path (full UI render + in-place
