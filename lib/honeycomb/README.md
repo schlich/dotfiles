@@ -50,15 +50,36 @@ dimensions never share a key:
         z+   y-            N   M
 ```
 
-| Axis | On the ring | Reads as       | Said plainly | In niri   |
-| ---- | ----------- | -------------- | ------------ | --------- |
-| x    | `H`, `L`    | left and right | `H`, `L`     | window    |
-| y    | `Y`, `M`    | up and down    | `K`, `J`     | workspace |
-| z    | `N`, `U`    | in and out     | `I`, `O`     | monitor   |
+| Axis | On the ring | Reads as       | Said plainly | In niri   | In a repository             |
+| ---- | ----------- | -------------- | ------------ | --------- | --------------------------- |
+| x    | `H`, `L`    | left and right | `H`, `L`     | window    | the topics beside this one  |
+| y    | `Y`, `M`    | up and down    | `K`, `J`     | workspace | the changes of one topic    |
+| z    | `N`, `U`    | in and out     | `I`, `O`     | monitor   | a change's files, or out to |
+|      |             |                |              |           | the other working copies    |
 
 Each axis has two spellings: its pair on the ring, and the plain pair for
 left and right, up and down, in and out. The niri column is the example the
 axes were drawn from; niri's binds do not follow it yet.
+
+In a repository the three never mix. Topics sit side by side on trunk, so
+moving between them is left and right. A topic's changes stack on one
+another, child above parent as `jj log` draws them, so `jj next` is up and
+`jj prev` is down. In goes from a change to what it touches; out goes from a
+working copy to the others, one per task. Each of the three holds six at
+most: six open topics, six changes to a topic, six working copies.
+
+## While work is under way
+
+The census in the flake counts what is written down. What accumulates while
+work is under way is counted by the `honeycomb` command, in any Git
+repository:
+
+- `honeycomb census` counts the open topics (branches trunk does not hold
+  yet), the task worktrees and the open luvus tasks, and says which pass six.
+- `honeycomb prune` lists the branches trunk already holds, with their
+  worktrees, and `--yes` removes them. It leaves a worktree with uncommitted
+  work, or one luvus says is in use.
+- `jj topics` lists the same open topics in a Jujutsu repository.
 
 The tiling is that three-dimensional space seen along its diagonal. One step
 along each of the three axes together returns to where it started, which is

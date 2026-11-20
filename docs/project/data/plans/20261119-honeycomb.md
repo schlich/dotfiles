@@ -150,13 +150,20 @@ discard muscle memory before the new grammar is proven on one tool.
 
 ### Task 7: Runtime collections
 
-**Files:** Create: `tools/honeycomb.nu`. Modify: `modules/programs/vcs/vcs.nix`,
-`modules/programs/multiplexers/luvus.nix`
+**Files:** Create: `lib/honeycomb/runtime.nu`. Modify:
+`modules/programs/vcs/vcs.nix`, `modules/home/nix/nix.nix`, `AGENTS.md`,
+`modules/tooling/ai/shared/global-agent-instructions.md`
 
-- [ ] `honeycomb census` counts branches, worktrees, luvus tasks, agent sessions
-  and windows per area, and names the ones over six.
-- [ ] Refuse a seventh open task or worktree until one is delivered or parked,
-  and offer the delivered branches to prune.
+- [x] `honeycomb census` counts open topics, task worktrees and open luvus
+  tasks, and names the ones over six; `jj topics` lists open topics in a Jujutsu
+  repository. Agent sessions and windows per area are not counted yet.
+- [x] The version-control policies for Git and Jujutsu hold each to six, name
+  the three axes of a repository, and delete a branch once `main` holds it;
+  `honeycomb prune` lists and removes delivered branches with their worktrees.
+- [ ] Refuse a seventh open task or worktree mechanically. Today the limit is a
+  written policy that agents follow; nothing stops `luvus worktree create`. On
+  2026-11-19 this repository had 7 open topics, 18 worktrees and 12 open tasks,
+  with 57 delivered branches waiting to be pruned.
 
 ## Spec changes
 

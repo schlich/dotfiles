@@ -251,6 +251,16 @@ luvus quality gate and nixbot build.
   branch already contains, and never push `main` directly.
 - Before finishing, check the branch's diff for mixed deliverables, and split
   unrelated work into separate tasks rather than carrying it in one branch.
+- Six at a time (`lib/honeycomb/README.md`). The repository holds at most six
+  open topics (branches `main` does not hold yet), six task worktrees, and six
+  open tasks on the board; a branch runs at most six commits ahead of `main`
+  before it is delivered or split. Run `honeycomb census` before starting a
+  task. When a count is at six or more, do not start another on your own
+  initiative: finish, park, or drop one first. When the user asks for the new
+  task anyway, start it and say in the first reply which counts are over.
+- The three ways to move through the repository stay apart: between topics
+  (left and right), along one topic's commits (up and down), and into a
+  commit's files or out to the other worktrees (in and out).
 - The jj workspaces under `.jj-workspaces/` and their topics predate this
   switch. Leave them alone unless the user asks: they hold earlier work,
   some of it the user's.
@@ -300,7 +310,11 @@ luvus quality gate and nixbot build.
   failed gate, CI run, or unresolved merge conflict stops delivery and is reported.
 - Once a task is delivered, remove its worktree with
   `luvus worktree remove PATH`, which refuses while a task, lease, or live
-  agent still uses it; the branch stays. Then offer to archive the session
+  agent still uses it, and delete its branch with `git branch -D BRANCH`:
+  `main` holds its commits, and a branch kept after delivery only crowds the
+  list of open work. `honeycomb prune` lists every branch `main` already
+  holds, and `--yes` removes them with their worktrees; run it with `--yes`
+  only for branches this session delivered, or when the user asks. Then offer to archive the session
   in the same turn: in the Claude desktop app, end the turn with the
   wrap-up's `archive` action as the first button; elsewhere, say in one line
   that the session can be archived. Archive only on the user's click or yes.

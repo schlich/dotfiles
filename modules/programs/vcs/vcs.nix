@@ -63,6 +63,9 @@ in
         "!${pkgs.gh}/bin/gh auth git-credential"
       ];
     });
+    # A branch deleted on the remote goes here too, so the list of remote
+    # branches holds only what is still open (lib/honeycomb/README.md).
+    fetch.prune = true;
   };
   programs.gpg.enable = true;
   programs.lazygit.enable = false;
@@ -106,6 +109,14 @@ in
       patterns = [ "glob:'**/*.py'" ];
     };
     git.executable-path = lib.getExe git;
+    # The open topics: every head that trunk does not hold yet. At most six
+    # at a time (lib/honeycomb/README.md); `jj topics` lists them.
+    revset-aliases."topics()" = "visible_heads() ~ ::trunk()";
+    aliases.topics = [
+      "log"
+      "-r"
+      "topics()"
+    ];
     # `jj graph check`, `jj graph normalize`, and the rest of jj-graph's
     # commands, run against the repository jj is in.
     aliases.graph = [
