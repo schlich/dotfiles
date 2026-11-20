@@ -14,23 +14,6 @@ let
     lib.concatMapStringsSep "\n" (line: if lib.hasPrefix "tools:" line then replacement else line) (
       lib.splitString "\n" (builtins.readFile file)
     );
-  # OpenCode 2 from upstream, since nixpkgs still ships 1.x. Upstream builds
-  # for channel "prod", which registers the background service in
-  # service-prod.json where clients look for service.json; "latest" is the
-  # official release channel and keeps the same database. Upstream's source
-  # fileset also leaves out script/native-arch.ts, which the CLI's build
-  # script imports since 2.0.30 ("Cannot find module
-  # '../../../script/native-arch'"), so copy it back in.
-  opencode =
-    inputs.opencode.packages.${pkgs.stdenv.hostPlatform.system}.opencode.overrideAttrs
-      (old: {
-        postPatch = old.postPatch + ''
-          install -Dm644 ${inputs.opencode}/script/native-arch.ts script/native-arch.ts
-        '';
-        env = old.env // {
-          OPENCODE_CHANNEL = "latest";
-        };
-      });
 in
 {
   imports = [ ../shared/common.nix ];
@@ -45,7 +28,7 @@ in
     mutableSettings = true;
     package = pkgs.writeNuScriptBin "opencode" ''
       def --wrapped main [...args] {
-        ^${pkgs.secretspec}/bin/secretspec run --file ${../../../secretspec.toml} --provider keyring --profile default --reason "OpenCode invocation" -- ${opencode}/bin/opencode ...$args
+        ^${pkgs.secretspec}/bin/secretspec run --file ${../../../secretspec.toml} --provider keyring --profile default --reason "OpenCode invocation" -- ${pkgs.opencode}/bin/opencode ...$args
       }
     '';
     enableMcpIntegration = true;
@@ -104,11 +87,6 @@ in
         "openai"
       ];
     };
-  };
-
-  dotfiles.nixpkgsWatch.opencode = {
-    inherit (opencode) version;
-    reason = "use pkgs.opencode in modules/tooling/ai/clients/opencode.nix and drop the opencode input with its build overrides";
   };
 
   dotfiles.tooling.ai.opencode = {
