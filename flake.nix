@@ -790,6 +790,17 @@
               ${pkgs.nushell}/bin/nu --no-config-file ${./tests/keymap.nu} ${src}/niri/keymap.nu
               touch "$out"
             '';
+        nushell-envrc-nu =
+          pkgs.runCommand "nushell-envrc-nu-check"
+            {
+              nativeBuildInputs = [ pkgs.nushell ];
+            }
+            ''
+              export HOME="$TMPDIR/home"
+              mkdir -p "$HOME"
+              ${pkgs.nushell}/bin/nu --no-config-file ${./tests/envrc-nu.nu} ${./nushell/envrc-nu.nu}
+              touch "$out"
+            '';
         # `honeycomb sidebar`, `sessions`, `flower` and `hub apply` on a
         # fixture of Claude's sidebar, and the phone's hub on requests as
         # Tailscale Serve passes them on (lib/honeycomb/runtime).
