@@ -129,6 +129,33 @@ in
     };
   };
 
+  # Antigravity / Gemini CLI configuration: shares the MCP servers (including
+  # `kb`), global instructions, and skills. T3 Code also symlinks
+  # `~/.gemini/antigravity-cli/skills` into its isolated Antigravity profiles.
+  programs.antigravity-cli = {
+    enable = true;
+    mutableSettings = true;
+    enableMcpIntegration = true;
+    context.GEMINI = ./global-agent-instructions.md;
+    skills = (import ./shared-skills.nix { inherit inputs; }) // {
+      kb = ''
+        ---
+        name: kb
+        description: Search or update the user's personal IWE knowledge base (kb MCP / ~/Research/kb) for cross-project facts, traps, rules, and decisions.
+        ---
+
+        # Personal Knowledge Base
+
+        The user's durable personal knowledge base is an IWE workspace at `~/Research/kb`, exposed through the `kb` MCP server (`iwe_find`, `iwe_retrieve`, `iwe_tree`, and writes).
+
+        - Search it with `iwe_find` before re-deriving a cross-project fact or asking the user something they may already have recorded.
+        - Write to it only with the user's explicit approval. Offer a one-line `"Worth remembering: <title>"` instead of writing unasked.
+        - After an approved write, run `kb sync` so the change commits and pushes to the private remote immediately (a background timer also syncs settled edits automatically).
+        - Treat its contents as private: never copy them into a public repository, issue, or pull request without approval.
+      '';
+    };
+  };
+
   # Follow `job-log` and ci MCP jobs as a Monitor running watch-job does,
   # with a local cross.stream store and without one.
   dotfiles.tooling.checks.watch-job =

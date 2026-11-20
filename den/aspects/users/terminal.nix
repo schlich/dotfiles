@@ -12,8 +12,11 @@
     ../../../modules/programs/ssh/ssh.nix
     ../../../modules/programs/vcs/vcs.nix
     ../../../modules/programs/shell/yazi.nix
-    # The Claude Code CLI with its skills, hooks and MCP servers.
+    # The knowledge base CLI + sync timer and headless AI CLIs (Claude Code,
+    # Codex, Antigravity CLI) with shared skills and MCP servers.
+    ../../../modules/tooling/knowledge/iwe.nix
     ../../../modules/tooling/ai/claude/claude-code.nix
+    ../../../modules/tooling/ai/clients/codex.nix
   ];
 
   # Servers with a Home Manager user: remote editor helpers without pulling in
@@ -32,18 +35,18 @@
     ../../../modules/tooling/editors/helix.nix
     ../../../modules/tooling/editors/zed.nix
     ../../../modules/tooling/keymap-checks.nix
-    ../../../modules/tooling/knowledge/iwe.nix
     ../../../modules/tooling/ai/shared/plugins.nix
     ../../../modules/tooling/ai/clients/t3code/t3code.nix
     ../../../modules/tooling/ai/clients/continuum-ide.nix
     ../../../modules/tooling/ai/clients/opencode.nix
     ../../../modules/tooling/ai/clients/opencode-desktop.nix
     ../../../modules/tooling/ai/claude/claude-desktop.nix
-    ../../../modules/tooling/ai/clients/codex.nix
     ../../../modules/tooling/ai/clients/copilot.nix
     ../../../modules/home/files.nix
     ../../../modules/home/packages.nix
     ../../../modules/home/session/services.nix
     ../../../modules/programs
   ];
+
+  den.aspects.user-desktop.homeManager.dotfiles.codex.desktop.enable = true;
 }

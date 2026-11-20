@@ -1,16 +1,19 @@
 {
+  config,
   inputs,
+  lib,
   pkgs,
   ...
 }:
 
 let
+  cfg = config.dotfiles.codex;
   skills = import ../shared/shared-skills.nix { inherit inputs; };
   # Codex Desktop writes to $CODEX_HOME/config.toml. Home Manager merges these
   # defaults into the writable file during activation, preserving app settings.
   # The session hook claims a free workspace, the default checkout included,
   # so launching never creates one.
-  codex =
+  wrappedCodex =
     (pkgs.writeNuScriptBin "codex" ''
       def --wrapped main [...args] {
         ^${pkgs.secretspec}/bin/secretspec run --file ${../../../secretspec.toml} --provider keyring --profile default --reason "Codex invocation" -- ${pkgs.codex}/bin/codex ...$args
@@ -21,6 +24,7 @@ let
         # nixpkgs-watch: not a workaround: it only gives this wrapper nixpkgs' codex version
         version = pkgs.codex.version;
       });
+  codex = if cfg.desktop.enable then wrappedCodex else pkgs.codex;
   # Codex Desktop ships in nixpkgs as `chatgpt`. Its launcher runs the app under
   # `secretspec run` so the app-server it starts gets keys such as
   # STITCH_API_KEY. Its desktop entry runs `chatgpt` from PATH, so this one wins.
@@ -40,48 +44,54 @@ in
 {
   imports = [ ../shared/common.nix ];
 
-  programs.codex = {
-    enable = true;
-    package = codex;
-    mutableSettings = true;
-    settings = {
-      desktop.git-pr-watch-auto-merge = false;
-      desktop.custom_file_handlers."jj-dashboard" = {
-        label = "JJ dashboard";
-        command = "jj-dashboard";
-        icon = "${../../../../jj/icon.svg}";
-        input = "path";
-        supports_ssh = false;
+  options.dotfiles.codex.desktop.enable =
+    lib.mkEnableOption "Codex desktop app, keyring wrapper, and workstation-only MCP servers";
+
+  config = {
+    programs.codex = {
+      enable = true;
+      package = codex;
+      mutableSettings = true;
+      enableMcpIntegration = true;
+      settings = lib.mkIf cfg.desktop.enable {
+        desktop.git-pr-watch-auto-merge = false;
+        desktop.custom_file_handlers."jj-dashboard" = {
+          label = "JJ dashboard";
+          command = "jj-dashboard";
+          icon = "${../../../../jj/icon.svg}";
+          input = "path";
+          supports_ssh = false;
+        };
+        # The wrapper's `secretspec run` puts STITCH_API_KEY in Codex's environment.
+        mcp_servers.stitch = {
+          url = "https://stitch.googleapis.com/mcp";
+          env_http_headers."X-Goog-Api-Key" = "STITCH_API_KEY";
+        };
       };
-      # The wrapper's `secretspec run` puts STITCH_API_KEY in Codex's environment.
-      mcp_servers.stitch = {
-        url = "https://stitch.googleapis.com/mcp";
-        env_http_headers."X-Goog-Api-Key" = "STITCH_API_KEY";
-      };
+      inherit skills;
+      context = ../shared/global-agent-instructions.md;
     };
-    inherit skills;
-    context = ../shared/global-agent-instructions.md;
-  };
 
-  home.packages = [ codexDesktop ];
+    home.packages = lib.optional cfg.desktop.enable codexDesktop;
 
-  home.file = {
-    ".codex/agents/jj-trunk-triage.toml".text = ''
-      name = "jj_trunk_triage"
-      description = "Lightweight read-only triage for JJ trunk status, PR checks, stack state, and formatting-only corrections."
-      model = "gpt-5.6-luna"
-      model_reasoning_effort = "medium"
-      sandbox_mode = "read-only"
-      developer_instructions = """
-      Use this agent for read-only status, PR and CI summaries, stack inspection, and formatting-only corrections. Do not mutate JJ history, resolve conflicts, publish or merge pull requests, link or merge stacks, or make credentialed GitHub writes. Report actionable state to the parent agent.
-      """
-    '';
-  };
+    home.file = {
+      ".codex/agents/jj-trunk-triage.toml".text = ''
+        name = "jj_trunk_triage"
+        description = "Lightweight read-only triage for JJ trunk status, PR checks, stack state, and formatting-only corrections."
+        model = "gpt-5.6-luna"
+        model_reasoning_effort = "medium"
+        sandbox_mode = "read-only"
+        developer_instructions = """
+        Use this agent for read-only status, PR and CI summaries, stack inspection, and formatting-only corrections. Do not mutate JJ history, resolve conflicts, publish or merge pull requests, link or merge stacks, or make credentialed GitHub writes. Report actionable state to the parent agent.
+        """
+      '';
+    };
 
-  dotfiles.tooling.ai.codex = {
-    command = "${codex}/bin/codex";
-    automation = ''
-      ^${codex}/bin/codex exec --dangerously-bypass-approvals-and-sandbox $prompt
-    '';
+    dotfiles.tooling.ai.codex = {
+      command = "${codex}/bin/codex";
+      automation = ''
+        ^${codex}/bin/codex exec --dangerously-bypass-approvals-and-sandbox $prompt
+      '';
+    };
   };
 }
