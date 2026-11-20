@@ -172,7 +172,8 @@ def "main prompt" [
     let more = if $earlier > 0 { $" \(and ($earlier) earlier\)" } else { "" }
     let body = $"($latest.phase): ($latest.breached | str join ', '). By ($latest.author)($more)."
     let choice = (^notify-send --app-name "Deploy revert" --icon dialog-warning --urgency critical --wait --action "investigate=Investigate with an agent" --action "open=Open report" $"($latest.host) ($verb) ($latest.subject)" $body | complete | get stdout | str trim)
-    let dotfiles = ($env.HOME | path join dotfiles)
+    # Notification handlers may lack Home Manager's session variables.
+    let dotfiles = ($env.DOTFILES_ROOT? | default ($env.HOME | path join Nix dotfiles))
     match $choice {
         "investigate" => {
             let prompt = $"Read the deploy revert report at ($latest.report). Explain why ($latest.host) ($verb) revision ($latest.rev), and propose the pre-deploy check in this repository that would have caught it. Do not dispatch, land, or activate anything without asking."

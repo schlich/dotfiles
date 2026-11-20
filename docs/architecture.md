@@ -166,7 +166,7 @@ stops and names both ways forward:
   runs after a landing that changes a closure (AGENTS.md, "Applying
   configuration"); otherwise, asking for it is the approval for both
   activations.
-- `home-activate` from `~/dotfiles` at main, then `system-switch`.
+- `home-activate` from `~/Nix/dotfiles` at main, then `system-switch`.
 
 `--with-home` also works on any later switch, to apply both steps from
 landed main at once. Without it, `system-switch` changes only the system.

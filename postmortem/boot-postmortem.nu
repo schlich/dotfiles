@@ -123,7 +123,8 @@ def "main notify" [] {
 
     let cause = (open --raw $report | lines | where $it =~ 'Likely cause' | get 0? | default "" | str replace --regex '^.*\*\*Likely cause:\*\* ' '')
     let choice = (^notify-send --app-name "Boot post-mortem" --icon dialog-warning --urgency critical --wait --action "investigate=Investigate with an agent" --action "open=Open report" "The last session ended without a clean shutdown" $cause | complete | get stdout | str trim)
-    let dotfiles = ($env.HOME | path join dotfiles)
+    # Notification handlers may lack Home Manager's session variables.
+    let dotfiles = ($env.DOTFILES_ROOT? | default ($env.HOME | path join Nix dotfiles))
     match $choice {
         "investigate" => {
             let prompt = $"Read the boot post-mortem at ($report). Explain why the previous session ended without a clean shutdown and propose a fix in this repository. Do not dispatch, land, or activate anything without asking."
