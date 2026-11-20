@@ -4,7 +4,7 @@ Markdown is the durable truth. IWE supplies semantic structure. marimo
 supplies executable structure. marimohub supplies the runtime. Nix supplies
 the environment. jj supplies history. HTML is a view.
 
-The working proof of concept is [`workbench/`](../workbench/README.md). This
+The working proof of concept is [`workbench/`](../../workbench/README.md). This
 note records what upstream supports today (checked 2026-10-03), the design
 choices layered on top, and what is still open.
 

@@ -16,7 +16,7 @@ sources:
   resource: https://github.com/NixOS/nixpkgs/pull/580444
   title: 't3code: 0.1.2 -> 0.1.4'
 - id: fleet-doc
-  resource: docs/T3-FLEET.md
+  resource: docs/agents/T3-FLEET.md
   title: The fleet's architecture, setup and verification
 ---
 
@@ -60,7 +60,7 @@ machine).
 
 - [x] Pin 0.1.4 and share one package between the app and the server.
 - [x] Add the `t3code` service fact, aspect, units and tests.
-- [x] Document the fleet in `docs/T3-FLEET.md`.
+- [x] Document the fleet in `docs/agents/T3-FLEET.md`.
 
 ### Task 2: Roll out and verify
 
@@ -75,13 +75,13 @@ machine).
 
 ## Spec changes
 
-None — the fleet's behavior is recorded in `docs/T3-FLEET.md`.
+None — the fleet's behavior is recorded in `docs/agents/T3-FLEET.md`.
 
 ## Verification
 
 `nix fmt`, the flake checks (`den-config-tests-*`, `den-inventory-tests`, the
 home's `t3code-bash-env` check), a smoke test of the unit against a throwaway T3
-home, then the rollout steps in `docs/T3-FLEET.md`.
+home, then the rollout steps in `docs/agents/T3-FLEET.md`.
 
 ## Out of scope
 

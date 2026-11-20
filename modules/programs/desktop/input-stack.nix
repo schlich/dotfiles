@@ -6,7 +6,7 @@
 }:
 
 # The nested keyboard namespaces from the desktop inward, each with one
-# leader. docs/input.md explains the ownership rule.
+# leader. docs/desktop/input.md explains the ownership rule.
 let
   inherit (lib)
     mkEnableOption

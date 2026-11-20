@@ -1,6 +1,6 @@
 # `nix run path:.#nixbot-register`, on asus in a topic workspace: creates
 # nixbot's GitHub App from homelab's manifest and writes its IDs and
-# encrypted secrets into the checkout (docs/nixbot.md). `registration` is
+# encrypted secrets into the checkout (docs/delivery/nixbot.md). `registration` is
 # homelab's config.dotfiles.nixbot.registration. jj, gh, and nix-instantiate
 # come from the user's profile, signed in as they are there.
 { pkgs, registration }:

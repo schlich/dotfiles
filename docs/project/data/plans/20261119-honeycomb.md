@@ -10,10 +10,10 @@ sources:
   resource: lib/honeycomb/README.md
   title: the honeycomb model
 - id: input
-  resource: docs/input.md
+  resource: docs/desktop/input.md
   title: nested input contexts
 - id: niri
-  resource: docs/niri.md
+  resource: docs/desktop/niri.md
   title: using niri
 ---
 
@@ -60,7 +60,7 @@ discard muscle memory before the new grammar is proven on one tool.
 ### Task 2: One key grammar, exported
 
 **Files:** Modify: `modules/programs/desktop/input-stack.nix`, `lib/honeycomb/`,
-`niri/binds.nix`, `docs/input.md`
+`niri/binds.nix`, `docs/desktop/input.md`
 
 - [x] Add the six direction keys, the two depth keys, and the `NORMAL` and
   `SELECT` mode names to the exported `input-stack.json`, from `lib/honeycomb`.
@@ -74,7 +74,7 @@ discard muscle memory before the new grammar is proven on one tool.
 **Files:** Create: `niri/binds.nix`. Modify: `niri/config.kdl`,
 `niri/keymap.nu`, `niri/keymap-emoji.nuon`, `niri/session.nu`,
 `niri/workspace-overview.nu`, `modules/programs/desktop/desktop.nix`,
-`docs/niri.md`
+`docs/desktop/niri.md`
 
 - [x] Group the binds into six named cells of at most six members each, and
   generate the `binds` block from that tree (`niri/binds.nix`).
@@ -125,7 +125,10 @@ discard muscle memory before the new grammar is proven on one tool.
 - [ ] Group the 52 inputs: move the skill and agent-asset inputs behind one
   aggregating input or a locked source list outside `inputs`.
 - [ ] Reduce the 34 top-level entries to six areas and move the rest under them.
-- [ ] Regroup `AGENTS.md` and `docs/` into at most six sections each.
+- [x] Regroup `AGENTS.md` and `docs/` into at most six sections each:
+  `AGENTS.md` keeps its twelve sections as subsections of six headings, and
+  `docs/` gains `agents`, `delivery` and `desktop` beside the architecture and
+  the project graph.
 
 ### Task 7: Runtime collections
 
@@ -140,7 +143,8 @@ discard muscle memory before the new grammar is proven on one tool.
 ## Spec changes
 
 `spec/honeycomb` (new): the rule of six, the eight keys, the two modes, and the
-census contract. `docs/input.md` and `docs/niri.md` change with Tasks 2 and 3.
+census contract. `docs/desktop/input.md` and `docs/desktop/niri.md` change with
+Tasks 2 and 3.
 
 ## Verification
 

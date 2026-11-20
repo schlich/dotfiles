@@ -69,7 +69,7 @@ in
   };
 
   # Ghostty has no status line, so it cannot show these keys itself;
-  # docs/input.md says so.
+  # docs/desktop/input.md says so.
   dotfiles.input.navigation.terminal = lib.mkIf (config.dotfiles.primary.terminal == "ghostty") {
     w = [ "Alt+H" ];
     e = [ "Alt+L" ];

@@ -6,7 +6,7 @@ let
   homelab = (import ../hosts/homelab/builder.nix).hostKey;
 in
 {
-  # nixbot's GitHub App, which nixbot-register writes (docs/nixbot.md).
+  # nixbot's GitHub App, which nixbot-register writes (docs/delivery/nixbot.md).
   "nixbot/github-app.pem.age".publicKeys = [
     admin
     homelab
