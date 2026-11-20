@@ -15,17 +15,9 @@ let
   honeycomb = import ../lib/honeycomb { inherit lib; };
   key = lib.mapAttrs (_: lib.toUpper) honeycomb.keys;
 
-  # The home area is the centre; the other six sit around it. Each is a named
-  # workspace with a layout in session.nu.
-  areas = {
-    centre = "home";
-    e = "work";
-    se = "research";
-    sw = "nix";
-    w = "ai";
-    nw = "xr";
-    ne = "life";
-  };
+  # The home area is the centre; the other six sit around it (honeycomb's
+  # areas). Each is a named workspace with a layout in session.nu.
+  areas = lib.listToAttrs (map (area: lib.nameValuePair area.cell area.name) honeycomb.areas);
 
   bind = chord: title: action: {
     inherit chord title action;

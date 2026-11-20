@@ -12,7 +12,8 @@ let
   # /etc/niri/config.kdl (modules/nixos/workstation/desktop.nix).
   niriBinds = import ../../niri/binds.nix { inherit lib; };
   # Where each area sits and which key points there, for the launcher and
-  # the bar's navigation hints.
+  # the bar's navigation hints, and the areas themselves (`flower`) for the
+  # session presets.
   niriAreas = pkgs.writeText "niri-areas.json" (
     builtins.toJSON {
       inherit (niriBinds)
@@ -22,6 +23,7 @@ let
         down
         up
         ;
+      flower = (import ../../lib/honeycomb { inherit lib; }).areas;
     }
   );
   niriDesk = pkgs.runCommandLocal "niri-desk" { nativeBuildInputs = [ pkgs.makeWrapper ]; } ''

@@ -291,8 +291,19 @@ in
       ''
       + builtins.readFile ../../../nushell/flake-add.nu
     ))
-    # Counts a repository's open topics, worktrees and tasks against six, and
-    # prunes the branches trunk already holds (lib/honeycomb/README.md).
-    (pkgs.writeNuScriptBin "honeycomb" (builtins.readFile ../../../lib/honeycomb/runtime.nu))
+    # Counts a repository's open topics, worktrees and tasks, luvus's
+    # workspaces and Claude's sessions per area against six, prunes the
+    # branches trunk already holds, and files Claude's sidebar by area
+    # (lib/honeycomb/README.md).
+    (pkgs.writeNuScriptBin "honeycomb" (
+      ''
+        $env.HONEYCOMB_AREAS = "${
+          pkgs.writeText "honeycomb-areas.json" (
+            builtins.toJSON (import ../../../lib/honeycomb { inherit lib; }).areas
+          )
+        }"
+      ''
+      + builtins.readFile ../../../lib/honeycomb/runtime/honeycomb.nu
+    ))
   ];
 }

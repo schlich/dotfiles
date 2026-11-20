@@ -9,6 +9,31 @@ let
   leaves = count: lib.genList (i: cell "leaf${toString i}" [ ]) count;
 in
 {
+  testAreasAreTheCentreThenTheCompass = {
+    expr = map (area: area.cell) honeycomb.areas;
+    expected = [ "centre" ] ++ honeycomb.compass;
+  };
+
+  testAreaNamesAndTitlesAreDistinct = {
+    expr = map (field: builtins.length (lib.unique (map (area: area.${field}) honeycomb.areas))) [
+      "name"
+      "title"
+    ];
+    expected = [
+      7
+      7
+    ];
+  };
+
+  testNoSectionIsAbsorbedTwice = {
+    expr =
+      let
+        absorbed = lib.concatMap (area: area.absorbs) honeycomb.areas;
+      in
+      builtins.length absorbed == builtins.length (lib.unique absorbed);
+    expected = true;
+  };
+
   testRingOneIsTheCompass = {
     expr = honeycomb.ring 1 origin;
     expected = map (direction: honeycomb.vectors.${direction}) honeycomb.compass;

@@ -89,26 +89,31 @@ def kb-root [] {
   $env.KB_ROOT? | default $"($env.HOME)/kb"
 }
 
-# The seven areas: sessions with a fixed name and layout, each given a
-# workspace when first visited. `home` is the centre and the other six sit
-# around it; niri/binds.nix seats them and binds Mod+Alt plus a direction key
-# to each. Research maintains the knowledge base; areas without a single
-# repository open a plain shell in the home directory.
-def presets [] {
-  let area = { layout: area, directory: $env.HOME }
-  {
-    home: $area
-    work: $area
-    research: { layout: kb, directory: (kb-root) }
-    nix: { layout: dotfiles, directory: $"($env.HOME)/dotfiles" }
-    ai: $area
-    xr: $area
-    life: $area
-  }
+# The seven areas (honeycomb's `areas`, written to areas.json beside this
+# script): sessions with a fixed name and layout, each given a workspace when
+# first visited. `home` is the centre and the other six sit around it;
+# niri/binds.nix seats them and binds Mod+Alt plus a direction key to each.
+# An area opens in its first folder, else the home directory, with the
+# layout named for it below, else a plain shell.
+const areas_file = path self areas.json
+const area_layouts = { research: kb, nix: dotfiles }
+
+def flower [] {
+  if ($areas_file | path exists) { open $areas_file | get flower } else { [] }
 }
 
-# The knowledge-base hub of an area whose name differs from its hub's.
-const hub_names = { life: personal }
+def presets [] {
+  flower | each {|area|
+    let folder = ($area.folders | get 0?)
+    let directory = if $folder == null { $env.HOME } else { $env.HOME | path join $folder }
+    { $area.name: { layout: ($area_layouts | get --optional $area.name | default area), directory: $directory } }
+  } | reduce --fold {} {|it, acc| $acc | merge $it }
+}
+
+# The knowledge-base hub of each area.
+def hub-names [] {
+  flower | each {|area| { $area.name: $area.hub } } | reduce --fold {} {|it, acc| $acc | merge $it }
+}
 
 # A preset, else a session opened with `project`.
 def session-route [session: string] {
@@ -659,7 +664,7 @@ def "main vcs" [] {
 # 80-89-personal.md for `personal`); other workspaces get the index.
 def area-hub [session: any] {
   let root = (kb-root)
-  let hub = if $session == null { null } else { $hub_names | get --optional $session | default $session }
+  let hub = if $session == null { null } else { hub-names | get --optional $session | default $session }
   let hubs = if $hub == null { [] } else { glob $"($root)/[0-9][0-9]-[0-9][0-9]-($hub).md" }
   $hubs | get 0? | default ($root | path join index.md)
 }

@@ -150,7 +150,7 @@ discard muscle memory before the new grammar is proven on one tool.
 
 ### Task 7: Runtime collections
 
-**Files:** Create: `lib/honeycomb/runtime.nu`. Modify:
+**Files:** Create: `lib/honeycomb/runtime/honeycomb.nu`. Modify:
 `modules/programs/vcs/vcs.nix`, `modules/home/nix/nix.nix`, `AGENTS.md`,
 `modules/tooling/ai/shared/global-agent-instructions.md`
 
@@ -164,6 +164,26 @@ discard muscle memory before the new grammar is proven on one tool.
   written policy that agents follow; nothing stops `luvus worktree create`. On
   2026-11-19 this repository had 7 open topics, 18 worktrees and 12 open tasks,
   with 57 delivered branches waiting to be pruned.
+
+### Task 8: One map of areas
+
+**Files:** Create: `lib/honeycomb/runtime/tests.nu`. Modify:
+`lib/honeycomb/default.nix`, `lib/honeycomb/runtime/honeycomb.nu`,
+`niri/binds.nix`, `niri/session.nu`, `modules/home/files.nix`,
+`modules/home/nix/nix.nix`, `flake.nix`
+
+- [x] The seven areas live once, in `lib/honeycomb/default.nix`, with each
+  one's cell, knowledge-base hub, folders and the sidebar sections it absorbs;
+  niri's binds, its session presets and the `honeycomb` command read them.
+- [x] `honeycomb sidebar` refiles Claude's sidebar as pinned, the seven areas
+  and the unfiled list, and `honeycomb sessions` names the sessions to archive
+  so each area holds six live ones. On 2026-11-19 the sidebar had ten sections
+  and 41 live sessions: 19 under Nix and 18 unfiled, 27 to archive.
+- [x] `honeycomb census` counts luvus's workspaces and Claude's sessions per
+  area; `honeycomb prune --yes` closes the luvus workspaces of what it removes.
+- [ ] File the knowledge base's nine hubs under the seven areas: `shell`,
+  `career` and `inbox` have no area.
+- [ ] Count niri windows per area workspace.
 
 ## Spec changes
 
