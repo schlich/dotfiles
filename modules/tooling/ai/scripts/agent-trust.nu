@@ -2,7 +2,7 @@
 
 # Learn from your answers to Claude Code permission dialogs which kinds of
 # tool call you approve, and, for classes you promote, answer the dialog for
-# you. The policy is modules/tooling/ai/trust-policy.nuon, the Jev questions
+# you. The policy is modules/tooling/ai/shared/trust-policy.nuon, the Jev questions
 # are `route` in jev/questions.nuon, and `agent-trust report` shows what the
 # ledger has learned.
 

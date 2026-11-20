@@ -79,7 +79,7 @@ let
 in
 {
   home.packages = with pkgs; [
-    (callPackage ./openchamber.nix { })
+    (callPackage ./openchamber/openchamber.nix { })
     xdg-user-dirs
     bubblewrap
     antigravity-cli
@@ -88,6 +88,8 @@ in
     super-productivity
     element-desktop
     discord
+    github-desktop
+    zapzap
     marimo
     nodejs
     ty
@@ -125,6 +127,7 @@ in
     nerd-fonts.symbols-only
     pandoc
     prek
+    stripe-cli
     wl-clipboard-rs
     gh-stack
     # The repository's wrappers depend on secretspec; keep this copy ahead of
@@ -137,9 +140,22 @@ in
     cachix
     cachixSeed
     inputs.xs.packages.${pkgs.stdenv.hostPlatform.system}.default
-    inputs.ai-usagebar.packages.${pkgs.stdenv.hostPlatform.system}.default
+    (import ../programs/desktop/ai-usagebar-package.nix { inherit inputs pkgs; })
     inputs.tangled-dash.packages.${pkgs.stdenv.hostPlatform.system}.default
-    (import ../programs/luvus-package.nix { inherit inputs lib pkgs; })
-    (import ../tooling/ai/fieldnotes-package.nix { inherit inputs lib pkgs; })
+    (import ../programs/multiplexers/luvus-package.nix { inherit inputs lib pkgs; })
+    (import ../tooling/ai/claude/fieldnotes-package.nix { inherit inputs lib pkgs; })
   ];
+
+  dotfiles.nixpkgsWatch = {
+    acreom = {
+      inherit (acreomApp) version;
+      repo = "Acreom/app";
+      reason = "replace acreomApp, the release AppImage modules/home/packages.nix wraps, with pkgs.acreom";
+    };
+    openchamber = {
+      inherit (pkgs.callPackage ./openchamber/openchamber.nix { }) version;
+      reason = "replace modules/home/openchamber/openchamber.nix, a build of the npm release, with pkgs.openchamber in modules/home/packages.nix";
+    };
+    ai-usagebar.reason = "replace modules/programs/desktop/ai-usagebar-package.nix (the ai-usagebar input's package, with sqlite added and its tests skipped) with pkgs.ai-usagebar, and drop the ai-usagebar input";
+  };
 }

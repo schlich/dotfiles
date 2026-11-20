@@ -28,7 +28,7 @@ uv-managed Python processes.
 
 ### Task: Switch the MCP launcher
 
-**Files:** Modify `modules/tooling/ai/common.nix`.
+**Files:** Modify `modules/tooling/ai/shared/common.nix`.
 
 - [ ] Replace the `uvx` command with the documented Nix launcher.
 
@@ -49,4 +49,5 @@ None — this changes the launcher for an existing developer tool.
 
 Verified anchor points (line numbers as of 2026-10-16):
 
-- `modules/tooling/ai/common.nix:70` — shared Nix MCP server configuration.
+- `modules/tooling/ai/shared/common.nix:70` — shared Nix MCP server
+  configuration.

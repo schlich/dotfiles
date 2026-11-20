@@ -1,9 +1,9 @@
 { den, lib, ... }:
 let
-  profileTools = import ./profile.nix { inherit lib; };
+  profileTools = import ./model/profile.nix { inherit lib; };
 
   # Every host is composed the same way: the aspects its profile and
-  # services facts select (den/profile.nix), then what every host needs,
+  # services facts select (den/model/profile.nix), then what every host needs,
   # then its platform. Hardware and storage remain platform-local.
   hostIncludes =
     name:

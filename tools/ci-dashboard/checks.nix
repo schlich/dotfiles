@@ -1,6 +1,7 @@
 # The CI dashboard's checks: Hegel properties of feeds.mjs, and Bombadil's
 # exploration of the page against the real server, whose `ci` and `gh` are
 # fakes over a changing world (fake/). Each sees only the files it runs.
+# nixpkgs-watch: not a workaround: fetches the dashboard's locked npm packages.
 { lib, pkgs }:
 
 let

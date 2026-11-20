@@ -1,6 +1,6 @@
 # Apply the NixOS configuration on GitHub's main without sudo: start the
 # root nixos-switch-main unit, follow its journal and step reports while it
-# runs, then show its result. modules/nixos/system-switch.nix wraps this with
+# runs, then show its result. modules/nixos/fleet/system-switch.nix wraps this with
 # DEPLOY_UNIT and DEPLOY_STATE.
 #
 # deploy/switch.nu writes a JSON line to `status.jsonl` in the state

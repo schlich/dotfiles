@@ -22,7 +22,7 @@ Conventions and rules for authoring, modifying, and maintaining Nix flakes and N
   `$CODEX_HOME/config.toml`, so do not add static Codex defaults through
   `programs.codex.settings` or `home.file`.
 - Preserve the existing modular flake structure. Avoid introducing the Dendritic Pattern as part of an unrelated change; adopting it requires a deliberate architecture migration.
-- Add user packages in `modules/home/packages.nix`, version-control wrappers in `modules/programs/vcs.nix`, and AI client configuration in `modules/tooling/ai/` and `modules/programs/`.
+- Add user packages in `modules/home/packages.nix`, version-control wrappers in `modules/programs/vcs/vcs.nix`, and AI client configuration in `modules/tooling/ai/` and `modules/programs/`.
 
 ## Formatting and Validation
 

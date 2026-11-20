@@ -24,13 +24,12 @@ in
 
   boot.loader.limine.efiInstallAsRemovable = false;
 
-  boot.initrd = {
-    systemd.enable = true;
-    luks.devices.nixos-root = {
-      allowDiscards = true;
-      crypttabExtraOpts = [ "tpm2-device=auto" ];
-      device = "/dev/disk/by-uuid/fcad07cd-274e-4cc6-99a5-b285bf647626";
-    };
+  # nixpkgs dropped the scripted initrd, so the systemd initrd that unlocks
+  # this volume with the TPM is the only one and needs no option.
+  boot.initrd.luks.devices.nixos-root = {
+    allowDiscards = true;
+    crypttabExtraOpts = [ "tpm2-device=auto" ];
+    device = "/dev/disk/by-uuid/fcad07cd-274e-4cc6-99a5-b285bf647626";
   };
 
   fileSystems = {

@@ -1,6 +1,6 @@
 # The nixbot-app-manifest check: the GitHub App manifest nixbot-register
-# registers (modules/nixos/nixbot.nix) asks for exactly the permissions and
-# events docs/nixbot.md says nixbot needs, and keeps the App private.
+# registers (modules/nixos/builds/nixbot.nix) asks for exactly the permissions and
+# events docs/delivery/nixbot.md says nixbot needs, and keeps the App private.
 use std/assert
 
 const SECTION = "## What the App may do"
@@ -32,12 +32,12 @@ def main [doc: path, registration: path] {
 
   let required = $tables.Permission | each {|row| { name: $row.0, access: $row.1 } } | sort-by name
   let asked = $manifest.default_permissions | transpose name access | sort-by name
-  assert equal $asked $required "The manifest's permissions differ from docs/nixbot.md"
+  assert equal $asked $required "The manifest's permissions differ from docs/delivery/nixbot.md"
 
   let events = $tables.Event | each {|row| $row.0 } | sort
-  assert equal ($manifest.default_events | sort) $events "The manifest's events differ from docs/nixbot.md"
+  assert equal ($manifest.default_events | sort) $events "The manifest's events differ from docs/delivery/nixbot.md"
 
   assert equal $manifest.public false "The App must stay private"
 
-  print $"The manifest asks for ($required | length) permissions and ($events | length) events, as docs/nixbot.md says."
+  print $"The manifest asks for ($required | length) permissions and ($events | length) events, as docs/delivery/nixbot.md says."
 }

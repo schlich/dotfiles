@@ -43,6 +43,11 @@ let
     ];
   };
 
+  bufferKeys = {
+    y = "goto_previous_buffer";
+    u = "goto_next_buffer";
+  };
+
   settings = {
     theme = "dark-synthwave";
     editor = {
@@ -64,9 +69,21 @@ let
       soft-wrap.enable = true;
       end-of-line-diagnostics = "hint";
       inline-diagnostics.cursor-line = "warning";
+      # The base mode has one name in every tool.
+      statusline.mode = {
+        normal = "NORMAL";
+        insert = "INSERT";
+        select = "SELECT";
+      };
     };
     keys = {
       normal = {
+        # The window menu already moves between splits with H, J, K and L;
+        # Y and U, the keys under the bufferline, add the buffer to the left
+        # and right (lib/honeycomb/README.md). Motions inside a buffer stay
+        # Helix's own.
+        space.w = bufferKeys;
+        C-w = bufferKeys;
         tab = "move_parent_node_end";
         S-tab = "move_parent_node_start";
         # Pick files with Yazi, starting at the current buffer.
@@ -169,6 +186,15 @@ in
         }
       ];
     };
+  };
+
+  dotfiles.input.navigation.editor = lib.mkIf (config.dotfiles.primary.editor == "helix") {
+    w = [ "Space+W+H" ];
+    e = [ "Space+W+L" ];
+    down = [ "Space+W+J" ];
+    up = [ "Space+W+K" ];
+    nw = [ "Space+W+Y" ];
+    ne = [ "Space+W+U" ];
   };
 
   dotfiles.retiredHomeFiles = [ ".config/helix/config.toml" ];

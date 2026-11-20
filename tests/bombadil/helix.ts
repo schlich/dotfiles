@@ -15,7 +15,7 @@ function mode(): string | null {
   const status = screen
     .slice(-2)
     .join("\n")
-    .match(/(?:^|\s)(NOR|INS|SEL)\s/m);
+    .match(/(?:^|\s)(NORMAL|INSERT|SELECT)\s/m);
   if (status) return status[1];
   const prompt = (screen[screen.length - 1] ?? "").match(/^([\w-]*[:/?])/);
   return prompt ? prompt[1] : null;
@@ -33,7 +33,7 @@ function infobox(): boolean {
 }
 
 export const modeShown = modeAlwaysShown(mode);
-export const escapeReturnsToNormal = escapeReturnsTo("NOR", mode);
+export const escapeReturnsToNormal = escapeReturnsTo("NORMAL", mode);
 
 // The last row is drawn after the rows above it, so once the pending keys
 // show, the same frame already holds the infobox listing what follows them.

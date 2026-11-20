@@ -32,7 +32,7 @@
   <g transform="translate(214 178)">
     <text class="eyebrow" x="0" y="0">NIRI FIELD GUIDE</text>
     <text class="title" x="0" y="105">NAVIGATE THE FLOW</text>
-    <text class="subtitle" x="2" y="161">Mod is Super. Shift moves. Ctrl crosses boundaries.</text>
+    <text class="subtitle" x="2" y="161">Mod selects. Shift carries. Ctrl crosses monitors. Alt is the areas.</text>
   </g>
 
   <g filter="url(#shadow)">
@@ -42,22 +42,22 @@
   </g>
 
   <g transform="translate(230 514)">
-    <text class="section" x="0" y="0">FOCUS</text>
-    <text class="key" x="0" y="78">MOD + H J K L</text><text class="action" x="300" y="78">left / down / up / right</text>
-    <text class="key" x="0" y="142">MOD + ARROWS</text><text class="action" x="260" y="142">same directions</text>
-    <text class="key" x="0" y="206">MOD + HOME / END</text><text class="action" x="310" y="206">first / last column</text>
+    <text class="section" x="0" y="0">SELECT</text>
+    <text class="key" x="0" y="78">MOD + H / L</text><text class="action" x="300" y="78">column west / east</text>
+    <text class="key" x="0" y="142">MOD + J / K</text><text class="action" x="260" y="142">into / out of the column</text>
+    <text class="key" x="0" y="206">MOD + TAB</text><text class="action" x="310" y="206">back to the previous window</text>
     <line x1="0" y1="255" x2="590" y2="255" stroke="#5d91ad" stroke-opacity="0.35"/>
-    <text class="section" x="0" y="312">WORKSPACES</text>
-    <text class="key" x="0" y="390">MOD + U / I</text><text class="action" x="270" y="390">previous / next</text>
-    <text class="key" x="0" y="454">MOD + PAGE UP / DOWN</text><text class="action" x="490" y="454">previous / next</text>
-    <text class="key" x="0" y="518">MOD + TAB</text><text class="action" x="240" y="518">previous workspace</text>
+    <text class="section" x="0" y="312">AREAS</text>
+    <text class="key" x="0" y="390">MOD + ALT + Y U</text><text class="action" x="330" y="390">xr / life</text>
+    <text class="key" x="0" y="454">MOD + ALT + H I L</text><text class="action" x="330" y="454">ai / home / work</text>
+    <text class="key" x="0" y="518">MOD + ALT + N M</text><text class="action" x="330" y="518">nix / research</text>
   </g>
 
   <g transform="translate(985 514)">
-    <text class="section" x="0" y="0">MOVE WINDOWS</text>
-    <text class="key" x="0" y="78">MOD + SHIFT + H J K L</text><text class="action" x="390" y="78">move in direction</text>
-    <text class="key" x="0" y="142">MOD + SHIFT + ARROWS</text><text class="action" x="390" y="142">same directions</text>
-    <text class="key" x="0" y="206">MOD + CTRL + U / I</text><text class="action" x="330" y="206">to previous / next workspace</text>
+    <text class="section" x="0" y="0">CARRY</text>
+    <text class="key" x="0" y="78">MOD + SHIFT + H J K L</text><text class="action" x="390" y="78">carry the selection</text>
+    <text class="key" x="0" y="142">MOD + SHIFT + ALT + key</text><text class="action" x="420" y="142">to that area</text>
+    <text class="key" x="0" y="206">MOD + ALT + O</text><text class="action" x="330" y="206">sessions and projects</text>
     <line x1="0" y1="255" x2="590" y2="255" stroke="#5d91ad" stroke-opacity="0.35"/>
     <text class="section" x="0" y="312">MONITORS</text>
     <text class="key" x="0" y="390">MOD + CTRL + H J K L</text><text class="action" x="390" y="390">focus monitor</text>
@@ -65,20 +65,20 @@
   </g>
 
   <g transform="translate(1740 514)">
-    <text class="section" x="0" y="0">WORKSPACE TARGETS</text>
-    <text class="key" x="0" y="78">MOD + 1 ... 9</text><text class="action" x="260" y="78">focus workspace</text>
-    <text class="key" x="0" y="142">MOD + SHIFT + 1 ... 9</text><text class="action" x="360" y="142">move column there</text>
-    <text class="key" x="0" y="206">MOD + 0</text><text class="action" x="185" y="206">focus config</text>
+    <text class="section" x="0" y="0">OPEN</text>
+    <text class="key" x="0" y="78">MOD + RETURN</text><text class="action" x="260" y="78">terminal</text>
+    <text class="key" x="0" y="142">MOD + SPACE / B</text><text class="action" x="360" y="142">launcher / browser</text>
+    <text class="key" x="0" y="206">MOD + A / G / N</text><text class="action" x="300" y="206">agents / vcs / notes</text>
     <line x1="0" y1="255" x2="590" y2="255" stroke="#5d91ad" stroke-opacity="0.35"/>
-    <text class="section" x="0" y="312">COLUMN CONTROL</text>
-    <text class="key" x="0" y="390">MOD + R</text><text class="action" x="185" y="390">cycle column width</text>
-    <text class="key" x="0" y="454">MOD + F</text><text class="action" x="185" y="454">maximize column</text>
-    <text class="key" x="0" y="518">MOD + C</text><text class="action" x="185" y="518">center column</text>
+    <text class="section" x="0" y="312">SHAPE</text>
+    <text class="key" x="0" y="390">MOD + R</text><text class="action" x="185" y="390">column width</text>
+    <text class="key" x="0" y="454">MOD + F</text><text class="action" x="185" y="454">maximise column</text>
+    <text class="key" x="0" y="518">MOD + W / V</text><text class="action" x="230" y="518">tabs / float</text>
   </g>
 
   <g transform="translate(214 1290)">
     <rect x="0" y="-34" width="2132" height="2" fill="#72c7ff" fill-opacity="0.38"/>
-    <text class="note" x="0" y="18">More: MOD + SHIFT + / shows Niri's complete hotkey overlay</text>
+    <text class="note" x="0" y="18">More: MOD + / draws every key</text>
     <text class="note" x="1784" y="18">niri / navigation</text>
   </g>
 </svg>

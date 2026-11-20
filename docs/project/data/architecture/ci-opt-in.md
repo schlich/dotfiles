@@ -6,13 +6,13 @@ generated:
   at: 2026-10-24T20:00:00Z
 sources:
 - id: ci-module
-  resource: modules/programs/ci.nix
+  resource: modules/programs/vcs/ci.nix
   title: The opt-in option, its jj scope, and ci-enabled
 - id: hooks
   resource: modules/tooling/ai/scripts/only-in-ci-repos.nu
   title: The wrapper around ci's Claude Code hooks
 - id: instructions
-  resource: modules/tooling/ai/global-agent-instructions.md
+  resource: modules/tooling/ai/shared/global-agent-instructions.md
   title: The agent instructions' Jujutsu section
 - id: readme
   resource: jj/README.md

@@ -40,11 +40,11 @@ let
     options = {
       source = mkOption {
         type = types.path;
-        description = "Source file for an OpenCode plugin.";
+        description = "Source file or directory for an OpenCode plugin.";
       };
       target = mkOption {
         type = types.str;
-        description = "Plugin filename in OpenCode's global plugin directory.";
+        description = "Plugin file or directory name in OpenCode's global plugin directory.";
       };
     };
   };
@@ -173,6 +173,17 @@ in
           --class: string = ""
           ...args
         ] {
+          # A terminal started from inside a service, such as niri.service
+          # when niri fails to give a spawn its own scope, would share that
+          # service's cgroup. systemd-oomd kills a whole unit, so the agents
+          # in such a terminal made niri the largest swap user, and the swap
+          # kill took the compositor and every session down with them. Move
+          # the terminal into its own scope under app.slice first.
+          let cgroup = (try { open --raw /proc/self/cgroup | str trim } catch { "" })
+          let bus = ($env.XDG_RUNTIME_DIR? | default "" | path join bus)
+          if ($cgroup | str ends-with ".service") and ($bus | path exists) {
+            exec ${pkgs.systemd}/bin/systemd-run --user --scope --quiet --collect --slice=app.slice $"--unit=app-terminal-($nu.pid).scope" -- $nu.current-exe $env.CURRENT_FILE --directory $directory --class $class ...$args
+          }
           ${terminal.launcher}
         }
       '')
