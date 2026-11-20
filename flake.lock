@@ -3,6 +3,7 @@
     "agenix": {
       "inputs": {
         "nixpkgs": [
+          "system",
           "nixpkgs"
         ]
       },
@@ -23,6 +24,7 @@
     "ai-usagebar": {
       "inputs": {
         "nixpkgs": [
+          "system",
           "nixpkgs"
         ]
       },
@@ -80,6 +82,7 @@
         "flake-compat": "flake-compat",
         "flake-parts": "flake-parts",
         "nixpkgs": [
+          "system",
           "nixpkgs"
         ]
       },
@@ -117,18 +120,26 @@
     "bun2nix": {
       "inputs": {
         "flake-parts": [
+          "agents",
+          "clients",
           "llm-agents",
           "flake-parts"
         ],
         "nixpkgs": [
+          "agents",
+          "clients",
           "llm-agents",
           "nixpkgs"
         ],
         "systems": [
+          "agents",
+          "clients",
           "llm-agents",
           "systems"
         ],
         "treefmt-nix": [
+          "agents",
+          "clients",
           "llm-agents",
           "treefmt-nix"
         ]
@@ -151,9 +162,12 @@
     "ci": {
       "inputs": {
         "nixpkgs": [
+          "system",
           "nixpkgs"
         ],
         "osc7501-nu": [
+          "terminal",
+          "shell",
           "osc7501-nu"
         ]
       },
@@ -179,6 +193,7 @@
         "nix-darwin": "nix-darwin",
         "nix-select": "nix-select",
         "nixpkgs": [
+          "system",
           "nixpkgs"
         ],
         "sops-nix": "sops-nix",
@@ -200,9 +215,11 @@
     "codex": {
       "inputs": {
         "nixpkgs": [
+          "system",
           "nixpkgs"
         ],
         "rust-overlay": [
+          "builds",
           "rust-overlay"
         ]
       },
@@ -224,6 +241,7 @@
     "continuum-ide": {
       "inputs": {
         "nixpkgs": [
+          "system",
           "nixpkgs"
         ]
       },
@@ -305,14 +323,17 @@
     "data-mesher": {
       "inputs": {
         "flake-parts": [
+          "system",
           "clan-core",
           "flake-parts"
         ],
         "nixpkgs": [
+          "system",
           "clan-core",
           "nixpkgs"
         ],
         "treefmt-nix": [
+          "system",
           "clan-core",
           "treefmt-nix"
         ]
@@ -348,6 +369,7 @@
     "dicta": {
       "inputs": {
         "nixpkgs": [
+          "system",
           "nixpkgs"
         ]
       },
@@ -368,6 +390,7 @@
     "disko": {
       "inputs": {
         "nixpkgs": [
+          "system",
           "clan-core",
           "nixpkgs"
         ]
@@ -405,6 +428,8 @@
     "fenix": {
       "inputs": {
         "nixpkgs": [
+          "terminal",
+          "shell",
           "atuin",
           "nixpkgs"
         ],
@@ -427,6 +452,8 @@
     "fenix_2": {
       "inputs": {
         "nixpkgs": [
+          "terminal",
+          "vcs",
           "tangled",
           "nixpkgs"
         ],
@@ -449,6 +476,8 @@
     "fetch-tangled": {
       "inputs": {
         "nixpkgs": [
+          "terminal",
+          "vcs",
           "tangled",
           "nixpkgs"
         ]
@@ -470,6 +499,7 @@
     "fieldnotes": {
       "inputs": {
         "nixpkgs": [
+          "system",
           "nixpkgs"
         ]
       },
@@ -524,6 +554,7 @@
     "flake-parts_2": {
       "inputs": {
         "nixpkgs-lib": [
+          "system",
           "clan-core",
           "nixpkgs"
         ]
@@ -545,6 +576,8 @@
     "flake-parts_3": {
       "inputs": {
         "nixpkgs-lib": [
+          "agents",
+          "clients",
           "llm-agents",
           "nixpkgs"
         ]
@@ -665,6 +698,7 @@
     "gen-graph": {
       "inputs": {
         "gen-prelude": [
+          "builds",
           "gen-inspect",
           "gen-prelude"
         ]
@@ -755,10 +789,12 @@
         "gen-algebra": "gen-algebra",
         "gen-identity": "gen-identity",
         "gen-prelude": [
+          "builds",
           "gen-inspect",
           "gen-prelude"
         ],
         "gen-scope": [
+          "builds",
           "gen-inspect",
           "gen-scope"
         ]
@@ -781,11 +817,13 @@
       "inputs": {
         "gen-algebra": "gen-algebra_2",
         "gen-graph": [
+          "builds",
           "gen-inspect",
           "gen-graph"
         ],
         "gen-identity": "gen-identity_2",
         "gen-prelude": [
+          "builds",
           "gen-inspect",
           "gen-prelude"
         ]
@@ -842,6 +880,8 @@
       "inputs": {
         "flake-utils": "flake-utils_2",
         "nixpkgs": [
+          "terminal",
+          "vcs",
           "tangled",
           "nixpkgs"
         ]
@@ -895,9 +935,11 @@
     "hex": {
       "inputs": {
         "home-manager": [
+          "system",
           "home-manager"
         ],
         "nixpkgs": [
+          "system",
           "nixpkgs"
         ]
       },
@@ -918,6 +960,7 @@
     "hokum": {
       "inputs": {
         "nixpkgs": [
+          "system",
           "nixpkgs"
         ]
       },
@@ -938,6 +981,7 @@
     "home-manager": {
       "inputs": {
         "nixpkgs": [
+          "system",
           "nixpkgs"
         ]
       },
@@ -1020,6 +1064,7 @@
       "inputs": {
         "crane": "crane_2",
         "nixpkgs": [
+          "system",
           "nixpkgs"
         ]
       },
@@ -1071,6 +1116,289 @@
         "repo": "indigo",
         "type": "github"
       }
+    },
+    "inputs-agents": {
+      "inputs": {
+        "clients": "inputs-agents-clients",
+        "fieldnotes": "fieldnotes",
+        "knowledge": "inputs-agents-knowledge",
+        "skills": "inputs-agents-skills"
+      },
+      "locked": {
+        "path": "./lib/inputs/agents",
+        "type": "path"
+      },
+      "original": {
+        "path": "./lib/inputs/agents",
+        "type": "path"
+      },
+      "parent": []
+    },
+    "inputs-agents-clients": {
+      "inputs": {
+        "codex": "codex",
+        "continuum-ide": "continuum-ide",
+        "llm-agents": "llm-agents",
+        "nixpkgs-t3code": "nixpkgs-t3code",
+        "opencode": "opencode",
+        "paseo": "paseo"
+      },
+      "locked": {
+        "path": "./clients",
+        "type": "path"
+      },
+      "original": {
+        "path": "./clients",
+        "type": "path"
+      },
+      "parent": [
+        "agents"
+      ]
+    },
+    "inputs-agents-knowledge": {
+      "inputs": {
+        "iwe": "iwe",
+        "iwe-skills": "iwe-skills"
+      },
+      "locked": {
+        "path": "./knowledge",
+        "type": "path"
+      },
+      "original": {
+        "path": "./knowledge",
+        "type": "path"
+      },
+      "parent": [
+        "agents"
+      ]
+    },
+    "inputs-agents-skills": {
+      "inputs": {
+        "jev": "inputs-agents-skills-jev",
+        "meta-quest-agentic-tools": "meta-quest-agentic-tools",
+        "notebooks": "inputs-agents-skills-notebooks",
+        "practice": "inputs-agents-skills-practice",
+        "testing": "inputs-agents-skills-testing",
+        "web": "inputs-agents-skills-web"
+      },
+      "locked": {
+        "path": "./skills",
+        "type": "path"
+      },
+      "original": {
+        "path": "./skills",
+        "type": "path"
+      },
+      "parent": [
+        "agents"
+      ]
+    },
+    "inputs-agents-skills-jev": {
+      "inputs": {
+        "jevify": "jevify",
+        "typesafe-skills": "typesafe-skills"
+      },
+      "locked": {
+        "path": "./jev",
+        "type": "path"
+      },
+      "original": {
+        "path": "./jev",
+        "type": "path"
+      },
+      "parent": [
+        "agents",
+        "skills"
+      ]
+    },
+    "inputs-agents-skills-notebooks": {
+      "inputs": {
+        "marimo-pair": "marimo-pair",
+        "marimo-skills": "marimo-skills"
+      },
+      "locked": {
+        "path": "./notebooks",
+        "type": "path"
+      },
+      "original": {
+        "path": "./notebooks",
+        "type": "path"
+      },
+      "parent": [
+        "agents",
+        "skills"
+      ]
+    },
+    "inputs-agents-skills-practice": {
+      "inputs": {
+        "autoresearch": "autoresearch",
+        "grill-me": "grill-me",
+        "humanlayer-skills": "humanlayer-skills",
+        "mattpocock-skills": "mattpocock-skills"
+      },
+      "locked": {
+        "path": "./practice",
+        "type": "path"
+      },
+      "original": {
+        "path": "./practice",
+        "type": "path"
+      },
+      "parent": [
+        "agents",
+        "skills"
+      ]
+    },
+    "inputs-agents-skills-testing": {
+      "inputs": {
+        "antithesis-skills": "antithesis-skills",
+        "hegel-skill": "hegel-skill"
+      },
+      "locked": {
+        "path": "./testing",
+        "type": "path"
+      },
+      "original": {
+        "path": "./testing",
+        "type": "path"
+      },
+      "parent": [
+        "agents",
+        "skills"
+      ]
+    },
+    "inputs-agents-skills-web": {
+      "inputs": {
+        "archify": "archify",
+        "effective-html": "effective-html",
+        "modern-web-guidance": "modern-web-guidance"
+      },
+      "locked": {
+        "path": "./web",
+        "type": "path"
+      },
+      "original": {
+        "path": "./web",
+        "type": "path"
+      },
+      "parent": [
+        "agents",
+        "skills"
+      ]
+    },
+    "inputs-builds": {
+      "inputs": {
+        "gen-inspect": "gen-inspect",
+        "iets": "iets",
+        "nix-grpc-store": "nix-grpc-store",
+        "nixbot": "nixbot",
+        "npr": "npr",
+        "rust-overlay": "rust-overlay"
+      },
+      "locked": {
+        "path": "./lib/inputs/builds",
+        "type": "path"
+      },
+      "original": {
+        "path": "./lib/inputs/builds",
+        "type": "path"
+      },
+      "parent": []
+    },
+    "inputs-desktop": {
+      "inputs": {
+        "ai-usagebar": "ai-usagebar",
+        "dicta": "dicta",
+        "hex": "hex",
+        "hokum": "hokum",
+        "niri": "niri",
+        "noc-minimizer": "noc-minimizer"
+      },
+      "locked": {
+        "path": "./lib/inputs/desktop",
+        "type": "path"
+      },
+      "original": {
+        "path": "./lib/inputs/desktop",
+        "type": "path"
+      },
+      "parent": []
+    },
+    "inputs-system": {
+      "inputs": {
+        "agenix": "agenix",
+        "clan-core": "clan-core",
+        "den": "den",
+        "home-manager": "home-manager",
+        "impermanence": "impermanence",
+        "nixpkgs": "nixpkgs"
+      },
+      "locked": {
+        "path": "./lib/inputs/system",
+        "type": "path"
+      },
+      "original": {
+        "path": "./lib/inputs/system",
+        "type": "path"
+      },
+      "parent": []
+    },
+    "inputs-terminal": {
+      "inputs": {
+        "luvus": "luvus",
+        "shell": "inputs-terminal-shell",
+        "vcs": "inputs-terminal-vcs"
+      },
+      "locked": {
+        "path": "./lib/inputs/terminal",
+        "type": "path"
+      },
+      "original": {
+        "path": "./lib/inputs/terminal",
+        "type": "path"
+      },
+      "parent": []
+    },
+    "inputs-terminal-shell": {
+      "inputs": {
+        "atuin": "atuin",
+        "nushellWith": "nushellWith",
+        "osc7501-nu": "osc7501-nu",
+        "ptyZZZ": "ptyZZZ",
+        "rex": "rex",
+        "xs": "xs"
+      },
+      "locked": {
+        "path": "./shell",
+        "type": "path"
+      },
+      "original": {
+        "path": "./shell",
+        "type": "path"
+      },
+      "parent": [
+        "terminal"
+      ]
+    },
+    "inputs-terminal-vcs": {
+      "inputs": {
+        "ci": "ci",
+        "gh-stack": "gh-stack",
+        "jj-hunk": "jj-hunk",
+        "tangled": "tangled",
+        "tangled-dash": "tangled-dash"
+      },
+      "locked": {
+        "path": "./vcs",
+        "type": "path"
+      },
+      "original": {
+        "path": "./vcs",
+        "type": "path"
+      },
+      "parent": [
+        "terminal"
+      ]
     },
     "iwe": {
       "flake": false,
@@ -1143,6 +1471,7 @@
         "bun2nix": "bun2nix",
         "flake-parts": "flake-parts_3",
         "nixpkgs": [
+          "system",
           "nixpkgs"
         ],
         "systems": "systems_2",
@@ -1166,6 +1495,7 @@
       "inputs": {
         "flake-utils": "flake-utils",
         "nixpkgs": [
+          "system",
           "nixpkgs"
         ]
       },
@@ -1250,6 +1580,8 @@
     "microvm": {
       "inputs": {
         "nixpkgs": [
+          "terminal",
+          "vcs",
           "tangled",
           "nixpkgs"
         ],
@@ -1288,6 +1620,7 @@
     "niks3": {
       "inputs": {
         "nixpkgs": [
+          "builds",
           "nix-grpc-store",
           "nixpkgs"
         ],
@@ -1312,6 +1645,7 @@
         "niri-stable": "niri-stable",
         "niri-unstable": "niri-unstable",
         "nixpkgs": [
+          "system",
           "nixpkgs"
         ],
         "nixpkgs-stable": "nixpkgs-stable",
@@ -1368,6 +1702,7 @@
     "nix-darwin": {
       "inputs": {
         "nixpkgs": [
+          "system",
           "clan-core",
           "nixpkgs"
         ]
@@ -1390,6 +1725,7 @@
       "inputs": {
         "niks3": "niks3",
         "nixpkgs": [
+          "system",
           "nixpkgs"
         ]
       },
@@ -1423,6 +1759,7 @@
     "nixbot": {
       "inputs": {
         "nixpkgs": [
+          "system",
           "nixpkgs"
         ],
         "treefmt-nix": "treefmt-nix_4"
@@ -1568,6 +1905,7 @@
     "noc-minimizer": {
       "inputs": {
         "nixpkgs": [
+          "system",
           "nixpkgs"
         ]
       },
@@ -1588,6 +1926,7 @@
     "npr": {
       "inputs": {
         "nixpkgs": [
+          "system",
           "nixpkgs"
         ]
       },
@@ -1625,6 +1964,7 @@
       "inputs": {
         "crane": "crane_3",
         "nixpkgs": [
+          "system",
           "nixpkgs"
         ],
         "nu-batteries-src": "nu-batteries-src"
@@ -1682,6 +2022,7 @@
     "paseo": {
       "inputs": {
         "nixpkgs": [
+          "system",
           "nixpkgs"
         ]
       },
@@ -1719,6 +2060,7 @@
     "rex": {
       "inputs": {
         "nixpkgs": [
+          "system",
           "nixpkgs"
         ]
       },
@@ -1735,59 +2077,11 @@
     },
     "root": {
       "inputs": {
-        "agenix": "agenix",
-        "ai-usagebar": "ai-usagebar",
-        "antithesis-skills": "antithesis-skills",
-        "archify": "archify",
-        "atuin": "atuin",
-        "autoresearch": "autoresearch",
-        "ci": "ci",
-        "clan-core": "clan-core",
-        "codex": "codex",
-        "continuum-ide": "continuum-ide",
-        "den": "den",
-        "dicta": "dicta",
-        "effective-html": "effective-html",
-        "fieldnotes": "fieldnotes",
-        "gen-inspect": "gen-inspect",
-        "gh-stack": "gh-stack",
-        "grill-me": "grill-me",
-        "hegel-skill": "hegel-skill",
-        "hex": "hex",
-        "hokum": "hokum",
-        "home-manager": "home-manager",
-        "humanlayer-skills": "humanlayer-skills",
-        "iets": "iets",
-        "impermanence": "impermanence",
-        "iwe": "iwe",
-        "iwe-skills": "iwe-skills",
-        "jevify": "jevify",
-        "jj-hunk": "jj-hunk",
-        "llm-agents": "llm-agents",
-        "luvus": "luvus",
-        "marimo-pair": "marimo-pair",
-        "marimo-skills": "marimo-skills",
-        "mattpocock-skills": "mattpocock-skills",
-        "meta-quest-agentic-tools": "meta-quest-agentic-tools",
-        "modern-web-guidance": "modern-web-guidance",
-        "niri": "niri",
-        "nix-grpc-store": "nix-grpc-store",
-        "nixbot": "nixbot",
-        "nixpkgs": "nixpkgs",
-        "nixpkgs-t3code": "nixpkgs-t3code",
-        "noc-minimizer": "noc-minimizer",
-        "npr": "npr",
-        "nushellWith": "nushellWith",
-        "opencode": "opencode",
-        "osc7501-nu": "osc7501-nu",
-        "paseo": "paseo",
-        "ptyZZZ": "ptyZZZ",
-        "rex": "rex",
-        "rust-overlay": "rust-overlay",
-        "tangled": "tangled",
-        "tangled-dash": "tangled-dash",
-        "typesafe-skills": "typesafe-skills",
-        "xs": "xs"
+        "agents": "inputs-agents",
+        "builds": "inputs-builds",
+        "desktop": "inputs-desktop",
+        "system": "inputs-system",
+        "terminal": "inputs-terminal"
       }
     },
     "rust-analyzer-src": {
@@ -1846,6 +2140,8 @@
     "rust-overlay_2": {
       "inputs": {
         "nixpkgs": [
+          "terminal",
+          "shell",
           "xs",
           "nixpkgs"
         ]
@@ -1867,6 +2163,7 @@
     "sops-nix": {
       "inputs": {
         "nixpkgs": [
+          "system",
           "clan-core",
           "nixpkgs"
         ]
@@ -1987,6 +2284,7 @@
         "indigo": "indigo",
         "microvm": "microvm",
         "nixpkgs": [
+          "system",
           "nixpkgs"
         ],
         "nixpkgs-pds": "nixpkgs-pds",
@@ -2010,6 +2308,7 @@
     "tangled-dash": {
       "inputs": {
         "nixpkgs": [
+          "system",
           "nixpkgs"
         ]
       },
@@ -2043,6 +2342,7 @@
     "treefmt-nix": {
       "inputs": {
         "nixpkgs": [
+          "system",
           "clan-core",
           "nixpkgs"
         ]
@@ -2064,6 +2364,8 @@
     "treefmt-nix_2": {
       "inputs": {
         "nixpkgs": [
+          "agents",
+          "clients",
           "llm-agents",
           "nixpkgs"
         ]
@@ -2085,6 +2387,7 @@
     "treefmt-nix_3": {
       "inputs": {
         "nixpkgs": [
+          "builds",
           "nix-grpc-store",
           "niks3",
           "nixpkgs"
@@ -2107,6 +2410,7 @@
     "treefmt-nix_4": {
       "inputs": {
         "nixpkgs": [
+          "builds",
           "nixbot",
           "nixpkgs"
         ]
@@ -2146,6 +2450,7 @@
         "crane": "crane_4",
         "flake-parts": "flake-parts_4",
         "nixpkgs": [
+          "system",
           "nixpkgs"
         ],
         "rust-overlay": "rust-overlay_2"

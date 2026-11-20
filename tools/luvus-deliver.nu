@@ -152,14 +152,28 @@ def pinned [nodes: record, node: string] {
   $seen | each {|name| $nodes | get -o $name | get -o locked | to json --raw } | uniq | sort
 }
 
-# The flake inputs a delivery updates, by their names in flake.nix: those it
+# A lock's inputs by the names modules use: the root's own, and those of the
+# group flakes under lib/inputs, which are relative path inputs. A value that
+# is not a string is a `follows` path.
+def leaf-inputs [nodes: record, node: string = "root"] {
+  $nodes | get -o $node | get -o inputs | default {} | transpose name node | reduce --fold {} {|row, all|
+    let target = if ($row.node | describe) == "string" { $nodes | get -o $row.node } else { null }
+    if $target != null and ($target | get -o locked.type) == "path" and ($target | get -o parent) != null {
+      $all | merge (leaf-inputs $nodes $row.node)
+    } else {
+      $all | insert $row.name $row.node
+    }
+  }
+}
+
+# The flake inputs a delivery updates, by the names modules use: those it
 # adds, and those whose locked source, or that of anything they depend on,
 # changed.
 def updated-inputs [root: string, base: string, head: string] {
   let before = (lock-at $root $base).nodes
   let after = (lock-at $root $head).nodes
-  let old_roots = ($before | get -o root | get -o inputs | default {})
-  $after | get -o root | get -o inputs | default {} | transpose name node | where {|row|
+  let old_roots = (leaf-inputs $before)
+  leaf-inputs $after | transpose name node | where {|row|
     let old = ($old_roots | get -o $row.name)
     ($row.node | describe) == "string" and (
       ($old | describe) != "string" or (pinned $after $row.node) != (pinned $before $old)

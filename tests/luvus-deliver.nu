@@ -138,6 +138,24 @@ def main [script: path, questions: path] {
   let locked = (do $verdict "")
   $failures = ($failures | append (expect "a flake.lock update reaches the hosts that use the input" [$locked.risk $locked.inputs $locked.hosts] [medium [tool] [asus homelab]]))
 
+  # Inputs grouped in flakes under lib/inputs keep the names modules use:
+  # moving one into a group updates nothing, and updating it there names it.
+  let grouped = {
+    nodes: {
+      root: { inputs: { system: inputs-system, terminal: inputs-terminal } }
+      inputs-system: { inputs: { nixpkgs: nixpkgs }, locked: { path: "./lib/inputs/system", type: path }, parent: [] }
+      inputs-terminal: { inputs: { shell: inputs-terminal-shell }, locked: { path: "./lib/inputs/terminal", type: path }, parent: [] }
+      inputs-terminal-shell: { inputs: { tool: tool }, locked: { path: "./shell", type: path }, parent: [terminal] }
+      nixpkgs: { locked: { rev: a } }
+      tool: { inputs: { nixpkgs: [system nixpkgs] }, locked: { rev: d } }
+    }
+    root: root
+    version: 7
+  } | to json
+  do $case grouped-lock { "flake.lock": $grouped } | ignore
+  let regrouped = (do $verdict "")
+  $failures = ($failures | append (expect "an input updated inside a group is named as modules name it" [$regrouped.inputs $regrouped.hosts] [[tool] [asus homelab]]))
+
   rm --force $calls
   do $case secret { "secrets/token.age": "age-encrypted-v2\n", "modules/nixos/service-helper.nix": "{ services.example.enable = true; services.example.API_TOKEN = \"hunter2\"; }\n" } | ignore
   let secret = (do $verdict "")

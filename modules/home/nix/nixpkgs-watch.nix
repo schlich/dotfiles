@@ -36,11 +36,28 @@ let
   marimohub = import ../../tooling/knowledge/marimohub-package.nix { inherit lib pkgs; };
 
   lock = lib.importJSON ../../../flake.lock;
-  # The lock node of a direct flake input; null for one that follows another.
+  # The flake's inputs by name, through the group flakes under lib/inputs,
+  # which are relative path inputs.
+  leafInputs =
+    key:
+    lib.concatMapAttrs (
+      name: member:
+      let
+        node = lock.nodes.${member};
+      in
+      if !builtins.isString member then
+        { ${name} = member; }
+      else if (node.locked.type or null) == "path" && node ? parent then
+        leafInputs member
+      else
+        { ${name} = member; }
+    ) (lock.nodes.${key}.inputs or { });
+  lockedInputs = leafInputs lock.root;
+  # The lock node of a flake input; null for one that follows another.
   lockNode =
     name:
     let
-      key = lock.nodes.${lock.root}.inputs.${name} or null;
+      key = lockedInputs.${name} or null;
     in
     if builtins.isString key then lock.nodes.${key} else null;
   # A flake reference to exactly the locked revision, which `nix eval`

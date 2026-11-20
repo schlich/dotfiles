@@ -6,7 +6,7 @@ skill) lives in its own repository,
 [tangled.org/schlich.tngl.sh/ci](https://tangled.org/schlich.tngl.sh/ci),
 mirrored to `github:schlich/ci`. Its README documents the workflow. This
 repository takes it as the `ci` flake input: every workspace runs the version
-`flake.lock` pins, and `nix flake update ci` moves to a newer one, which
+`flake.lock` pins, and `nix-suite update ci` moves to a newer one, which
 reaches the installed `ci` once the system or Home Manager activates. To try
 an unreleased workflow here, run `CI_SCRIPT=/path/to/ci.nu ci ...`.
 

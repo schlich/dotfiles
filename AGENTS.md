@@ -83,6 +83,13 @@
   `nix flake update`. It passes gh's GitHub token, so the update neither hits
   GitHub's limit of 60 unauthenticated requests an hour nor leaves inputs on a
   cached revision.
+- The flake's inputs are grouped in flakes of at most six under `lib/inputs`
+  (`lib/honeycomb/README.md`); the root `flake.nix` takes the five top groups
+  and says what follows what across them. Modules read an input as
+  `inputs.NAME` whichever group holds it. Nix itself names one by its path,
+  such as `terminal/shell/xs`; `nix-suite update NAME` and `flake-add --group`
+  work that out. Add an input to the group it belongs with, and make a new
+  group, not a seventh member, when that one is full.
 - Format Nix changes with `nix fmt`. Do not run Nix builds or other build/test
   validation during agent responses unless the user explicitly requests it.
   When explicitly requested, use the smallest relevant build:
