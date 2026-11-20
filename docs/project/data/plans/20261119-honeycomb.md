@@ -122,9 +122,27 @@ discard muscle memory before the new grammar is proven on one tool.
 
 **Files:** Modify: `flake.nix`, top-level directories, `AGENTS.md`, `docs/`
 
-- [ ] Group the 52 inputs: move the skill and agent-asset inputs behind one
-  aggregating input or a locked source list outside `inputs`.
+- [x] Group the 53 inputs into flakes of at most six under `lib/inputs`: five at
+  the root (`system`, `builds`, `desktop`, `terminal`, `agents`) and ten groups
+  inside them. One `flake.lock` still pins everything, and every input kept its
+  revision. Modules read `inputs.NAME` as before; `nix-suite update`,
+  `flake-add`, `nixpkgs-watch` and the delivery risk check resolve names through
+  the groups.
 - [ ] Reduce the 34 top-level entries to six areas and move the rest under them.
+  Decided on 2026-11-19: planned here, and moved as its own task once no other
+  session has a branch open, because every path in the documentation, CI, the
+  delivery risk rules and every open branch changes. The layout:
+  - `system/`: `den`, `hosts`, `modules`, `lib`, `deploy`, `secrets`.
+  - `interface/`: `niri`, `noctalia`, `wallpapers`, `nushell`, `config.nu`,
+    `jj`.
+  - `agents/`: `agent`, `agent-monitor`, `copilot`, `mcp`, `plugins`, `jev`.
+  - `tools/`: with `workbench`, `xr-workbench`, `scripts`, `postmortem` and
+    `templates` joining it, which then needs its own regrouping.
+  - `tests/`: with `tests.nix` inside it.
+  - `docs/`.
+  - Exempt from the count, because a tool fixes where each sits: `flake.nix`,
+    `flake.lock`, `AGENTS.md`, `nixbot.toml`, `prek.toml`, `.agents` and
+    `.github`.
 - [x] Regroup `AGENTS.md` and `docs/` into at most six sections each:
   `AGENTS.md` keeps its twelve sections as subsections of six headings, and
   `docs/` gains `agents`, `delivery` and `desktop` beside the architecture and

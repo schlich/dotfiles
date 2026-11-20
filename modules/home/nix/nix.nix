@@ -173,7 +173,29 @@ in
           print --stderr "==> gh has no token (gh auth login); GitHub may rate-limit this update"
           $env.NIX_CONFIG? | default ""
         }
-        with-env { NIX_CONFIG: $config } { ^nix flake update ...$inputs --flake path:. }
+        let paths = ($inputs | each {|name| input-path $name })
+        with-env { NIX_CONFIG: $config } { ^nix flake update ...$paths --flake path:. }
+      }
+
+      # Where an input sits among the group flakes under lib/inputs, as
+      # `nix flake update` names it: `xs` is `terminal/shell/xs`. A name
+      # the lock does not know is passed through for Nix to report.
+      def input-path [name: string] {
+        if ($name | str contains "/") or not ("flake.lock" | path exists) { return $name }
+        let nodes = (open --raw flake.lock | from json | get nodes)
+        input-paths $nodes root [] | where name == $name | get 0?.path | default $name
+      }
+
+      def input-paths [nodes: record, node: string, prefix: list<string>] {
+        $nodes | get -o $node | get -o inputs | default {} | transpose name node | each {|row|
+          let path = ($prefix | append $row.name)
+          let target = if ($row.node | describe) == "string" { $nodes | get -o $row.node } else { null }
+          if $target != null and ($target | get -o locked.type) == "path" and ($target | get -o parent) != null {
+            input-paths $nodes $row.node $path
+          } else {
+            [{ name: $row.name, path: ($path | str join "/") }]
+          }
+        } | flatten
       }
 
       def check [] {
