@@ -790,8 +790,9 @@
               ${pkgs.nushell}/bin/nu --no-config-file ${./tests/keymap.nu} ${src}/niri/keymap.nu
               touch "$out"
             '';
-        # `honeycomb sidebar` and `sessions` refiling a fixture of Claude's
-        # sidebar by area (lib/honeycomb/runtime).
+        # `honeycomb sidebar`, `sessions`, `flower` and `hub apply` on a
+        # fixture of Claude's sidebar, and the phone's hub on requests as
+        # Tailscale Serve passes them on (lib/honeycomb/runtime).
         nushell-honeycomb =
           pkgs.runCommand "nushell-honeycomb-check"
             {
@@ -804,7 +805,7 @@
                 pkgs.writeText "honeycomb-areas.json" (
                   builtins.toJSON (import ./lib/honeycomb { inherit lib; }).areas
                 )
-              }
+              } ${./lib/honeycomb/runtime/hub/server.nu} ${lib.getExe pkgs.http-nu}
               touch "$out"
             '';
         nushell-parse =

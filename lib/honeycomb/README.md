@@ -116,6 +116,33 @@ unfiled list, which is the outward side where new sessions arrive.
   recently active in their area. `--archive` archives them, also with the
   app closed.
 
+## On the phone
+
+The hub (`runtime/hub`) shows the flower on a phone: a page on homelab,
+published to the tailnet with Tailscale Serve, that installs to the home
+screen. asus sends it a snapshot every minute (`honeycomb hub sync`, a user
+timer beside the Claude desktop app); `honeycomb flower` prints one.
+
+Each screen is one cell and up to six around it. Areas hold their kinds of
+things (sessions, tasks, windows on the area's niri workspace, the hub's
+notes), and each kind holds its items, six at a time, most recent first. The
+phone's own gestures are the three axes:
+
+| Axis       | Gesture                                            | Keys        |
+| ---------- | -------------------------------------------------- | ----------- |
+| in / out   | tap, a flick from the centre, spread / back, pinch | I / O Esc   |
+| left/right | swipe sideways: the next area, kind or item        | ← →         |
+| up / down  | swipe up or down: the next six of a long list      | J / K       |
+| the six    | flick from the centre toward a neighbour           | H L Y U N M |
+
+Selecting an item is the SELECT mode, shown in the mode chip, with its
+actions around it; back returns to NORMAL. Each direction's destination is
+named on the screen edge it points to. A session can be opened in Claude
+(when it runs under Remote Control), filed into another area or archived.
+Filing and archiving queue on the hub and asus applies them at its next
+sync while the Claude desktop app is closed; until then the phone shows
+them as waiting and can cancel them.
+
 The tiling is that three-dimensional space seen along its diagonal. One step
 along each of the three axes together returns to where it started, which is
 why three dimensions fit on a flat ring of six keys. So the same move can be

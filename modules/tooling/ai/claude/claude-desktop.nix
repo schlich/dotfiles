@@ -23,9 +23,36 @@ let
             args // { targetPkgs = fhsPkgs: args.targetPkgs fhsPkgs ++ [ fhsPkgs.libsecret ]; }
           );
       });
+
+  # The hub on homelab (lib/honeycomb/runtime/hub), on the tailnet name that
+  # den/inventory.nix gives as network.tailnet.
+  honeycomb = pkgs.callPackage ../../../../lib/honeycomb/runtime/package.nix { };
+  hub = "https://homelab.tail338351.ts.net:7444";
 in
 lib.mkIf (config.dotfiles.alternates || config.dotfiles.primary.desktopAgent == "claude") {
   home.packages = [ claude-desktop ];
+
+  # Every minute, send the phone's honeycomb what each area holds and apply
+  # the archiving and filing queued there, which waits while the app runs.
+  systemd.user.services.honeycomb-hub-sync = {
+    Unit.Description = "Send the honeycomb hub this host's areas and apply the phone's actions";
+    Service = {
+      Type = "oneshot";
+      Environment = [
+        "HONEYCOMB_HUB=${hub}"
+        "PATH=${lib.makeBinPath [ pkgs.git ]}:%h/.nix-profile/bin:/etc/profiles/per-user/%u/bin:/run/current-system/sw/bin"
+      ];
+      ExecStart = "${lib.getExe honeycomb} hub sync";
+    };
+  };
+  systemd.user.timers.honeycomb-hub-sync = {
+    Unit.Description = "Keep the honeycomb hub current";
+    Timer = {
+      OnStartupSec = "1min";
+      OnUnitActiveSec = "1min";
+    };
+    Install.WantedBy = [ "timers.target" ];
+  };
 
   dotfiles.nixpkgsWatch.claude-desktop = {
     # An FHS wrapper need not carry a version; then any nixpkgs package counts.

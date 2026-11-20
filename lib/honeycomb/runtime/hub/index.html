@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#14110f" />
+    <title>Honeycomb</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: light-dark(#faf6ef, #14110f);
+        --ink: light-dark(#231d16, #f1e9dc);
+        --muted: light-dark(#6f6355, #a99c8a);
+        --cell: light-dark(#f1e6d2, #2a231c);
+        --cell-edge: light-dark(#d9c7a6, #4a3d2f);
+        --centre: light-dark(#f6d98d, #5a4520);
+        --honey: light-dark(#b9800f, #e7b23c);
+        --over: light-dark(#b23a1e, #ff7a59);
+        --chip: light-dark(#231d16, #f1e9dc);
+        --chip-ink: light-dark(#faf6ef, #14110f);
+        --target-size: 44px;
+        --edge: max(0.75rem, env(safe-area-inset-left, 0px));
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+      }
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          16px/1.3 system-ui,
+          sans-serif;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        height: 100dvh;
+        overflow-wrap: break-word;
+      }
+      header.top,
+      footer.bottom {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        flex-wrap: wrap;
+        padding: 0.5rem var(--edge);
+      }
+      header.top {
+        padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
+      }
+      footer.bottom {
+        padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+        font-size: 0.8rem;
+        color: var(--muted);
+        justify-content: space-between;
+      }
+      .mode {
+        font:
+          600 0.75rem/1 ui-monospace,
+          monospace;
+        letter-spacing: 0.06em;
+        padding: 0.35rem 0.5rem;
+        border-radius: 0.3rem;
+        background: var(--chip);
+        color: var(--chip-ink);
+      }
+      .mode[data-mode="SELECT"] {
+        background: var(--honey);
+        color: #14110f;
+      }
+      .path {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        font-size: 0.9rem;
+        min-inline-size: 0;
+      }
+      .path a {
+        color: inherit;
+      }
+      .path span + span::before {
+        content: "› ";
+        color: var(--muted);
+      }
+      main {
+        position: relative;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        display: grid;
+        place-items: center;
+        padding: 2.2rem var(--edge);
+        min-block-size: 0;
+      }
+      svg#flower {
+        inline-size: 100%;
+        block-size: 100%;
+        max-block-size: 100%;
+        overflow: visible;
+      }
+      .cell polygon {
+        fill: var(--cell);
+        stroke: var(--cell-edge);
+        stroke-width: 0.03;
+      }
+      .cell.centre polygon {
+        fill: var(--centre);
+      }
+      .cell.empty polygon {
+        fill: none;
+        stroke-dasharray: 0.06 0.06;
+        opacity: 0.5;
+      }
+      .cell.over polygon {
+        stroke: var(--over);
+        stroke-width: 0.07;
+      }
+      .cell.dim {
+        opacity: 0.45;
+      }
+      .cell text {
+        fill: var(--ink);
+        text-anchor: middle;
+        font-family: system-ui, sans-serif;
+      }
+      .cell .label {
+        font-size: 0.2px;
+        font-weight: 600;
+      }
+      .cell .sub {
+        font-size: 0.155px;
+        fill: var(--muted);
+      }
+      .cell.over .flag {
+        fill: var(--over);
+        font-size: 0.17px;
+        font-weight: 700;
+      }
+      a.cell:focus {
+        outline: none;
+      }
+      a.cell:focus-visible polygon,
+      a.cell:hover polygon {
+        stroke: var(--honey);
+        stroke-width: 0.07;
+      }
+      .hint {
+        position: absolute;
+        font-size: 0.78rem;
+        color: var(--muted);
+        max-inline-size: 42%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        pointer-events: none;
+      }
+      .hint[data-dir="nw"] {
+        top: 0.4rem;
+        left: var(--edge);
+      }
+      .hint[data-dir="ne"] {
+        top: 0.4rem;
+        right: var(--edge);
+        text-align: end;
+      }
+      .hint[data-dir="w"] {
+        top: 50%;
+        left: var(--edge);
+        translate: 0 -50%;
+        writing-mode: vertical-rl;
+        rotate: 180deg;
+      }
+      .hint[data-dir="e"] {
+        top: 50%;
+        right: var(--edge);
+        translate: 0 -50%;
+        writing-mode: vertical-rl;
+      }
+      .hint[data-dir="sw"] {
+        bottom: 0.4rem;
+        left: var(--edge);
+      }
+      .hint[data-dir="se"] {
+        bottom: 0.4rem;
+        right: var(--edge);
+        text-align: end;
+      }
+      .keys {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.2rem 0.8rem;
+      }
+      .status a {
+        color: var(--honey);
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        svg#flower.zoom-in {
+          animation: zoom-in 180ms ease-out;
+        }
+        svg#flower.zoom-out {
+          animation: zoom-out 180ms ease-out;
+        }
+        svg#flower.slide {
+          animation: fade 140ms ease-out;
+        }
+      }
+      @keyframes zoom-in {
+        from {
+          scale: 0.6;
+          opacity: 0.2;
+        }
+      }
+      @keyframes zoom-out {
+        from {
+          scale: 1.5;
+          opacity: 0.2;
+        }
+      }
+      @keyframes fade {
+        from {
+          opacity: 0.3;
+        }
+      }
+      dialog {
+        border: 1px solid var(--cell-edge);
+        border-radius: 0.6rem;
+        background: var(--bg);
+        color: var(--ink);
+        max-inline-size: 22rem;
+      }
+      dialog::backdrop {
+        background: #0008;
+      }
+      dialog menu {
+        display: flex;
+        justify-content: end;
+        gap: 0.5rem;
+        padding: 0;
+        margin: 1rem 0 0;
+      }
+      dialog button {
+        min-block-size: var(--target-size);
+        min-inline-size: var(--target-size);
+        padding: 0 1rem;
+        border-radius: 0.4rem;
+        border: 1px solid var(--cell-edge);
+        background: var(--cell);
+        color: var(--ink);
+        font: inherit;
+      }
+      dialog button[value="ok"] {
+        background: var(--honey);
+        color: #14110f;
+        border-color: var(--honey);
+      }
+    </style>
+    <script type="module" src="/hub.js"></script>
+  </head>
+  <body>
+    <header class="top">
+      <span class="mode" id="mode" data-mode="NORMAL" aria-label="Mode"
+        >NORMAL</span
+      >
+      <nav class="path" id="path" aria-label="Where you are"></nav>
+    </header>
+    <main id="surface">
+      <svg
+        id="flower"
+        viewBox="-2.75 -2.6 5.5 5.2"
+        role="group"
+        aria-label="Areas"
+      ></svg>
+      <div class="hint" data-dir="nw" aria-hidden="true"></div>
+      <div class="hint" data-dir="ne" aria-hidden="true"></div>
+      <div class="hint" data-dir="w" aria-hidden="true"></div>
+      <div class="hint" data-dir="e" aria-hidden="true"></div>
+      <div class="hint" data-dir="sw" aria-hidden="true"></div>
+      <div class="hint" data-dir="se" aria-hidden="true"></div>
+    </main>
+    <footer class="bottom">
+      <span class="keys" id="keys"></span>
+      <span class="status" id="status" role="status"></span>
+    </footer>
+    <dialog id="confirm">
+      <form method="dialog">
+        <p id="confirm-text"></p>
+        <menu>
+          <button value="cancel">Cancel</button>
+          <button value="ok" id="confirm-ok">Archive</button>
+        </menu>
+      </form>
+    </dialog>
+  </body>
+</html>
