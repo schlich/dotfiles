@@ -106,9 +106,9 @@ input {
 // No workspaces are declared, so a login starts with one workspace. A
 // session (niri/session.nu) names the next empty workspace when it is first
 // visited: one of the seven areas (Mod+Alt plus its direction key), or a
-// project from the session launcher (Mod+Alt+K). Version control, coding
+// project from the session launcher (Mod+Alt+O). Version control, coding
 // agents and the session launcher are not workspaces but stacks or overlays
-// within one: Mod+G, Mod+A and Mod+Alt+K. Mod+O is Niri's own overview of
+// within one: Mod+G, Mod+A and Mod+Alt+O. Mod+O is Niri's own overview of
 // every workspace.
 
 // Settings that influence how windows are positioned and sized.
@@ -338,7 +338,7 @@ window-rule {
   clip-to-geometry true
 }
 
-// The session launcher (Mod+Alt+K) floats over whichever workspace summoned it.
+// The session launcher (Mod+Alt+O) floats over whichever workspace summoned it.
 window-rule {
   match app-id=r#"^niri\.overview$"#
   open-floating true

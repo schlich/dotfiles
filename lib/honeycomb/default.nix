@@ -41,7 +41,8 @@ rec {
 
   # The six direction keys ring J and K on a staggered keyboard: H and L on
   # the home row, Y and U above, N and M below, all under the right hand.
-  # J and K are left for depth.
+  # J and K, inside the ring, step down and up whatever is stacked, and I
+  # and O beside them go in and out of a level.
   keys = {
     w = "h";
     e = "l";
@@ -49,8 +50,10 @@ rec {
     ne = "u";
     sw = "n";
     se = "m";
-    inward = "j";
-    outward = "k";
+    down = "j";
+    up = "k";
+    inward = "i";
+    outward = "o";
   };
 
   # Select first, then act: a motion moves or extends the selection, and a

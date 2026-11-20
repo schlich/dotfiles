@@ -63,8 +63,8 @@ in
       lib.mapAttrs (_: key: [ "${multiplexer.leader}+${key}" ]) {
         w = "H";
         e = "L";
-        inward = "J";
-        outward = "K";
+        down = "J";
+        up = "K";
         nw = "Y";
         ne = "U";
         sw = "N";

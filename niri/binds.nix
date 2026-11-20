@@ -98,25 +98,25 @@ let
       ];
     })
     (motion {
-      name = "inward";
-      letter = key.inward;
+      name = "down";
+      letter = key.down;
       arrow = "Down";
       focus = "focus-window-down";
       move = "move-window-down";
       monitor = "down";
       side = "below";
-      select = "Into the column: its next window";
+      select = "Down the column: its next window";
       carry = "Carry the window down the column";
     })
     (motion {
-      name = "outward";
-      letter = key.outward;
+      name = "up";
+      letter = key.up;
       arrow = "Up";
       focus = "focus-window-up";
       move = "move-window-up";
       monitor = "up";
       side = "above";
-      select = "Out of the column: its previous window";
+      select = "Up the column: its previous window";
       carry = "Carry the window up the column";
     })
     (member "back" [
@@ -338,26 +338,35 @@ assert lib.assertMsg (chords == lib.unique chords)
   # The key that points in each direction, with centre on the inward key.
   keys =
     removeAttrs key [
+      "down"
+      "up"
       "inward"
       "outward"
     ]
     // {
       centre = key.inward;
     };
-  # The key that leads outward, to the list of sessions.
+  # The key that leads outward, to the list of sessions, and the two that
+  # step down and up a column's windows.
   out = key.outward;
+  inherit (key) down up;
   # The chords on each navigation seat, for the input stack
-  # (modules/programs/desktop/input-stack.nix): Mod moves among windows on four of
-  # them, and Mod+Alt among areas on all eight.
+  # (modules/programs/desktop/input-stack.nix): Mod moves among windows on
+  # four of them, and Mod+Alt among areas on the six directions, in and out.
   navigation = lib.mapAttrs (
     seat: letter:
     lib.optional (lib.elem seat [
       "w"
       "e"
-      "inward"
-      "outward"
+      "down"
+      "up"
     ]) "Mod+${letter}"
-    ++ [ "Mod+Alt+${letter}" ]
+    ++ lib.optional (
+      !lib.elem seat [
+        "down"
+        "up"
+      ]
+    ) "Mod+Alt+${letter}"
   ) key;
   # What niri loads: the hand-written settings, then the generated binds.
   config = builtins.readFile ./config.kdl + "\n" + kdl;

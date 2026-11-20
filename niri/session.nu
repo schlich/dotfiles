@@ -240,7 +240,7 @@ def "main restore" [session?: string] {
   restore $session
 }
 
-# Toggle the session launcher (Mod+Alt+K, outward from the areas): a floating
+# Toggle the session launcher (Mod+Alt+O, outward from the areas): a floating
 # shell over the focused workspace that draws the areas and lists projects,
 # where `project DIR` opens one. It closes when dismissed and is rebuilt
 # fresh each time.

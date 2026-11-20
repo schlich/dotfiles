@@ -49,7 +49,7 @@
     <line x1="0" y1="255" x2="590" y2="255" stroke="#5d91ad" stroke-opacity="0.35"/>
     <text class="section" x="0" y="312">AREAS</text>
     <text class="key" x="0" y="390">MOD + ALT + Y U</text><text class="action" x="330" y="390">xr / life</text>
-    <text class="key" x="0" y="454">MOD + ALT + H J L</text><text class="action" x="330" y="454">ai / home / work</text>
+    <text class="key" x="0" y="454">MOD + ALT + H I L</text><text class="action" x="330" y="454">ai / home / work</text>
     <text class="key" x="0" y="518">MOD + ALT + N M</text><text class="action" x="330" y="518">nix / research</text>
   </g>
 
@@ -57,7 +57,7 @@
     <text class="section" x="0" y="0">CARRY</text>
     <text class="key" x="0" y="78">MOD + SHIFT + H J K L</text><text class="action" x="390" y="78">carry the selection</text>
     <text class="key" x="0" y="142">MOD + SHIFT + ALT + key</text><text class="action" x="420" y="142">to that area</text>
-    <text class="key" x="0" y="206">MOD + ALT + K</text><text class="action" x="330" y="206">sessions and projects</text>
+    <text class="key" x="0" y="206">MOD + ALT + O</text><text class="action" x="330" y="206">sessions and projects</text>
     <line x1="0" y1="255" x2="590" y2="255" stroke="#5d91ad" stroke-opacity="0.35"/>
     <text class="section" x="0" y="312">MONITORS</text>
     <text class="key" x="0" y="390">MOD + CTRL + H J K L</text><text class="action" x="390" y="390">focus monitor</text>

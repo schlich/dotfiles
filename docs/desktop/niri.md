@@ -35,11 +35,11 @@ in [input.md](input.md). The limit of six that shapes all of this is in
 
 ```text
         Y xr        U life
-   H ai       J home       L work
+   H ai       I home       L work
         N nix       M research
 ```
 
-Mod+Alt+K, outward, opens the session launcher: this map with the areas that
+Mod+Alt+O, outward, opens the session launcher: this map with the areas that
 are open, and the projects.
 
 ## Keys
@@ -51,8 +51,8 @@ are open, and the projects.
 |        | Back       | Mod+Tab                             |                               |
 |        | Overview   | Mod+O                               |                               |
 | Area   | Six areas  | Mod+Alt+Y U H L N M                 | Carry the column there        |
-|        | Centre     | Mod+Alt+J                           | Carry the column there        |
-|        | Sessions   | Mod+Alt+K                           |                               |
+|        | Centre     | Mod+Alt+I, inward                   | Carry the column there        |
+|        | Sessions   | Mod+Alt+O, outward                  |                               |
 | Open   | Terminal   | Mod+Return                          | Restore the session's layout  |
 |        | Launcher   | Mod+Space                           |                               |
 |        | Browser    | Mod+B                               |                               |

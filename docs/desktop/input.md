@@ -43,7 +43,8 @@ leaves plain Ctrl+C, Ctrl+Z, Ctrl+D and other terminal editing keys alone.
 
 Every context moves with the same eight keys
 ([lib/honeycomb/README.md](../../lib/honeycomb/README.md)): `H` `L` `Y` `U` `N`
-`M` for the six directions, `J` inward and `K` outward, each behind the
+`M` for the six directions, `J` and `K` down and up a stack, `I` inward and
+`O` outward, each behind the
 context's own leader. A context declares the chords it binds to them in
 `dotfiles.input.navigation.NAME`, by seat. Evaluation fails when a chord
 ends on a key other than its seat's, so a direction never means a different
