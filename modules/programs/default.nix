@@ -3,6 +3,7 @@
 {
   imports = [
     ./shell/cli.nix
+    ./vcs/dagger.nix
     ./desktop/desktop.nix
     ./shell/devenv.nix
     ./desktop/dicta.nix

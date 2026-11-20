@@ -61,6 +61,9 @@ to the current day's group.
 - **Architecture**: Recorded [delivery risk](architecture/delivery-risk.md):
   `luvus-deliver` classifies each delivery with Jev and holds a high-risk one
   for the owner's approval of that exact commit.
+- **Plan**: [Run the flake checks with Dagger](plans/20261029-dagger-ci.md);
+  Dagger 1.0 beta runs `checks.x86_64-linux` locally and as Dagger Cloud Checks,
+  beside nixbot and nix-ci.
 
 ## 2026-10-27
 

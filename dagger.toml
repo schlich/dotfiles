@@ -1,0 +1,18 @@
+[modules.dang-sdk]
+source = "dagger.io/sdk/dang"
+
+[sdks.dang]
+module = "dang-sdk"
+
+[modules.flake]
+source = ".dagger/modules/flake"
+
+[sdks.dang.scopes.".dagger/modules/flake"]
+is-module = true
+name = "flake"
+
+# `dagger check --env homelab` also substitutes from homelab's cache over the
+# tailnet, as the workstation's Nix does. Cloud Checks cannot reach it.
+[env.homelab.modules.flake.settings]
+extraSubstituters = ["http://homelab.tail338351.ts.net:5000"]
+extraTrustedPublicKeys = ["homelab-cache-1:iRxSmTDiOFX6oY5jLwiUiXCNJ5KSfHtmJBG7RDzLDaQ="]
