@@ -377,6 +377,22 @@ topic as a new change on trunk in the current workspace (`ci new -m MESSAGE`
 in a ci repository, otherwise `jj new 'trunk()' -m MESSAGE`); earlier topics
 stay as sibling changes, and `jj edit` returns to one.
 
+Keep six at a time, in JJ and Git repositories alike: at most six open topics
+(heads trunk does not hold yet), six changes in one topic's stack, and six
+workspaces or worktrees. `jj topics` lists the open topics, and
+`honeycomb census` counts topics, worktrees, and open tasks in a Git
+repository. Check before starting a topic. When a count is at six or more,
+do not start another on your own initiative: finish, park, or abandon one
+first. When the user asks for the new topic anyway, start it and say which
+counts are over. A stack that would reach a seventh change is two topics.
+Once trunk holds a topic, delete its bookmark or branch along with its
+workspace; `honeycomb prune` lists the branches trunk already holds.
+
+Keep the three ways of moving through a repository apart, and name them the
+same way everywhere: left and right between sibling topics, up and down along
+one topic's stack (`jj next` and `jj prev`), in to a change's files and hunks
+and out to the other workspaces.
+
 Work only in a workspace whose change this session owns. The repository's
 default checkout is free when it has trunk checked out (nothing above trunk
 but an empty change) and no live session owns it; check it out for this

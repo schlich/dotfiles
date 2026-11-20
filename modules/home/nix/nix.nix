@@ -291,5 +291,8 @@ in
       ''
       + builtins.readFile ../../../nushell/flake-add.nu
     ))
+    # Counts a repository's open topics, worktrees and tasks against six, and
+    # prunes the branches trunk already holds (lib/honeycomb/README.md).
+    (pkgs.writeNuScriptBin "honeycomb" (builtins.readFile ../../../lib/honeycomb/runtime.nu))
   ];
 }
