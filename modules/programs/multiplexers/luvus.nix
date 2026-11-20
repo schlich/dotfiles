@@ -3,6 +3,7 @@
   inputs,
   lib,
   pkgs,
+  osConfig ? null,
   ...
 }:
 
@@ -49,8 +50,90 @@ let
       builtins.readFile ../../../tools/luvus-task-start.nu
     )
   );
+
+  # The dependency watcher: starts and merges opted-in task chains when their
+  # upstream tasks merge (modules/tooling/ai/scripts/luvus-autopilot.nu).
+  # It starts workers through luvus-task-start, which finishes the launch in
+  # Nushell panes and bases each worktree on luvus/integration, so a task
+  # sees the dependencies the watcher merged.
+  autopilotScript = ../../tooling/ai/scripts/luvus-autopilot.nu;
+  luvusAutopilot = pkgs.writeNuScriptBin "luvus-autopilot" (
+    builtins.replaceStrings
+      [ "@luvus@" "@taskStart@" "@notifySend@" "@flock@" ]
+      [
+        (lib.getExe luvus)
+        "${luvusTaskStart}/bin/luvus-task-start"
+        (lib.getExe' pkgs.libnotify "notify-send")
+        (lib.getExe' pkgs.util-linux "flock")
+      ]
+      (builtins.readFile autopilotScript)
+  );
+  autopilotExe = "${luvusAutopilot}/bin/luvus-autopilot";
+  # `luvus-auto ID` marks a task for the watcher; `luvus-auto --off ID`
+  # unmarks it, and its downstream tasks unless they are marked themselves.
+  luvusAuto = pkgs.writeNuScriptBin "luvus-auto" ''
+    # Mark luvus task ID for the autopilot, or unmark it with --off.
+    def main [id: string, --off] {
+      ^${autopilotExe} mark $id ...(if $off { [--off] } else { [] })
+    }
+  '';
+  # Luvus shows only bar widgets a module declares, so this module declares
+  # the watcher's mode widget; clicking its mode segment pauses or resumes.
+  # The service links it into Luvus's module registry.
+  autopilotModule = pkgs.runCommand "luvus-autopilot-module" { } ''
+    mkdir "$out"
+    cp ${
+      (pkgs.formats.toml { }).generate "luvus-module.toml" {
+        id = "dotfiles.autopilot";
+        name = "Autopilot";
+        version = "0.1.0";
+        min_luvus_version = "0.11.0";
+        description = "Mode and worker counts of the luvus-autopilot dependency watcher.";
+        platforms = [ "linux" ];
+        bars = [
+          {
+            id = "autopilot";
+            title = "Autopilot";
+            region = "bottom-right";
+            priority = 40;
+          }
+        ];
+        # Bar content does not survive a server restart; repaint it.
+        startup = [
+          {
+            command = [
+              autopilotExe
+              "bar"
+            ];
+          }
+        ];
+        actions = [
+          {
+            id = "toggle";
+            title = "Pause or resume the autopilot";
+            command = [
+              autopilotExe
+              "toggle"
+            ];
+          }
+        ];
+      }
+    } "$out/luvus-module.toml"
+  '';
 in
 {
+  options.dotfiles.luvus.autopilot.enable = lib.mkOption {
+    type = lib.types.bool;
+    # Den's inventory has no profile field for this yet, and this task may
+    # not touch den/; replace the hostname test with one when it does.
+    default = (if osConfig == null then null else osConfig.networking.hostName or null) == "asus";
+    defaultText = lib.literalExpression ''osConfig.networking.hostName == "asus"'';
+    description = ''
+      Run luvus-autopilot, which starts and merges luvus tasks marked with
+      `luvus-auto ID` and the tasks downstream of them.
+    '';
+  };
+
   options.dotfiles.luvus.settings = lib.mkOption {
     type = jsonFormat.type;
     default = { };
@@ -159,7 +242,48 @@ in
       }}
     '';
 
-    home.packages = [ luvusTaskStart ];
+    home.packages = [
+      luvusTaskStart
+    ]
+    ++ lib.optionals cfg.autopilot.enable [
+      luvusAutopilot
+      luvusAuto
+    ];
+
+    # Opt-in task chains: wake on `luvus events`, every five minutes, and at
+    # start; each pass rereads the board, so it acts at most once per change.
+    # Pause with `luvus-autopilot pause` or by clicking the bar widget.
+    systemd.user.services.luvus-autopilot = lib.mkIf cfg.autopilot.enable {
+      Unit = {
+        Description = "Start and merge opted-in luvus task chains";
+        After = [ "luvus.service" ];
+      };
+      Service = {
+        ExecStart = "${autopilotExe} run --module ${autopilotModule}";
+        # luvus-task-start runs git; the rest is the user's own profile.
+        Environment = [
+          "PATH=${
+            lib.makeBinPath [
+              pkgs.git
+              pkgs.coreutils
+            ]
+          }:%h/.nix-profile/bin:/etc/profiles/per-user/%u/bin:/run/current-system/sw/bin"
+        ];
+        Restart = "always";
+        RestartSec = "10s";
+      };
+      Install.WantedBy = [ "default.target" ];
+    };
+
+    # The watcher's decisions against fixture boards, without a server.
+    dotfiles.tooling.checks.luvus-autopilot =
+      pkgs.runCommand "luvus-autopilot-check" { nativeBuildInputs = [ pkgs.nushell ]; }
+        ''
+          export HOME="$TMPDIR/home"
+          mkdir -p "$HOME"
+          nu --no-config-file ${../../tooling/ai/tests/luvus-autopilot.nu} ${autopilotScript}
+          touch "$out"
+        '';
 
     # The server owns every pane, agent, task, and path lease. `luvus server
     # start` forks this same command into the background; running it here
