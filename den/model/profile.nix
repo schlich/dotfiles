@@ -64,6 +64,10 @@ let
       aspect = "t3code";
     }
     {
+      service = "rex";
+      aspect = "rex";
+    }
+    {
       service = "crossStream";
       aspect = "cross-stream";
     }
