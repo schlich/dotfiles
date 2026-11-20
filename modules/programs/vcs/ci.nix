@@ -50,7 +50,7 @@ in
     enable = false;
     package = cfg.package;
     jujutsu = config.programs.jujutsu.package;
-    repositories = [ "${config.home.homeDirectory}/dotfiles" ];
+    repositories = [ config.dotfiles.paths.dotfiles ];
     sshAuthSock = "%t/gcr/ssh";
   };
 
@@ -69,7 +69,7 @@ in
     repositories = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [ ];
-      example = [ "~/Projects/ci" ];
+      example = [ "~/Nix/ci" ];
       description = ''
         Repositories that use the ci trunk workflow, as paths jj's
         `--when.repositories` matches (a leading `~` is the home directory).
@@ -85,12 +85,13 @@ in
     };
   };
 
-  # The repositories that used ci when it became opt-in on 2026-10-24.
+  # The repositories that used ci when it became opt-in on 2026-10-24, in
+  # their honeycomb area folders.
   config.dotfiles.ci.repositories = [
-    "~/Projects/ci"
-    "~/Projects/xr-ui"
-    "~/newsletter-agent"
-    "~/kb"
+    "~/Nix/ci"
+    "~/XR/xr-ui"
+    "~/Work/newsletter-agent"
+    config.dotfiles.paths.kb
   ];
   config.programs.jujutsu.settings."--scope" = lib.optional (cfg.repositories != [ ]) {
     "--when".repositories = cfg.repositories;

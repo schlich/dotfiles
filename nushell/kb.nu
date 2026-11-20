@@ -1,9 +1,9 @@
 # Personal knowledge base: an IWE workspace in its own JJ repository.
 #
-# Set KB_ROOT to use a workspace other than ~/kb.
+# Home Manager sets KB_ROOT (dotfiles.paths.kb); without it, ~/Research/kb.
 
 def kb-root [] {
-    $env.KB_ROOT? | default ($env.HOME | path join kb)
+    $env.KB_ROOT? | default ($env.HOME | path join Research kb)
 }
 
 # Open the knowledge base in Helix.

@@ -1,6 +1,6 @@
 # The session launcher (Mod+Alt+O; see `session.nu overview`): draws the seven
 # areas where their keys sit, lists the Johnny Decimal areas and categories
-# from the knowledge base's hubs and ~/Projects by workspace tag, then leaves
+# from the knowledge base's hubs and the projects in each area's folder, then leaves
 # a shell where `project DIR` opens one. Run `overview` to list again.
 
 # The areas by direction, and the key for each direction, written beside this
@@ -42,7 +42,7 @@ def workspace_snapshot [] {
 # The Johnny Decimal system: each area's hub in the knowledge base, with the
 # categories its list names ("- 83 Money" or "- [83 Money](83-money.md)").
 def system_snapshot [] {
-    let root = ($env.KB_ROOT? | default ($env.HOME | path join kb))
+    let root = ($env.KB_ROOT? | default ($env.HOME | path join Research kb))
     let hubs = (glob $"($root)/[0-9][0-9]-[0-9][0-9]-*.md" | sort)
     if ($hubs | is-empty) {
         return
@@ -57,42 +57,42 @@ def system_snapshot [] {
     }
 }
 
-# Projects live flat in ~/Projects (dotfiles and kb stay at the top of ~ and
-# are linked in). Each project's knowledge-base note (`projects/NAME.md`) tags
-# it with the workspaces it belongs to, so a project can appear under several.
+# Projects live in the six area folders at the top of ~ (~/AREA/NAME, a few
+# grouped one level deeper, parked ones in ~/AREA/.parked), so the folder
+# gives each project its area. A project's knowledge-base note
+# (`projects/NAME.md`) may tag it with other workspaces too; those show as
+# `+area` beside it.
 def project_snapshot [] {
-    print "\nProjects (by workspace tag)"
-    let root = ($env.KB_ROOT? | default ($env.HOME | path join kb))
+    if not ($areas_file | path exists) {
+        return
+    }
+    print "\nProjects (by area folder)"
+    let root = ($env.KB_ROOT? | default ($env.HOME | path join Research kb))
     let notes = (glob $"($root)/projects/*.md" | where ($it | path basename) != "index.md" | each {|note|
         let frontmatter = (open --raw $note | parse --regex '(?s)^---\n(?P<yaml>.*?)\n---' | get 0?.yaml)
         if $frontmatter != null { try { $frontmatter | from yaml | select path workspaces } catch { null } }
-    } | compact)
-    # Each area with the tags it gathers; notes still carry the tags of the
-    # nine places the areas replaced.
-    let tags = [
-        [area tags];
-        [home [home shell inbox]]
-        [work [work]]
-        [research [research]]
-        [nix [nix]]
-        [ai [ai]]
-        [xr [xr]]
-        [life [life career personal]]
-    ]
-    for row in $tags {
-        let names = ($notes | where {|note| $row.tags | any {|tag| $tag in $note.workspaces } } | get path | path basename | sort -i)
+    } | compact | each {|note| { name: ($note.path | path basename), workspaces: ($note.workspaces | default []) } })
+    # The area each tag points to; notes still carry the tags of the nine
+    # places the areas replaced.
+    let tag_area = { home: home, shell: home, inbox: home, career: life, personal: life }
+    for area in (open $areas_file | get flower | where {|area| $area.folder? != null }) {
+        let folder = ($env.HOME | path join $area.folder)
+        if not ($folder | path exists) {
+            continue
+        }
+        # `ls` leaves out hidden entries, .parked among them.
+        let names = (ls $folder | where ($it.name | path expand | path type) == dir | get name | path basename | sort -i | each {|name|
+            let note = ($notes | where name == $name | get 0?)
+            let others = if $note == null { [] } else {
+                $note.workspaces | each {|tag| $tag_area | get --optional $tag | default $tag } | uniq | where $it != $area.name
+            }
+            if ($others | is-empty) { $name } else { $"($name) ($others | each { $'+($in)' } | str join ' ')" }
+        })
         if ($names | is-not-empty) {
-            print $"  ($row.area): ($names | str join ' · ')"
+            print $"  ($area.folder): ($names | str join ' · ')"
         }
     }
-
-    # Directories with no note yet: tag them so they show up above.
-    let tagged = ($notes | get path | path basename)
-    let untagged = (ls ($env.HOME | path join Projects) | where ($it.name | path expand | path type) == dir | get name | path basename | where $it not-in $tagged)
-    if ($untagged | is-not-empty) {
-        print $"  untagged: ($untagged | sort -i | str join ' · ')"
-    }
-    print "\n`project NAME` opens a project session. Mod+Alt+O closes this."
+    print "\n`project AREA/NAME` opens a project session. Mod+Alt+O closes this."
 }
 
 def overview [] {

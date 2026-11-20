@@ -9,7 +9,7 @@
 let
   inherit (pkgs) iwe;
   atuin = import ../../../programs/shell/atuin-package.nix { inherit inputs pkgs; };
-  kbRoot = "${config.home.homeDirectory}/kb";
+  kbRoot = config.dotfiles.paths.kb;
   xs = inputs.xs.packages.${pkgs.stdenv.hostPlatform.system}.default;
   # iwec serves the workspace in its working directory.
   kbMcp = pkgs.writeNuScriptBin "kb-mcp" ''
@@ -61,7 +61,7 @@ in
   ];
   # This repository runs on luvus's Git worktrees and merge gate; ci stays for
   # the others.
-  dotfiles.tooling.gitWorkflowRepos = [ "${config.home.homeDirectory}/dotfiles" ];
+  dotfiles.tooling.gitWorkflowRepos = [ config.dotfiles.paths.dotfiles ];
 
   # Agents run `sudo -A`, which asks sudoplz's askpass; it shows the command
   # in a dialog and supplies the stored password only when approved.

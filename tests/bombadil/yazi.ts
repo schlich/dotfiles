@@ -21,8 +21,8 @@ export const escapeReturnsToNormal = escapeReturnsTo("NORMAL", mode);
 
 // The which-key list after `g` shows single keys (`h  Go home`; the help
 // menu shows `gh`). Once its bottom border is drawn, it must list this
-// configuration's `g n` with its description rather than its `cd ~/kb`
-// command.
+// configuration's `g n` with its description rather than its `cd` to the
+// knowledge base (~/Research/kb).
 export const notesBindingDescribed = always(() => {
   const screen = rows();
   const home = screen.findIndex((row) => /(?:^|\s)h {2}Go home/.test(row));

@@ -45,27 +45,16 @@
 
   users.schlich = {
     directories = [
-      # Projects, flat; the knowledge base tags each with its workspaces. A new
-      # project created at the top of ~ is wiped at reboot; create it here.
-      "Projects"
-      # Zotero's data directory (its profile is .zotero below).
-      "Zotero"
-
-      # XDG user directories; the unused ones point at Downloads.
-      "Documents"
-      "Downloads"
-      "Pictures"
-      "Videos"
-
-      # Repositories that stay at the top of ~: configuration and tools
-      # reference dotfiles and kb by absolute path, and the kb workspaces
-      # find their repository by a relative path.
-      "dotfiles"
-      "kb"
-      "kb-profile"
-      "kb-public-split"
-      "newsletter-agent"
-      "go"
+      # The six honeycomb area folders (lib/honeycomb/default.nix), which hold
+      # every project (dotfiles in Nix, kb and Zotero in Research), parked
+      # ones in each area's .parked, and the XDG dirs in Life. Anything else
+      # created at the top of ~ is wiped at reboot.
+      "Work"
+      "Research"
+      "Nix"
+      "AI"
+      "XR"
+      "Life"
 
       # Tool and agent state at the top of ~.
       ".agents"

@@ -146,7 +146,7 @@ let
       # The system's own nix, whose configuration carries FlakeHub's login.
       export NIXPKGS_WATCH_NIX=nix
       export NIXPKGS_WATCH_LUVUS=${luvus}/bin/luvus
-      export NIXPKGS_WATCH_REPO=${config.home.homeDirectory}/dotfiles
+      export NIXPKGS_WATCH_REPO=${lib.escapeShellArg config.dotfiles.paths.dotfiles}
       export NIXPKGS_WATCH_GATE=${lib.escapeShellArg "nix-fast-build --skip-cached --no-nom --flake path:.#checks.x86_64-linux"}
       exec ${lib.getExe pkgs.nushell} --no-config-file ${../../../tools/nixpkgs-watch.nu} "$@"
     '';

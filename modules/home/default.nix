@@ -7,6 +7,7 @@
     ./nix/ci-trace.nix
     ./nix/nix.nix
     ./nix/nixpkgs-watch.nix
+    ./session/paths.nix
     ./session/retired-files.nix
     ./session/session.nix
   ];

@@ -26,7 +26,7 @@
   # `skip_text_tools` also exempts the command from the text_tools check.
   allow: [
     {
-      pattern: '(^|[;&|][&|]?|\n)\s*(jev\b|nu\s+(/home/schlich/dotfiles-jev|~/dotfiles-jev)/jev/jev\.nu\b)'
+      pattern: '(^|[;&|][&|]?|\n)\s*(jev\b|nu\s+(/home/schlich|~)/Nix/dotfiles/jev/jev\.nu\b)'
       why: "Personal Jev automation, not a raw shell pipeline"
       skip_text_tools: true
     }

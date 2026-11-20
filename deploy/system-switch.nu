@@ -153,7 +153,7 @@ def gap-message [gap: record] {
         "Switching alone would drop every Home Manager package (jj, ci, nh, home-activate, ...) from PATH."
         "Either:"
         "  system-switch --with-home    # switch, then activate main's home from the same commit"
-        $"  home-activate                # first, from ~/dotfiles at main \(($short)\), then system-switch"
+        $"  home-activate                # first, from ~/Nix/dotfiles at main \(($short)\), then system-switch"
     ] | str join "\n"
 }
 

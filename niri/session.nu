@@ -77,24 +77,29 @@ def project-sessions [] {
   if ($file | path exists) { open $file } else { {} }
 }
 
-# Projects live flat in ~/Projects; the knowledge base tags each with its
-# workspaces.
+# Projects live in the six area folders at the top of ~ (~/AREA/NAME), so a
+# window outside any session opens in ~ itself, the centre.
 def project-directory [] {
-  $"($env.HOME)/Projects"
+  $env.HOME
 }
 
 # The knowledge base: an IWE workspace whose `<range>-<session>.md` notes are
 # the hubs of the areas below, plus an index.
 def kb-root [] {
-  $env.KB_ROOT? | default $"($env.HOME)/kb"
+  $env.KB_ROOT? | default ($env.HOME | path join Research kb)
+}
+
+# This repository's checkout.
+def dotfiles-root [] {
+  $env.DOTFILES_ROOT? | default ($env.HOME | path join Nix dotfiles)
 }
 
 # The seven areas (honeycomb's `areas`, written to areas.json beside this
 # script): sessions with a fixed name and layout, each given a workspace when
 # first visited. `home` is the centre and the other six sit around it;
 # niri/binds.nix seats them and binds Mod+Alt plus a direction key to each.
-# An area opens in its first folder, else the home directory, with the
-# layout named for it below, else a plain shell.
+# An area opens in its folder, else the home directory, with a plain shell;
+# research and nix open in their main repository with its own layout.
 const areas_file = path self areas.json
 const area_layouts = { research: kb, nix: dotfiles }
 
@@ -103,9 +108,13 @@ def flower [] {
 }
 
 def presets [] {
+  let roots = { research: (kb-root), nix: (dotfiles-root) }
   flower | each {|area|
-    let folder = ($area.folders | get 0?)
-    let directory = if $folder == null { $env.HOME } else { $env.HOME | path join $folder }
+    let folder = ($area.folder? | default null)
+    let directory = (
+      $roots | get --optional $area.name
+      | default (if $folder == null { $env.HOME } else { $env.HOME | path join $folder })
+    )
     { $area.name: { layout: ($area_layouts | get --optional $area.name | default area), directory: $directory } }
   } | reduce --fold {} {|it, acc| $acc | merge $it }
 }

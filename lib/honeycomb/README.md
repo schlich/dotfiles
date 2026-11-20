@@ -99,18 +99,20 @@ Every tool that groups work groups it by these, so one map serves them all:
 | XR          | nw     | Y              | `xr`               | XR             |
 | Life        | ne     | U              | `personal`         | Life           |
 
-niri seats each area on its direction (`niri/binds.nix`) and opens it in
-the area's first folder (`niri/session.nu`). Claude's sidebar mirrors the
+Each area but home has one folder at the top of `~` (`~/Work`, `~/Research`,
+`~/Nix`, `~/AI`, `~/XR`, `~/Life`), holding its projects at `~/AREA/NAME`
+and parked ones in `~/AREA/.parked`; home is `~` itself. niri seats each
+area on its direction (`niri/binds.nix`) and opens it in the area's folder
+(`niri/session.nu`). Claude's sidebar mirrors the
 flower on the in-out axis: pinned sessions, then the seven areas, then the
 unfiled list, which is the outward side where new sessions arrive.
 
 - `honeycomb sidebar` shows the sidebar refiled by area, and `--apply`
   writes it, keeping a copy of the old file, while the Claude desktop app is
   closed. The sections an area `absorbs` merge into it. An unfiled session
-  joins the area whose folders hold its directory, else the area most of its
+  joins the area whose folder holds its directory, else the area most of its
   project's filed sessions are in, so dragging one session into a section
-  files its project from then on. Project folders stay out of this public
-  repository; the sidebar is where they are filed.
+  files its project from then on.
 - `honeycomb sessions` lists each area's live sessions and the ones to
   archive: those whose directory is gone, and those past the sixth most
   recently active in their area. `--archive` archives them, also with the

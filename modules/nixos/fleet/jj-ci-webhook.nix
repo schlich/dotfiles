@@ -25,7 +25,8 @@ in
     enable = lib.mkEnableOption "a GitHub workflow webhook that syncs a local JJ checkout and runs read-only CI triage";
     projectDir = lib.mkOption {
       type = lib.types.path;
-      default = "/home/schlich/dotfiles";
+      default = config.dotfiles.checkout;
+      defaultText = lib.literalExpression "config.dotfiles.checkout";
       description = "Checkout to synchronize after a successful main validation.";
     };
     repository = lib.mkOption {

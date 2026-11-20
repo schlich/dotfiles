@@ -3,7 +3,7 @@
 # store are pushed, and only those cache.nixos.org lacks: the cache holds what
 # this flake builds itself, such as cross.stream, not a copy of nixpkgs.
 def main [
-  --flake: string = ""        # Flake to read the checks from (default: ~/dotfiles)
+  --flake: string = ""        # Flake to read the checks from (default: $DOTFILES_ROOT, else ~/Nix/dotfiles)
   --cache: string = "schlich" # Cachix cache to push to
   --remote                    # Also push the remoteChecks, the system closures
   --dry-run                   # List what would be pushed without pushing
@@ -11,7 +11,9 @@ def main [
   # cache.nixos.org lacks for that reason.
   --exclude: list<string> = [claude-code]
 ] {
-  let flake = if $flake == "" { $"path:($env.HOME)/dotfiles" } else { $flake }
+  let flake = if $flake == "" {
+    $"path:($env.DOTFILES_ROOT? | default ($env.HOME | path join Nix dotfiles))"
+  } else { $flake }
   let sets = if $remote { [checks remoteChecks] } else { [checks] }
 
   # A check's output is often only a marker file, so what a runner needs is
