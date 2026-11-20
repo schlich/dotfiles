@@ -41,7 +41,7 @@ let
   rules = import ../../../secrets/secrets.nix;
   secretPath = name: config.age.secrets."nixbot-${name}".path;
 
-  # The GitHub App nixbot runs as. docs/nixbot.md says why it may do each
+  # The GitHub App nixbot runs as. docs/delivery/nixbot.md says why it may do each
   # thing, and the nixbot-app-manifest check holds the two together.
   # nixbot-register adds the redirect_url it listens on.
   manifest = {
@@ -143,7 +143,7 @@ in
     assertions = lib.mkIf cfg.enable (
       lib.mapAttrsToList (name: secret: {
         assertion = builtins.pathExists config.age.secrets."nixbot-${name}".file;
-        message = "nixbot: ${secret.file} is missing; nixbot-register writes it beside the App's IDs (docs/nixbot.md).";
+        message = "nixbot: ${secret.file} is missing; nixbot-register writes it beside the App's IDs (docs/delivery/nixbot.md).";
       }) secrets
     );
 

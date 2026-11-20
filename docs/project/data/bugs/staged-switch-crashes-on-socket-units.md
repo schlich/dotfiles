@@ -13,7 +13,7 @@ sources:
   resource: tests/staged-switch-units.nu
   title: The nushell-staged-switch check
 - id: review
-  resource: docs/ci-failure-review.md
+  resource: docs/delivery/ci-failure-review.md
   title: The failure record a revert fills in
 ---
 
@@ -53,7 +53,7 @@ restart count is no restart, and no result is no failure.
 `tests/staged-switch-units.nu` judges a service, socket, timer, and target in
 each state, and the `nushell-staged-switch` check runs it before every delivery.
 
-Failure record (`docs/ci-failure-review.md`):
+Failure record (`docs/delivery/ci-failure-review.md`):
 
 - **Failing job/check:** homelab's staged switch of `807fe228`, `deadman`.
 - **Root cause and triggering condition:** the watch assumed every touched unit

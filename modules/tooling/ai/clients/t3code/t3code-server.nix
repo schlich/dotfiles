@@ -13,7 +13,7 @@
 # boot and survives logout, and publishes it to the tailnet over HTTPS. Nix
 # owns the version, so T3's own `t3 service install` and `t3 update` stay
 # unused: a second server on ~/.t3 would only be refused by the first one's
-# lock. docs/T3-FLEET.md covers pairing, linking and the manual steps.
+# lock. docs/agents/T3-FLEET.md covers pairing, linking and the manual steps.
 
 let
   inherit (lib)
@@ -142,7 +142,7 @@ in
       default = true;
       description = ''
         Whether Claude Code and Codex list this server's MCP endpoint as `t3`.
-        Each client signs in once with OAuth (docs/T3-FLEET.md); its token
+        Each client signs in once with OAuth (docs/agents/T3-FLEET.md); its token
         stays in the client's own credential store.
       '';
     };

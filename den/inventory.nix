@@ -73,7 +73,7 @@ let
           jjCiWebhook = true;
           nixObservability = true;
           # An execution environment while the laptop is awake; the desktop
-          # app is its client (docs/T3-FLEET.md).
+          # app is its client (docs/agents/T3-FLEET.md).
           t3code = true;
         };
         # Deployed in place: `clan machines update asus` over ssh to localhost.
@@ -124,7 +124,7 @@ let
           targetUser = "root";
           # Port 22 is Tailscale SSH, whose check mode hangs a BatchMode
           # login; key-based automation uses OpenSSH here
-          # (docs/homelab-builds.md).
+          # (docs/delivery/homelab-builds.md).
           sshPort = 2222;
         };
         policy = {
