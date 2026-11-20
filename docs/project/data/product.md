@@ -61,8 +61,9 @@ All hosts are `x86_64-linux` NixOS (`den/inventory.nix`).
 - **asus-headless** — the asus hardware as a server with no desktop.
 - **homelab** — the `critical` Intel server and canary: it auto-deploys each
   landing of `main` through the staged-switch watch, with `ssh` and `tailscale`
-  health checks. Its standalone shell home runs a personal Rex terminal server
-  reachable over the existing SSH connection.
+  health checks. Its standalone shell home runs a personal Rex terminal server,
+  published to the tailnet through Tailscale Serve; workstations reach it with
+  `rex -S homelab`.
 
 Changes are delivered through GitHub: each task's branch passes the luvus gate,
 `luvus task merge` integrates it into `luvus/integration`, and `luvus-deliver`

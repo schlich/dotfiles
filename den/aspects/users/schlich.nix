@@ -19,7 +19,7 @@
       (
         { home, ... }:
         lib.optionalAttrs home.host.services.rex {
-          homeManager.imports = [ ../../../modules/tooling/terminals/rex.nix ];
+          includes = [ den.aspects.rex-home ];
         }
       )
       (

@@ -6,6 +6,7 @@
     ./aspects/roles/base.nix
     ./aspects/services/paseo.nix
     ./aspects/services/t3code.nix
+    ./aspects/services/rex.nix
     ./aspects/services/cross-stream.nix
     ./aspects/services/marimohub.nix
     ./aspects/roles/workstation.nix

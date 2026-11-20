@@ -27,6 +27,7 @@ let
       paseo = false;
       opencodeServer = false;
       t3code = false;
+      rex = false;
       crossStream = false;
     };
     # Clan logs in as the everyday user and escalates with sudo.

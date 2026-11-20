@@ -6,7 +6,7 @@
 }:
 let
   # The hosts whose inventory runs the T3 Code server, and where each one
-  # answers on the tailnet: modules/nixos/services/t3code.nix publishes the server's
+  # answers on the tailnet: modules/nixos/services/user-servers/t3code.nix publishes the server's
   # port there over HTTPS.
   port = 3773;
   servers = lib.filterAttrs (_: host: host.services.t3code) den.hosts.x86_64-linux;
@@ -21,7 +21,7 @@ in
   # every user service before a login unlocks the keyring.
   den.aspects.t3code = {
     meta = config.myConfig.aspectPolicy.remote;
-    nixos.imports = [ ../../../modules/nixos/services/t3code.nix ];
+    nixos.imports = [ ../../../modules/nixos/services/user-servers/t3code.nix ];
     includes = [
       (
         { host, ... }:

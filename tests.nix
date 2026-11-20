@@ -87,6 +87,7 @@ in
         paseo = true;
         opencodeServer = false;
         t3code = true;
+        rex = true;
         crossStream = true;
       };
     };
@@ -94,6 +95,7 @@ in
       "base"
       "paseo"
       "t3code"
+      "rex"
       "cross-stream"
       "server"
       "headless"
@@ -115,6 +117,7 @@ in
         "paseo"
         "opencode-server"
         "t3code"
+        "rex"
         "cross-stream"
       ];
     };
