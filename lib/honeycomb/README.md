@@ -89,15 +89,15 @@ Work is filed under seven areas, `areas` in `default.nix`: home at the
 centre and six around it, the same flower as one cell and its neighbours.
 Every tool that groups work groups it by these, so one map serves them all:
 
-| Area | Cell | niri (Mod+Alt) | Knowledge base hub | Claude sidebar |
-| --- | --- | --- | --- | --- |
-| Home | centre | I | `index` | Home |
-| Work | e | L | `work` | Work |
-| Research | se | M | `research` | Research |
-| Nix | sw | N | `nix` | Nix |
-| AI & agents | w | H | `ai` | AI & agents |
-| XR | nw | Y | `xr` | XR |
-| Life | ne | U | `personal` | Life |
+| Area        | Cell   | niri (Mod+Alt) | Knowledge base hub | Claude sidebar |
+| ----------- | ------ | -------------- | ------------------ | -------------- |
+| Home        | centre | I              | `index`            | Home           |
+| Work        | e      | L              | `work`             | Work           |
+| Research    | se     | M              | `research`         | Research       |
+| Nix         | sw     | N              | `nix`              | Nix            |
+| AI & agents | w      | H              | `ai`               | AI & agents    |
+| XR          | nw     | Y              | `xr`               | XR             |
+| Life        | ne     | U              | `personal`         | Life           |
 
 niri seats each area on its direction (`niri/binds.nix`) and opens it in
 the area's first folder (`niri/session.nu`). Claude's sidebar mirrors the
