@@ -43,7 +43,7 @@ in
         name = "MX Master 3S";
         buttons = libconfig.mkList [
           {
-            cid = libconfig.mkHex 195; # 0xc3, the gesture button
+            cid = libconfig.mkHex "0xc3"; # Gesture button
             action = {
               type = "Keypress";
               keys = libconfig.mkArray [ "KEY_F20" ];
