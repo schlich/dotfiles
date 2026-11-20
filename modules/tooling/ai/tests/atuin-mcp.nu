@@ -9,6 +9,8 @@ def converse [messages: list<record>, ...command: string] {
     $messages
     | each {|message| { jsonrpc: "2.0" } | merge $message | to json --raw }
     | str join "\n"
+    | append (char newline)
+    | str join
     | ^timeout 20 ...$command
     | complete
     | get stdout
