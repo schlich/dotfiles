@@ -13,6 +13,7 @@ let
   bootPostmortem = pkgs.writeNuScriptBin "boot-postmortem" (
     builtins.readFile ../../../postmortem/boot-postmortem.nu
   );
+  aiUsagebar = import ./ai-usagebar-package.nix { inherit inputs pkgs; };
 in
 
 {
@@ -32,7 +33,7 @@ in
       Environment = [
         "PATH=${
           lib.makeBinPath [
-            (import ./ai-usagebar-package.nix { inherit inputs pkgs; })
+            aiUsagebar
             pkgs.libnotify
           ]
         }"
@@ -47,6 +48,14 @@ in
     };
     Install.WantedBy = [ "timers.target" ];
   };
+
+  # ai-usagebar ships with Antigravity switched off, and `usage --json` leaves
+  # out switched-off vendors, so the bar's Antigravity capsule would stay
+  # empty. Its config.toml is the CLI's own state (it saves keys and Settings
+  # there), so switch the vendor on through the CLI, which keeps the rest.
+  home.activation.aiUsagebarAntigravity = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    run ${aiUsagebar}/bin/ai-usagebar settings enable antigravity >/dev/null
+  '';
 
   # After an unclean shutdown, announce the system's boot-postmortem report
   # once and offer to open an agent on it in a new terminal.
@@ -232,6 +241,7 @@ in
               "hint_in"
               "codex_usage"
               "claude_usage"
+              "antigravity_usage"
             ];
             # Hokum's tray icon holds notifications and Do not disturb.
             end = [
@@ -348,6 +358,15 @@ in
             claude_usage = {
               type = "felipeartur/ai-usagebar:bar";
               vendor = "anthropic";
+              visualization = "gauge";
+              extras = "both";
+              show_name = true;
+            };
+            # The CLI reads Antigravity's quota from the running app or `agy`
+            # session, or from its saved Google sign-in while both are closed.
+            antigravity_usage = {
+              type = "felipeartur/ai-usagebar:bar";
+              vendor = "antigravity";
               visualization = "gauge";
               extras = "both";
               show_name = true;
