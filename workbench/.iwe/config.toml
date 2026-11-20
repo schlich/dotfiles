@@ -1,11 +1,11 @@
-version = 3
-# IWE workspace for the executable-knowledge proof of concept. Pinned to the
-# IWE 0.24 format (`[library]`); IWE 0.25 renames it to `[workspace]` and
-# rewrites this file in place on first read.
+version = 4
+# IWE workspace for the executable-knowledge proof of concept, in the IWE 0.25+
+# format; an older config (`version = 3`, `[library]`) is rewritten in place on
+# first read, which the round-trip test would report as a change.
 [markdown]
 refs_extension = ".md"
 
-[library]
+[workspace]
 path = "knowledge"
 frontmatter_document_title = "title"
 

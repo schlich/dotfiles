@@ -132,7 +132,7 @@
       lib = nixpkgs.lib;
       bombadil = import ./lib/bombadil.nix { inherit lib pkgs; };
       dagger = import ./modules/programs/vcs/dagger-package.nix { inherit lib pkgs; };
-      iwe = import ./modules/tooling/knowledge/iwe-package.nix { inherit inputs lib pkgs; };
+      inherit (pkgs) iwe;
       marimohub = import ./modules/tooling/knowledge/marimohub-package.nix { inherit lib pkgs; };
       ciDashboard = import ./tools/ci-dashboard/checks.nix { inherit lib pkgs; };
       jjGraph = import ./tools/jj-graph { inherit lib pkgs; };

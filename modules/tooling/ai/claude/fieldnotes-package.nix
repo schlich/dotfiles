@@ -1,7 +1,7 @@
 {
   inputs,
-  lib,
   pkgs,
+  ...
 }:
 
 # Fieldnotes, the dashboard for agent usage, CI, waiting topics, background
@@ -14,6 +14,6 @@ inputs.fieldnotes.packages.${system}.default.override {
   runtimeTools = [
     pkgs.gh
     (import ../../../programs/desktop/ai-usagebar-package.nix { inherit inputs pkgs; })
-    (import ../../knowledge/iwe-package.nix { inherit inputs lib pkgs; })
+    pkgs.iwe
   ];
 }

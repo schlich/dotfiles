@@ -7,7 +7,7 @@
 }:
 
 let
-  iwe = import ../../knowledge/iwe-package.nix { inherit inputs lib pkgs; };
+  inherit (pkgs) iwe;
   atuin = import ../../../programs/shell/atuin-package.nix { inherit inputs pkgs; };
   kbRoot = "${config.home.homeDirectory}/kb";
   xs = inputs.xs.packages.${pkgs.stdenv.hostPlatform.system}.default;

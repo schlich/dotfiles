@@ -3,15 +3,16 @@
 # Tailscale Serve terminates HTTPS and supplies the signed-in identity.
 {
   config,
-  inputs,
   lib,
   pkgs,
   ...
 }:
 
 let
-  iwe = import ../../tooling/knowledge/iwe-package.nix { inherit inputs lib pkgs; };
-  workbench = import ../../../workbench { inherit pkgs lib iwe; };
+  workbench = import ../../../workbench {
+    inherit pkgs lib;
+    inherit (pkgs) iwe;
+  };
   cfg = config.services.marimohub;
   servePort = config.dotfiles.tailscale.https.marimohub.port;
 in

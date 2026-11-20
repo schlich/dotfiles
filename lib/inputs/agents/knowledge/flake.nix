@@ -2,11 +2,6 @@
   description = "Honeycomb input group: the knowledge base";
 
   inputs = {
-    # No flake upstream; bump the tag to update IWE.
-    iwe = {
-      url = "github:iwe-org/iwe/iwe-v0.24.2";
-      flake = false;
-    };
     iwe-skills = {
       url = "github:iwe-org/skills";
       flake = false;
