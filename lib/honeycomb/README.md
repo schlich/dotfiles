@@ -37,6 +37,36 @@ direction keys ring `J` and `K`, the way a cell's neighbours ring it:
 A path of directions is an address: `se`, then `e`, names one leaf for good,
 so a place can be learned by hand, not by reading a list.
 
+## Three axes
+
+Three axes cross a cell, a third of a turn apart, and each is a pair of
+opposite keys. A context puts one independent way of moving on each, so its
+dimensions never share a key:
+
+```text
+        y+   z-            Y   U
+     x-    ·    x+       H   ·   L
+        z+   y-            N   M
+```
+
+| Axis | Keys     | Reads as       | In niri   |
+| ---- | -------- | -------------- | --------- |
+| x    | `H`, `L` | left and right | window    |
+| y    | `Y`, `M` | up and down    | workspace |
+| z    | `N`, `U` | in and out     | monitor   |
+
+The tiling is that three-dimensional space seen along its diagonal. One step
+along each of the three axes together returns to where it started, which is
+why three dimensions fit on a flat ring of six keys. So the same move can be
+made two ways: as a direction on the tiling, or as a signed step along
+left-right, up-down or in-out. `project` turns a point of space into a cell
+and `lift` turns a cell back into the nearest point.
+
+`rotate` turns the view by a third: what moved along x now moves along z,
+and so on round, and the same keys reach another dimension. A context with
+more than three ways to move rotates between them, three at a time, and
+never grows a fourth axis.
+
 ## Select first, then act
 
 Borrowed from Helix. A motion moves the selection or, in `SELECT`, extends
