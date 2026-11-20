@@ -75,6 +75,7 @@ let
     options = lib.mapAttrs (_: description: lib.mkEnableOption description) {
       jjCiWebhook = "the jj-ci webhook listener, published through Tailscale Funnel";
       nixObservability = "the local OpenTelemetry viewer for Nix traces";
+      luvusAutopilot = "the Luvus task dependency watcher";
       paseo = "the Paseo daemon";
       opencodeServer = "the OpenCode HTTP server";
       t3code = "the T3 Code server, an execution environment for the agent fleet";

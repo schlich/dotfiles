@@ -28,6 +28,12 @@
           includes = [ den.aspects.nix-observability-home ];
         }
       )
+      (
+        { home, ... }:
+        lib.optionalAttrs home.host.services.luvusAutopilot {
+          homeManager.dotfiles.luvus.autopilot.enable = true;
+        }
+      )
       # The T3 Code server runs in the home of the host's one user with a
       # home (den/aspects/services/t3code.nix).
       (

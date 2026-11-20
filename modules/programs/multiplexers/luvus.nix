@@ -3,7 +3,6 @@
   inputs,
   lib,
   pkgs,
-  osConfig ? null,
   ...
 }:
 
@@ -124,10 +123,7 @@ in
 {
   options.dotfiles.luvus.autopilot.enable = lib.mkOption {
     type = lib.types.bool;
-    # Den's inventory has no profile field for this yet, and this task may
-    # not touch den/; replace the hostname test with one when it does.
-    default = (if osConfig == null then null else osConfig.networking.hostName or null) == "asus";
-    defaultText = lib.literalExpression ''osConfig.networking.hostName == "asus"'';
+    default = false;
     description = ''
       Run luvus-autopilot, which starts and merges luvus tasks marked with
       `luvus-auto ID` and the tasks downstream of them.

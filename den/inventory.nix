@@ -24,6 +24,7 @@ let
     services = {
       jjCiWebhook = false;
       nixObservability = false;
+      luvusAutopilot = false;
       paseo = false;
       opencodeServer = false;
       t3code = false;
@@ -73,6 +74,7 @@ let
         services = {
           jjCiWebhook = true;
           nixObservability = true;
+          luvusAutopilot = true;
           # An execution environment while the laptop is awake; the desktop
           # app is its client (docs/agents/T3-FLEET.md).
           t3code = true;
