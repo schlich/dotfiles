@@ -61,7 +61,10 @@ in
   };
 
   config = {
-    dotfiles.nixpkgsWatch.luvus.reason = "replace modules/programs/multiplexers/luvus-package.nix (the luvus input's package, rewrapped so its runtime tools follow PATH instead of leading it) with pkgs.luvus, rewrapping that too if its wrapper prepends, and drop the luvus input";
+    dotfiles.nixpkgsWatch.luvus = {
+      reason = "replace modules/programs/multiplexers/luvus-package.nix (the luvus input's package, rewrapped so its runtime tools follow PATH instead of leading it) with pkgs.luvus, rewrapping that too if its wrapper prepends, and drop the luvus input; drop each patch in luvus-patches/ once the locked luvus contains its pull request (#546 Nushell worker launch, #551 remote scripts under sh)";
+      fix = "https://github.com/RizRiyz/luvus/pull/546";
+    };
 
     # After the prefix, the honeycomb's keys (lib/honeycomb/README.md). Luvus
     # already puts panes on H, L, J and K; these move tabs to Y and U, the

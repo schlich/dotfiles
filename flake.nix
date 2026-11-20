@@ -909,6 +909,7 @@
                 --glob '!packages/**' \
                 --glob '!**/node_modules/**' \
                 --glob '!result*' \
+                --glob '!*.patch' \
                 '[[:blank:]]$' . || true)"
               if [ -n "$matches" ]; then
                 printf '%s\n' "$matches"
