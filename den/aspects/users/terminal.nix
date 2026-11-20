@@ -16,6 +16,12 @@
     ../../../modules/tooling/ai/claude/claude-code.nix
   ];
 
+  # Servers with a Home Manager user: remote editor helpers without pulling in
+  # desktop GUI closures.
+  den.aspects.user-server.homeManager.imports = [
+    ../../../modules/tooling/editors/zed-remote-server.nix
+  ];
+
   # Workstations only: terminals, editors, agent clients, desktop apps and
   # the user services that go with them. modules/programs repeats the shell
   # files above, which the module system imports once.
@@ -24,6 +30,7 @@
     ../../../modules/tooling/terminals/ghostty.nix
     ../../../modules/tooling/terminals/rex.nix
     ../../../modules/tooling/editors/helix.nix
+    ../../../modules/tooling/editors/zed.nix
     ../../../modules/tooling/keymap-checks.nix
     ../../../modules/tooling/knowledge/iwe.nix
     ../../../modules/tooling/ai/shared/plugins.nix
