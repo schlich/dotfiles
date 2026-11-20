@@ -80,21 +80,22 @@ def main [
   let scope = "acct/org"
   let store = ($root | path join claude-code-sessions acct org)
   mkdir $store
-  for folder in [dotfiles kb elsewhere game] { mkdir ($home | path join $folder) }
+  for folder in [Nix/dotfiles Research/kb .luvus/worktrees/kb/luvus-t1 elsewhere game] { mkdir ($home | path join $folder) }
 
-  # key, directory under $HOME, archived, last activity, section
+  # key, directory under $HOME, archived, last activity, section. A luvus
+  # worktree of ~/Research/kb belongs to Research too.
   let sessions = [
     [id folder archived active group];
-    [a dotfiles false 100 cg-hosts]
-    [b kb false 100 null]
+    [a Nix/dotfiles false 100 cg-hosts]
+    [b .luvus/worktrees/kb/luvus-t1 false 100 null]
     [c elsewhere false 100 null]
-    [d dotfiles false 100 cg-ci]
-    [e dotfiles false 100 cg-friends]
-    [f dotfiles false 100 cg-mystery]
+    [d Nix/dotfiles false 100 cg-ci]
+    [e Nix/dotfiles false 100 cg-friends]
+    [f Nix/dotfiles false 100 cg-mystery]
     [g gone false 100 cg-desktop]
     [h game true 50 cg-agents]
     [i game false 60 null]
-  ] | append (1..7 | each {|n| { id: $"n($n)", folder: dotfiles, archived: false, active: $n, group: null } })
+  ] | append (1..7 | each {|n| { id: $"n($n)", folder: Nix/dotfiles, archived: false, active: $n, group: null } })
   for session in $sessions {
     {
       sessionId: $"local_($session.id)"
@@ -179,7 +180,7 @@ def main [
   ] | flatten)
 
   # The phone's snapshot: live sessions and hub notes by area.
-  let kb = ($home | path join kb)
+  let kb = ($home | path join Research kb)
   "# Nix\n\n- [Alpha](alpha.md) — the first\n- plain `code` — the second\n  - nested, not listed\n" | save --force ($kb | path join 40-49-nix.md)
   let snapshot = (^nu --no-config-file $script flower --config $config --root $root --areas $areas --kb $kb | complete)
   if $snapshot.exit_code != 0 { print $snapshot.stderr; exit 1 }

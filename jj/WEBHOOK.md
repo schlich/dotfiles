@@ -15,8 +15,8 @@ The webhook HMAC secret is declared in `modules/secretspec.toml` and stored in
 the local Secret Service keyring. Create or rotate it with SecretSpec:
 
 ```nu
-secretspec set --file /home/schlich/dotfiles/modules/secretspec.toml --provider keyring --reason "Create the local GitHub webhook HMAC" JJ_CI_WEBHOOK_SECRET
-secretspec check --file /home/schlich/dotfiles/modules/secretspec.toml --provider keyring --scope jj-ci-webhook --no-prompt --reason "Verify the local webhook secret"
+secretspec set --file ~/Nix/dotfiles/modules/secretspec.toml --provider keyring --reason "Create the local GitHub webhook HMAC" JJ_CI_WEBHOOK_SECRET
+secretspec check --file ~/Nix/dotfiles/modules/secretspec.toml --provider keyring --scope jj-ci-webhook --no-prompt --reason "Verify the local webhook secret"
 ```
 
 The Funnel unit is intentionally not started automatically: Tailscale must be
@@ -38,7 +38,7 @@ tailscale funnel status
 Then create or update the repository webhook using the local helper:
 
 ```nu
-nu /home/schlich/dotfiles/jj/webhook-setup.nu https://asus.<tailnet>.ts.net
+nu ~/Nix/dotfiles/jj/webhook-setup.nu https://asus.<tailnet>.ts.net
 ```
 
 The helper resolves the secret through SecretSpec and configures only the

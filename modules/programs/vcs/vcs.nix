@@ -133,13 +133,13 @@ in
     # their own config from `tangled-init`.
     "--scope" = [
       {
-        "--when".repositories = [ "~/dotfiles" ];
+        "--when".repositories = [ config.dotfiles.paths.dotfiles ];
         git.push = "origin";
         git.fetch = "origin";
         revset-aliases."trunk()" = "main@origin";
       }
       {
-        "--when".repositories = [ "~/Projects/ci" ];
+        "--when".repositories = [ "~/Nix/ci" ];
         git.push = "tangled";
         git.fetch = [
           "tangled"

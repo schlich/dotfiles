@@ -111,27 +111,37 @@ def claude-sessions [root: path] {
   }
 }
 
-# The area whose folders hold a directory: one under $HOME, or a luvus
-# worktree of a repository there.
-def folder-area [areas: list, directory: string] {
+# A directory relative to $HOME, seen through luvus's and Claude's
+# worktrees. luvus names a worktree directory for the repository's basename,
+# so one of ~/AREA/NAME maps back through the area whose folder holds NAME.
+def home-relative [areas: list, directory: string] {
   let home = $env.HOME
   if not ($directory | str starts-with $"($home)/") { return null }
-  let relative = ($directory | path relative-to $home | str replace --regex '^\.luvus/worktrees/([^/]+)/[^/]+' '$1')
-  $areas | where {|area| $area.folders | any {|folder| $relative == $folder or ($relative | str starts-with $"($folder)/") } } | get 0?.name
+  let relative = ($directory | path relative-to $home | str replace --regex '/\.claude/worktrees/.*$' '')
+  let worktree = ($relative | parse --regex '^\.luvus/worktrees/(?<repo>[^/]+)/[^/]+' | get 0?.repo)
+  if $worktree == null { return $relative }
+  let owner = ($areas | where {|area| $area.folder? != null and ($home | path join $area.folder $worktree | path exists) } | get 0?.folder)
+  if $owner == null { $worktree } else { $"($owner)/($worktree)" }
 }
 
-# The project a directory belongs to, relative to $HOME: its first folder, or
-# its first two under Projects, seen through luvus's and Claude's worktrees.
-# Claude's scratch workspaces belong to none.
-def folder-key [directory: string] {
-  let home = $env.HOME
-  if not ($directory | str starts-with $"($home)/") { return null }
-  let relative = ($directory | path relative-to $home
-    | str replace --regex '^\.luvus/worktrees/([^/]+)/[^/]+' '$1'
-    | str replace --regex '/\.claude/worktrees/.*$' '')
-  if ($relative | str starts-with ".config/") { return null }
+# The area whose folder, the first component of a directory under $HOME,
+# holds it.
+def folder-area [areas: list, directory: string] {
+  let relative = (home-relative $areas $directory)
+  if $relative == null { return null }
+  let top = ($relative | split row "/" | get 0)
+  $areas | where {|area| $area.folder? == $top } | get 0?.name
+}
+
+# The project a directory belongs to, relative to $HOME: AREA/NAME inside an
+# area's folder, else its first folder. Claude's scratch workspaces belong to
+# none.
+def folder-key [areas: list, directory: string] {
+  let relative = (home-relative $areas $directory)
+  if $relative == null or ($relative | str starts-with ".config/") { return null }
   let parts = ($relative | split row "/")
-  if $parts.0 == "Projects" and ($parts | length) > 1 { $parts | first 2 | str join "/" } else { $parts.0 }
+  let in_area = ($areas | any {|area| $area.folder? == $parts.0 })
+  if $in_area and ($parts | length) > 1 { $parts | first 2 | str join "/" } else { $parts.0 }
 }
 
 # The area a sidebar section belongs to: the one it is named for, or the one
@@ -169,7 +179,7 @@ def plan-scope [areas: list, sections: list, scope: record, sessions: list] {
   let learned = ($sessions
     | each {|session|
       let group = ($carried | where key == $session.key | get 0?.group)
-      { folder: (folder-key $session.cwd), area: (if $group == null { null } else { $ids | where id == $group | get 0?.area }) }
+      { folder: (folder-key $areas $session.cwd), area: (if $group == null { null } else { $ids | where id == $group | get 0?.area }) }
     }
     | where {|row| $row.folder != null and $row.area != null }
     | group-by folder
@@ -179,7 +189,7 @@ def plan-scope [areas: list, sections: list, scope: record, sessions: list] {
     | where {|session| not $session.archived and ($assignments | get --optional $session.key) == null }
     | each {|session|
       let by_folder = (folder-area $areas $session.cwd)
-      let key = (folder-key $session.cwd)
+      let key = (folder-key $areas $session.cwd)
       { key: $session.key, area: ($by_folder | default ($learned | where folder == $key | get 0?.area)) }
     }
     | where area != null
@@ -531,9 +541,9 @@ def "main flower" [
   --config: path # The desktop app's config (default: its own).
   --root: path # Where its sessions are kept (default: its own).
   --areas: path # The areas (default: $env.HONEYCOMB_AREAS).
-  --kb: path # The knowledge base (default: $env.KB_ROOT, else ~/kb).
+  --kb: path # The knowledge base (default: $env.KB_ROOT, else ~/Research/kb).
 ] {
-  let kb = ($kb | default ($env.KB_ROOT? | default ($env.HOME | path join kb)))
+  let kb = ($kb | default ($env.KB_ROOT? | default ($env.HOME | path join Research kb)))
   flower-snapshot ($config | default (claude-config)) ($root | default (claude-root)) (areas $areas) $kb | to json
 }
 
@@ -556,14 +566,14 @@ def "main hub sync" [
   --config: path # The desktop app's config (default: its own).
   --root: path # Where its sessions are kept (default: its own).
   --areas: path # The areas (default: $env.HONEYCOMB_AREAS).
-  --kb: path # The knowledge base (default: $env.KB_ROOT, else ~/kb).
+  --kb: path # The knowledge base (default: $env.KB_ROOT, else ~/Research/kb).
 ] {
   let url = ($url | default ($env.HONEYCOMB_HUB? | default ""))
   if $url == "" { error make --unspanned { msg: "no hub: set HONEYCOMB_HUB or pass --url" } }
   let config = ($config | default (claude-config))
   let root = ($root | default (claude-root))
   let areas = (areas $areas)
-  let kb = ($kb | default ($env.KB_ROOT? | default ($env.HOME | path join kb)))
+  let kb = ($kb | default ($env.KB_ROOT? | default ($env.HOME | path join Research kb)))
   let send = {|results|
     { flower: (flower-snapshot $config $root $areas $kb), results: $results } | to json
     | http post --content-type application/json $"($url)/api/sync" $in

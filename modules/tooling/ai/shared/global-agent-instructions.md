@@ -265,9 +265,18 @@ Keep the user's screen quiet:
   next, in a few lines or a small table. Leave out steps the user already
   watched happen.
 
+# Home folder
+
+`~` holds six visible folders, one per honeycomb area: `~/Work`,
+`~/Research`, `~/Nix`, `~/AI`, `~/XR`, and `~/Life`; `~` itself is the
+centre, Home. A project lives at `~/AREA/NAME`, a few grouped one level
+deeper, and a parked one in that area's hidden `~/AREA/.parked/`. The XDG
+directories (Documents, Downloads, Pictures) are in `~/Life`. Create a new
+project in its area's folder, never at the top of `~`.
+
 # Knowledge base
 
-The user's durable knowledge base is an IWE workspace at `~/kb`, exposed to
+The user's durable knowledge base is an IWE workspace at `~/Research/kb`, exposed to
 agents in every repository through the `kb` MCP server (`iwe_find`,
 `iwe_retrieve`, `iwe_tree`, and guarded writes). It holds cross-project facts
 that no repository records: traps and their fixes, rules the user has stated,
@@ -278,7 +287,7 @@ decisions, how-tos, and personal notes.
 - Write to it only with the user's explicit approval. Offer a one-line
   "Worth remembering: <title>" instead of writing unasked, and never copy
   facts a repository already records; link to them.
-- Inside `~/kb`, `MEMORY.md` is the memory policy; follow it, and use
+- Inside `~/Research/kb`, `MEMORY.md` is the memory policy; follow it, and use
   `/iwe:distill` and `/iwe:reflect` for capture and curation.
 - Before distilling past sessions, run `jev distill-candidates --json` (or
   name session ids) for a shortlist of the user's durable rules,
@@ -319,7 +328,7 @@ decisions, how-tos, and personal notes.
 # Jujutsu
 
 A repository listed in the Home Manager option
-`dotfiles.tooling.gitWorkflowRepos`, currently `~/dotfiles`, takes writes
+`dotfiles.tooling.gitWorkflowRepos`, currently `~/Nix/dotfiles`, takes writes
 through Git and luvus instead. In it, and in its luvus worktrees, the rules in
 this section and `ci` do not apply: follow that repository's `AGENTS.md`.
 
@@ -353,7 +362,7 @@ The `ci` trunk workflow is installed everywhere but applies only in a
 repository that opted into it, a ci repository: its JJ config sets
 `ci.enable = true`, so `jj config get ci.enable` prints `true` there. A clone
 opts in with `jj config set --repo ci.enable true`, and the Home Manager
-option `dotfiles.ci.repositories` in `~/dotfiles` opts in every clone and
+option `dotfiles.ci.repositories` in `~/Nix/dotfiles` opts in every clone and
 workspace at a path. Opt a repository in only when the user asks: a new
 project is not a ci repository, and `tangled-init` does not make it one.
 

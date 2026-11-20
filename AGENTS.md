@@ -236,7 +236,7 @@ luvus quality gate and nixbot build.
   `luvus task start ID --agent AGENT`), which creates a Git worktree on its
   own branch (`luvus/tID`) under `~/.luvus/worktrees/`, or with
   `luvus worktree create BRANCH` for work outside the board. Work only in the
-  worktree your task owns; never make a task's edits in the `~/dotfiles`
+  worktree your task owns; never make a task's edits in the `~/Nix/dotfiles`
   main checkout, which other sessions share.
 - A board task branches from the local `main`, which `luvus-deliver`
   fast-forwards after each delivery; `luvus worktree create` branches from

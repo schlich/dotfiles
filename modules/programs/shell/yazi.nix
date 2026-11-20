@@ -1,4 +1,5 @@
 {
+  config,
   lib,
   options,
   pkgs,
@@ -128,7 +129,7 @@ in
                   "g"
                   "n"
                 ];
-                run = "cd ~/kb";
+                run = "cd ${config.dotfiles.paths.kb}";
                 desc = "Go to the knowledge base";
               }
             ];

@@ -47,6 +47,10 @@ in
     ../../../lib/honeycomb/runtime/hub/module.nix
   ];
 
+  # homelab keeps its own checkout at the top of its home; only asus's home
+  # moved into the honeycomb area folders.
+  dotfiles.checkout = "/home/schlich/dotfiles";
+
   # The phone's view of the seven areas, which asus keeps current
   # (lib/honeycomb/README.md).
   services.honeycomb-hub.enable = true;
@@ -158,9 +162,9 @@ in
     serviceConfig = {
       Type = "simple";
       User = "schlich";
-      WorkingDirectory = "/home/schlich/dotfiles";
+      WorkingDirectory = config.dotfiles.checkout;
       Environment = [
-        "CI_REPO=/home/schlich/dotfiles"
+        "CI_REPO=${config.dotfiles.checkout}"
         "CI_GITHUB_REPO=schlich/dotfiles"
         "HOME=/home/schlich"
         "PATH=${ciPackage}/bin:${pkgs.gh}/bin:/run/current-system/sw/bin"

@@ -59,17 +59,18 @@ rec {
   # The seven areas everything is filed under: home at the centre and six
   # around it, in compass order. Every tool that groups work groups it by
   # these: niri's area workspaces (niri/binds.nix), the knowledge base's
-  # hubs, and Claude's sidebar sections (`honeycomb sidebar`). `folders` are
-  # directories under $HOME whose sessions belong to the area, the first one
-  # the area's workspace opens in; `absorbs` names sidebar sections the area
-  # took over.
+  # hubs, and Claude's sidebar sections (`honeycomb sidebar`). `folder` is
+  # the area's directory at the top of $HOME, which holds its projects at
+  # ~/FOLDER/NAME (a few grouped one level deeper) and parked ones in
+  # ~/FOLDER/.parked; home is ~ itself and has none. `absorbs` names sidebar
+  # sections the area took over.
   areas = [
     {
       cell = "centre";
       name = "home";
       title = "Home";
       hub = "index";
-      folders = [ ];
+      folder = null;
       absorbs = [ "Desktop & terminal" ];
     }
     {
@@ -77,7 +78,7 @@ rec {
       name = "work";
       title = "Work";
       hub = "work";
-      folders = [ ];
+      folder = "Work";
       absorbs = [ ];
     }
     {
@@ -85,7 +86,7 @@ rec {
       name = "research";
       title = "Research";
       hub = "research";
-      folders = [ "kb" ];
+      folder = "Research";
       absorbs = [ "Knowledge base" ];
     }
     {
@@ -93,7 +94,7 @@ rec {
       name = "nix";
       title = "Nix";
       hub = "nix";
-      folders = [ "dotfiles" ];
+      folder = "Nix";
       absorbs = [
         "Hosts & Nix"
         "CI & landing"
@@ -104,7 +105,7 @@ rec {
       name = "ai";
       title = "AI & agents";
       hub = "ai";
-      folders = [ ];
+      folder = "AI";
       absorbs = [ "Agent tooling" ];
     }
     {
@@ -112,7 +113,7 @@ rec {
       name = "xr";
       title = "XR";
       hub = "xr";
-      folders = [ ];
+      folder = "XR";
       absorbs = [ ];
     }
     {
@@ -120,7 +121,7 @@ rec {
       name = "life";
       title = "Life";
       hub = "personal";
-      folders = [ ];
+      folder = "Life";
       absorbs = [ "Stuff for friends" ];
     }
   ];

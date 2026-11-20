@@ -49,20 +49,26 @@ in
       ''
         ${pkgs.niri}/bin/niri completions nushell > "$out"
       '';
-  xdg.userDirs = {
-    enable = true;
-    createDirectories = true;
+  # The XDG dirs belong to the life area (~/Life), so `createDirectories`
+  # never makes a seventh folder in ~. Videos join Pictures, and the unused
+  # dirs fold into Downloads, the inbox.
+  xdg.userDirs =
+    let
+      life = "${config.home.homeDirectory}/Life";
+    in
+    {
+      enable = true;
+      createDirectories = true;
 
-    download = "${config.home.homeDirectory}/Downloads";
-    documents = "${config.home.homeDirectory}/Documents";
-    pictures = "${config.home.homeDirectory}/Pictures";
-    videos = "${config.home.homeDirectory}/Videos";
-    # Unused XDG dirs fold into Downloads, the inbox, instead of cluttering ~.
-    music = "${config.home.homeDirectory}/Downloads";
-    desktop = "${config.home.homeDirectory}/Downloads";
-    publicShare = "${config.home.homeDirectory}/Downloads";
-    templates = "${config.home.homeDirectory}/Downloads";
-  };
+      download = "${life}/Downloads";
+      documents = "${life}/Documents";
+      pictures = "${life}/Pictures";
+      videos = "${life}/Pictures";
+      music = "${life}/Downloads";
+      desktop = "${life}/Downloads";
+      publicShare = "${life}/Downloads";
+      templates = "${life}/Downloads";
+    };
 
   dotfiles.retiredHomeFiles = [
     ".config/niri/config.kdl"

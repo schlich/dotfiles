@@ -38,7 +38,7 @@ in
     # new files count without Git staging. `nh home switch` applies
     # homeConfigurations."USER@HOST" for the current user and host;
     # `home-activate` runs it and records the change it came from.
-    flake = "path:${config.home.homeDirectory}/dotfiles";
+    flake = "path:${config.dotfiles.paths.dotfiles}";
   };
   accounts.email.accounts.personal = {
     address = "ty.schlich@gmail.com";
@@ -247,7 +247,7 @@ in
       # with `nh home switch`. It builds the working copy, which may hold
       # edits main lacks, so it records the change each generation came from
       # for `generation`.
-      const repo = "/home/schlich/dotfiles"
+      const repo = "${config.dotfiles.paths.dotfiles}"
 
       # The change whose files the build reads: an empty working-copy change
       # adds nothing to its parent. Asking JJ also snapshots the working copy,

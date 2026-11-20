@@ -30,7 +30,7 @@ readonly RECOVERY_USB_SERIAL="General_UDisk-0:0"
 readonly RECOVERY_USB_OLD_PARTUUID="95a4b066-01"
 readonly RECOVERY_USB_OLD_UUID="6E3E-CAAF"
 readonly TARGET="${MIGRATION_TARGET:-/mnt}"
-readonly REPO="${MIGRATION_REPO:-/home/schlich/dotfiles}"
+readonly REPO="${MIGRATION_REPO:-/home/schlich/Nix/dotfiles}"
 
 log() {
   printf '==> %s\n' "$*"
