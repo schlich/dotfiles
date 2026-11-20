@@ -6,13 +6,13 @@ generated:
   at: 2026-10-19T20:40:00Z
 sources:
 - id: registry
-  resource: modules/nixos/tailscale-https.nix
+  resource: modules/nixos/fleet/tailscale-https.nix
   title: The dotfiles.tailscale.https option and its assertions
 - id: workbench-hub
-  resource: modules/nixos/workbench-hub.nix
+  resource: modules/nixos/services/workbench-hub.nix
   title: marimohub's private Serve endpoint
 - id: homelab
-  resource: modules/nixos/homelab.nix
+  resource: modules/nixos/homelab/homelab.nix
   title: The CI dashboard's private Serve endpoint
 ---
 

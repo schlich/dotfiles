@@ -79,6 +79,27 @@ def main [script: path] {
   let narrow = (do $replay [] [80 30])
   $failures = ($failures | append (expect "a narrow pane asks for more width" ($narrow.screen | str contains "Widen the window to 115 columns") true))
 
+  # The bar's navigation hints: one per seat, each naming its key and area,
+  # with the focused area's seat marked.
+  let seats = {
+    areas: { centre: home, e: work, se: research, sw: nix, w: ai, nw: xr, ne: life }
+    keys: { centre: I, e: L, se: M, sw: N, w: H, nw: Y, ne: U }
+    out: O
+    down: J
+    up: K
+  }
+  let hint_code = $"source '($script)'
+    seat-status ($seats | to nuon) NORMAL work | to nuon"
+  let hint_run = (^nu --no-config-file -c $hint_code | complete)
+  if $hint_run.exit_code != 0 { error make --unspanned { msg: $"seat-status failed:\n($hint_run.stderr)" } }
+  let hints = ($hint_run.stdout | from nuon)
+  $failures = ($failures | append (expect "a seat for each direction and each depth" ($hints.seats | columns | sort) [e in ne nw out se sw w]))
+  $failures = ($failures | append (expect "the base mode is NORMAL" $hints.mode NORMAL))
+  $failures = ($failures | append (expect "a corner names its key and area" $hints.seats.nw.text "Y xr"))
+  $failures = ($failures | append (expect "a side also names its column motion" $hints.seats.e.text "L work · column →"))
+  $failures = ($failures | append (expect "only the focused area's seat is lit" ($hints.seats | transpose seat hint | where hint.here | get seat) [e]))
+  $failures = ($failures | append (expect "the tooltip gives the full chord" ($hints.seats.sw.tips | first) [Mod+Alt+N "area nix"]))
+
   rm --recursive $tmp
   if ($failures | is-not-empty) {
     error make --unspanned { msg: $"($failures | length) keymap checks failed: ($failures | str join ', ')" }

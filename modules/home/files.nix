@@ -6,13 +6,30 @@
 }:
 
 let
-  # The niri session scripts as commands: config.kdl's binds run
+  # The niri session scripts as commands: the binds (niri/binds.nix) run
   # `niri-desk SUBCOMMAND` and `niri-keymap hints`, and the scripts find
   # their siblings with `path self`. niri reads config.kdl from
-  # /etc/niri/config.kdl (modules/nixos/desktop.nix).
+  # /etc/niri/config.kdl (modules/nixos/workstation/desktop.nix).
+  niriBinds = import ../../niri/binds.nix { inherit lib; };
+  # Where each area sits and which key points there, for the launcher and
+  # the bar's navigation hints, and the areas themselves (`flower`) for the
+  # session presets.
+  niriAreas = pkgs.writeText "niri-areas.json" (
+    builtins.toJSON {
+      inherit (niriBinds)
+        areas
+        keys
+        out
+        down
+        up
+        ;
+      flower = (import ../../lib/honeycomb { inherit lib; }).areas;
+    }
+  );
   niriDesk = pkgs.runCommandLocal "niri-desk" { nativeBuildInputs = [ pkgs.makeWrapper ]; } ''
     share="$out/share/niri-desk"
     mkdir -p "$share"
+    cp ${niriAreas} "$share/areas.json"
     cp ${../../niri/session.nu} "$share/session.nu"
     cp ${../../niri/workspace-overview.nu} "$share/workspace-overview.nu"
     cp ${../../niri/keymap.nu} "$share/keymap.nu"

@@ -1,5 +1,5 @@
 // Yazi with this configuration's settings and keymap
-// (modules/programs/yazi.nix) against the keymap rules.
+// (modules/programs/shell/yazi.nix) against the keymap rules.
 import { always } from "@antithesishq/bombadil";
 import { escapeReturnsTo, keys, modeAlwaysShown, rows } from "./keymap.ts";
 export {
@@ -10,12 +10,14 @@ export {
 // The status bar, the last row, starts with the mode after a separator
 // glyph.
 function mode(): string | null {
-  const status = (rows().at(-1) ?? "").match(/^[^A-Za-z]*(NOR|SEL|UNS)\s/);
+  const status = (rows().at(-1) ?? "").match(
+    /^[^A-Za-z]*(NORMAL|SELECT|UNSET)\s/,
+  );
   return status ? status[1] : null;
 }
 
 export const modeShown = modeAlwaysShown(mode);
-export const escapeReturnsToNormal = escapeReturnsTo("NOR", mode);
+export const escapeReturnsToNormal = escapeReturnsTo("NORMAL", mode);
 
 // The which-key list after `g` shows single keys (`h  Go home`; the help
 // menu shows `gh`). Once its bottom border is drawn, it must list this

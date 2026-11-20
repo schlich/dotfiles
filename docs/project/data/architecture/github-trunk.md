@@ -6,10 +6,10 @@ generated:
   at: 2026-10-19T07:45:00Z
 sources:
 - id: vcs
-  resource: modules/programs/vcs.nix
+  resource: modules/programs/vcs/vcs.nix
   title: The jj scope that names trunk() and the push remote
 - id: system-switch
-  resource: modules/nixos/system-switch.nix
+  resource: modules/nixos/fleet/system-switch.nix
   title: The repository the staged switch and generation read
 - id: ruleset
   resource: .github/rulesets/main-checks.json

@@ -3,8 +3,8 @@
 Once a day on homelab, reads the new messages in every Discord channel you
 can see, asks Claude which ones are worth your time, and renders a dashboard
 of the findings: releases and announcements, things that bear on your stack,
-and high-signal discussion. `modules/nixos/discord-digest.nix` runs it, and
-`modules/nixos/homelab.nix` turns it on.
+and high-signal discussion. `modules/nixos/homelab/discord-digest.nix` runs it, and
+`modules/nixos/homelab/homelab.nix` turns it on.
 
 > **It runs as your account.** It authenticates with your user token,
 > which makes it a self-bot. Discord's terms forbid self-bots, and an

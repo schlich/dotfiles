@@ -4,7 +4,7 @@ A proof of concept for one Markdown file that is at once a readable document,
 a typed [IWE](https://github.com/iwe-org/iwe) node, and a
 [marimo](https://marimo.io) notebook. The file runs in a Nix environment
 named by its own frontmatter. Architecture, upstream findings, and open
-questions are in [docs/executable-knowledge.md](../docs/executable-knowledge.md).
+questions are in [docs/agents/executable-knowledge.md](../docs/agents/executable-knowledge.md).
 
 ```text
 workbench/
@@ -86,7 +86,7 @@ missing dependency fails loudly instead of installing an unpinned package.
 
 ## Run it on the homelab
 
-The `marimohub` Den aspect (`modules/nixos/workbench-hub.nix`) runs the hub
+The `marimohub` Den aspect (`modules/nixos/services/workbench-hub.nix`) runs the hub
 with `fs` storage in `/var/lib/marimohub`, rootless Podman kernels from these
 images, and Tailscale Serve identity. No host includes it yet. To enable it,
 add the aspect to the homelab and set the login domain:

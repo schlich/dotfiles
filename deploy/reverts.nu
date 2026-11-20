@@ -117,6 +117,15 @@ def "main causes" [
     print $tally
 }
 
+# Seconds an ssh fetch from one canary may take before it is killed.
+def fetch-timeout [] { $env.DEPLOY_REVERTS_FETCH_TIMEOUT? | default '60' }
+
+# The name a canary's cache files go by: its host, without the
+# ssh://, user, or port that its destination may carry.
+def source-name [destination: string] {
+    $destination | str replace --regex '^ssh://' '' | str replace --regex '^[^@]*@' '' | str replace --regex ':[0-9]+$' ''
+}
+
 def seen-file [cache: string, source: string] { $cache | path join $"($source).seen" }
 
 def last-seen [cache: string, source: string] {
@@ -125,7 +134,9 @@ def last-seen [cache: string, source: string] {
 }
 
 # Announce the newest unseen revert from one source. It is marked seen
-# first, so a notification that never gets an answer is not repeated.
+# first, so a notification that never gets an answer is not repeated. The
+# notification waits for its answer in a transient unit of its own, so this
+# oneshot, and an activation that restarts it, never wait on the user.
 def announce [cache: string, source: string, rows: list] {
     let seen = (last-seen $cache $source | into datetime)
     let fresh = ($rows | where {|row| ($row.at | into datetime) > $seen } | sort-by at)
@@ -133,8 +144,31 @@ def announce [cache: string, source: string, rows: list] {
     let latest = ($fresh | last)
     $latest.at | save --force (seen-file $cache $source)
 
-    let verb = if $latest.activated { "reverted" } else { "rejected" }
     let earlier = (($fresh | length) - 1)
+    let spawned = (^systemd-run --user --collect --quiet --description $"Answer the deploy revert notice for ($source)" $"--setenv=PATH=([$env.PATH] | flatten | str join (char esep))" -- $nu.current-exe --no-config-file $env.CURRENT_FILE prompt $source $latest.id --earlier $earlier | complete)
+    if $spawned.exit_code != 0 {
+        print --stderr $"Could not announce ($source)'s revert ($latest.id): ($spawned.stderr | str trim)"
+    }
+}
+
+def find-row [cache: string, source: string, id: string] {
+    let logs = [((state) | path join reverts.jsonl) ($cache | path join $"($source).jsonl")]
+    $logs | each {|log| entries $log } | flatten | where id == $id | get -o 0
+}
+
+# Show one revert's notification and act on its answer. `notify` starts
+# this in a transient unit; it waits until the notification is answered or
+# dismissed.
+def "main prompt" [
+    source: string # the host, or the canary's cache name, that reverted
+    id: string # the revert's id
+    --earlier: int = 0 # how many unseen reverts came before it
+] {
+    let latest = (find-row (cache-dir) $source $id)
+    if $latest == null {
+        error make --unspanned { msg: $"No revert ($id) recorded for ($source)." }
+    }
+    let verb = if $latest.activated { "reverted" } else { "rejected" }
     let more = if $earlier > 0 { $" \(and ($earlier) earlier\)" } else { "" }
     let body = $"($latest.phase): ($latest.breached | str join ', '). By ($latest.author)($more)."
     let choice = (^notify-send --app-name "Deploy revert" --icon dialog-warning --urgency critical --wait --action "investigate=Investigate with an agent" --action "open=Open report" $"($latest.host) ($verb) ($latest.subject)" $body | complete | get stdout | str trim)
@@ -150,17 +184,24 @@ def announce [cache: string, source: string, rows: list] {
 }
 
 # Announce new reverts on this host and on each canary named, by its ssh
-# destination. An unreachable canary is skipped until the next run.
-def "main notify" [...sources: string] {
+# destination, such as ssh://homelab:2222. An unreachable or hanging canary
+# is skipped until the next run once its fetch times out.
+def "main notify" [...destinations: string] {
     let cache = (cache-dir)
     mkdir $cache
     announce $cache (sys host | get hostname) (entries ((state) | path join reverts.jsonl))
-    for source in $sources {
+    let limit = (fetch-timeout)
+    for destination in $destinations {
+        let source = (source-name $destination)
         # Quoted, since the remote login shell parses the command line.
         let since = (last-seen $cache $source)
-        let result = (^ssh -o BatchMode=yes -o ConnectTimeout=10 $source deploy-reverts --json --since $"'($since)'" | complete)
+        let result = (^timeout --kill-after=5 $limit ssh -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 $destination deploy-reverts --json --since $"'($since)'" | complete)
+        if $result.exit_code in [124 137] {
+            print --stderr $"Could not read ($source)'s reverts: ssh to ($destination) gave no answer within ($limit) seconds"
+            continue
+        }
         if $result.exit_code != 0 {
-            print --stderr $"Could not read ($source)'s reverts: ($result.stderr | str trim)"
+            print --stderr $"Could not read ($source)'s reverts: ssh to ($destination) exited ($result.exit_code): ($result.stderr | str trim)"
             continue
         }
         let reports = ($cache | path join reports $source)

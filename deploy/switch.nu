@@ -14,7 +14,7 @@
 # deploy/StagedSwitch.tla models these processes; its flake check proves
 # the guarantees above for every interleaving of them, kills, and reboots.
 #
-# DEPLOY_CONFIG names the JSON settings modules/nixos/system-switch.nix
+# DEPLOY_CONFIG names the JSON settings modules/nixos/fleet/system-switch.nix
 # writes: the host, the repository, the state directory, and the host's
 # health probes. The running system's settings judge the candidate, so a
 # candidate cannot weaken its own watch.
@@ -144,6 +144,19 @@ def unit-states [units: list<string>] {
     | insert queued {|row| $row.Id in $queued }
 }
 
+# Whether a touched unit failed to stay up: it failed, systemd restarted it
+# on its own, or it stopped without succeeding. Only services count
+# restarts, and targets keep no result, so systemd leaves those properties
+# out of a socket's, timer's, or target's state; a missing one is no breach.
+def unit-broke [row: record] {
+    (
+        $row.ActiveState == failed
+        or $row.SubState == auto-restart
+        or (($row.NRestarts? | default 0 | into int) > 0)
+        or ($row.ActiveState == inactive and ($row.Result? | default success) != success)
+    )
+}
+
 # Judge the candidate as it stands: a breach once a touched unit failed or
 # systemd restarted it on its own, or a unit that was fine before the switch
 # failed; settled once no touched unit has a job queued or sits between
@@ -151,9 +164,7 @@ def unit-states [units: list<string>] {
 def assess [baseline: record, units: list<string>] {
     let states = (unit-states $units)
     let describe = {|rows| $rows | each {|row| $"($row.Id) \(($row.ActiveState)/($row.SubState)\)" } | str join ', ' }
-    let broken = ($states | where {|row|
-        $row.ActiveState == failed or $row.SubState == auto-restart or ($row.NRestarts | into int) > 0 or ($row.ActiveState == inactive and $row.Result != success)
-    })
+    let broken = ($states | where {|row| unit-broke $row })
     let failed = (failed-units | where $it not-in $baseline.failed | where $it not-in ($broken | get Id))
     let breached = (
         (if ($broken | is-empty) { [] } else { [{ probe: settle, ok: false, detail: $"did not stay up: (do $describe $broken)" }] })
@@ -300,7 +311,7 @@ def render-report [entry: record, breached: list, diagnostics: record] {
         "This revision passed every pre-land check, so the watch found what they"
         "missed. Add the check that would have caught it before deployment, a flake"
         "check or an assertion in tests/deploy-revert.nix, and fill in the failure"
-        "record in docs/ci-failure-review.md. `deploy-reverts` tallies which checks"
+        "record in docs/delivery/ci-failure-review.md. `deploy-reverts` tallies which checks"
         "cause reverts, so the most frequent gap is the next one to close."
         ""
     ] | str join "\n"

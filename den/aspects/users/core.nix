@@ -1,4 +1,4 @@
 { ... }:
 {
-  den.aspects.user-core.nixos.imports = [ ../../../modules/nixos/user.nix ];
+  den.aspects.user-core.nixos.imports = [ ../../../modules/nixos/base/user.nix ];
 }

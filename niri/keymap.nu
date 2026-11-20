@@ -1,9 +1,9 @@
 # An emoji keyboard of the niri binds (Mod+Slash, `niri-desk keymap`).
 #
-# Reads the `binds { }` block of config.kdl, groups binds into layers by their
-# modifiers, and draws one layer per `tui` page as an ANSI keyboard: the main
-# block, the navigation cluster, and the numpad that holds the Johnny Decimal
-# grid. Each bound key shows the emoji of its action from keymap-emoji.nuon,
+# Reads the `binds { }` block of the installed config.kdl (rendered from
+# niri/binds.nix), groups binds into layers by their modifiers, and draws one
+# layer per `tui` page as an ANSI keyboard: the main block, the navigation
+# cluster, and the numpad. Each bound key shows the emoji of its action from keymap-emoji.nuon,
 # and a legend below names every bind of the layer, including mouse and media
 # binds that have no keycap. A key bound twice in one layer shows 💥.
 #
@@ -71,7 +71,7 @@ def parse-rows [] {
   }
 }
 
-# `spawn-sh "exec niri-desk grid left";` reads `run session grid left`.
+# `spawn-sh "exec niri-desk area work";` reads `run session area work`.
 def normalise [action: string] {
   $action
   | str trim
@@ -209,62 +209,73 @@ def default-config [] {
   $env.NIRI_CONFIG? | default (if ($user | path exists) { $user } else { '/etc/niri/config.kdl' })
 }
 
-# The keys that matter in each focus context, with short labels for the bar.
-# A hint whose key is no longer bound in config.kdl drops out, and a hint
-# without a label falls back to the bind's hotkey-overlay-title. Overview keys
-# are niri's own, and Alt+Tab may live in the recent-windows block instead of
-# binds, so those always show.
-const hint_sets = {
-  normal: [[key label]; [Mod+1…9 area] [Mod+Tab back] [Alt+Tab recent] [Mod+A agents] [Mod+G vcs] [Mod+O overview] [Mod+Slash keymap]]
-  empty: [[key label]; [Mod+Return terminal] [Mod+Shift+Return "restore layout"] [Mod+0 launcher] [Mod+A agents]]
-  single: [[key label]; [Mod+R width] [Mod+F maximise] [Mod+Return terminal] [Mod+A agents] [Mod+Tab back]]
-  stack: [[key label]; [Mod+J next] [Mod+K previous] [Mod+W tabs] [Mod+Period expel] [Mod+Shift+R height]]
-  floating: [[key label]; [Mod+V tile] [Mod+Shift+V "to tiled"] [Mod+Q close]]
-  overview: [[key label]; [←↓↑→ move] [Return pick] [Escape close]]
-}
-const always_shown = [Mod+1…9 Alt+Tab ←↓↑→ Return Escape]
+# Where each area sits and the key that points there, written beside this
+# script from niri/binds.nix when it is installed (modules/home/files.nix).
+const areas_file = path self areas.json
 
 def niri-json [query: string] {
   ^niri msg --json $query | from json
 }
 
-# normal (the base mode's shared name), empty, single, stack, floating or
-# overview, from niri's focus.
-def focus-context [] {
-  if (niri-json overview-state).is_open { return 'overview' }
-  let focused = (niri-json focused-window)
-  if $focused == null { return 'empty' }
-  if $focused.is_floating { return 'floating' }
-  let tiled = (niri-json windows | where workspace_id == $focused.workspace_id and not $it.is_floating)
-  let column = $focused.layout.pos_in_scrolling_layout.0
-  if ($tiled | where layout.pos_in_scrolling_layout.0 == $column | length) > 1 { return 'stack' }
-  if ($tiled | get layout.pos_in_scrolling_layout | each { get 0 } | uniq | length) == 1 { return 'single' }
-  'normal'
+# The navigation hints, one per seat: the six directions, `in` and `out`.
+# Each seat is a widget on the screen edge its key points to, so a hint is
+# read where the motion goes. `text` is for a horizontal bar, `key` alone for
+# a vertical one, `tips` the full chords, and `here` marks the seat of the
+# focused area. Only navigation is shown; Mod+/ has every other key.
+def seat-status [seats: record, mode: string, area: any] {
+  let seat = {|direction, text, tips|
+    let name = ($seats.areas | get $direction)
+    let key = ($seats.keys | get $direction)
+    {
+      key: $key
+      text: ($text | str replace KEY $key | str replace AREA $name)
+      here: ($area == $name)
+      tips: ([[$"Mod+Alt+($key)" $"area ($name)"] [$"Mod+Shift+Alt+($key)" $"carry the column to ($name)"]] | append $tips)
+    }
+  }
+  let corner = {|direction| do $seat $direction "KEY AREA" [] }
+  {
+    mode: $mode
+    seats: {
+      nw: (do $corner nw)
+      ne: (do $corner ne)
+      sw: (do $corner sw)
+      se: (do $corner se)
+      w: (do $seat w "KEY AREA · ← column" [[$"Mod+($seats.keys.w)" "column to the west"] [$"Mod+Shift+($seats.keys.w)" "carry the column west"]])
+      e: (do $seat e "KEY AREA · column →" [[$"Mod+($seats.keys.e)" "column to the east"] [$"Mod+Shift+($seats.keys.e)" "carry the column east"]])
+      in: (do $seat centre $"KEY AREA · ($seats.down) ↓ window" [[$"Mod+($seats.down)" "next window in the column"]])
+      out: {
+        key: $seats.out
+        text: $"Mod window · Mod+Alt area · ($seats.out) sessions · ($seats.up) ↑ window"
+        here: false
+        tips: [[$"Mod+Alt+($seats.out)" "sessions: areas and projects"] [$"Mod+($seats.up)" "previous window in the column"] [Mod+Tab "back to the previous window"] [Mod+O "overview of every workspace"]]
+      }
+    }
+  }
 }
 
-def hint-status [binds: list, mode: string] {
-  let titles = ($binds | each {|b| { key: ($b.mods | append $b.key | str join '+'), title: $b.title } })
-  let hints = (
-    $hint_sets | get $mode
-    | where {|h| $h.key in $always_shown or $h.key in $titles.key }
-    | each {|h| $h | update label { default ($titles | where key == $h.key | get 0?.title) } }
-  )
-  { mode: $mode, hints: $hints }
+# NORMAL, the base mode's shared name, or OVERVIEW while niri's overview is
+# open and its own keys (arrows, Return, Escape) apply.
+def mode [] {
+  if (niri-json overview-state).is_open { 'OVERVIEW' } else { 'NORMAL' }
 }
 
-# The bar's hint line (Noctalia plugin niri-hints): follows niri's event
-# stream and writes the focus context and its keys to
+def focused-area [] {
+  niri-json workspaces | where is_focused | get 0?.name
+}
+
+# The bar's navigation hints (Noctalia plugin niri-hints): follows niri's
+# event stream and writes the mode and each seat's hint to
 # $XDG_RUNTIME_DIR/niri-hints/status.json whenever they change. --once
 # prints the current status instead.
-def "main hints" [--once, config?: path] {
-  let config = ($config | default (default-config))
-  let binds = (load-binds $config [])
-  if $once { return (hint-status $binds (focus-context)) }
+def "main hints" [--once] {
+  let seats = (open $areas_file)
+  if $once { return (seat-status $seats (mode) (focused-area)) }
   let dir = ($env.XDG_RUNTIME_DIR? | default /tmp | path join niri-hints)
   mkdir $dir
   let file = ($dir | path join status.json)
   ^niri msg --json event-stream | lines | reduce --fold '' {|_, last|
-    let status = (hint-status $binds (focus-context) | to json --raw)
+    let status = (seat-status $seats (mode) (focused-area) | to json --raw)
     if $status != $last { $status | save --force $file }
     $status
   }

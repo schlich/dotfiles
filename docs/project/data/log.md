@@ -4,6 +4,64 @@ The history of this workspace, newest first. The `ship` skill appends a dated
 group on every release; any skill that creates or retires a document adds a line
 to the current day's group.
 
+## 2026-11-19
+
+- **Desktop**: Prepared the switch from Hex's upstream flake to the pinned
+  nixpkgs `anomaly-hex` release. Home Manager provides the on-demand user unit
+  used by the existing Niri shortcuts.
+- **Architecture**: [Workaround watch](architecture/workaround-watch.md). A
+  flake check now fails on a flake input's package, local build, or
+  overrideAttrs that no `dotfiles.nixpkgsWatch` entry covers; entries gain an
+  upstream `fix`, and the daily check also asks public caches for upstream's own
+  build of an input and FlakeHub for a local build's repository. The timer
+  queues a luvus task for each workaround that can go. Twelve workarounds that
+  had no entry gained one.
+
+## 2026-11-06
+
+- **Delivery**: Updated every flake input; nixpkgs moved from 2026-10-15 to
+  2026-11-03. Landing it took six fixes: hex's package override dropped (fixed
+  upstream), the Tangled knot's operator email (a newly required option),
+  marimohub patched without an RPATH (patchelf's edit made it segfault),
+  tangled's lix flake-compat dropped (Nix 2.34 cannot refetch it, which failed
+  nixbot's prefetch), tailscale serve units that wait for tailscaled (asus
+  reverted the first switch over t3code-tailscale-serve), and nixpkgs' nushell
+  0.116.1 for the MCP server.
+- **Workflow**: The update spent most of its hours waiting on builds. Nothing
+  built asus's system or home before a switch, so the switch built them on asus;
+  flake inputs that follow nixpkgs rebuilt from source; failures surfaced one
+  round at a time; and Claude restarts killed job-log jobs.
+- **Workflow**: `gateChecks`, the flake checks plus asus's system and home, is
+  what the luvus gate and nixbot build, so a closure that fails to build stops
+  before delivery and the switch finds it built. fh and jj-starship come from
+  nixpkgs' cache, `nix-suite update` passes gh's token to GitHub,
+  `luvus-deliver` fast-forwards the local main that tasks branch from, and a
+  den-config test requires tailscale serve and funnel units to wait for
+  tailscaled (it caught homelab's nixbot-funnel).
+
+## 2026-10-29
+
+- **Desktop**: Prepared Noctalia Minimizer with Niri shortcuts and persistent
+  hints; the change awaits validation and delivery.
+- **Workflow**: Allow agents to resolve merge conflicts automatically when
+  intent is clear, preserving both sides and rerunning checks; ask only for
+  ambiguous intent or product decisions.
+- **Bug**: [nixbot roots only jj topics](bugs/nixbot-roots-only-jj-topics.md);
+  `branches.topics` now matches the `luvus/*` branches nixbot builds.
+- **Delivery**: The product page, the nixbot, homelab-builds, and
+  session-environment docs, and the pull request template describe the luvus
+  gate, `luvus-deliver`, and nixbot instead of `ci land`.
+- **Bug**:
+  [The staged switch crashes on socket units](bugs/staged-switch-crashes-on-socket-units.md);
+  homelab's dead-man reverted `807fe228` when nixbot.socket restarted, and the
+  watch now judges units without a restart count or a result.
+- **Delivery**: homelab runs the fixed watch since `1860874b`, delivered with
+  nixbot's root rule held at `jj-*` so that the old watch could stage it; the
+  delivery after it restores `luvus/*`.
+- **Architecture**: Recorded [delivery risk](architecture/delivery-risk.md):
+  `luvus-deliver` classifies each delivery with Jev and holds a high-risk one
+  for the owner's approval of that exact commit.
+
 ## 2026-10-27
 
 - **Delivery**: Landed the work left open when this repository moved from jj and

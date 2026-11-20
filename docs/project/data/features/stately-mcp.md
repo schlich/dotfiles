@@ -7,7 +7,7 @@ generated:
   at: 2026-10-16T21:48:00Z
 sources:
 - id: shared-mcp
-  resource: ../../../../modules/tooling/ai/common.nix
+  resource: ../../../../modules/tooling/ai/shared/common.nix
   title: Shared remote MCP server configuration
 - id: stately-mcp-docs
   resource: https://stately.ai/docs/packages/mcp

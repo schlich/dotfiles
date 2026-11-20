@@ -1,6 +1,6 @@
 { lib, ... }:
 let
-  profileTools = import ./den/profile.nix { inherit lib; };
+  profileTools = import ./den/model/profile.nix { inherit lib; };
   policy = {
     criticality = "workstation";
     autoDeploy = false;
@@ -20,14 +20,18 @@ in
 {
   testWorkstationProfileResolvesToBehaviorAspects = {
     expr = profileTools.behaviorAspects {
-      role = "workstation";
-      desktop = "niri";
-      gpu = "amd";
-      portable = true;
-      development = true;
-      xr = true;
-      secrets = false;
-      remote = true;
+      profile = {
+        role = "workstation";
+        desktop = "niri";
+        development = true;
+        xr = true;
+        secrets = false;
+        remote = true;
+      };
+      hardware = {
+        gpu = "amd";
+        portable = true;
+      };
     };
     expected = [
       "workstation"
@@ -42,14 +46,18 @@ in
 
   testHeadlessProfileResolvesWithoutDesktopAspects = {
     expr = profileTools.behaviorAspects {
-      role = "server";
-      desktop = "none";
-      gpu = "intel";
-      portable = false;
-      development = false;
-      xr = false;
-      secrets = false;
-      remote = true;
+      profile = {
+        role = "server";
+        desktop = "none";
+        development = false;
+        xr = false;
+        secrets = false;
+        remote = true;
+      };
+      hardware = {
+        gpu = "intel";
+        portable = false;
+      };
     };
     expected = [
       "base"
@@ -64,24 +72,28 @@ in
       profile = {
         role = "server";
         desktop = "none";
-        gpu = "none";
-        portable = false;
         development = false;
         xr = false;
         secrets = false;
         remote = true;
+      };
+      hardware = {
+        gpu = "none";
+        portable = false;
       };
       services = {
         jjCiWebhook = false;
         nixObservability = false;
         paseo = true;
         opencodeServer = false;
+        t3code = true;
         crossStream = true;
       };
     };
     expected = [
       "base"
       "paseo"
+      "t3code"
       "cross-stream"
       "server"
       "headless"
@@ -95,12 +107,14 @@ in
       asus = [
         "jj-ci-webhook"
         "nix-observability"
+        "t3code"
       ];
       asus-headless = [ ];
       asus-usb = [ ];
       homelab = [
         "paseo"
         "opencode-server"
+        "t3code"
         "cross-stream"
       ];
     };
@@ -112,8 +126,6 @@ in
       profile = {
         role = "server";
         desktop = "niri";
-        gpu = "amd";
-        portable = false;
         development = false;
         xr = false;
         secrets = false;
@@ -131,8 +143,6 @@ in
       profile = {
         role = "workstation";
         desktop = "none";
-        gpu = "none";
-        portable = false;
         development = false;
         xr = true;
         secrets = false;
@@ -150,8 +160,6 @@ in
       profile = {
         role = "server";
         desktop = "none";
-        gpu = "none";
-        portable = false;
         development = false;
         xr = false;
         secrets = true;
@@ -169,8 +177,6 @@ in
       profile = {
         role = "server";
         desktop = "none";
-        gpu = "none";
-        portable = false;
         development = false;
         xr = false;
         secrets = false;

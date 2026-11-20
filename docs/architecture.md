@@ -30,7 +30,7 @@ standalone, apart from the system: an inventory user with `home = true`
 `homeConfigurations."USER@HOST"`, the name `nh home switch` looks up for that
 user on that host. `den/inventory.nix` builds each home from its host's
 package set and passes the evaluated system as `osConfig`, so home modules
-still read system facts; `den/aspects/home-manager-host.nix` adds the overlays
+still read system facts; `den/aspects/users/home-manager-host.nix` adds the overlays
 those homes need to exactly those hosts. No system embeds or activates a
 home, so applying a change is two steps, the system and then the home, and
 Clan and a plain `system-switch` change only the system (see "Applying a
@@ -119,7 +119,7 @@ activation graph, and runs the independent desktop configuration checks.
 Hosts whose `policy.criticality` is `disposable` evaluate in the flake's
 `remoteChecks` instead of `checks`, as do evaluations of homelab with modules
 it has not adopted yet: GitHub Actions reports them after each push without
-blocking, and `ci land` leaves them out.
+blocking, and neither the luvus gate nor nixbot builds them.
 
 No activation is implied by evaluation or builds. A system or home activation
 requires an explicit operator decision after the generated output has been
@@ -255,7 +255,7 @@ open an agent on its report. `deploy-reverts` lists the log and tallies the
 checks that caused reverts. That tally is the feedback loop: each revert marks
 a regression the pre-deploy checks missed, and the next check to write is the
 one that would have caught the most frequent cause (see
-`docs/ci-failure-review.md`). `tests/deploy-revert.nix`, in `remoteChecks`, runs
+`docs/delivery/ci-failure-review.md`). `tests/deploy-revert.nix`, in `remoteChecks`, runs
 a broken candidate, a healthy one, and a killed watch through the real script
 in a VM.
 
@@ -266,8 +266,12 @@ before a workstation switches. It takes each revision once: one it deployed or
 rejected waits for `main` to move, and `system-switch` there retries a rejected
 one on request. A manual switch and the timer share a lock, and the timer
 skips its turn while the lock is held. asus's notifier fetches homelab's new
-reverts over ssh (`deploy-reverts notify homelab`) and keeps them under
-`~/.local/state/deploy-reverts`, where `deploy-reverts --all` includes them.
+reverts over OpenSSH on its `deploy.sshPort`
+(`deploy-reverts notify ssh://homelab:2222`), since Tailscale SSH on port 22
+hangs a key-based login, and keeps them under `~/.local/state/deploy-reverts`,
+where `deploy-reverts --all` includes them. Each fetch is killed after 60
+seconds, the unit is never restarted by a switch, and each notification waits
+for its answer in a transient unit of its own, so no switch waits on it.
 The den-policy check lets a host deploy itself only with health checks to
 watch, and inventory validation also requires review and rollback for a
 critical one. A Clan update to homelab activates without the watch and makes

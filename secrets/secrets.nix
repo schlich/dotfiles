@@ -6,7 +6,7 @@ let
   homelab = (import ../hosts/homelab/builder.nix).hostKey;
 in
 {
-  # nixbot's GitHub App, which nixbot-register writes (docs/nixbot.md).
+  # nixbot's GitHub App, which nixbot-register writes (docs/delivery/nixbot.md).
   "nixbot/github-app.pem.age".publicKeys = [
     admin
     homelab
@@ -21,7 +21,7 @@ in
   ];
 
   # discord-digest's DISCORD_TOKEN= and ANTHROPIC_API_KEY= lines
-  # (modules/nixos/discord-digest.nix).
+  # (modules/nixos/homelab/discord-digest.nix).
   "discord-digest/env.age".publicKeys = [
     admin
     homelab

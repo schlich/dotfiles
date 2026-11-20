@@ -124,19 +124,75 @@ let
     };
   };
 
+  # The T3 Code server's system half: on a stationary host its one owner
+  # lingers, so the server runs from boot, and Tailscale Serve publishes the
+  # loopback listener on the tailnet alone, never through Funnel.
+  t3codeTests = name: config: {
+    testT3codeServerIsPublishedToTheTailnetOnly = {
+      expr = {
+        owner = config.dotfiles.t3code.user;
+        linger = config.users.users.${config.dotfiles.t3code.user}.linger;
+        claim = config.dotfiles.tailscale.https.t3code;
+        serve = lib.hasSuffix "/bin/tailscale serve --https=3773 http://127.0.0.1:3773" config.systemd.services.t3code-tailscale-serve.serviceConfig.ExecStart;
+      };
+      expected = {
+        owner = lib.head (builtins.attrNames (homesOf name));
+        linger = if hosts.${name}.hardware.portable then null else true;
+        claim = {
+          port = 3773;
+          funnel = false;
+        };
+        serve = true;
+      };
+    };
+  };
+
+  # A unit that runs `tailscale serve` or `tailscale funnel` when the system
+  # starts it fails a switch that restarts tailscaled before the daemon is
+  # back, even though Restart= recovers it seconds later: asus reverted the
+  # 2026-11-03 nixpkgs update over t3code-tailscale-serve. Every such unit
+  # waits for the backend first (waitForBackend, modules/nixos/fleet/tailscale-https.nix).
+  tailscaleServeTests = config: {
+    testTailscaleServeUnitsWaitForTheBackend = {
+      expr = builtins.attrNames (
+        lib.filterAttrs (
+          _: unit:
+          let
+            start = toString (lib.toList (unit.serviceConfig.ExecStart or ""));
+            pre = map toString (lib.toList (unit.serviceConfig.ExecStartPre or [ ]));
+          in
+          unit.enable
+          && unit.wantedBy != [ ]
+          && (lib.hasInfix "/bin/tailscale serve " start || lib.hasInfix "/bin/tailscale funnel " start)
+          && !(lib.elem (toString (config.dotfiles.tailscale.waitForBackend or "")) pre)
+        ) config.systemd.services
+      );
+      expected = [ ];
+    };
+  };
+
   # A standalone home follows the host it is named for: the desktop home only
-  # on a workstation, and ci's traces only where the viewer runs. Den keys a
-  # home's scope by its name, so homes of one user that shared a name would
-  # all resolve as one host's (den/inventory.nix names them USER@HOST).
+  # on a workstation, ci's traces only where the viewer runs, and the T3 Code
+  # server, on loopback, only where the inventory runs it. Den keys a home's
+  # scope by its name, so homes of one user that shared a name would all
+  # resolve as one host's (den/inventory.nix names them USER@HOST).
   homeTests = host: userName: config: {
     "testHome_${userName}_FollowsItsHost" = {
       expr = {
         desktop = config.programs.ghostty.enable;
         traces = (config.dotfiles.ci.tracesEndpoint or null) != null;
+        t3code = config.dotfiles.t3code.server.enable or false;
+        t3codeLoopback =
+          !(config.dotfiles.t3code.server.enable or false)
+          || lib.hasInfix "-t3code-serve --host 127.0.0.1 --port 3773 " (
+            toString config.systemd.user.services.t3code-server.Service.ExecStart
+          );
       };
       expected = {
         desktop = host.profile.role == "workstation";
         traces = host.services.nixObservability;
+        t3code = host.services.t3code;
+        t3codeLoopback = true;
       };
     };
   };
@@ -154,6 +210,8 @@ let
         in
         lib.optionalAttrs host.deploy.enable (deployTests name config)
         // lib.optionalAttrs (host.profile.remote && name != "homelab") (remoteClientTests config)
+        // lib.optionalAttrs host.services.t3code (t3codeTests name config)
+        // lib.optionalAttrs config.services.tailscale.enable (tailscaleServeTests config)
         // (hostTests.${name} or (_: { })) config
         // lib.concatMapAttrs (
           userName: _: homeTests host userName homeConfigurations."${userName}@${name}".config

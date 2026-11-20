@@ -6,13 +6,13 @@ generated:
   at: 2026-10-20T15:36:00Z
 sources:
 - id: secrets-module
-  resource: modules/nixos/secrets.nix
+  resource: modules/nixos/base/secrets.nix
   title: The secrets mechanism a host gets with profile.secrets
 - id: rules
   resource: secrets/secrets.nix
   title: Each encrypted file's recipients
 - id: nixbot
-  resource: modules/nixos/nixbot.nix
+  resource: modules/nixos/builds/nixbot.nix
   title: nixbot's App manifest and the secrets it decrypts
 ---
 
