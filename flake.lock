@@ -21,6 +21,23 @@
         "type": "github"
       }
     },
+    "agents": {
+      "inputs": {
+        "clients": "clients",
+        "fieldnotes": "fieldnotes",
+        "knowledge": "knowledge",
+        "skills": "skills"
+      },
+      "locked": {
+        "path": "./lib/inputs/agents",
+        "type": "path"
+      },
+      "original": {
+        "path": "./lib/inputs/agents",
+        "type": "path"
+      },
+      "parent": []
+    },
     "ai-usagebar": {
       "inputs": {
         "nixpkgs": [
@@ -77,10 +94,10 @@
     },
     "atuin": {
       "inputs": {
-        "crane": "crane",
+        "crane": "crane_2",
         "fenix": "fenix",
         "flake-compat": "flake-compat",
-        "flake-parts": "flake-parts",
+        "flake-parts": "flake-parts_3",
         "nixpkgs": [
           "system",
           "nixpkgs"
@@ -116,6 +133,25 @@
         "repo": "autoresearch",
         "type": "github"
       }
+    },
+    "builds": {
+      "inputs": {
+        "gen-inspect": "gen-inspect",
+        "iets": "iets",
+        "nix-grpc-store": "nix-grpc-store",
+        "nixbot": "nixbot",
+        "npr": "npr",
+        "rust-overlay": "rust-overlay"
+      },
+      "locked": {
+        "path": "./lib/inputs/builds",
+        "type": "path"
+      },
+      "original": {
+        "path": "./lib/inputs/builds",
+        "type": "path"
+      },
+      "parent": []
     },
     "bun2nix": {
       "inputs": {
@@ -197,8 +233,8 @@
           "nixpkgs"
         ],
         "sops-nix": "sops-nix",
-        "systems": "systems",
-        "treefmt-nix": "treefmt-nix"
+        "systems": "systems_2",
+        "treefmt-nix": "treefmt-nix_4"
       },
       "locked": {
         "lastModified": 1795002542,
@@ -211,6 +247,27 @@
         "type": "tarball",
         "url": "https://git.clan.lol/clan/clan-core/archive/main.tar.gz"
       }
+    },
+    "clients": {
+      "inputs": {
+        "codex": "codex",
+        "continuum-ide": "continuum-ide",
+        "llm-agents": "llm-agents",
+        "nixpkgs-t3code": "nixpkgs-t3code",
+        "opencode": "opencode",
+        "paseo": "paseo"
+      },
+      "locked": {
+        "path": "./clients",
+        "type": "path"
+      },
+      "original": {
+        "path": "./clients",
+        "type": "path"
+      },
+      "parent": [
+        "agents"
+      ]
     },
     "codex": {
       "inputs": {
@@ -262,11 +319,11 @@
     },
     "crane": {
       "locked": {
-        "lastModified": 1790899423,
-        "narHash": "sha256-THGtz65UGJU+sonZidRboyCMk+9DclpMF7pwL4uDV4M=",
+        "lastModified": 1793836618,
+        "narHash": "sha256-TREenflwEjxOSq292FYwbc3kEm7TDRtXCZRNWEdjBmg=",
         "owner": "ipetkov",
         "repo": "crane",
-        "rev": "47b6b27ed9a3a9181415e4367d0c30ab2a0e0250",
+        "rev": "79fd63528501446749c09f08cad486a58c7d173e",
         "type": "github"
       },
       "original": {
@@ -277,11 +334,11 @@
     },
     "crane_2": {
       "locked": {
-        "lastModified": 1793836618,
-        "narHash": "sha256-TREenflwEjxOSq292FYwbc3kEm7TDRtXCZRNWEdjBmg=",
+        "lastModified": 1790899423,
+        "narHash": "sha256-THGtz65UGJU+sonZidRboyCMk+9DclpMF7pwL4uDV4M=",
         "owner": "ipetkov",
         "repo": "crane",
-        "rev": "79fd63528501446749c09f08cad486a58c7d173e",
+        "rev": "47b6b27ed9a3a9181415e4367d0c30ab2a0e0250",
         "type": "github"
       },
       "original": {
@@ -365,6 +422,24 @@
         "repo": "den",
         "type": "github"
       }
+    },
+    "desktop": {
+      "inputs": {
+        "ai-usagebar": "ai-usagebar",
+        "dicta": "dicta",
+        "hokum": "hokum",
+        "niri": "niri",
+        "noc-minimizer": "noc-minimizer"
+      },
+      "locked": {
+        "path": "./lib/inputs/desktop",
+        "type": "path"
+      },
+      "original": {
+        "path": "./lib/inputs/desktop",
+        "type": "path"
+      },
+      "parent": []
     },
     "dicta": {
       "inputs": {
@@ -535,14 +610,19 @@
     },
     "flake-parts": {
       "inputs": {
-        "nixpkgs-lib": "nixpkgs-lib"
+        "nixpkgs-lib": [
+          "agents",
+          "clients",
+          "llm-agents",
+          "nixpkgs"
+        ]
       },
       "locked": {
-        "lastModified": 1788450739,
-        "narHash": "sha256-glZLQlzIn1fXH6PazR2iUmTo7kzzyYSshrWhLS9TqCU=",
+        "lastModified": 1793576659,
+        "narHash": "sha256-V1h85lUaJBQoHFrB2vpXZOE0Ju1MYSnIpsehoVZYlDo=",
         "owner": "hercules-ci",
         "repo": "flake-parts",
-        "rev": "31729ca8cbdb4fa927b34e5f4353e6a83f39e993",
+        "rev": "ea2630b7470978622c7689a1ff75d2b389175399",
         "type": "github"
       },
       "original": {
@@ -575,19 +655,14 @@
     },
     "flake-parts_3": {
       "inputs": {
-        "nixpkgs-lib": [
-          "agents",
-          "clients",
-          "llm-agents",
-          "nixpkgs"
-        ]
+        "nixpkgs-lib": "nixpkgs-lib"
       },
       "locked": {
-        "lastModified": 1793576659,
-        "narHash": "sha256-V1h85lUaJBQoHFrB2vpXZOE0Ju1MYSnIpsehoVZYlDo=",
+        "lastModified": 1788450739,
+        "narHash": "sha256-glZLQlzIn1fXH6PazR2iUmTo7kzzyYSshrWhLS9TqCU=",
         "owner": "hercules-ci",
         "repo": "flake-parts",
-        "rev": "ea2630b7470978622c7689a1ff75d2b389175399",
+        "rev": "31729ca8cbdb4fa927b34e5f4353e6a83f39e993",
         "type": "github"
       },
       "original": {
@@ -932,31 +1007,6 @@
         "type": "github"
       }
     },
-    "hex": {
-      "inputs": {
-        "home-manager": [
-          "system",
-          "home-manager"
-        ],
-        "nixpkgs": [
-          "system",
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1795074143,
-        "narHash": "sha256-fk27N4GViUuwqCH2RiKG9xYmXulsFgPFGUaGSjUiXbs=",
-        "owner": "anomalyco",
-        "repo": "hex",
-        "rev": "b43d43710e68518fc911d4b7886aaf4ba96de9bf",
-        "type": "github"
-      },
-      "original": {
-        "owner": "anomalyco",
-        "repo": "hex",
-        "type": "github"
-      }
-    },
     "hokum": {
       "inputs": {
         "nixpkgs": [
@@ -1062,7 +1112,7 @@
     },
     "iets": {
       "inputs": {
-        "crane": "crane_2",
+        "crane": "crane",
         "nixpkgs": [
           "system",
           "nixpkgs"
@@ -1117,289 +1167,6 @@
         "type": "github"
       }
     },
-    "inputs-agents": {
-      "inputs": {
-        "clients": "inputs-agents-clients",
-        "fieldnotes": "fieldnotes",
-        "knowledge": "inputs-agents-knowledge",
-        "skills": "inputs-agents-skills"
-      },
-      "locked": {
-        "path": "./lib/inputs/agents",
-        "type": "path"
-      },
-      "original": {
-        "path": "./lib/inputs/agents",
-        "type": "path"
-      },
-      "parent": []
-    },
-    "inputs-agents-clients": {
-      "inputs": {
-        "codex": "codex",
-        "continuum-ide": "continuum-ide",
-        "llm-agents": "llm-agents",
-        "nixpkgs-t3code": "nixpkgs-t3code",
-        "opencode": "opencode",
-        "paseo": "paseo"
-      },
-      "locked": {
-        "path": "./clients",
-        "type": "path"
-      },
-      "original": {
-        "path": "./clients",
-        "type": "path"
-      },
-      "parent": [
-        "agents"
-      ]
-    },
-    "inputs-agents-knowledge": {
-      "inputs": {
-        "iwe": "iwe",
-        "iwe-skills": "iwe-skills"
-      },
-      "locked": {
-        "path": "./knowledge",
-        "type": "path"
-      },
-      "original": {
-        "path": "./knowledge",
-        "type": "path"
-      },
-      "parent": [
-        "agents"
-      ]
-    },
-    "inputs-agents-skills": {
-      "inputs": {
-        "jev": "inputs-agents-skills-jev",
-        "meta-quest-agentic-tools": "meta-quest-agentic-tools",
-        "notebooks": "inputs-agents-skills-notebooks",
-        "practice": "inputs-agents-skills-practice",
-        "testing": "inputs-agents-skills-testing",
-        "web": "inputs-agents-skills-web"
-      },
-      "locked": {
-        "path": "./skills",
-        "type": "path"
-      },
-      "original": {
-        "path": "./skills",
-        "type": "path"
-      },
-      "parent": [
-        "agents"
-      ]
-    },
-    "inputs-agents-skills-jev": {
-      "inputs": {
-        "jevify": "jevify",
-        "typesafe-skills": "typesafe-skills"
-      },
-      "locked": {
-        "path": "./jev",
-        "type": "path"
-      },
-      "original": {
-        "path": "./jev",
-        "type": "path"
-      },
-      "parent": [
-        "agents",
-        "skills"
-      ]
-    },
-    "inputs-agents-skills-notebooks": {
-      "inputs": {
-        "marimo-pair": "marimo-pair",
-        "marimo-skills": "marimo-skills"
-      },
-      "locked": {
-        "path": "./notebooks",
-        "type": "path"
-      },
-      "original": {
-        "path": "./notebooks",
-        "type": "path"
-      },
-      "parent": [
-        "agents",
-        "skills"
-      ]
-    },
-    "inputs-agents-skills-practice": {
-      "inputs": {
-        "autoresearch": "autoresearch",
-        "grill-me": "grill-me",
-        "humanlayer-skills": "humanlayer-skills",
-        "mattpocock-skills": "mattpocock-skills"
-      },
-      "locked": {
-        "path": "./practice",
-        "type": "path"
-      },
-      "original": {
-        "path": "./practice",
-        "type": "path"
-      },
-      "parent": [
-        "agents",
-        "skills"
-      ]
-    },
-    "inputs-agents-skills-testing": {
-      "inputs": {
-        "antithesis-skills": "antithesis-skills",
-        "hegel-skill": "hegel-skill"
-      },
-      "locked": {
-        "path": "./testing",
-        "type": "path"
-      },
-      "original": {
-        "path": "./testing",
-        "type": "path"
-      },
-      "parent": [
-        "agents",
-        "skills"
-      ]
-    },
-    "inputs-agents-skills-web": {
-      "inputs": {
-        "archify": "archify",
-        "effective-html": "effective-html",
-        "modern-web-guidance": "modern-web-guidance"
-      },
-      "locked": {
-        "path": "./web",
-        "type": "path"
-      },
-      "original": {
-        "path": "./web",
-        "type": "path"
-      },
-      "parent": [
-        "agents",
-        "skills"
-      ]
-    },
-    "inputs-builds": {
-      "inputs": {
-        "gen-inspect": "gen-inspect",
-        "iets": "iets",
-        "nix-grpc-store": "nix-grpc-store",
-        "nixbot": "nixbot",
-        "npr": "npr",
-        "rust-overlay": "rust-overlay"
-      },
-      "locked": {
-        "path": "./lib/inputs/builds",
-        "type": "path"
-      },
-      "original": {
-        "path": "./lib/inputs/builds",
-        "type": "path"
-      },
-      "parent": []
-    },
-    "inputs-desktop": {
-      "inputs": {
-        "ai-usagebar": "ai-usagebar",
-        "dicta": "dicta",
-        "hex": "hex",
-        "hokum": "hokum",
-        "niri": "niri",
-        "noc-minimizer": "noc-minimizer"
-      },
-      "locked": {
-        "path": "./lib/inputs/desktop",
-        "type": "path"
-      },
-      "original": {
-        "path": "./lib/inputs/desktop",
-        "type": "path"
-      },
-      "parent": []
-    },
-    "inputs-system": {
-      "inputs": {
-        "agenix": "agenix",
-        "clan-core": "clan-core",
-        "den": "den",
-        "home-manager": "home-manager",
-        "impermanence": "impermanence",
-        "nixpkgs": "nixpkgs"
-      },
-      "locked": {
-        "path": "./lib/inputs/system",
-        "type": "path"
-      },
-      "original": {
-        "path": "./lib/inputs/system",
-        "type": "path"
-      },
-      "parent": []
-    },
-    "inputs-terminal": {
-      "inputs": {
-        "luvus": "luvus",
-        "shell": "inputs-terminal-shell",
-        "vcs": "inputs-terminal-vcs"
-      },
-      "locked": {
-        "path": "./lib/inputs/terminal",
-        "type": "path"
-      },
-      "original": {
-        "path": "./lib/inputs/terminal",
-        "type": "path"
-      },
-      "parent": []
-    },
-    "inputs-terminal-shell": {
-      "inputs": {
-        "atuin": "atuin",
-        "nushellWith": "nushellWith",
-        "osc7501-nu": "osc7501-nu",
-        "ptyZZZ": "ptyZZZ",
-        "rex": "rex",
-        "xs": "xs"
-      },
-      "locked": {
-        "path": "./shell",
-        "type": "path"
-      },
-      "original": {
-        "path": "./shell",
-        "type": "path"
-      },
-      "parent": [
-        "terminal"
-      ]
-    },
-    "inputs-terminal-vcs": {
-      "inputs": {
-        "ci": "ci",
-        "gh-stack": "gh-stack",
-        "jj-hunk": "jj-hunk",
-        "tangled": "tangled",
-        "tangled-dash": "tangled-dash"
-      },
-      "locked": {
-        "path": "./vcs",
-        "type": "path"
-      },
-      "original": {
-        "path": "./vcs",
-        "type": "path"
-      },
-      "parent": [
-        "terminal"
-      ]
-    },
     "iwe": {
       "flake": false,
       "locked": {
@@ -1432,6 +1199,24 @@
         "repo": "skills",
         "type": "github"
       }
+    },
+    "jev": {
+      "inputs": {
+        "jevify": "jevify",
+        "typesafe-skills": "typesafe-skills"
+      },
+      "locked": {
+        "path": "./jev",
+        "type": "path"
+      },
+      "original": {
+        "path": "./jev",
+        "type": "path"
+      },
+      "parent": [
+        "agents",
+        "skills"
+      ]
     },
     "jevify": {
       "flake": false,
@@ -1466,16 +1251,33 @@
         "type": "github"
       }
     },
+    "knowledge": {
+      "inputs": {
+        "iwe": "iwe",
+        "iwe-skills": "iwe-skills"
+      },
+      "locked": {
+        "path": "./knowledge",
+        "type": "path"
+      },
+      "original": {
+        "path": "./knowledge",
+        "type": "path"
+      },
+      "parent": [
+        "agents"
+      ]
+    },
     "llm-agents": {
       "inputs": {
         "bun2nix": "bun2nix",
-        "flake-parts": "flake-parts_3",
+        "flake-parts": "flake-parts",
         "nixpkgs": [
           "system",
           "nixpkgs"
         ],
-        "systems": "systems_2",
-        "treefmt-nix": "treefmt-nix_2"
+        "systems": "systems",
+        "treefmt-nix": "treefmt-nix"
       },
       "locked": {
         "lastModified": 1795073199,
@@ -1624,7 +1426,7 @@
           "nix-grpc-store",
           "nixpkgs"
         ],
-        "treefmt-nix": "treefmt-nix_3"
+        "treefmt-nix": "treefmt-nix_2"
       },
       "locked": {
         "lastModified": 1794502518,
@@ -1762,7 +1564,7 @@
           "system",
           "nixpkgs"
         ],
-        "treefmt-nix": "treefmt-nix_4"
+        "treefmt-nix": "treefmt-nix_3"
       },
       "locked": {
         "lastModified": 1794475042,
@@ -1780,16 +1582,18 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1794890597,
-        "narHash": "sha256-lME2lHoDHAaSHP3/okgiVoJ0icVEvsQH8LeU3We7tcc=",
-        "rev": "04906337b6d53e8bb0eaf0470ae9f070a4d4eb55",
-        "revCount": 1122823,
-        "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/NixOS/nixpkgs/0.1.1122823%2Brev-04906337b6d53e8bb0eaf0470ae9f070a4d4eb55/01a1edad-7bbe-78a3-92ab-c0ded7270cde/source.tar.gz"
+        "lastModified": 1790510107,
+        "narHash": "sha256-EVMNYv7hYDDD9TGVT/hIyTYgpiXA8y3m5xIEIxuGNU0=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "3181085bfd08663b6b9e60bc7a8395c2aaa741bd",
+        "type": "github"
       },
       "original": {
-        "type": "tarball",
-        "url": "https://flakehub.com/f/NixOS/nixpkgs/0.1"
+        "owner": "NixOS",
+        "ref": "nixpkgs-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
       }
     },
     "nixpkgs-lib": {
@@ -1872,22 +1676,6 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1790510107,
-        "narHash": "sha256-EVMNYv7hYDDD9TGVT/hIyTYgpiXA8y3m5xIEIxuGNU0=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "3181085bfd08663b6b9e60bc7a8395c2aaa741bd",
-        "type": "github"
-      },
-      "original": {
-        "owner": "NixOS",
-        "ref": "nixpkgs-unstable",
-        "repo": "nixpkgs",
-        "type": "github"
-      }
-    },
-    "nixpkgs_3": {
-      "locked": {
         "lastModified": 1744536153,
         "narHash": "sha256-awS2zRgF4uTwrOKwwiJcByDzDOdo3Q1rPZbiHQg/N38=",
         "owner": "NixOS",
@@ -1900,6 +1688,20 @@
         "ref": "nixpkgs-unstable",
         "repo": "nixpkgs",
         "type": "github"
+      }
+    },
+    "nixpkgs_3": {
+      "locked": {
+        "lastModified": 1794890597,
+        "narHash": "sha256-lME2lHoDHAaSHP3/okgiVoJ0icVEvsQH8LeU3We7tcc=",
+        "rev": "04906337b6d53e8bb0eaf0470ae9f070a4d4eb55",
+        "revCount": 1122823,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/NixOS/nixpkgs/0.1.1122823%2Brev-04906337b6d53e8bb0eaf0470ae9f070a4d4eb55/01a1edad-7bbe-78a3-92ab-c0ded7270cde/source.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://flakehub.com/f/NixOS/nixpkgs/0.1"
       }
     },
     "noc-minimizer": {
@@ -1922,6 +1724,24 @@
         "repo": "Noc-minimizer",
         "type": "github"
       }
+    },
+    "notebooks": {
+      "inputs": {
+        "marimo-pair": "marimo-pair",
+        "marimo-skills": "marimo-skills"
+      },
+      "locked": {
+        "path": "./notebooks",
+        "type": "path"
+      },
+      "original": {
+        "path": "./notebooks",
+        "type": "path"
+      },
+      "parent": [
+        "agents",
+        "skills"
+      ]
     },
     "npr": {
       "inputs": {
@@ -1986,7 +1806,7 @@
     },
     "opencode": {
       "inputs": {
-        "nixpkgs": "nixpkgs_2"
+        "nixpkgs": "nixpkgs"
       },
       "locked": {
         "lastModified": 1792093702,
@@ -2041,6 +1861,26 @@
         "type": "github"
       }
     },
+    "practice": {
+      "inputs": {
+        "autoresearch": "autoresearch",
+        "grill-me": "grill-me",
+        "humanlayer-skills": "humanlayer-skills",
+        "mattpocock-skills": "mattpocock-skills"
+      },
+      "locked": {
+        "path": "./practice",
+        "type": "path"
+      },
+      "original": {
+        "path": "./practice",
+        "type": "path"
+      },
+      "parent": [
+        "agents",
+        "skills"
+      ]
+    },
     "ptyZZZ": {
       "flake": false,
       "locked": {
@@ -2077,11 +1917,11 @@
     },
     "root": {
       "inputs": {
-        "agents": "inputs-agents",
-        "builds": "inputs-builds",
-        "desktop": "inputs-desktop",
-        "system": "inputs-system",
-        "terminal": "inputs-terminal"
+        "agents": "agents",
+        "builds": "builds",
+        "desktop": "desktop",
+        "system": "system",
+        "terminal": "terminal"
       }
     },
     "rust-analyzer-src": {
@@ -2120,7 +1960,7 @@
     },
     "rust-overlay": {
       "inputs": {
-        "nixpkgs": "nixpkgs_3"
+        "nixpkgs": "nixpkgs_2"
       },
       "locked": {
         "lastModified": 1792219666,
@@ -2159,6 +1999,48 @@
         "repo": "rust-overlay",
         "type": "github"
       }
+    },
+    "shell": {
+      "inputs": {
+        "atuin": "atuin",
+        "nushellWith": "nushellWith",
+        "osc7501-nu": "osc7501-nu",
+        "ptyZZZ": "ptyZZZ",
+        "rex": "rex",
+        "xs": "xs"
+      },
+      "locked": {
+        "path": "./shell",
+        "type": "path"
+      },
+      "original": {
+        "path": "./shell",
+        "type": "path"
+      },
+      "parent": [
+        "terminal"
+      ]
+    },
+    "skills": {
+      "inputs": {
+        "jev": "jev",
+        "meta-quest-agentic-tools": "meta-quest-agentic-tools",
+        "notebooks": "notebooks",
+        "practice": "practice",
+        "testing": "testing",
+        "web": "web"
+      },
+      "locked": {
+        "path": "./skills",
+        "type": "path"
+      },
+      "original": {
+        "path": "./skills",
+        "type": "path"
+      },
+      "parent": [
+        "agents"
+      ]
     },
     "sops-nix": {
       "inputs": {
@@ -2211,6 +2093,25 @@
         "url": "https://sqlite.org/2024/sqlite-amalgamation-3450100.zip"
       }
     },
+    "system": {
+      "inputs": {
+        "agenix": "agenix",
+        "clan-core": "clan-core",
+        "den": "den",
+        "home-manager": "home-manager",
+        "impermanence": "impermanence",
+        "nixpkgs": "nixpkgs_3"
+      },
+      "locked": {
+        "path": "./lib/inputs/system",
+        "type": "path"
+      },
+      "original": {
+        "path": "./lib/inputs/system",
+        "type": "path"
+      },
+      "parent": []
+    },
     "systems": {
       "locked": {
         "lastModified": 1791244623,
@@ -2222,7 +2123,6 @@
       },
       "original": {
         "owner": "nix-systems",
-        "ref": "future-26.11",
         "repo": "default",
         "type": "github"
       }
@@ -2238,6 +2138,7 @@
       },
       "original": {
         "owner": "nix-systems",
+        "ref": "future-26.11",
         "repo": "default",
         "type": "github"
       }
@@ -2326,6 +2227,40 @@
         "type": "github"
       }
     },
+    "terminal": {
+      "inputs": {
+        "luvus": "luvus",
+        "shell": "shell",
+        "vcs": "vcs"
+      },
+      "locked": {
+        "path": "./lib/inputs/terminal",
+        "type": "path"
+      },
+      "original": {
+        "path": "./lib/inputs/terminal",
+        "type": "path"
+      },
+      "parent": []
+    },
+    "testing": {
+      "inputs": {
+        "antithesis-skills": "antithesis-skills",
+        "hegel-skill": "hegel-skill"
+      },
+      "locked": {
+        "path": "./testing",
+        "type": "path"
+      },
+      "original": {
+        "path": "./testing",
+        "type": "path"
+      },
+      "parent": [
+        "agents",
+        "skills"
+      ]
+    },
     "timeless-fonts-src": {
       "flake": false,
       "locked": {
@@ -2340,28 +2275,6 @@
       }
     },
     "treefmt-nix": {
-      "inputs": {
-        "nixpkgs": [
-          "system",
-          "clan-core",
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1791885023,
-        "narHash": "sha256-C3alQ2MEt0zVrUSho5NUDo3jmhbff72++bfwoqT9Omo=",
-        "owner": "numtide",
-        "repo": "treefmt-nix",
-        "rev": "0d6d739a833ba9a9c93034862e4a7b061a062a1c",
-        "type": "github"
-      },
-      "original": {
-        "owner": "numtide",
-        "repo": "treefmt-nix",
-        "type": "github"
-      }
-    },
-    "treefmt-nix_2": {
       "inputs": {
         "nixpkgs": [
           "agents",
@@ -2384,7 +2297,7 @@
         "type": "github"
       }
     },
-    "treefmt-nix_3": {
+    "treefmt-nix_2": {
       "inputs": {
         "nixpkgs": [
           "builds",
@@ -2407,7 +2320,7 @@
         "type": "github"
       }
     },
-    "treefmt-nix_4": {
+    "treefmt-nix_3": {
       "inputs": {
         "nixpkgs": [
           "builds",
@@ -2421,6 +2334,28 @@
         "owner": "numtide",
         "repo": "treefmt-nix",
         "rev": "db947814a175b7ca6ded66e21383d938df01c227",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "treefmt-nix",
+        "type": "github"
+      }
+    },
+    "treefmt-nix_4": {
+      "inputs": {
+        "nixpkgs": [
+          "system",
+          "clan-core",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1791885023,
+        "narHash": "sha256-C3alQ2MEt0zVrUSho5NUDo3jmhbff72++bfwoqT9Omo=",
+        "owner": "numtide",
+        "repo": "treefmt-nix",
+        "rev": "0d6d739a833ba9a9c93034862e4a7b061a062a1c",
         "type": "github"
       },
       "original": {
@@ -2444,6 +2379,45 @@
         "repo": "skills",
         "type": "github"
       }
+    },
+    "vcs": {
+      "inputs": {
+        "ci": "ci",
+        "gh-stack": "gh-stack",
+        "jj-hunk": "jj-hunk",
+        "tangled": "tangled",
+        "tangled-dash": "tangled-dash"
+      },
+      "locked": {
+        "path": "./vcs",
+        "type": "path"
+      },
+      "original": {
+        "path": "./vcs",
+        "type": "path"
+      },
+      "parent": [
+        "terminal"
+      ]
+    },
+    "web": {
+      "inputs": {
+        "archify": "archify",
+        "effective-html": "effective-html",
+        "modern-web-guidance": "modern-web-guidance"
+      },
+      "locked": {
+        "path": "./web",
+        "type": "path"
+      },
+      "original": {
+        "path": "./web",
+        "type": "path"
+      },
+      "parent": [
+        "agents",
+        "skills"
+      ]
     },
     "xs": {
       "inputs": {

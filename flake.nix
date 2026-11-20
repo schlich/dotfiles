@@ -612,6 +612,20 @@
               python tests/rendered.py "$TMPDIR/demo.html" ${workbenchDemo.name}
               touch "$out"
             '';
+        # Every group flake under lib/inputs declares exactly what flake.lock
+        # holds for it; Nix would otherwise ignore the difference.
+        inputs-locked =
+          let
+            stale = import ./lib/inputs/locked.nix {
+              inherit lib;
+              root = ./.;
+            };
+          in
+          pkgs.writeText "inputs-locked" (
+            assert lib.assertMsg (stale == [ ])
+              "inputs-locked failed:\n${lib.concatMapStrings (line: "  ${line}\n") stale}";
+            "every group's inputs are locked\n"
+          );
         den-inventory-tests =
           pkgs.runCommand "den-inventory-tests"
             {

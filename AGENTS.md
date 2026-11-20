@@ -89,7 +89,11 @@
   `inputs.NAME` whichever group holds it. Nix itself names one by its path,
   such as `terminal/shell/xs`; `nix-suite update NAME` and `flake-add --group`
   work that out. Add an input to the group it belongs with, and make a new
-  group, not a seventh member, when that one is full.
+  group, not a seventh member, when that one is full. Nix ignores an input
+  added to or removed from a group's `flake.nix` until it is named to
+  `nix flake update`, so after such an edit run
+  `nix flake update GROUP/PATH/NAME`; the `inputs-locked` check fails, with
+  that command, when the two disagree.
 - Format Nix changes with `nix fmt`. Do not run Nix builds or other build/test
   validation during agent responses unless the user explicitly requests it.
   When explicitly requested, use the smallest relevant build:
