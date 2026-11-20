@@ -11,6 +11,7 @@
 { lib }:
 
 drv:
+# nixpkgs-watch: not a workaround: adds a build report, not a package nixpkgs lacks
 drv.overrideAttrs (old: {
   outputs = lib.unique ((old.outputs or [ "out" ]) ++ [ "timings" ]);
   cargoBuildFlags = lib.toList (old.cargoBuildFlags or [ ]) ++ [ "--timings" ];
