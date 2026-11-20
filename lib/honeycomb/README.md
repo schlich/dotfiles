@@ -128,12 +128,12 @@ things (sessions, tasks, windows on the area's niri workspace, the hub's
 notes), and each kind holds its items, six at a time, most recent first. The
 phone's own gestures are the three axes:
 
-| Axis       | Gesture                                                   | Keys      |
-| ---------- | --------------------------------------------------------- | --------- |
-| in / out   | tap, a flick from the centre, spread / back, pinch        | I / O Esc |
-| left/right | swipe sideways: the next area, kind or item               | ← →       |
-| up / down  | swipe up or down: the next six of a long list             | J / K     |
-| the six    | flick from the centre toward a neighbour                  | H L Y U N M |
+| Axis       | Gesture                                            | Keys        |
+| ---------- | -------------------------------------------------- | ----------- |
+| in / out   | tap, a flick from the centre, spread / back, pinch | I / O Esc   |
+| left/right | swipe sideways: the next area, kind or item        | ← →         |
+| up / down  | swipe up or down: the next six of a long list      | J / K       |
+| the six    | flick from the centre toward a neighbour           | H L Y U N M |
 
 Selecting an item is the SELECT mode, shown in the mode chip, with its
 actions around it; back returns to NORMAL. Each direction's destination is
