@@ -73,8 +73,12 @@ def main [script: path] {
     ["unload for a blocked module" $loaded_a (do $offer "b" "1" false false) "unload"]
     ["never load export-env" null (do $offer "a" "1" true true) ""]
   ]
+  # The hook passes variables, which may hold null; a literal null in a
+  # record-typed position would not parse.
   for case in $cases {
-    let actual = (do $run $"envrc-nu-action ($case.loaded | to nuon) ($case.offer | to nuon)")
+    let actual = (do $run $"let loaded = \('($case.loaded | to nuon)' | from nuon\)
+      let offer = \('($case.offer | to nuon)' | from nuon\)
+      envrc-nu-action $loaded $offer")
     $failures ++= (expect $"action: ($case.name)" $actual $case.expected)
   }
 
