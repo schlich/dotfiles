@@ -9,7 +9,9 @@
 #
 # luvus also bases a task's worktree on this checkout's own `main`, which can
 # lag `origin/main`; when it finishes the launch, this first moves a still
-# empty worktree to `origin/main`.
+# empty worktree to `luvus/integration`, which holds every merged task, so a
+# task builds on its dependencies before they are delivered. It falls back to
+# `origin/main` when the integration branch is missing or lacks `origin/main`.
 
 const NU_LAUNCH = 'run-external $env.LUVUS_BIN_PATH __task-worker'
 # The packaged luvus, substituted at build time.
@@ -38,17 +40,27 @@ def workspace-for-repo [] {
   $matches | first | get workspace_id
 }
 
-# Point an empty task worktree at origin/main.
+# The base for a new task: luvus/integration when it contains origin/main,
+# otherwise origin/main.
+def task-base [worktree: string] {
+  let integration = (^git -C $worktree rev-parse --verify -q refs/heads/luvus/integration | complete)
+  if $integration.exit_code != 0 { return "origin/main" }
+  let current = (^git -C $worktree merge-base --is-ancestor origin/main luvus/integration | complete)
+  if $current.exit_code == 0 { "luvus/integration" } else { "origin/main" }
+}
+
+# Point an empty task worktree at the task base.
 def rebase-empty-worktree [worktree: string] {
   if not ($worktree | path exists) { return "no worktree" }
   ^git -C $worktree fetch -q origin main
+  let base = (task-base $worktree)
   let dirty = (^git -C $worktree status --porcelain | lines | length)
-  let own = (^git -C $worktree rev-list --count origin/main..HEAD | str trim | into int)
-  let behind = (^git -C $worktree rev-list --count HEAD..origin/main | str trim | into int)
+  let own = (^git -C $worktree rev-list --count $"($base)..HEAD" | str trim | into int)
+  let behind = (^git -C $worktree rev-list --count $"HEAD..($base)" | str trim | into int)
   if $dirty > 0 or $own > 0 { return "kept: the worktree already has work" }
-  if $behind == 0 { return "already on origin/main" }
-  ^git -C $worktree reset -q --hard origin/main
-  $"moved to origin/main, ($behind) commits ahead of its base"
+  if $behind == 0 { return $"already on ($base)" }
+  ^git -C $worktree reset -q --hard $base
+  $"moved to ($base), ($behind) commits ahead of its base"
 }
 
 def pane-text [pane: string] {
