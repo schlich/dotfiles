@@ -26,8 +26,12 @@ in
     enable = true;
     # Keep OpenCode's own config writable while applying these defaults.
     mutableSettings = true;
+    # The claude-agent provider runs Claude Code through the Agent SDK and
+    # needs claude 2.1.248 or later; point it at the one installed here
+    # rather than whatever `claude` comes first on PATH.
     package = pkgs.writeNuScriptBin "opencode" ''
       def --wrapped main [...args] {
+        $env.OPENCODE_CLAUDE_PATH = "${lib.getExe config.programs.claude-code.package}"
         ^${pkgs.secretspec}/bin/secretspec run --file ${../../../secretspec.toml} --provider keyring --profile default --reason "OpenCode invocation" -- ${pkgs.opencode}/bin/opencode ...$args
       }
     '';
@@ -80,11 +84,14 @@ in
         headers.X-Goog-Api-Key = "{env:STITCH_API_KEY}";
       };
       server.hostname = "localhost";
-      # Bill the GitHub Copilot and ChatGPT subscriptions only; both sign in
-      # with `opencode auth login`. Anthropic forbids Claude plan sign-in here.
+      # Bill the GitHub Copilot and ChatGPT subscriptions, which sign in with
+      # `opencode auth login`, and the Claude subscription through the
+      # claude-agent provider, which bills the user's Claude Code login: sign
+      # in with `claude`, then pick Claude Agent in `/connect`.
       enabled_providers = [
         "github-copilot"
         "openai"
+        "claude-agent"
       ];
     };
   };
