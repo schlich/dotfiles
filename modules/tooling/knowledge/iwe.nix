@@ -2,11 +2,14 @@
   config,
   lib,
   pkgs,
+  osConfig ? { },
   ...
 }:
 
 let
-  sshClient = import ../../programs/ssh/ssh-client.nix { inherit lib pkgs; };
+  homelabFqdn = osConfig.dotfiles.fleet.hosts.homelab.fqdn or "homelab.tail338351.ts.net";
+  kbRemotePort = osConfig.dotfiles.tailscale.https.kb-git.port or 7445;
+  kbRemoteUrl = "https://${homelabFqdn}:${toString kbRemotePort}/kb.git";
   kbSync = pkgs.writeShellApplication {
     name = "kb-sync";
     runtimeInputs = [
@@ -15,9 +18,9 @@ let
       pkgs.git
       pkgs.util-linux
       pkgs.coreutils
-      sshClient
     ];
     text = ''
+      export KB_REMOTE_URL="''${KB_REMOTE_URL:-${kbRemoteUrl}}"
       exec ${lib.getExe pkgs.nushell} --no-config-file ${./kb-sync.nu} "$@"
     '';
   };
@@ -42,11 +45,12 @@ in
     use ${../../../nushell/kb.nu} *
   '';
 
-  # Keep ~/Research/kb synchronized across hosts through the private Git remote
-  # on homelab. Runs quietly as a no-op until the repo and remote exist.
+  # Keep ~/Research/kb synchronized across hosts through the private Tailscale
+  # Serve HTTPS Git remote on homelab. Auto-adds the origin remote on existing
+  # repos and auto-clones onto new hosts once main has been pushed.
   systemd.user.services.kb-sync = {
     Unit = {
-      Description = "Sync the personal knowledge base with its private Git remote";
+      Description = "Sync the personal knowledge base over Tailscale HTTPS";
       After = [ "network-online.target" ];
       Wants = [ "network-online.target" ];
     };
@@ -56,8 +60,8 @@ in
       TimeoutStartSec = "60s";
       Environment = [
         "KB_ROOT=${config.dotfiles.paths.kb}"
-      ]
-      ++ lib.optional config.services.gnome-keyring.enable "SSH_AUTH_SOCK=%t/gcr/ssh";
+        "KB_REMOTE_URL=${kbRemoteUrl}"
+      ];
     };
   };
 
@@ -84,9 +88,28 @@ in
       }
       ''
         export HOME="$TMPDIR/home"
-        export XDG_RUNTIME_DIR="$TMPDIR/run"
-        mkdir -p "$HOME" "$XDG_RUNTIME_DIR"
+        mkdir -p "$HOME"
         nu --no-config-file ${./kb-sync-test.nu} ${./kb-sync.nu}
+        touch "$out"
+      '';
+
+  dotfiles.tooling.checks.kb-git =
+    pkgs.runCommand "kb-git-check"
+      {
+        nativeBuildInputs = [
+          pkgs.nodejs
+          pkgs.nushell
+          pkgs.jujutsu
+          pkgs.git
+          pkgs.util-linux
+          pkgs.coreutils
+        ];
+      }
+      ''
+        export HOME="$TMPDIR/home"
+        export KB_GIT_BACKEND="${pkgs.git}/bin/git-http-backend"
+        mkdir -p "$HOME"
+        node ${./kb-git/test.mjs} ${./kb-git/server.mjs} ${./kb-sync.nu}
         touch "$out"
       '';
 }

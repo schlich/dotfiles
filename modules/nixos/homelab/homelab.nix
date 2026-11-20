@@ -36,6 +36,7 @@ in
   imports = [
     ./discord-digest.nix
     ../../../lib/honeycomb/runtime/hub/module.nix
+    ../../tooling/knowledge/kb-git/module.nix
   ];
 
   # homelab keeps its own checkout at the top of its home; only asus's home
@@ -45,6 +46,10 @@ in
   # The phone's view of the seven areas, which asus keeps current
   # (lib/honeycomb/README.md).
   services.honeycomb-hub.enable = true;
+
+  # Private Tailscale Serve HTTPS remote for ~/Research/kb so asus and homelab
+  # sync without SSH keys or port-2222 plumbing.
+  services.kb-git.enable = true;
 
   services.discord-digest = lib.mkIf discordDigestReady {
     enable = true;
