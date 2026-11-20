@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ lib, pkgs, ... }:
 
 {
   environment.systemPackages = [ pkgs.opencode ];
@@ -11,6 +11,9 @@
     environment = {
       HOME = "/home/schlich";
       XDG_CONFIG_HOME = "/home/schlich/.config";
+      # The claude-agent provider runs this claude as schlich, so it bills
+      # schlich's Claude Code login; PATH here has no claude of its own.
+      OPENCODE_CLAUDE_PATH = lib.getExe pkgs.claude-code;
     };
     serviceConfig = {
       ExecStart = "${pkgs.opencode}/bin/opencode serve --hostname 127.0.0.1 --port 4096";
