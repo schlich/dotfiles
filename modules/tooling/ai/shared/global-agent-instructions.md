@@ -287,6 +287,9 @@ decisions, how-tos, and personal notes.
 - Write to it only with the user's explicit approval. Offer a one-line
   "Worth remembering: <title>" instead of writing unasked, and never copy
   facts a repository already records; link to them.
+- After an approved write, run `kb sync` so the change commits and pushes
+  across hosts immediately (a background timer also syncs settled edits
+  automatically).
 - Inside `~/Research/kb`, `MEMORY.md` is the memory policy; follow it, and use
   `/iwe:distill` and `/iwe:reflect` for capture and curation.
 - Before distilling past sessions, run `jev distill-candidates --json` (or

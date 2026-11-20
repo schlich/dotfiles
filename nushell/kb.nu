@@ -43,3 +43,12 @@ export def "kb check" [] {
     ^iwe stats
     ^iwe stats similarity
 }
+
+# Sync the knowledge base with its private Git remote (commit, rebase, push).
+export def "kb sync" [--fetch-only] {
+    if $fetch_only {
+        kb-sync --root (kb-root) --fetch-only
+    } else {
+        kb-sync --root (kb-root) --manual
+    }
+}
