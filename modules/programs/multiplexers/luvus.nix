@@ -40,6 +40,15 @@ let
     command = "${codexHook}";
     timeout = 5;
   };
+
+  # `luvus task start` for Nushell panes, which reject luvus's POSIX launch
+  # line (tools/luvus-task-start.nu). Drop it once luvus launches workers in
+  # Nushell syntax itself.
+  luvusTaskStart = pkgs.writeNuScriptBin "luvus-task-start" (
+    builtins.replaceStrings [ "@luvus@" ] [ (lib.getExe luvus) ] (
+      builtins.readFile ../../../tools/luvus-task-start.nu
+    )
+  );
 in
 {
   options.dotfiles.luvus.settings = lib.mkOption {
@@ -146,6 +155,8 @@ in
         mode = "600";
       }}
     '';
+
+    home.packages = [ luvusTaskStart ];
 
     # The server owns every pane, agent, task, and path lease. `luvus server
     # start` forks this same command into the background; running it here
