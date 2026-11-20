@@ -63,6 +63,100 @@ in
     ];
   };
 
+  testEachAxisIsAPairOfOppositeDirections = {
+    expr = lib.mapAttrs (_: ends: honeycomb.opposite ends.plus == ends.minus) honeycomb.axes;
+    expected = {
+      x = true;
+      y = true;
+      z = true;
+    };
+  };
+
+  testTheSixSignedStepsAreTheSixDirections = {
+    expr = lib.sort builtins.lessThan (
+      lib.concatMap
+        (axis: [
+          (honeycomb.step axis 1)
+          (honeycomb.step axis (-1))
+        ])
+        [
+          "x"
+          "y"
+          "z"
+        ]
+    );
+    expected = lib.sort builtins.lessThan honeycomb.compass;
+  };
+
+  testAxisOfUndoesStep = {
+    expr = honeycomb.axisOf (honeycomb.step "z" (-1));
+    expected = {
+      axis = "z";
+      sign = -1;
+    };
+  };
+
+  testTheDiagonalIsTheLineOfSight = {
+    expr = [
+      (honeycomb.project {
+        x = 1;
+        y = 1;
+        z = 1;
+      })
+      (honeycomb.project {
+        x = 3;
+        y = 1;
+        z = 2;
+      })
+      (honeycomb.project { x = 2; })
+    ];
+    expected = [
+      origin
+      (hex 1 1)
+      (hex 2 0)
+    ];
+  };
+
+  testLiftIsTheNearestPointOverACell = {
+    expr =
+      let
+        cells = honeycomb.spiral 3 origin;
+        points = map honeycomb.lift cells;
+        size = point: lib.foldl' (sum: n: sum + (if n < 0 then -n else n)) 0 (builtins.attrValues point);
+      in
+      {
+        back = map honeycomb.project points == cells;
+        steps = map size points == map (honeycomb.distance origin) cells;
+      };
+    expected = {
+      back = true;
+      steps = true;
+    };
+  };
+
+  testRotateHandsEachDimensionToTheNextAxis = {
+    expr =
+      let
+        niri = {
+          x = "window";
+          y = "workspace";
+          z = "monitor";
+        };
+      in
+      {
+        once = honeycomb.rotate 1 niri;
+        thrice = honeycomb.rotate 3 niri == niri;
+      };
+    expected = {
+      once = {
+        z = "window";
+        x = "workspace";
+        y = "monitor";
+      };
+      thrice = true;
+    };
+  };
+
   testRouteIsAShortestWalkThatArrives = {
     expr =
       let

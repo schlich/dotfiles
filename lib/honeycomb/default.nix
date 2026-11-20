@@ -101,6 +101,85 @@ rec {
     sixths: direction: elemAt compass (mod (mod (indexOf direction + sixths) limit + limit) limit);
   indexOf = direction: lib.lists.findFirstIndex (d: d == direction) null compass;
 
+  # Three axes cross a cell, a third of a turn apart, each a pair of opposite
+  # directions. A context's three independent ways to move sit one on each:
+  # left and right on x, up and down on y, in and out on z. The tiling is
+  # then that three-dimensional space seen along its diagonal, and the six
+  # direction keys are its six signed steps.
+  axes = {
+    x = {
+      plus = "e";
+      minus = "w";
+    };
+    y = {
+      plus = "nw";
+      minus = "se";
+    };
+    z = {
+      plus = "sw";
+      minus = "ne";
+    };
+  };
+
+  # The direction a signed step along an axis takes: `step "y" (-1)` is "se".
+  step = axis: sign: if sign >= 0 then axes.${axis}.plus else axes.${axis}.minus;
+
+  # The axis and sign of a direction: `axisOf "ne"` is z, -1.
+  axisOf =
+    direction:
+    lib.findFirst (found: found != null) null (
+      lib.mapAttrsToList (
+        axis: ends:
+        if ends.plus == direction then
+          {
+            inherit axis;
+            sign = 1;
+          }
+        else if ends.minus == direction then
+          {
+            inherit axis;
+            sign = -1;
+          }
+        else
+          null
+      ) axes
+    );
+
+  # A point of space as a cell of the tiling. The diagonal (1, 1, 1) is the
+  # line of sight, so every point along it lands on the same cell.
+  project =
+    {
+      x ? 0,
+      y ? 0,
+      z ? 0,
+    }:
+    add (scale x vectors.e) (add (scale y vectors.nw) (scale z vectors.sw));
+
+  # The point of space over a cell that is fewest steps from the origin.
+  lift =
+    cell:
+    let
+      along = builtins.elemAt (lib.sort builtins.lessThan [
+        (-cell.q)
+        cell.r
+        0
+      ]) 1;
+    in
+    {
+      x = cell.q + along;
+      y = along - cell.r;
+      z = along;
+    };
+
+  # Turn the view by thirds of a circle, clockwise: whatever moved along one
+  # axis now moves along the next, and the same keys reach a different
+  # dimension. Three thirds, or none, leave the assignment as it was.
+  rotate =
+    thirds: assignment:
+    lib.mapAttrs' (
+      axis: what: lib.nameValuePair (axisOf (turn (2 * thirds) axes.${axis}.plus)).axis what
+    ) assignment;
+
   # The cells at exactly `radius` steps from `centre`, clockwise from east,
   # so ring 1 is the neighbours in compass order.
   ring =
