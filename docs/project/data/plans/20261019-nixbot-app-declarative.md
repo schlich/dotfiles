@@ -46,8 +46,8 @@ already serves 8443 on homelab's node.
 
 ### Task 1: Manifest and registration
 
-- [x] Derive the manifest in `modules/nixos/nixbot.nix` and expose it with the
-  secrets' files and recipients as `dotfiles.nixbot.registration`.
+- [x] Derive the manifest in `modules/nixos/builds/nixbot.nix` and expose it
+  with the secrets' files and recipients as `dotfiles.nixbot.registration`.
 - [x] Move the Funnel to 443 and set `github.topic`.
 
 ### Task 2: nixbot-register
@@ -58,7 +58,7 @@ already serves 8443 on homelab's node.
 
 ### Task 3: Decrypt on homelab
 
-- [x] Add the agenix input; make `modules/nixos/secrets.nix` the mechanism.
+- [x] Add the agenix input; make `modules/nixos/base/secrets.nix` the mechanism.
 - [x] `profile.secrets = true` for homelab; point the `*File` options at
   `/run/agenix`.
 
@@ -84,11 +84,11 @@ None: no spec covers nixbot yet.
 
 Verified anchor points (line numbers as of 2026-10-19):
 
-- modules/nixos/nixbot.nix:14 — `funnelPort`
-- modules/nixos/nixbot.nix:47 — `manifest`
-- modules/nixos/nixbot.nix:75 — `dotfiles.nixbot.registration`
-- modules/nixos/nixbot.nix:130 — `age.secrets`
-- modules/nixos/secrets.nix:9 — agenix import
+- modules/nixos/builds/nixbot.nix:14 — `funnelPort`
+- modules/nixos/builds/nixbot.nix:47 — `manifest`
+- modules/nixos/builds/nixbot.nix:75 — `dotfiles.nixbot.registration`
+- modules/nixos/builds/nixbot.nix:130 — `age.secrets`
+- modules/nixos/base/secrets.nix:9 — agenix import
 - secrets/secrets.nix:22 — nixbot's recipients
 - den/inventory.nix:104 — homelab `secrets = true`
 - tools/nixbot-register/register.nu:56 — `main`

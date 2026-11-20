@@ -54,8 +54,8 @@ Then follow the report's `next`:
 | `packages.x86_64-linux.*` | `home.packages` in `modules/home/packages.nix` |
 | `homeManagerModules.*` | `imports` in a module under `modules/programs/`, as `dicta.nix` does |
 | `nixosModules.*` | a Den aspect for the hosts that need it |
-| `overlays.*` | the overlay list in `den/aspects/home-manager-host.nix` |
-| not a flake (skills, scripts) | `"${inputs.NAME}/PATH"`; skills go in `modules/tooling/ai/shared-skills.nix` |
+| `overlays.*` | the overlay list in `den/aspects/users/home-manager-host.nix` |
+| not a flake (skills, scripts) | `"${inputs.NAME}/PATH"`; skills go in `modules/tooling/ai/shared/shared-skills.nix` |
 
 When the input's packages replace, override, or add to what nixpkgs ships,
 declare `dotfiles.nixpkgsWatch.NAME` in the same module, with `input` when

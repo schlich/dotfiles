@@ -22,7 +22,7 @@ available on the workstation.
 
 ### Task 1: Add the desktop app
 
-**Files:** Create: `modules/tooling/ai/opencode-desktop.nix`; Modify:
+**Files:** Create: `modules/tooling/ai/clients/opencode-desktop.nix`; Modify:
 `den/aspects/users/terminal.nix`, `modules/tooling/interface.nix`
 
 - [ ] Import the package module and add OpenCode to the desktop agent choices.
@@ -46,4 +46,5 @@ Verified anchor points (line numbers as of 2026-10-17):
 
 - `den/aspects/users/terminal.nix:30` — desktop client module imports
 - `modules/tooling/interface.nix:76` — `desktopAgent` option
-- `modules/tooling/ai/t3code.nix:16` — optional client selection pattern
+- `modules/tooling/ai/clients/t3code/t3code.nix:16` — optional client selection
+  pattern

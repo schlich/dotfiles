@@ -14,7 +14,7 @@
 # deploy/StagedSwitch.tla models these processes; its flake check proves
 # the guarantees above for every interleaving of them, kills, and reboots.
 #
-# DEPLOY_CONFIG names the JSON settings modules/nixos/system-switch.nix
+# DEPLOY_CONFIG names the JSON settings modules/nixos/fleet/system-switch.nix
 # writes: the host, the repository, the state directory, and the host's
 # health probes. The running system's settings judge the candidate, so a
 # candidate cannot weaken its own watch.

@@ -5,7 +5,7 @@
 # as a process environment string.
 $env.NU_MCP_OUTPUT_LIMIT = 50kb
 
-# Agents that T3 Code starts (modules/tooling/ai/t3code-server.nix sets
+# Agents that T3 Code starts (modules/tooling/ai/clients/t3code/t3code-server.nix sets
 # T3_FLEET_DIRENV) inherit no shell's direnv hook, so load the environment of
 # the directory this server starts in, the agent's project, as the hook
 # would. direnv's allow list still decides, and a dev shell that takes longer

@@ -6,7 +6,7 @@ generated:
   at: 2026-11-19T14:20:00Z
 sources:
 - id: module
-  resource: modules/home/nixpkgs-watch.nix
+  resource: modules/home/nix/nixpkgs-watch.nix
   title: The watch options, the status the timer reads, and the coverage check
 - id: script
   resource: tools/nixpkgs-watch.nu

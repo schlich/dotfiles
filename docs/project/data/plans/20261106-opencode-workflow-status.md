@@ -78,7 +78,7 @@ itself.
 
 ### Task 2: Wire it into OpenCode
 
-**Files:** Modify: `modules/tooling/ai/plugins.nix`,
+**Files:** Modify: `modules/tooling/ai/shared/plugins.nix`,
 `modules/tooling/interface.nix`
 
 - [x] Package the plugin directory with a generated `tools.ts` and register it
@@ -134,11 +134,11 @@ Verified anchor points (line numbers as of 2026-11-06):
   switch
 - `plugins/workflow-status/model.ts:215` — `JJ_TEMPLATE`
 - `plugins/workflow-status/model.ts:845` — `applyFrame`
-- `modules/tooling/ai/plugins.nix:16` — `workflowTools`, the generated program
-  paths
-- `modules/tooling/ai/plugins.nix:61` —
+- `modules/tooling/ai/shared/plugins.nix:16` — `workflowTools`, the generated
+  program paths
+- `modules/tooling/ai/shared/plugins.nix:61` —
   `dotfiles.tooling.checks.opencode-workflow-status`
-- `modules/tooling/ai/opencode.nix:38` — `xdg.configFile` links for
+- `modules/tooling/ai/clients/opencode.nix:38` — `xdg.configFile` links for
   `opencodeConfig`
 
 [^tui-api]: `packages/plugin/src/tui/context.ts` in the pinned `opencode` input.

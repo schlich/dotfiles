@@ -34,7 +34,7 @@
   `nh home switch` expects (`den/inventory.nix`); each takes its host's
   package set and sees the system as `osConfig`.
 - Add user packages in `modules/home/packages.nix`, version-control wrappers in
-  `modules/programs/vcs.nix`, and AI client configuration in
+  `modules/programs/vcs/vcs.nix`, and AI client configuration in
   `modules/tooling/ai/`.
 - Ship a program's configuration with the program, not as a file in `$HOME`.
   When it reads its configuration from an environment variable or flag, wrap
@@ -129,7 +129,7 @@
   `--with-home` avoids it; if a plain `system-switch` refuses, rerun it with
   `--with-home`.
 - Every activation prints dix's package and version changes from the running
-  system (`modules/nixos/closure-diff.nix`), so `system-switch` and Clan
+  system (`modules/nixos/fleet/closure-diff.nix`), so `system-switch` and Clan
   output include them. When reporting or offering a switch, mention the
   notable changes; `nix-suite diff` builds this checkout's
   system and shows them, but it is a build, so run it only when the user asks.
@@ -146,7 +146,7 @@
   the upstream pull request or commit whose release ends it. `input` names
   the flake input it comes from (by default the input of the entry's name),
   and `repo` a local build's GitHub repository. Remove the entry with the
-  workaround. `modules/home/nixpkgs-watch.nix` documents the options.
+  workaround. `modules/home/nix/nixpkgs-watch.nix` documents the options.
 - The `nixpkgs-watch-coverage` flake check fails on a workaround nothing
   covers: a flake input's package, a local build of upstream source, or an
   `overrideAttrs`. An entry named for a file (`foo` for `foo-package.nix`)
@@ -255,7 +255,7 @@
   A high-risk delivery stops before it pushes and names why: it touches
   boot, storage, secrets, keys, or access, or `secrets/`, `hosts/`, the
   rulesets, or the classifier itself; it reaches several hosts through
-  configuration `den/policy.nix` rates high or critical, or could break more
+  configuration `den/model/policy.nix` rates high or critical, or could break more
   than a desktop app there; or Jev cannot judge it. Show the owner those reasons and ask. Once
   they approve, rerun `luvus-deliver --approve REV` with the commit it names;
   never pass `--approve` without that approval. Each verdict is kept in

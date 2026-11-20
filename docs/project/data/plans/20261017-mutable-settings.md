@@ -44,8 +44,8 @@ it; wrappers remain the fallback.
 
 ### Task 1: Migrate declared client settings
 
-**Files:** Modify: `modules/tooling/ai/codex.nix`,
-`modules/tooling/ai/opencode.nix`
+**Files:** Modify: `modules/tooling/ai/clients/codex.nix`,
+`modules/tooling/ai/clients/opencode.nix`
 
 - [x] Move Codex defaults from CLI flags to Home Manager settings with mutable
   merging.
@@ -84,12 +84,12 @@ persist across launches and activations.
 
 Verified anchor points (line numbers as of 2026-10-16):
 
-- `modules/tooling/ai/codex.nix:8` — Codex configuration wrapper and declared
-  defaults.
-- `modules/tooling/ai/opencode.nix:43` — OpenCode Home Manager module
+- `modules/tooling/ai/clients/codex.nix:8` — Codex configuration wrapper and
+  declared defaults.
+- `modules/tooling/ai/clients/opencode.nix:43` — OpenCode Home Manager module
   configuration.
-- `modules/tooling/ai/claude-code.nix:315` — empty Claude Code settings.
-- `modules/tooling/ai/copilot.nix:21` — Copilot runtime config and no declared
-  settings.
+- `modules/tooling/ai/claude/claude-code.nix:315` — empty Claude Code settings.
+- `modules/tooling/ai/clients/copilot.nix:21` — Copilot runtime config and no
+  declared settings.
 - `AGENTS.md:45` — application-owned configuration rule.
 - `docs/architecture.md:37` — configuration placement architecture.

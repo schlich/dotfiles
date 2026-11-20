@@ -82,7 +82,7 @@ Agents watch for the symptoms of a poor fit, such as sandbox SSH failures,
 missing tools, long builds on the laptop or interrupted sessions, and
 suggest a better environment once per cause. The rule lives in the
 "Session environment" section of
-`modules/tooling/ai/global-agent-instructions.md`.
+`modules/tooling/ai/shared/global-agent-instructions.md`.
 
 ## Sandboxed local sessions
 
@@ -96,7 +96,7 @@ Bad owner or permissions on /home/schlich/.ssh/config
 ```
 
 ssh now reads its client configuration from the store through `-F`
-(`modules/programs/ssh-client.nix`), which skips that check, and Home
+(`modules/programs/ssh/ssh-client.nix`), which skips that check, and Home
 Manager no longer links `~/.ssh/config`. `sudo` cannot gain privileges in
 the sandbox, so privileged commands run through `run0`, which polkit
 approves in a dialog; `system-switch` needs neither.

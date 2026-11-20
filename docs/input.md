@@ -13,7 +13,7 @@ editor      / Helix    · Space (Helix's own modal namespace)
 A key reaches the outermost layer first. Niri consumes its window-management
 binds, Ghostty its split and tab binds, Luvus the key after its prefix, and
 everything else reaches the shell or Helix unchanged.
-`modules/programs/input-stack.nix` declares the stack and exports it as
+`modules/programs/desktop/input-stack.nix` declares the stack and exports it as
 `$XDG_DATA_HOME/input-stack.json`, for hint bars and mode indicators to read.
 
 ## Ownership rule
@@ -28,7 +28,7 @@ everything else reaches the shell or Helix unchanged.
   Ctrl+Space. Its status row names the mode (`NORMAL` at rest) and lists the
   keys that follow the prefix; pressing the prefix twice sends it to the pane.
   It binds no direct shortcuts, so Alt stays with Ghostty.
-  `modules/programs/luvus.nix` takes its prefix from this stack.
+  `modules/programs/multiplexers/luvus.nix` takes its prefix from this stack.
 - Helix owns editor actions. Space is its native command namespace, and
   Alt+N/I/O stay with it. Its statusline names the mode in full (`NORMAL`,
   `INSERT`, `SELECT`), and its own popup lists the keys after a prefix.

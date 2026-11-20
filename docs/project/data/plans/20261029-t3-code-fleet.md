@@ -50,11 +50,12 @@ machine).
 
 ### Task 1: Package and service
 
-**Files:** Create: `modules/tooling/ai/t3code-package.nix`,
-`modules/tooling/ai/t3code-server.nix`, `modules/nixos/t3code.nix`,
-`den/aspects/t3code.nix`, `modules/tooling/ai/scripts/t3f.nu`; Modify:
-`flake.nix`, `modules/tooling/ai/t3code.nix`, `den/schema.nix`,
-`den/profile.nix`, `den/inventory.nix`, `den/default.nix`,
+**Files:** Create: `modules/tooling/ai/clients/t3code/t3code-package.nix`,
+`modules/tooling/ai/clients/t3code/t3code-server.nix`,
+`modules/nixos/services/t3code.nix`, `den/aspects/services/t3code.nix`,
+`modules/tooling/ai/scripts/t3f.nu`; Modify: `flake.nix`,
+`modules/tooling/ai/clients/t3code/t3code.nix`, `den/model/schema.nix`,
+`den/model/profile.nix`, `den/inventory.nix`, `den/default.nix`,
 `den/aspects/users/schlich.nix`, `tests.nix`, `tests/den-config.nix`
 
 - [x] Pin 0.1.4 and share one package between the app and the server.
@@ -93,5 +94,5 @@ Verified anchor points (line numbers as of 2026-10-29):
 
 - `den/inventory.nix:75` — asus runs the server
 - `den/inventory.nix:114` — homelab runs the server
-- `modules/tooling/ai/t3code-server.nix:1` — the user unit
-- `modules/nixos/t3code.nix:1` — linger and Tailscale Serve
+- `modules/tooling/ai/clients/t3code/t3code-server.nix:1` — the user unit
+- `modules/nixos/services/t3code.nix:1` — linger and Tailscale Serve

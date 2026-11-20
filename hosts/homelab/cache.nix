@@ -1,5 +1,5 @@
 # How the fleet reaches homelab's binary cache. The signing key's secret half
-# lives only on homelab; modules/nixos/homelab-cache.nix says how to rotate it.
+# lives only on homelab; modules/nixos/homelab/homelab-cache.nix says how to rotate it.
 # Clients reach it at config.dotfiles.fleet.hosts.homelab.fqdn.
 {
   port = 5000;

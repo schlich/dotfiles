@@ -86,7 +86,7 @@ missing dependency fails loudly instead of installing an unpinned package.
 
 ## Run it on the homelab
 
-The `marimohub` Den aspect (`modules/nixos/workbench-hub.nix`) runs the hub
+The `marimohub` Den aspect (`modules/nixos/services/workbench-hub.nix`) runs the hub
 with `fs` storage in `/var/lib/marimohub`, rootless Podman kernels from these
 images, and Tailscale Serve identity. No host includes it yet. To enable it,
 add the aspect to the homelab and set the login domain:

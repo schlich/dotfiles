@@ -6,7 +6,7 @@ description: Review the log of Claude Code Bash requests and turn repeated use c
 # Bash feedback loop
 
 Claude Code's prefer-nushell hook denies foreground Bash unless
-`modules/tooling/ai/bash-policy.nuon` allows it, asks Jev about the calls
+`modules/tooling/ai/claude/bash-policy.nuon` allows it, asks Jev about the calls
 the policy defers, and logs every Bash request and its outcome. Denials show
 where the agent instructions fall short. Calls that were allowed show which
 uses of Bash are legitimate. This skill reviews
@@ -49,7 +49,7 @@ never edit the repository on a label alone.
 
 | Pattern (`remedy`) | Change |
 | --- | --- |
-| Denied, and a Nushell rewrite is straightforward (`instruction_gap`) | Instruction gap. Add a concrete recipe or rule to `modules/tooling/ai/global-agent-instructions.md` ("Shell conventions") so the first attempt uses the evaluate tool. |
+| Denied, and a Nushell rewrite is straightforward (`instruction_gap`) | Instruction gap. Add a concrete recipe or rule to `modules/tooling/ai/shared/global-agent-instructions.md` ("Shell conventions") so the first attempt uses the evaluate tool. |
 | Denied, and a dedicated MCP tool covers it (jj, GitHub, Nix) (`dedicated_tool`) | Point the instruction at that tool by name. |
 | Denied, but Bash is really needed, such as a TTY, sudo, or a harness-only feature (`needs_bash`) | Add a narrow `allow` rule with a `why` to `bash-policy.nuon`. Anchor the regex and never allow a whole interpreter such as `bash -c`. |
 | `text_tools` denial repeated inside background runs (`background_log`) | Tell agents to write the log to the scratchpad and read it from Nushell. |

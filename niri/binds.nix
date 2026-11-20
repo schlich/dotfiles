@@ -221,7 +221,7 @@ let
 
   # Voice in, pictures out, and the labelled hardware keys.
   io = cell "io" [
-    # dicta's tape recorder (modules/programs/dicta.nix). niri cannot bind Esc
+    # dicta's tape recorder (modules/programs/desktop/dicta.nix). niri cannot bind Esc
     # to discard without taking Esc from every app, so discard is the Shift
     # form.
     (member "record" [
@@ -230,7 +230,7 @@ let
       ))
       (with' "repeat=false" (bind "Mod+Shift+M" "Recorder: discard this take" ''spawn "dicta" "cancel"''))
     ])
-    # HEX reads the keyboard itself (modules/programs/hex.nix); this bind
+    # HEX reads the keyboard itself (modules/programs/desktop/hex.nix); this bind
     # starts its service on the first press and otherwise only keeps the
     # chord from the focused window.
     (member "dictate" [
@@ -347,7 +347,7 @@ assert lib.assertMsg (chords == lib.unique chords)
   # The key that leads outward, to the list of sessions.
   out = key.outward;
   # The chords on each navigation seat, for the input stack
-  # (modules/programs/input-stack.nix): Mod moves among windows on four of
+  # (modules/programs/desktop/input-stack.nix): Mod moves among windows on four of
   # them, and Mod+Alt among areas on all eight.
   navigation = lib.mapAttrs (
     seat: letter:

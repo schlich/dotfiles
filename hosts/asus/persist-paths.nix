@@ -116,6 +116,7 @@
       ".config/Paseo"
       ".config/T3 Code (Alpha)"
       ".config/acreom"
+      ".config/ai-usagebar"
       ".config/ai.opencode.desktop"
       ".config/atuin"
       ".config/autostart"

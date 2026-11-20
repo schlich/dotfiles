@@ -30,7 +30,7 @@ standalone, apart from the system: an inventory user with `home = true`
 `homeConfigurations."USER@HOST"`, the name `nh home switch` looks up for that
 user on that host. `den/inventory.nix` builds each home from its host's
 package set and passes the evaluated system as `osConfig`, so home modules
-still read system facts; `den/aspects/home-manager-host.nix` adds the overlays
+still read system facts; `den/aspects/users/home-manager-host.nix` adds the overlays
 those homes need to exactly those hosts. No system embeds or activates a
 home, so applying a change is two steps, the system and then the home, and
 Clan and a plain `system-switch` change only the system (see "Applying a

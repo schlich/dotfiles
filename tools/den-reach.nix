@@ -74,6 +74,6 @@ in
     )
   ) den.homes.x86_64-linux;
   deployed = builtins.filter (name: hosts.${name}.deploy.enable) (builtins.attrNames hosts);
-  # The risk den/policy.nix assigns each aspect, or null for none.
+  # The risk den/model/policy.nix assigns each aspect, or null for none.
   risks = builtins.mapAttrs (_: aspect: (aspect.meta or { }).risk or null) den.aspects;
 }

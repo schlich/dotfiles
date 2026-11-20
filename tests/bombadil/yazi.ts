@@ -1,5 +1,5 @@
 // Yazi with this configuration's settings and keymap
-// (modules/programs/yazi.nix) against the keymap rules.
+// (modules/programs/shell/yazi.nix) against the keymap rules.
 import { always } from "@antithesishq/bombadil";
 import { escapeReturnsTo, keys, modeAlwaysShown, rows } from "./keymap.ts";
 export {

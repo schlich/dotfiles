@@ -10,7 +10,7 @@ waits for both on `luvus/integration`'s exact head before fast-forwarding
 `main`. It builds in homelab's own store, which keeps what earlier builds made
 and which Harmonia serves to the fleet, so a check rebuilds only what changed.
 
-- `modules/nixos/nixbot.nix` configures the service, its Tailscale Funnel on
+- `modules/nixos/builds/nixbot.nix` configures the service, its Tailscale Funnel on
   homelab's port 443, and the GitHub App's manifest. `hosts/homelab/nixbot.nix`
   names the App, and `secrets/nixbot/` holds its secrets, encrypted with
   agenix for homelab's host key and asus's login key (`secrets/secrets.nix`).
@@ -18,7 +18,7 @@ and which Harmonia serves to the fleet, so a check rebuilds only what changed.
 - `nixbot.toml` lists `luvus/*` in `build_branches`. nixbot reads it from
   `main` only, so a change to that list builds once it has reached `main`.
   It replaces the module's branch globs for building, but not for rooting:
-  `branches.topics` in `modules/nixos/nixbot.nix` must match the same
+  `branches.topics` in `modules/nixos/builds/nixbot.nix` must match the same
   branches for their outputs to be kept.
 - nixbot evaluates with one 6 GiB worker and runs two builds at once, and
   roots the latest result of each attribute built on `main` or a `luvus/*`
@@ -28,7 +28,7 @@ and which Harmonia serves to the fleet, so a check rebuilds only what changed.
 
 The App is private to `schlich` and asks for no more than nixbot needs to
 build this repository. `nixbot-register` creates it from the manifest in
-`modules/nixos/nixbot.nix`, and the `nixbot-app-manifest` check fails when
+`modules/nixos/builds/nixbot.nix`, and the `nixbot-app-manifest` check fails when
 that manifest and these tables disagree.
 
 | Permission      | Access  | Why                                                                  |
