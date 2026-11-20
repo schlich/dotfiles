@@ -44,7 +44,12 @@ in
   imports = [
     ../fleet/tailscale-https.nix
     ./discord-digest.nix
+    ../../../lib/honeycomb/runtime/hub/module.nix
   ];
+
+  # The phone's view of the seven areas, which asus keeps current
+  # (lib/honeycomb/README.md).
+  services.honeycomb-hub.enable = true;
 
   services.discord-digest = lib.mkIf discordDigestReady {
     enable = true;

@@ -295,15 +295,6 @@ in
     # workspaces and Claude's sessions per area against six, prunes the
     # branches trunk already holds, and files Claude's sidebar by area
     # (lib/honeycomb/README.md).
-    (pkgs.writeNuScriptBin "honeycomb" (
-      ''
-        $env.HONEYCOMB_AREAS = "${
-          pkgs.writeText "honeycomb-areas.json" (
-            builtins.toJSON (import ../../../lib/honeycomb { inherit lib; }).areas
-          )
-        }"
-      ''
-      + builtins.readFile ../../../lib/honeycomb/runtime/honeycomb.nu
-    ))
+    (pkgs.callPackage ../../../lib/honeycomb/runtime/package.nix { })
   ];
 }

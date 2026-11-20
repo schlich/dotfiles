@@ -9,6 +9,9 @@
 #             becomes Home, the six areas around it, and the unfiled list
 #   sessions  each area's live Claude sessions, and the ones to archive so
 #             that none holds more than six
+#   flower    what each area holds now, as the phone shows it
+#   hub sync  send that to the hub on homelab and apply the actions queued
+#             on the phone (lib/honeycomb/runtime/hub)
 #
 # The areas are lib/honeycomb/default.nix's, in the JSON file that
 # $env.HONEYCOMB_AREAS names (the installed command sets it).
@@ -101,6 +104,9 @@ def claude-sessions [root: path] {
       title: ($session.title? | default "")
       archived: ($session.isArchived? | default false)
       active: ($session.lastActivityAt? | default 0)
+      # A session under Remote Control opens on claude.ai and in the
+      # Claude mobile app.
+      link: ($session.bridgeSessionIds? | default [] | last | if $in == null { null } else { $"https://claude.ai/code/($in)" })
     }
   }
 }
@@ -362,12 +368,220 @@ def "main sidebar" [
   if $config == (claude-config) and (claude-running) {
     error make --unspanned { msg: "Quit the Claude desktop app first: it writes its sidebar back on exit." }
   }
+  let backup = (write-sidebar $config $plan)
+  print $"Refiled the sidebar; the old one is in ($backup)."
+}
+
+# Write a planned sidebar into the app's config, keeping a copy of the old
+# file; returns the copy's path.
+def write-sidebar [config: path, plan: record] {
   let backup = $"($config).(date now | format date '%Y%m%dT%H%M%S').honeycomb"
   cp $config $backup
   let data = (open $config)
   let prefs = ($data.preferences.epitaxyPrefs | upsert "dframe-code-sections" $plan.sections | upsert "dframe-group-scopes" $plan.scopes)
   $data | upsert preferences ($data.preferences | upsert epitaxyPrefs $prefs) | to json --indent 2 | save --force $config
-  print $"Refiled the sidebar; the old one is in ($backup)."
+  $backup
+}
+
+# A planned sidebar with one session moved into an area's section, at the
+# top of it.
+def file-session [plan: record, areas: list, session: record, area: string] {
+  let title = ($areas | where name == $area | get 0?.title)
+  if $title == null { error make --unspanned { msg: $"no area named ($area)" } }
+  let scopes = ($plan.scopes | columns | each {|name|
+    let scope = ($plan.scopes | get $name)
+    let target = ($scope.groups | where name == $title | get 0?.id)
+    if $target == null or not ($session.file | str contains $"/($name)/") { return { $name: $scope } }
+    let order = ($scope.order | columns | each {|id|
+      let keys = ($scope.order | get $id | where {|key| $key != $session.key })
+      { $id: (if $id == $target { $keys | prepend $session.key } else { $keys }) }
+    } | to-record)
+    { $name: ($scope | upsert assignments ($scope.assignments | upsert $session.key $target) | upsert order $order) }
+  } | to-record)
+  $plan | upsert scopes $scopes
+}
+
+# Apply actions queued on the phone: `archive` a session, or `file` it into
+# an area. They wait, unapplied, while the Claude desktop app runs on its
+# own config. Returns each applied action's outcome.
+def apply-actions [actions: list, config: path, root: path, areas: list] {
+  if ($actions | is-empty) { return [] }
+  if $config == (claude-config) and (claude-running) { return [] }
+  let sessions = (claude-sessions $root)
+  mut plan = (plan-from $config $root $areas)
+  mut results = []
+  mut filed = false
+  for action in $actions {
+    let session = ($sessions | where key == ($action.target? | default "") | get 0?)
+    if $session == null {
+      $results = ($results | append { id: $action.id, ok: false, note: "no such session" })
+      continue
+    }
+    if $action.kind == "archive" {
+      open $session.file | upsert isArchived true | to json --indent 2 | save --force $session.file
+      $results = ($results | append { id: $action.id, ok: true, note: "" })
+    } else if $action.kind == "file" {
+      let moved = (try { file-session $plan $areas $session ($action.area? | default "") } catch {|error| { failed: $error.msg } })
+      if "failed" in ($moved | columns) {
+        $results = ($results | append { id: $action.id, ok: false, note: $moved.failed })
+      } else {
+        $plan = $moved
+        $filed = true
+        $results = ($results | append { id: $action.id, ok: true, note: "" })
+      }
+    } else {
+      $results = ($results | append { id: $action.id, ok: false, note: $"unknown action ($action.kind)" })
+    }
+  }
+  if $filed { write-sidebar $config $plan | ignore }
+  $results
+}
+
+# An area's knowledge-base hub, `<range>-<hub>.md`, or the index for Home:
+# each top-level bullet, named by its first link or its text.
+def hub-notes [kb: path, hub: string] {
+  let file = if $hub == "index" { $kb | path join index.md } else { glob ($kb | path join $"[0-9][0-9]-[0-9][0-9]-($hub).md") | get 0? }
+  if $file == null or not ($file | path exists) { return [] }
+  open --raw $file | lines | where {|line| $line starts-with "- " } | each {|line|
+    let linked = ($line | parse --regex '\[(?<title>[^\]]+)\]' | get 0?.title)
+    let text = ($line | str substring 2.. | split row " — " | first | str replace --all "`" "")
+    { title: ($linked | default $text | str substring 0..59) }
+  }
+}
+
+# Open luvus tasks with their area and what each changed from trunk.
+def task-items [areas: list] {
+  if (which luvus | is-empty) { return [] }
+  let listed = (^luvus task list | complete)
+  if $listed.exit_code != 0 { return [] }
+  let tasks = (try { $listed.stdout | from json | get result.tasks } catch { [] })
+  $tasks | where status in [queued running review blocked] | each {|task|
+    let tree = ($task.worktree? | default "")
+    let files = if $tree != "" and ($tree | path exists) {
+      let base = (^git -C $tree merge-base HEAD origin/main | complete | get stdout | str trim)
+      if $base == "" { [] } else {
+        ^git -C $tree diff --numstat $base | complete | get stdout | lines | parse "{added}\t{removed}\t{path}"
+      }
+    } else { [] }
+    {
+      area: (folder-area $areas ($task.project?.root? | default ""))
+      id: $task.id
+      title: $task.title
+      status: $task.status
+      branch: ($task.branch? | default "")
+      files: ($files | first 36)
+      changed: ($files | length)
+    }
+  }
+}
+
+# Windows on each area's niri workspace, when niri runs.
+def window-items [] {
+  if (which niri | is-empty) { return [] }
+  let workspaces = (^niri msg --json workspaces | complete)
+  let windows = (^niri msg --json windows | complete)
+  if $workspaces.exit_code != 0 or $windows.exit_code != 0 { return [] }
+  let names = ($workspaces.stdout | from json | where name != null | select id name)
+  $windows.stdout | from json | each {|window|
+    { area: ($names | where id == $window.workspace_id | get 0?.name), id: $window.id, title: ($window.title? | default ""), app: ($window.app_id? | default "") }
+  } | where area != null
+}
+
+# Up to 36 of a kind, most relevant first, and how many there are.
+def kind [items: list] { { total: ($items | length), items: ($items | first 36) } }
+
+# What each area holds now, for the phone: Claude's live sessions, luvus's
+# open tasks, the windows on its niri workspace and its knowledge-base hub.
+def flower-snapshot [config: path, root: path, areas: list, kb: path] {
+  let sessions = if ($config | path exists) {
+    ranked (plan-from $config $root $areas).sessions | each {|session|
+      { area: $session.area, id: $session.key, title: $session.title, active: $session.active, gone: $session.gone, link: $session.link }
+    }
+  } else { [] }
+  let tasks = (task-items $areas)
+  let windows = (window-items)
+  {
+    version: 1
+    limit: $limit
+    generated: (date now | format date "%+")
+    host: (sys host | get hostname)
+    areas: ($areas | each {|area|
+      {
+        name: $area.name
+        title: $area.title
+        cell: $area.cell
+        kinds: {
+          sessions: (kind ($sessions | where area == $area.name | reject area))
+          tasks: (kind ($tasks | where area == $area.name | reject area))
+          windows: (kind ($windows | where area == $area.name | reject area))
+          notes: (kind (hub-notes $kb $area.hub))
+        }
+      }
+    })
+    unfiled: {
+      sessions: (kind ($sessions | where area == unfiled | reject area))
+      tasks: (kind ($tasks | where area == null | reject area))
+    }
+  }
+}
+
+# The snapshot the phone shows: what each area holds now (see
+# flower-snapshot), as JSON.
+def "main flower" [
+  --config: path # The desktop app's config (default: its own).
+  --root: path # Where its sessions are kept (default: its own).
+  --areas: path # The areas (default: $env.HONEYCOMB_AREAS).
+  --kb: path # The knowledge base (default: $env.KB_ROOT, else ~/kb).
+] {
+  let kb = ($kb | default ($env.KB_ROOT? | default ($env.HOME | path join kb)))
+  flower-snapshot ($config | default (claude-config)) ($root | default (claude-root)) (areas $areas) $kb | to json
+}
+
+# Apply a JSON list of queued actions, as `hub sync` does, and print each
+# outcome as JSON.
+def "main hub apply" [
+  actions: path # The actions, as the hub queues them.
+  --config: path # The desktop app's config (default: its own).
+  --root: path # Where its sessions are kept (default: its own).
+  --areas: path # The areas (default: $env.HONEYCOMB_AREAS).
+] {
+  apply-actions (open $actions) ($config | default (claude-config)) ($root | default (claude-root)) (areas $areas) | to json
+}
+
+# Send the hub (lib/honeycomb/runtime/hub) this host's snapshot, apply the
+# actions queued on the phone, and report their outcomes. An unreachable
+# hub is not an error: the phone keeps the last snapshot.
+def "main hub sync" [
+  --url: string # The hub (default: $env.HONEYCOMB_HUB).
+  --config: path # The desktop app's config (default: its own).
+  --root: path # Where its sessions are kept (default: its own).
+  --areas: path # The areas (default: $env.HONEYCOMB_AREAS).
+  --kb: path # The knowledge base (default: $env.KB_ROOT, else ~/kb).
+] {
+  let url = ($url | default ($env.HONEYCOMB_HUB? | default ""))
+  if $url == "" { error make --unspanned { msg: "no hub: set HONEYCOMB_HUB or pass --url" } }
+  let config = ($config | default (claude-config))
+  let root = ($root | default (claude-root))
+  let areas = (areas $areas)
+  let kb = ($kb | default ($env.KB_ROOT? | default ($env.HOME | path join kb)))
+  let send = {|results|
+    { flower: (flower-snapshot $config $root $areas $kb), results: $results } | to json
+    | http post --content-type application/json $"($url)/api/sync" $in
+  }
+  let reply = (try { do $send [] } catch {|error| { unreachable: $error.msg } })
+  if ($reply | describe | str starts-with "record") and "unreachable" in ($reply | columns) {
+    print $"hub unreachable: ($reply.unreachable)"
+    return
+  }
+  let pending = ($reply.pending? | default [])
+  let results = (apply-actions $pending $config $root $areas)
+  # Report the outcomes, with a snapshot that shows them, at once rather
+  # than at the next sync.
+  if ($results | is-not-empty) {
+    let reported = (try { do $send $results; true } catch {|error| print $"hub unreachable: ($error.msg)"; false })
+    if not $reported { return }
+  }
+  print $"synced; applied ($results | where ok | length), failed ($results | where not ok | length), waiting (($pending | length) - ($results | length))"
 }
 
 # Each area's live Claude sessions, with the ones to archive: those whose
@@ -405,5 +619,5 @@ def "main sessions" [
 }
 
 def main [] {
-  print "Usage: honeycomb (census [--json] | prune [--yes] | sidebar [--apply] | sessions [--archive])"
+  print "Usage: honeycomb (census [--json] | prune [--yes] | sidebar [--apply] | sessions [--archive] | flower | hub sync | hub apply ACTIONS)"
 }

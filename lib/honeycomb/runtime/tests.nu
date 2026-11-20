@@ -12,6 +12,51 @@ def expect [name: string, actual: any, expected: any] {
   }
 }
 
+# The hub's handler, run with `http-nu eval` on requests as Tailscale Serve
+# passes them on.
+def hub-tests [server: path, http_nu: path, home: path] {
+  let state = ($home | path join hub)
+  mkdir $state
+  let probe = ($home | path join hub-probe.nu)
+  r#'
+    let handler = source SERVER
+    let who = { tailscale-user-login: owner }
+    let anon = (do $handler { method: GET, path: /api/flower, headers: {} })
+    let queued = ('{"kind":"archive","target":"code:local_x"}' | do $handler { method: POST, path: /api/actions, headers: $who })
+    let other = ('{"kind":"file","target":"code:local_y","area":"xr"}' | do $handler { method: POST, path: /api/actions, headers: $who })
+    let refused = ('{"kind":"delete","target":"x"}' | do $handler { method: POST, path: /api/actions, headers: $who })
+    let unfiled = ('{"kind":"file","target":"x"}' | do $handler { method: POST, path: /api/actions, headers: $who })
+    do $handler { method: DELETE, path: $"/api/actions/($other.id)", headers: $who } | ignore
+    let before = (do $handler { method: GET, path: /api/flower, headers: $who })
+    let results = { flower: { version: 1 }, results: [{ id: $queued.id, ok: false, note: busy }] }
+    let sync = ($results | to json | do $handler { method: POST, path: /api/sync, headers: $who })
+    let after = (do $handler { method: GET, path: /api/flower, headers: $who })
+    {
+      anon: $anon
+      queued: $queued.by
+      refused: ($refused.error? != null)
+      unfiled: ($unfiled.error? != null)
+      before: ($before.pending | length)
+      sync: ($sync.pending | length)
+      flower: $after.flower.version
+      failed: ($after.failed | get note)
+    } | to json
+  '# | str replace SERVER ($server | path expand | to nuon) | save --force $probe
+  let run = (with-env { HUB_STATE: $state } { ^$http_nu eval $probe | complete })
+  if $run.exit_code != 0 { print $run.stderr; return ["the hub's handler runs"] }
+  let got = ($run.stdout | from json)
+  [
+    (expect "the hub refuses a request that did not come through Serve" $got.anon "Reach the hub through Tailscale Serve.")
+    (expect "the hub records who queued an action" $got.queued owner)
+    (expect "the hub refuses an unknown action" $got.refused true)
+    (expect "the hub refuses filing without an area" $got.unfiled true)
+    (expect "a dropped action leaves the queue" $got.before 1)
+    (expect "a sync settles the actions it reports" $got.sync 0)
+    (expect "a sync stores the snapshot" $got.flower 1)
+    (expect "a failed action is kept with its reason" $got.failed [busy])
+  ] | flatten
+}
+
 def section [id: string, kind: string, name: string] {
   {
     id: $id, kind: $kind, v: 2, name: $name, order: 0, sortBy: recency, ascending: false
@@ -20,7 +65,12 @@ def section [id: string, kind: string, name: string] {
   }
 }
 
-def main [script: path, areas: path] {
+def main [
+  script: path # honeycomb.nu
+  areas: path # The areas as JSON.
+  server?: path # hub/server.nu, to test the hub as well
+  http_nu?: path # The http-nu binary that runs it.
+] {
   let script = ($script | path expand)
   let areas = ($areas | path expand)
   let home = ($env.HOME | path expand)
@@ -52,6 +102,7 @@ def main [script: path, areas: path] {
       isArchived: $session.archived
       lastActivityAt: $session.active
       title: $"session ($session.id)"
+      bridgeSessionIds: (if $session.id == "a" { [session_old session_a] } else { [] })
     } | to json | save --force ($store | path join $"local_($session.id).json")
   }
   let groups = [
@@ -126,6 +177,44 @@ def main [script: path, areas: path] {
     (expect "--archive archives the marked sessions" (["g" "n1" "n2" "n3"] | each {|id| open ($store | path join $"local_($id).json") | get isArchived }) [true true true true])
     (expect "--archive leaves the rest" (open ($store | path join local_a.json) | get isArchived) false)
   ] | flatten)
+
+  # The phone's snapshot: live sessions and hub notes by area.
+  let kb = ($home | path join kb)
+  "# Nix\n\n- [Alpha](alpha.md) — the first\n- plain `code` — the second\n  - nested, not listed\n" | save --force ($kb | path join 40-49-nix.md)
+  let snapshot = (^nu --no-config-file $script flower --config $config --root $root --areas $areas --kb $kb | complete)
+  if $snapshot.exit_code != 0 { print $snapshot.stderr; exit 1 }
+  let flower = ($snapshot.stdout | from json)
+  let nix_area = ($flower.areas | where name == nix | get 0)
+  let failures = $failures | append ([
+    (expect "the snapshot lists the seven areas in order" ($flower.areas | get name) [home work research nix ai xr life])
+    (expect "an area counts its live sessions" $nix_area.kinds.sessions.total 6)
+    (expect "a Remote Control session links to claude.ai" ($nix_area.kinds.sessions.items | where id == "code:local_a" | get 0.link) "https://claude.ai/code/session_a")
+    (expect "an area lists its hub's top-level notes" ($nix_area.kinds.notes.items | get title) ["Alpha" "plain code"])
+    (expect "sessions with no area are unfiled" ($flower.unfiled.sessions.items | get id | sort) ["code:local_c" "code:local_f"])
+  ] | flatten)
+
+  # Actions queued on the phone.
+  let actions = ($home | path join actions.json)
+  [
+    { id: "1", kind: archive, target: "code:local_d" }
+    { id: "2", kind: file, target: "code:local_c", area: xr }
+    { id: "3", kind: file, target: "code:local_missing", area: xr }
+    { id: "4", kind: file, target: "code:local_a", area: nowhere }
+  ] | to json | save --force $actions
+  let applied = (^nu --no-config-file $script hub apply $actions --config $config --root $root --areas $areas | complete)
+  if $applied.exit_code != 0 { print $applied.stderr; exit 1 }
+  let outcomes = ($applied.stdout | from json)
+  let scope_now = (open $config | get preferences.epitaxyPrefs."dframe-group-scopes" | get $scope)
+  let xr = ($scope_now.groups | where name == XR | get 0.id)
+  let failures = $failures | append ([
+    (expect "each action has an outcome" ($outcomes | get ok) [true true false false])
+    (expect "a missing session is reported" ($outcomes | get 2.note) "no such session")
+    (expect "archiving archives the session" (open ($store | path join local_d.json) | get isArchived) true)
+    (expect "filing assigns the session to the area" ($scope_now.assignments | get "code:local_c") $xr)
+    (expect "filing puts the session first in its section" ($scope_now.order | get $xr | first) "code:local_c")
+  ] | flatten)
+
+  let failures = $failures | append (if $server == null { [] } else { hub-tests $server $http_nu $home })
 
   if ($failures | is-not-empty) {
     print $"\n($failures | length) failed"
