@@ -168,7 +168,7 @@ in
       # loaded the project. Its hooks wrap direnv's prompt hook, which the
       # direnv module adds with mkAfter (1500), so they install after it.
       (lib.mkOrder 1600 ''
-        source ${../../nushell/envrc-nu.nu}
+        source ${../../../nushell/envrc-nu.nu}
         setup-envrc-nu
       '')
     ];
