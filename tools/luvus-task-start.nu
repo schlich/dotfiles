@@ -85,10 +85,14 @@ def main [
   let task = (luvus-json task get $id | get task)
   let pane = ($task.assignee | into string)
 
-  # Wait for the pane's shell to answer luvus's own launch line.
+  # Wait for the pane's shell to answer luvus's own launch line: either it
+  # rejects it, or the worker starts and consumes its staged launch. The
+  # echoed launch line alone settles nothing, since Nushell prints its error
+  # a moment later.
+  let staged = (staged-launch $pane)
   let deadline = ((date now) + $wait)
   mut text = (pane-text $pane)
-  while (not ($text =~ 'parse_mismatch|__task-worker')) and ((date now) < $deadline) {
+  while (not ($text =~ 'nu::parser::parse_mismatch')) and ($staged | path exists) and ((date now) < $deadline) {
     sleep 250ms
     $text = (pane-text $pane)
   }
@@ -104,7 +108,6 @@ def main [
   }
 
   # The worker deletes its staged launch when it starts.
-  let staged = (staged-launch $pane)
   let deadline = ((date now) + $wait)
   while ($staged | path exists) and ((date now) < $deadline) { sleep 250ms }
   let launched = not ($staged | path exists)
