@@ -27,6 +27,16 @@ evaluate tool in the worktree that owns the task. It accepts `OWNER/REPO`,
 and `--rev` pins a branch, tag, or commit. `--comment` replaces the flake's
 description with a reason the input exists.
 
+This repository's inputs are grouped in flakes of at most six under
+`lib/inputs` (`lib/honeycomb/README.md`), so `--group` is required here: the
+group the input belongs with, such as `terminal/shell` or
+`agents/skills/web`. Run `flake-add` without it to list the groups and how
+full each is. A full group means a new one: add a directory with its own
+`flake.nix` beside the others, named for what a person would look for, and
+list it in its parent's inputs. The input block goes into the group's
+`flake.nix`; what the input follows goes into the root `flake.nix`, which
+alone can reach other groups. Modules still read it as `inputs.NAME`.
+
 The report's `follows` lists the shared inputs it will make the flake follow,
 and `unfollowed` lists the rest. Pass `--keep nixpkgs` (comma-separated) when
 the flake needs its own pin, such as a Rust toolchain newer than the

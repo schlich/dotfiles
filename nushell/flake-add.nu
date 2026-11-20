@@ -120,18 +120,41 @@ def main [
     --rev: string        # A branch, tag, or commit to pin; defaults to the default branch.
     --comment: string    # Why the input exists; defaults to the flake's description.
     --keep: string       # Comma-separated shared inputs to leave unfollowed, such as nixpkgs when the flake needs its own pin.
-    --flake: path = "flake.nix" # The flake.nix to edit.
+    --flake: path = "flake.nix" # The root flake.nix.
+    --group: string      # The group the input joins, such as terminal/shell, in a flake whose inputs are grouped under lib/inputs.
     --dry-run            # Print the block and the wiring without editing or locking.
     --force              # Add the input even when nixpkgs already ships a package of that name.
     --no-show            # Skip `nix flake show`, which evaluates the flake's outputs.
     --json               # Print the report as JSON, for agents.
 ] {
-    let report = (add-input $ref $name $rev $comment $keep $flake $dry_run $force $no_show)
+    let report = (add-input $ref $name $rev $comment $keep $flake $group $dry_run $force $no_show)
     if $json { $report | to json } else { $report }
 }
 
+# The inputs a lock reaches through group flakes, which are relative path
+# inputs, with the path `nix flake update` names each by.
+def grouped-inputs [nodes: record, node: string, prefix: list<string>] {
+    $nodes | get -o $node | get -o inputs | default {} | transpose name node | each {|row|
+        let path = ($prefix | append $row.name)
+        let target = if ($row.node | describe) == "string" { $nodes | get -o $row.node } else { null }
+        if $target != null and ($target | get -o locked.type) == "path" and ($target | get -o parent) != null {
+            grouped-inputs $nodes $row.node $path
+        } else {
+            [{ name: $row.name, path: ($path | str join "/") }]
+        }
+    } | flatten
+}
+
+# The groups under lib/inputs with how many members each holds; six is full.
+def group-sizes [root: path] {
+    glob ($root | path join "lib/inputs/**/flake.nix") | each {|file|
+        let members = (run-command $"reading ($file)" { ^nix eval --json --file $file inputs --apply builtins.attrNames } | from json)
+        { group: ($file | path dirname | path relative-to ($root | path join "lib/inputs")), members: ($members | length) }
+    } | sort-by group
+}
+
 def add-input [
-    ref: string, name: any, rev: any, comment: any, keep: any, flake: path,
+    ref: string, name: any, rev: any, comment: any, keep: any, flake: path, group: any,
     dry_run: bool, force: bool, no_show: bool
 ] {
     let flake = ($flake | path expand)
@@ -139,14 +162,37 @@ def add-input [
         error make { msg: $"($flake) does not exist." }
     }
     let dir = ($flake | path dirname)
+    let grouped = ($dir | path join "lib/inputs" | path exists)
+    if $grouped and $group == null {
+        let open = (group-sizes $dir | each {|g| $"($g.group) \(($g.members) of 6\)" } | str join ", ")
+        error make { msg: $"This flake groups its inputs under lib/inputs: pass --group. Groups: ($open)." }
+    }
+    if not $grouped and $group != null {
+        error make { msg: $"($dir) has no lib/inputs, so --group does not apply." }
+    }
+    # In a grouped flake the block goes into the group's flake.nix, and what
+    # the input follows goes into the root's, which alone can reach other groups.
+    let target = if $grouped { $dir | path join "lib/inputs" $group "flake.nix" } else { $flake }
+    if not ($target | path exists) {
+        error make { msg: $"There is no group ($group): ($target) does not exist." }
+    }
     let source = (parse-ref $ref $rev)
     let name = ($name | default ($source.repo | str lowercase | str replace --all '.' '-'))
     if $name !~ '^[A-Za-z_][A-Za-z0-9_-]*$' {
         error make { msg: $"`($name)` is not a usable input name; pass one with --name." }
     }
-    let ours = (run-command "reading this flake's inputs" { ^nix eval --json --file $flake inputs --apply builtins.attrNames } | from json)
-    if $name in $ours {
+    let members = (run-command "reading this flake's inputs" { ^nix eval --json --file $target inputs --apply builtins.attrNames } | from json)
+    let known = if $grouped {
+        grouped-inputs (open --raw ($dir | path join "flake.lock") | from json | get nodes) root []
+    } else {
+        $members | each {|member| { name: $member, path: $member } }
+    }
+    let ours = ($known | get name)
+    if $name in $ours or $name in $members {
         error make { msg: $"`($name)` is already an input of ($flake)." }
+    }
+    if $grouped and ($members | length) >= 6 {
+        error make { msg: $"Group ($group) already has six members. Add a group, or pick another: (group-sizes $dir | where members < 6 | get group | str join ', ')." }
     }
 
     let fetched = (run-command $"fetching ($source.url)" { ^nix flake prefetch --json $source.url } | from json)
@@ -184,7 +230,15 @@ def add-input [
     }
 
     let comment = ($comment | default ($meta.description? | default ''))
-    let block = (input-block $name $source.url $follows $is_flake $comment)
+    let block = (input-block $name $source.url (if $grouped { [] } else { $follows }) $is_flake $comment)
+    # The root's lines for what a grouped input follows, by the followed
+    # input's own path among the groups.
+    let attr = if $grouped { $group | split row "/" | append $name | str join ".inputs." } else { "" }
+    let root_follows = if $grouped {
+        $follows | each {|f| $"    ($attr).inputs.($f).follows = \"($known | where name == $f | get 0.path)\";" }
+    } else {
+        []
+    }
     let next = (wiring $name $is_flake $outputs
         | append (if $in_nixpkgs != null { [$"Declare dotfiles.nixpkgsWatch.($in_nixpkgs.pname) next to the wiring: nixpkgs ships ($in_nixpkgs.version)."] } else { [] }))
     let report = {
@@ -193,14 +247,14 @@ def add-input [
         flake: $is_flake
         follows: $follows
         unfollowed: $unfollowed
-        block: ($block | str join "\n")
+        block: ($block | append $root_follows | str join "\n")
         next: $next
     }
     if $dry_run {
         return ($report | insert written false)
     }
 
-    let edit = (insert-block $flake $name $source.url $block $follows $is_flake $comment)
+    let edit = (insert-block $target $name $source.url $block $follows $is_flake $comment)
     let content = ($edit.lines | str join "\n" | str trim --right | $"($in)\n")
     let candidate = (mktemp --tmpdir flake-add.XXXXXX)
     $content | save --force $candidate
@@ -209,7 +263,12 @@ def add-input [
     if $check.exit_code != 0 {
         error make { msg: $"The edited flake.nix does not evaluate, so it was left alone: ($check.stderr | str trim)" }
     }
-    $content | save --force $flake
-    run-command $"locking ($name)" { ^nix flake update $name --flake $"path:($dir)" }
-    $report | insert written $flake | insert via $edit.via
+    $content | save --force $target
+    if ($root_follows | is-not-empty) {
+        let root = (insert-block $flake $name $source.url $root_follows [] false "")
+        $root.lines | str join "\n" | str trim --right | $"($in)\n" | save --force $flake
+    }
+    let locked = if $grouped { $"($group)/($name)" } else { $name }
+    run-command $"locking ($locked)" { ^nix flake update $locked --flake $"path:($dir)" }
+    $report | insert written $target | insert via $edit.via
 }

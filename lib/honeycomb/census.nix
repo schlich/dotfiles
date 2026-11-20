@@ -60,10 +60,26 @@ let
       [ (lib.nameValuePair "${prefix}:${cell.name}" (builtins.length cell.cells)) ]
       ++ lib.concatMap (cellSizes prefix) cell.cells
     );
+
+  # The flake's inputs are grouped in flakes under lib/inputs: count the
+  # root's inputs, and each group's. A group is a relative path input.
+  isGroup = node: (node.locked.type or null) == "path" && node ? parent;
+  inputCounts =
+    name: key:
+    let
+      node = lock.nodes.${key};
+      members = lib.filterAttrs (_: builtins.isString) (node.inputs or { });
+      groups = lib.filterAttrs (_: member: isGroup lock.nodes.${member}) members;
+    in
+    [ (lib.nameValuePair "flake:${name}" (builtins.length (builtins.attrNames (node.inputs or { })))) ]
+    ++ lib.concatLists (
+      lib.mapAttrsToList (
+        member: memberKey: inputCounts (if name == "inputs" then member else "${name}/${member}") memberKey
+      ) groups
+    );
 in
-lib.listToAttrs (directories "" ++ cellSizes "niri" niri)
+lib.listToAttrs (directories "" ++ cellSizes "niri" niri ++ inputCounts "inputs" lock.root)
 // {
-  "flake:inputs" = builtins.length (builtins.attrNames lock.nodes.${lock.root}.inputs);
   "niri:window-rules" = matching "window-rule .*" "niri/config.kdl";
   "agents:sections" = matching "## .*" "AGENTS.md";
 }
