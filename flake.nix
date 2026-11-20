@@ -445,6 +445,9 @@
         nixbot-register = nixbotRegister;
         inherit marimohub;
         workbench = workbench.cli;
+        # A Rust build this flake owns, with a `timings` output holding
+        # cargo's build timing report (lib/with-cargo-timings.nix).
+        jj-hunk = import ./modules/programs/vcs/jj-hunk-package.nix { inherit inputs lib pkgs; };
       }
       // workbenchImages;
 
