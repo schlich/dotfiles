@@ -10,8 +10,6 @@
     # default branch only; v0.1.3 predates it.
     hokum.url = "github:anomalyco/hokum";
     dicta.url = "github:schlich/dicta";
-    # Local dictation (Linux beta); not in nixpkgs.
-    hex.url = "github:anomalyco/hex";
     ai-usagebar.url = "github:akitaonrails/ai-usagebar";
   };
 

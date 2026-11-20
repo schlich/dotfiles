@@ -6,6 +6,9 @@ to the current day's group.
 
 ## 2026-11-19
 
+- **Desktop**: Prepared the switch from Hex's upstream flake to the pinned
+  nixpkgs `anomaly-hex` release. Home Manager provides the on-demand user unit
+  used by the existing Niri shortcuts.
 - **Architecture**: [Workaround watch](architecture/workaround-watch.md). A
   flake check now fails on a flake input's package, local build, or
   overrideAttrs that no `dotfiles.nixpkgsWatch` entry covers; entries gain an

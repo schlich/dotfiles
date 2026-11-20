@@ -25,8 +25,6 @@
     desktop.inputs.noc-minimizer.inputs.nixpkgs.follows = "system/nixpkgs";
     desktop.inputs.hokum.inputs.nixpkgs.follows = "system/nixpkgs";
     desktop.inputs.dicta.inputs.nixpkgs.follows = "system/nixpkgs";
-    desktop.inputs.hex.inputs.nixpkgs.follows = "system/nixpkgs";
-    desktop.inputs.hex.inputs.home-manager.follows = "system/home-manager";
     desktop.inputs.ai-usagebar.inputs.nixpkgs.follows = "system/nixpkgs";
     terminal.inputs.luvus.inputs.nixpkgs.follows = "system/nixpkgs";
     terminal.inputs.shell.inputs.nushellWith.inputs.nixpkgs.follows = "system/nixpkgs";
