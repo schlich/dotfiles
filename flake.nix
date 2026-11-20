@@ -131,6 +131,7 @@
       '';
       lib = nixpkgs.lib;
       bombadil = import ./lib/bombadil.nix { inherit lib pkgs; };
+      dagger = import ./modules/programs/vcs/dagger-package.nix { inherit lib pkgs; };
       inherit (pkgs) iwe;
       marimohub = import ./modules/tooling/knowledge/marimohub-package.nix { inherit lib pkgs; };
       ciDashboard = import ./tools/ci-dashboard/checks.nix { inherit lib pkgs; };
@@ -434,6 +435,7 @@
         headless = denFlake.nixosConfigurations.asus-headless.config.system.build.toplevel;
         desktop-primary = denAsusPrimary.activationPackage;
         ci = jjCi;
+        inherit dagger;
         jj = pkgs.jujutsu;
         jjui = pkgs.jjui;
         jj-ci-lifecycle = jjCiLifecycle;
@@ -459,6 +461,8 @@
             # The CLI must match the clan-core lib that builds `clan` above.
             inputs.clan-core.packages.${system}.clan-cli
             d2
+            # `dagger check` runs the flake checks in containers (docs/delivery/dagger.md).
+            dagger
             difftastic
             fd
             gh
@@ -788,6 +792,17 @@
               export HOME="$TMPDIR/home"
               mkdir -p "$HOME"
               ${pkgs.nushell}/bin/nu --no-config-file ${./tests/keymap.nu} ${src}/niri/keymap.nu
+              touch "$out"
+            '';
+        nushell-envrc-nu =
+          pkgs.runCommand "nushell-envrc-nu-check"
+            {
+              nativeBuildInputs = [ pkgs.nushell ];
+            }
+            ''
+              export HOME="$TMPDIR/home"
+              mkdir -p "$HOME"
+              ${pkgs.nushell}/bin/nu --no-config-file ${./tests/envrc-nu.nu} ${./nushell/envrc-nu.nu}
               touch "$out"
             '';
         # `honeycomb sidebar`, `sessions`, `flower` and `hub apply` on a

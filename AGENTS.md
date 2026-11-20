@@ -337,6 +337,9 @@ luvus quality gate and nixbot build.
   instead: a closure that fails to build stops at the gate rather than at
   the switch, and the switch after a delivery finds it already built. Add a
   check by adding a flake check.
+- Dagger (`docs/delivery/dagger.md`) runs the same `checks.x86_64-linux` in
+  containers with a cache keyed by content: `dagger check` locally, and Dagger
+  Cloud Checks after each push. Like nix-ci, it reports and gates nothing.
 
 ### Continuous integration and merge-conflict policy
 

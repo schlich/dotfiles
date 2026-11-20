@@ -19,6 +19,7 @@ moves them.*
 
 [Honeycomb: six to a cell, everywhere](plans/20261119-honeycomb.md)
 [Add an OpenCode workflow-status plugin](plans/20261106-opencode-workflow-status.md)
+[Run the flake checks with Dagger](plans/20261029-dagger-ci.md)
 [Run a T3 Code agent fleet](plans/20261029-t3-code-fleet.md)
 [Implement jj graph normalization](plans/20261019-jj-graph.md)
 [Add OpenCode desktop client](plans/20261017-add-opencode-desktop.md)

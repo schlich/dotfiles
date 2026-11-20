@@ -172,9 +172,9 @@ discard muscle memory before the new grammar is proven on one tool.
 `niri/binds.nix`, `niri/session.nu`, `modules/home/files.nix`,
 `modules/home/nix/nix.nix`, `flake.nix`
 
-- [x] The seven areas live once, in `lib/honeycomb/default.nix`, with each
-  one's cell, knowledge-base hub, folders and the sidebar sections it absorbs;
-  niri's binds, its session presets and the `honeycomb` command read them.
+- [x] The seven areas live once, in `lib/honeycomb/default.nix`, with each one's
+  cell, knowledge-base hub, folders and the sidebar sections it absorbs; niri's
+  binds, its session presets and the `honeycomb` command read them.
 - [x] `honeycomb sidebar` refiles Claude's sidebar as pinned, the seven areas
   and the unfiled list, and `honeycomb sessions` names the sessions to archive
   so each area holds six live ones. On 2026-11-19 the sidebar had ten sections
@@ -188,26 +188,26 @@ discard muscle memory before the new grammar is proven on one tool.
 ### Task 9: The flower on the phone
 
 **Files:** Create: `lib/honeycomb/runtime/package.nix`,
-`lib/honeycomb/runtime/hub/` (server, page, service worker, icon, NixOS
-module). Modify: `lib/honeycomb/runtime/honeycomb.nu`,
+`lib/honeycomb/runtime/hub/` (server, page, service worker, icon, NixOS module).
+Modify: `lib/honeycomb/runtime/honeycomb.nu`,
 `modules/tooling/ai/claude/claude-desktop.nix`,
 `modules/nixos/homelab/homelab.nix`, `flake.nix`
 
-- [x] `honeycomb flower` snapshots what each area holds: live Claude
-  sessions, open luvus tasks with their changed files, windows on the area's
-  niri workspace and the hub's notes.
-- [x] An http-nu hub on homelab, published with Tailscale Serve, keeps the
-  last snapshot and a queue of actions; asus syncs with it every minute.
-- [x] A home-screen page draws one cell and six around it per screen and
-  moves along the three axes with the phone's gestures: tap, flick, spread
-  and back for in and out, sideways swipes for siblings, vertical swipes for
-  the next six.
+- [x] `honeycomb flower` snapshots what each area holds: live Claude sessions,
+  open luvus tasks with their changed files, windows on the area's niri
+  workspace and the hub's notes.
+- [x] An http-nu hub on homelab, published with Tailscale Serve, keeps the last
+  snapshot and a queue of actions; asus syncs with it every minute.
+- [x] A home-screen page draws one cell and six around it per screen and moves
+  along the three axes with the phone's gestures: tap, flick, spread and back
+  for in and out, sideways swipes for siblings, vertical swipes for the next
+  six.
 - [x] Selecting an item is SELECT mode with its actions around it: open a
   session in Claude, file it into another area, archive it, or list a task's
   changed files. Filing and archiving wait for asus while Claude runs.
-- [ ] Try the gestures on the Pixel and tune the flick and swipe thresholds.
-  On 2026-11-19 only headless Chromium had rendered the page; no gesture had
-  been tried on a touch screen.
+- [ ] Try the gestures on the Pixel and tune the flick and swipe thresholds. On
+  2026-11-19 only headless Chromium had rendered the page; no gesture had been
+  tried on a touch screen.
 
 ## Spec changes
 

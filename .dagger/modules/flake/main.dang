@@ -1,0 +1,180 @@
+"""
+Builds this flake's checks in a Nix container, as nix-fast-build does for the
+luvus gate and nix-ci, with a Nix store that persists between runs.
+"""
+type Flake {
+  """
+  The system whose checks to build.
+  """
+  pub system: String! = "x86_64-linux"
+
+  """
+  Nix image to build in. dagger.lock pins its digest.
+  """
+  pub image: String! = "nixos/nix:2.34.9"
+
+  """
+  Binary caches to substitute from: nixpkgs', the schlich cache that nix-ci
+  pushes check outputs to, and Niri's.
+  """
+  pub substituters: [String!]! = [
+    "https://cache.nixos.org",
+    "https://schlich.cachix.org",
+    "https://niri-epireyn.cachix.org",
+  ]
+
+  """
+  Keys that sign the substituters' paths.
+  """
+  pub trustedPublicKeys: [String!]! = [
+    "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=",
+    "schlich.cachix.org-1:af4IvtwLTiZ69D2XZTEpJ8mf/zobhwFuwzbxP0+FYVw=",
+    "niri-epireyn.cachix.org-1:tlVyFN7CtsDT+ZcLPS+ekFWeT1X6X4OqvWqbBMyIzFA=",
+  ]
+
+  """
+  More binary caches, for an env overlay to add without restating the public
+  ones: dagger.toml's homelab env adds the tailnet cache.
+  """
+  pub extraSubstituters: [String!]! = []
+
+  """
+  Keys that sign extraSubstituters' paths.
+  """
+  pub extraTrustedPublicKeys: [String!]! = []
+
+  """
+  nix-fast-build's evaluation workers. Each one evaluating a NixOS host can
+  take several GiB.
+  """
+  pub evalWorkers: Int! = 4
+
+  """
+  Derivations Nix builds at once, as the workstation's nix.conf sets it.
+  """
+  pub maxJobs: Int! = 2
+
+  """
+  Cores each build may use, as the workstation's nix.conf sets it; 0 means
+  all of them.
+  """
+  pub cores: Int! = 4
+
+  let ws: Workspace!
+
+  """
+  The flake's checks, keyed by attribute name.
+  """
+  pub checks: Checks! {
+    let names = nix
+      .withExec([
+        "nix", "eval", "--raw", "path:/src#checks." + system,
+        "--apply", "checks: builtins.concatStringsSep \"\\n\" (builtins.attrNames checks)",
+      ])
+      .stdout
+    Checks(names: names.split("\n"), nix: nix, system: system, evalWorkers: evalWorkers)
+  }
+
+  """
+  The repository as Nix sees it under path:, minus ignored files, VCS state,
+  and agent worktrees, so unrelated churn does not invalidate the cache.
+  """
+  let source: Directory! {
+    ws.directory("/", gitignore: true, exclude: [
+      ".git",
+      ".jj",
+      ".jj-workspaces",
+      ".direnv",
+      ".claude/worktrees",
+      ".codex/worktrees",
+      "result",
+      "result-*",
+    ])
+  }
+
+  """
+  A Nix container with the source at /src. /nix and Nix's fetcher cache are
+  cache volumes, seeded from the image, so store paths and flake inputs carry
+  over between runs while Dagger's own cache skips unchanged work outright.
+  The container cannot create the namespaces Nix's sandbox needs.
+  """
+  let nix: Container! {
+    let base = container.from(image)
+    base
+      .withMountedCache("/nix", cacheVolume("flake-nix"), source: base.directory("/nix"))
+      .withMountedCache("/root/.cache/nix", cacheVolume("flake-nix-fetchers"))
+      .withEnvVariable("NIX_CONFIG", [
+        "experimental-features = nix-command flakes",
+        "substituters = " + (substituters + extraSubstituters).join(" "),
+        "trusted-public-keys = " + (trustedPublicKeys + extraTrustedPublicKeys).join(" "),
+        "accept-flake-config = false",
+        "sandbox = false",
+        "max-jobs = " + toString(maxJobs),
+        "cores = " + toString(cores),
+        "fallback = true",
+        "connect-timeout = 10",
+        "warn-dirty = false",
+      ].join("\n"))
+      .withMountedDirectory("/src", source)
+      .withWorkdir("/src")
+  }
+}
+
+"""
+The flake's checks, keyed by attribute name.
+"""
+type Checks @collection {
+  """
+  Attribute names under checks.<system>.
+  """
+  pub names: [String!]! @keys
+
+  let nix: Container!
+  let system: String!
+  let evalWorkers: Int!
+
+  """
+  The check with this attribute name.
+  """
+  pub check(name: String!): Check! @get {
+    Check(name: name, nix: nix, system: system, evalWorkers: evalWorkers)
+  }
+
+  """
+  Build the selected checks in one nix-fast-build run. Outputs a binary cache
+  already holds pass without being downloaded, as in nix-ci.
+  """
+  pub build: Void @check {
+    nix
+      .withExec([
+        "nix", "run", "--inputs-from", "path:/src", "nixpkgs#nix-fast-build", "--",
+        "--no-nom", "--skip-cached", "--no-link",
+        "--eval-workers", toString(evalWorkers),
+        "--flake", "path:/src#checks." + system,
+        "--select", "checks: { inherit (checks) " + names.join(" ") + "; }",
+      ])
+      .sync
+    null
+  }
+}
+
+"""
+One attribute of the flake's checks.
+"""
+type Check {
+  """
+  Attribute name under checks.<system>.
+  """
+  pub name: String!
+
+  let nix: Container!
+  let system: String!
+  let evalWorkers: Int!
+
+  """
+  Build this flake check with nix-fast-build.
+  """
+  pub build: Void @check {
+    Checks(names: [name], nix: nix, system: system, evalWorkers: evalWorkers).build
+  }
+}
