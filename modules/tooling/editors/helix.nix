@@ -191,8 +191,8 @@ in
   dotfiles.input.navigation.editor = lib.mkIf (config.dotfiles.primary.editor == "helix") {
     w = [ "Space+W+H" ];
     e = [ "Space+W+L" ];
-    inward = [ "Space+W+J" ];
-    outward = [ "Space+W+K" ];
+    down = [ "Space+W+J" ];
+    up = [ "Space+W+K" ];
     nw = [ "Space+W+Y" ];
     ne = [ "Space+W+U" ];
   };

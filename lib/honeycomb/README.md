@@ -19,20 +19,21 @@ tree that is six wide at most:
 
 Three levels are enough for anything here, including niri's 169 binds.
 
-## Six directions and two depths
+## Six directions, a stack and two depths
 
-The same eight keys move through every tree. On a staggered keyboard the six
-direction keys ring `J` and `K`, the way a cell's neighbours ring it:
+The same ten keys move through every tree. On a staggered keyboard the six
+direction keys ring `J` and `K`, the way a cell's neighbours ring it, with
+`I` and `O` just above:
 
 ```text
-   Y   U          nw  ne
- H  J K  L       w  in out  e
-   N   M          sw  se
+   Y   U  I  O        nw  ne  in  out
+ H  J K  L           w  down up  e
+   N   M              sw  se
 ```
 
 - `H` `L` `Y` `U` `N` `M` select the member in that direction.
-- `J` goes into the selected member; `K` goes back out to its parent. Where
-  a tool has a stack and no levels, they step down and up it.
+- `J` and `K` step down and up whatever is stacked.
+- `I` goes into the selected member; `O` goes back out to its parent.
 
 A path of directions is an address: `se`, then `e`, names one leaf for good,
 so a place can be learned by hand, not by reading a list.
@@ -49,11 +50,15 @@ dimensions never share a key:
         z+   y-            N   M
 ```
 
-| Axis | Keys     | Reads as       | In niri   |
-| ---- | -------- | -------------- | --------- |
-| x    | `H`, `L` | left and right | window    |
-| y    | `Y`, `M` | up and down    | workspace |
-| z    | `N`, `U` | in and out     | monitor   |
+| Axis | On the ring | Reads as       | Said plainly | In niri   |
+| ---- | ----------- | -------------- | ------------ | --------- |
+| x    | `H`, `L`    | left and right | `H`, `L`     | window    |
+| y    | `Y`, `M`    | up and down    | `K`, `J`     | workspace |
+| z    | `N`, `U`    | in and out     | `I`, `O`     | monitor   |
+
+Each axis has two spellings: its pair on the ring, and the plain pair for
+left and right, up and down, in and out. The niri column is the example the
+axes were drawn from; niri's binds do not follow it yet.
 
 The tiling is that three-dimensional space seen along its diagonal. One step
 along each of the three axes together returns to where it started, which is

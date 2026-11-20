@@ -83,8 +83,10 @@ def main [script: path] {
   # with the focused area's seat marked.
   let seats = {
     areas: { centre: home, e: work, se: research, sw: nix, w: ai, nw: xr, ne: life }
-    keys: { centre: J, e: L, se: M, sw: N, w: H, nw: Y, ne: U }
-    out: K
+    keys: { centre: I, e: L, se: M, sw: N, w: H, nw: Y, ne: U }
+    out: O
+    down: J
+    up: K
   }
   let hint_code = $"source '($script)'
     seat-status ($seats | to nuon) NORMAL work | to nuon"

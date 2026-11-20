@@ -152,8 +152,8 @@ in
     input.navigation.files = {
       w = [ "H" ];
       e = [ "L" ];
-      inward = [ "J" ];
-      outward = [ "K" ];
+      down = [ "J" ];
+      up = [ "K" ];
     };
   };
 }

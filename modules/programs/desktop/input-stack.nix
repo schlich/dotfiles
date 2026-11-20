@@ -117,7 +117,7 @@ in
       description = ''
         The chords each context binds to the shared navigation keys, by
         context name and then by seat: the six directions (`w`, `e`, `nw`,
-        `ne`, `sw`, `se`), `inward` and `outward`. Evaluation fails when a
+        `ne`, `sw`, `se`), `down`, `up`, `inward` and `outward`. Evaluation fails when a
         chord ends on a key other than the seat's, so a direction means the
         same key in every tool.
       '';

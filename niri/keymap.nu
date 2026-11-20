@@ -243,12 +243,12 @@ def seat-status [seats: record, mode: string, area: any] {
       se: (do $corner se)
       w: (do $seat w "KEY AREA · ← column" [[$"Mod+($seats.keys.w)" "column to the west"] [$"Mod+Shift+($seats.keys.w)" "carry the column west"]])
       e: (do $seat e "KEY AREA · column →" [[$"Mod+($seats.keys.e)" "column to the east"] [$"Mod+Shift+($seats.keys.e)" "carry the column east"]])
-      in: (do $seat centre "KEY AREA · ↓ window" [[$"Mod+($seats.keys.centre)" "next window in the column"]])
+      in: (do $seat centre $"KEY AREA · ($seats.down) ↓ window" [[$"Mod+($seats.down)" "next window in the column"]])
       out: {
         key: $seats.out
-        text: $"Mod window · Mod+Alt area · ($seats.out) sessions · ↑ window"
+        text: $"Mod window · Mod+Alt area · ($seats.out) sessions · ($seats.up) ↑ window"
         here: false
-        tips: [[$"Mod+Alt+($seats.out)" "sessions: areas and projects"] [$"Mod+($seats.out)" "previous window in the column"] [Mod+Tab "back to the previous window"] [Mod+O "overview of every workspace"]]
+        tips: [[$"Mod+Alt+($seats.out)" "sessions: areas and projects"] [$"Mod+($seats.up)" "previous window in the column"] [Mod+Tab "back to the previous window"] [Mod+O "overview of every workspace"]]
       }
     }
   }

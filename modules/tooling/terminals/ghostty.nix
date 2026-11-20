@@ -73,8 +73,8 @@ in
   dotfiles.input.navigation.terminal = lib.mkIf (config.dotfiles.primary.terminal == "ghostty") {
     w = [ "Alt+H" ];
     e = [ "Alt+L" ];
-    inward = [ "Alt+J" ];
-    outward = [ "Alt+K" ];
+    down = [ "Alt+J" ];
+    up = [ "Alt+K" ];
     nw = [ "Alt+Y" ];
     ne = [ "Alt+U" ];
   };

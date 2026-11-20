@@ -175,7 +175,7 @@ in
 
   testDirectionKeysAreDistinct = {
     expr = builtins.length (lib.unique (builtins.attrValues honeycomb.keys));
-    expected = 8;
+    expected = 10;
   };
 
   testResolveFollowsDirectionsDownTheTree = {
@@ -204,11 +204,11 @@ in
         ];
         sw = [ "Mod+Alt+B" ];
       };
-      terminal.up = [ "Alt+K" ];
+      terminal.sideways = [ "Alt+S" ];
     };
     expected = [
       "desktop binds sw to Mod+Alt+B, not to N"
-      "terminal names a seat, up, that does not exist"
+      "terminal names a seat, sideways, that does not exist"
     ];
   };
 

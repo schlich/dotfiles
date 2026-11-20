@@ -1,4 +1,4 @@
-# The session launcher (Mod+Alt+K; see `session.nu overview`): draws the seven
+# The session launcher (Mod+Alt+O; see `session.nu overview`): draws the seven
 # areas where their keys sit, lists the Johnny Decimal areas and categories
 # from the knowledge base's hubs and ~/Projects by workspace tag, then leaves
 # a shell where `project DIR` opens one. Run `overview` to list again.
@@ -92,7 +92,7 @@ def project_snapshot [] {
     if ($untagged | is-not-empty) {
         print $"  untagged: ($untagged | sort -i | str join ' · ')"
     }
-    print "\n`project NAME` opens a project session. Mod+Alt+K closes this."
+    print "\n`project NAME` opens a project session. Mod+Alt+O closes this."
 }
 
 def overview [] {

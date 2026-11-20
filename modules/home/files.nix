@@ -15,7 +15,13 @@ let
   # the bar's navigation hints.
   niriAreas = pkgs.writeText "niri-areas.json" (
     builtins.toJSON {
-      inherit (niriBinds) areas keys out;
+      inherit (niriBinds)
+        areas
+        keys
+        out
+        down
+        up
+        ;
     }
   );
   niriDesk = pkgs.runCommandLocal "niri-desk" { nativeBuildInputs = [ pkgs.makeWrapper ]; } ''
