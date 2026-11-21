@@ -2,8 +2,8 @@
 type: architecture
 description: Each module that publishes through Tailscale Serve or Funnel claims its HTTPS port in one per-host option, and evaluation fails when two claims collide.
 generated:
-  by: claude-code/opus-5
-  at: 2026-10-19T20:40:00Z
+  by: claude-code/opus-5.5
+  at: 2026-11-21T04:30:00Z
 sources:
 - id: registry
   resource: modules/nixos/fleet/tailscale-https.nix
@@ -13,7 +13,7 @@ sources:
   title: marimohub's private Serve endpoint
 - id: homelab
   resource: modules/nixos/homelab/homelab.nix
-  title: The CI dashboard's private Serve endpoint
+  title: homelab's services, which held the CI dashboard's Serve endpoint until 2026-11-21
 ---
 
 # Tailscale HTTPS ports
@@ -35,6 +35,8 @@ Claims as of 2026-10-19:
 | homelab | 8443 | `ci-dashboard`  | Serve    |
 | homelab | 9443 | `marimohub`     | Serve    |
 | asus    | 443  | `jj-ci-webhook` | Funnel   |
+
+The CI dashboard was retired on 2026-11-21, freeing homelab's 8443.
 
 nixbot's Funnel does not claim its port yet: its Funnel moves to port 443 in the
 topic "Make nixbot's GitHub App and secrets declarative", which rewrites its

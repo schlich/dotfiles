@@ -4,6 +4,12 @@ The history of this workspace, newest first. The `ship` skill appends a dated
 group on every release; any skill that creates or retires a document adds a line
 to the current day's group.
 
+## 2026-11-21
+
+- **Retired**: [Reactive CI and Nix dashboard](features/ci-nix-dashboard.md).
+  homelab stops serving it on the tailnet's 8443, and its source and its two
+  checks are removed; Fieldnotes' CI panel covers the same view.
+
 ## 2026-11-19
 
 - **Desktop**: Prepared the switch from Hex's upstream flake to the pinned
