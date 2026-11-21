@@ -117,14 +117,14 @@ describe("remotes", () => {
       [
         "remote.backup.url git@github.com:someone/fork.git",
         "remote.origin.url https://github.com/schlich/dotfiles.git",
-        "remote.tangled.url git@tangled.org:schlich.tngl.sh/dotfiles",
+        "remote.forge.url git@git.example.org:schlich/dotfiles",
         "remote.homelab.url homelab:dotfiles",
       ].join("\n"),
     );
     expect(remotes.map((remote) => remote.name)).toEqual([
       "backup",
       "origin",
-      "tangled",
+      "forge",
       "homelab",
     ]);
     expect(M.githubRepository(remotes)).toBe("schlich/dotfiles");
@@ -132,12 +132,12 @@ describe("remotes", () => {
 
   test("jj git remote list and SSH URLs", () => {
     const remotes = M.parseRemotes(
-      "tangled git@tangled.org:a/b\nmirror git@github.com:owner/repo.git\n",
+      "forge git@git.example.org:a/b\nmirror git@github.com:owner/repo.git\n",
     );
     expect(M.githubRepository(remotes)).toBe("owner/repo");
     expect(M.githubSlug("ssh://git@github.com/owner/repo")).toBe("owner/repo");
     expect(
-      M.githubSlug("git@tangled.org:schlich.tngl.sh/dotfiles"),
+      M.githubSlug("git@git.example.org:schlich/dotfiles"),
     ).toBeUndefined();
   });
 });

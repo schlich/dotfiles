@@ -2,8 +2,8 @@
 # share one port space per node, and Funnel only accepts 443, 8443 and
 # 10000, so a module that publishes through either claims its port here and
 # reads it back; evaluation fails when two claims collide. Each module that
-# claims a port imports this one. A service that runs its own tailscaled,
-# like the Tangled knot, is a separate node and claims nothing here.
+# claims a port imports this one. A service that runs its own tailscaled
+# is a separate node and claims nothing here.
 #
 # A unit that runs `tailscale serve` at start puts waitForBackend in its
 # ExecStartPre. An activation that changes the tailscale package restarts

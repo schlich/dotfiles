@@ -321,8 +321,6 @@ luvus quality gate and nixbot build.
 - GitHub (`origin`) hosts `main`, `luvus/integration`, and any branch pushed
   for review. Open a pull request from a task branch when the user wants
   review, but deliver through `luvus-deliver`, never GitHub's merge button.
-  Tangled (`tangled`) mirrored `main` through `ci land`; that mirror is
-  paused while this repository runs on luvus.
 - nixbot on homelab is the gating CI (`docs/delivery/nixbot.md`): it builds
   `gateChecks.x86_64-linux` for `main`, every `luvus/*` branch
   (`nixbot.toml`), and pull requests, in homelab's warm store, which
