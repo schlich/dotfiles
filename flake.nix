@@ -39,8 +39,6 @@
     terminal.inputs.vcs.inputs.tangled.inputs.flake-compat.follows = "";
     terminal.inputs.vcs.inputs.tangled-dash.inputs.nixpkgs.follows = "system/nixpkgs";
     agents.inputs.fieldnotes.inputs.nixpkgs.follows = "system/nixpkgs";
-    agents.inputs.clients.inputs.codex.inputs.nixpkgs.follows = "system/nixpkgs";
-    agents.inputs.clients.inputs.codex.inputs.rust-overlay.follows = "builds/rust-overlay";
     agents.inputs.clients.inputs.llm-agents.inputs.nixpkgs.follows = "system/nixpkgs";
     agents.inputs.clients.inputs.continuum-ide.inputs.nixpkgs.follows = "system/nixpkgs";
     agents.inputs.clients.inputs.paseo.inputs.nixpkgs.follows = "system/nixpkgs";
@@ -68,9 +66,6 @@
       inherit (inputs) nixpkgs nushellWith;
       system = "x86_64-linux";
       overlays = [
-        (_final: _prev: {
-          codex = inputs.codex.packages.${system}.codex-rs;
-        })
         nushellWith.overlays.default
       ];
       pkgs = import nixpkgs {

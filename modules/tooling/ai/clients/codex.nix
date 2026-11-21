@@ -39,14 +39,6 @@ in
 {
   imports = [ ../shared/common.nix ];
 
-  # The fork's commit is in no release of openai/codex, so the watch reports
-  # only nixpkgs' codex updates, for checking their release notes.
-  dotfiles.nixpkgsWatch.codex = {
-    attr = "codex-rs";
-    fix = "https://github.com/schlich/codex/commit/08241dcba226306031c9690ab132638d8117560d";
-    reason = "flake.nix's overlay takes codex-rs from the schlich/codex fork, which renders execution-style MCP calls compactly; once openai/codex does so in the release nixpkgs ships, drop the overlay and the codex input";
-  };
-
   programs.codex = {
     enable = true;
     package = codex;
