@@ -743,7 +743,7 @@
               touch "$out"
             '';
         # luvus-deliver's risk classification and approval on a throwaway
-        # repository, with a stub jev and a fixture of Den's reach. Nix
+        # repository, with a fixture of Den's reach. Nix
         # parses both versions of a changed module to spot comment edits.
         nushell-luvus-deliver =
           pkgs.runCommand "nushell-luvus-deliver-check"
@@ -757,7 +757,7 @@
             ''
               export HOME="$TMPDIR/home"
               mkdir -p "$HOME"
-              ${pkgs.nushell}/bin/nu --no-config-file ${./tests/luvus-deliver.nu} ${./tools/luvus-deliver.nu} ${./jev/questions.nuon}
+              ${pkgs.nushell}/bin/nu --no-config-file ${./tests/luvus-deliver.nu} ${./tools/luvus-deliver.nu}
               touch "$out"
             '';
         # How the staged switch judges each kind of unit a candidate touches:
