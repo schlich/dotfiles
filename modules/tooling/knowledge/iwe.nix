@@ -14,8 +14,8 @@ let
     name = "kb-sync";
     runtimeInputs = [
       pkgs.nushell
-      pkgs.jujutsu
-      pkgs.git
+      config.programs.jujutsu.package
+      config.programs.git.package
       pkgs.util-linux
       pkgs.coreutils
     ];

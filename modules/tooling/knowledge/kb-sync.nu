@@ -310,6 +310,11 @@ def do-sync [
     jj-must $root describe -m $msg
   }
 
+  let wc_author_email = (jj-must $root log -r "@" --no-graph -T "author.email()")
+  if ($wc_author_email | is-empty) {
+    jj-must $root metaedit --update-author -r "@"
+  }
+
   push-with-retry $root "@" $remote $branch $host $manual
 }
 

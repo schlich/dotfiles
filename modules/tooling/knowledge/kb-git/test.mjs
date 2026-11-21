@@ -17,10 +17,18 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "kb-git-test-"));
 let serverProc;
 let proxyServer;
 
+const testHome = path.join(tmp, "home");
+fs.mkdirSync(testHome, { recursive: true });
+const testEnv = { ...process.env, HOME: testHome };
+delete testEnv.JJ_CONFIG;
+delete testEnv.GIT_CONFIG_GLOBAL;
+
+async function execClean(cmd, args) {
+  await execFileAsync(cmd, args, { env: testEnv, timeout: 30_000 });
+}
+
 async function runNu(...args) {
-  await execFileAsync("nu", ["--no-config-file", kbSyncScript, ...args], {
-    timeout: 30_000,
-  });
+  await execClean("nu", ["--no-config-file", kbSyncScript, ...args]);
 }
 
 try {
@@ -30,12 +38,12 @@ try {
   const homelab = path.join(tmp, "homelab-kb");
   const pushMarker = path.join(tmp, "pushed");
   fs.mkdirSync(projectRoot, { recursive: true });
-  await execFileAsync("git", ["init", "--bare", "--initial-branch=main", bare]);
+  await execClean("git", ["init", "--bare", "--initial-branch=main", bare]);
 
   // Start kb-git on an ephemeral port with Tailscale-User-Login enforcement on.
   serverProc = spawn(process.execPath, [serverScript], {
     env: {
-      ...process.env,
+      ...testEnv,
       KB_GIT_HOST: "127.0.0.1",
       KB_GIT_PORT: "0",
       KB_GIT_PROJECT_ROOT: projectRoot,
@@ -120,8 +128,8 @@ try {
   // 4. Create a local-only non-colocated JJ repo on asus with an already-committed
   //    note at @- and empty @ (no origin remote, no main bookmark yet).
   fs.mkdirSync(asus, { recursive: true });
-  await execFileAsync("jj", ["--no-pager", "git", "init", asus]);
-  await execFileAsync("jj", [
+  await execClean("jj", ["--no-pager", "git", "init", asus]);
+  await execClean("jj", [
     "--no-pager",
     "-R",
     asus,
@@ -131,7 +139,7 @@ try {
     "user.name",
     "Test User",
   ]);
-  await execFileAsync("jj", [
+  await execClean("jj", [
     "--no-pager",
     "-R",
     asus,
@@ -142,7 +150,7 @@ try {
     "test@example.com",
   ]);
   fs.writeFileSync(path.join(asus, "index.md"), "# Index\nfrom asus over tailscale\n");
-  await execFileAsync("jj", ["--no-pager", "-R", asus, "commit", "-m", "initial note"]);
+  await execClean("jj", ["--no-pager", "-R", asus, "commit", "-m", "initial note"]);
 
   // First sync auto-adds origin from --remote-url and seeds main from @-.
   await runNu("--root", asus, "--remote-url", remoteUrl, "--manual", "--host", "asus");
@@ -171,7 +179,10 @@ try {
     "# Index\nfrom asus over tailscale\n"
   );
 
-  // 6. homelab writes a new note and pushes back over HTTP; asus pulls it.
+  // 6. Configure user identity on homelab (like wrapped jj in user sessions)
+  //    without touching @'s empty author from the system-service clone, then write and push.
+  await execClean("jj", ["--no-pager", "-R", homelab, "config", "set", "--repo", "user.name", "Test User"]);
+  await execClean("jj", ["--no-pager", "-R", homelab, "config", "set", "--repo", "user.email", "test@example.com"]);
   fs.writeFileSync(path.join(homelab, "homelab.md"), "# From Homelab\n");
   await runNu(
     "--root",
