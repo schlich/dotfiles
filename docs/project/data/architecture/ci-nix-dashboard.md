@@ -12,6 +12,8 @@ sources:
 
 # CI tower dashboard feed
 
+*Retired 2026-11-21 with the dashboard; kept as the record of the decision.*
+
 ## Decision
 
 Use a small Node HTTP server bound to `127.0.0.1`. It serves one self-contained

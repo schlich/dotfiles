@@ -6,6 +6,9 @@ to the current day's group.
 
 ## 2026-11-21
 
+- **Retired**: [Reactive CI and Nix dashboard](features/ci-nix-dashboard.md).
+  homelab stops serving it on the tailnet's 8443, and its source and its two
+  checks are removed; Fieldnotes' CI panel covers the same view.
 - **Architecture**: [Delivery risk](architecture/delivery-risk.md) no longer
   asks Jev. `luvus-deliver` stops for approval only on its approval paths,
   high- or critical-risk configuration reaching several hosts, or an unknown

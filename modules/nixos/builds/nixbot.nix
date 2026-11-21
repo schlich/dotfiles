@@ -10,7 +10,7 @@ let
   cfg = config.services.nixbot;
   app = import ../../../hosts/homelab/nixbot.nix;
   # Tailscale Funnel terminates TLS on this port. 443 keeps a port out of the
-  # App's URLs; ci-dashboard-serve holds 8443 on the tailnet.
+  # App's URLs.
   funnelPort = 443;
   port = 8010;
   domain =

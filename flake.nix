@@ -129,7 +129,6 @@
       dagger = import ./modules/programs/vcs/dagger-package.nix { inherit lib pkgs; };
       inherit (pkgs) iwe;
       marimohub = import ./modules/tooling/knowledge/marimohub-package.nix { inherit lib pkgs; };
-      ciDashboard = import ./tools/ci-dashboard/checks.nix { inherit lib pkgs; };
       jjGraph = import ./tools/jj-graph { inherit lib pkgs; };
       workbench = import ./workbench { inherit pkgs lib iwe; };
       workbenchImages = lib.mapAttrs' (
@@ -571,8 +570,6 @@
           PYTHONPATH=src python3 -m unittest discover -s tests -v
           touch "$out"
         '';
-        # Hegel properties of the CI dashboard's feed reductions.
-        ci-dashboard-feeds = ciDashboard.feeds;
         # discord-digest's build runs its tests.
         discord-digest = pkgs.callPackage ./tools/discord-digest/package.nix { };
         # jj-graph's build runs its lints, its Hegel properties (some in real
@@ -932,17 +929,14 @@
       # leave them out.
       # They cover disposable hosts, Clan's machines against the systems they
       # deploy, homelab with modules it has not adopted yet, the staged
-      # switch's revert in a VM, and Bombadil's explorations of Fieldwork and
-      # the CI dashboard.
+      # switch's revert in a VM, and Bombadil's exploration of Fieldwork.
       # Bombadil explores Fieldwork, a prototype whose bridge answers some
-      # requests with 4xx by design, so its findings report here first, as
-      # do the CI dashboard's until its exploration has a record.
+      # requests with 4xx by design, so its findings report here first.
       remoteChecks.${system} =
         remoteHostEvaluationChecks
         // clanMachineChecks
         // import ./xr-workbench/bombadil-check.nix { inherit lib pkgs; }
         // {
-          ci-dashboard-bombadil = ciDashboard.exploration;
           # TLC over every three-change graph takes about twelve minutes.
           jj-graph-model-exhaustive = jjGraph.exhaustive;
           deploy-revert = import ./tests/deploy-revert.nix { inherit pkgs; };

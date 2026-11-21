@@ -50,8 +50,7 @@ that manifest and these tables disagree.
 GitHub is the forge nixbot works with here: its polling mode watches only
 the default branch.
 GitHub reaches nixbot through Tailscale Funnel, which homelab's node may
-already use on 443 (the tailnet grants it 443, 8443, and 10000); the private
-CI dashboard holds 8443.
+already use on 443 (the tailnet grants it 443, 8443, and 10000).
 
 The App that `hosts/homelab/nixbot.nix` names was registered this way:
 
