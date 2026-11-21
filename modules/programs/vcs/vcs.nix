@@ -31,15 +31,12 @@ let
   };
   # Plans, checks, and normalizes change graphs (tools/jj-graph/README.md).
   jjGraph = (import ../../../tools/jj-graph { inherit lib pkgs; }).package;
-  # dotfiles' delivery: luvus/integration to main once Jev's risk verdict
-  # allows it and nixbot passes on it, with the `delivery_risk` questions in
-  # jev/questions.nuon.
-  jev = import ../../../jev/package.nix { inherit pkgs; };
+  # dotfiles' delivery: luvus/integration to main once its risk verdict
+  # allows it and nixbot passes on it.
   luvusDeliver = pkgs.writeNuScriptBin "luvus-deliver" (
-    builtins.replaceStrings
-      [ "@questions@" "@jev@" "@reach@" ]
-      [ "${../../../jev/questions.nuon}" "${jev}/bin/jev" "${../../../tools/den-reach.nix}" ]
-      (builtins.readFile ../../../tools/luvus-deliver.nu)
+    builtins.replaceStrings [ "@reach@" ] [ "${../../../tools/den-reach.nix}" ] (
+      builtins.readFile ../../../tools/luvus-deliver.nu
+    )
   );
 in
 {

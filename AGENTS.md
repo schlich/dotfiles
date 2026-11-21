@@ -285,11 +285,9 @@ luvus quality gate and nixbot build.
   Resolve conflicts automatically when the intended result is clear; preserve
   the changes from both sides and rerun the relevant checks. Ask only when
   resolving the conflict requires a product decision or unclear intent.
-- `luvus-deliver` delivers `luvus/integration` to `main`. It first judges
-  the delivery's risk, which `luvus-deliver risk` previews: code works out
-  from Den which hosts each changed file reaches, and Jev judges whether the
-  change touches boot or storage, secrets or keys, or access, and how badly
-  a mistake could break a host (`delivery_risk` in `jev/questions.nuon`).
+- `luvus-deliver` delivers `luvus/integration` to `main`. It first works
+  out the delivery's risk, which `luvus-deliver risk` previews: from Den,
+  which hosts each changed file reaches, and from the paths it changes.
   Then it pushes the branch, waits for nixbot's `nixbot/nix-eval` and
   `nixbot/nix-build` on that exact commit, and fast-forwards `main` to it.
   The `main-checks` ruleset admits only a commit with both passed, reported
@@ -299,11 +297,11 @@ luvus quality gate and nixbot build.
   into it first.
 - A user request to publish or deliver authorizes the whole path: gate,
   merge, `luvus-deliver`, and the switch "Applying configuration" describes.
-  A high-risk delivery stops before it pushes and names why: it touches
-  boot, storage, secrets, keys, or access, or `secrets/`, `hosts/`, the
-  rulesets, or the classifier itself; it reaches several hosts through
-  configuration `den/model/policy.nix` rates high or critical, or could break more
-  than a desktop app there; or Jev cannot judge it. Show the owner those reasons and ask. Once
+  A high-risk delivery stops before it pushes and names why: it changes
+  `secrets/`, `hosts/`, the rulesets, or the classifier itself; it reaches
+  several hosts through configuration `den/model/policy.nix` rates high or
+  critical; or which hosts it reaches cannot be worked out. Show the owner
+  those reasons and ask. Once
   they approve, rerun `luvus-deliver --approve REV` with the commit it names;
   never pass `--approve` without that approval. Each verdict is kept in
   `~/.local/state/luvus-deliver/risk.jsonl` for review after landing. A
