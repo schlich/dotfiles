@@ -31,13 +31,10 @@
     terminal.inputs.shell.inputs.rex.inputs.nixpkgs.follows = "system/nixpkgs";
     terminal.inputs.vcs.inputs.ci.inputs.nixpkgs.follows = "system/nixpkgs";
     terminal.inputs.vcs.inputs.ci.inputs.osc7501-nu.follows = "terminal/shell/osc7501-nu";
-    terminal.inputs.vcs.inputs.tangled.inputs.nixpkgs.follows = "system/nixpkgs";
     # Only its non-flake default.nix uses flake-compat. Nix 2.34 cannot
     # refetch the lix tarball it locks (the locked URL keeps a ?rev= that
     # the fetch drops), which fails nixbot's prefetch once the source
     # leaves homelab's store.
-    terminal.inputs.vcs.inputs.tangled.inputs.flake-compat.follows = "";
-    terminal.inputs.vcs.inputs.tangled-dash.inputs.nixpkgs.follows = "system/nixpkgs";
     agents.inputs.fieldnotes.inputs.nixpkgs.follows = "system/nixpkgs";
     agents.inputs.clients.inputs.codex.inputs.nixpkgs.follows = "system/nixpkgs";
     agents.inputs.clients.inputs.codex.inputs.rust-overlay.follows = "builds/rust-overlay";
@@ -740,7 +737,7 @@
               touch "$out"
             '';
         # luvus-deliver's risk classification and approval on a throwaway
-        # repository, with a stub jev and a fixture of Den's reach. Nix
+        # repository, with a fixture of Den's reach. Nix
         # parses both versions of a changed module to spot comment edits.
         nushell-luvus-deliver =
           pkgs.runCommand "nushell-luvus-deliver-check"
@@ -754,7 +751,7 @@
             ''
               export HOME="$TMPDIR/home"
               mkdir -p "$HOME"
-              ${pkgs.nushell}/bin/nu --no-config-file ${./tests/luvus-deliver.nu} ${./tools/luvus-deliver.nu} ${./jev/questions.nuon}
+              ${pkgs.nushell}/bin/nu --no-config-file ${./tests/luvus-deliver.nu} ${./tools/luvus-deliver.nu}
               touch "$out"
             '';
         # How the staged switch judges each kind of unit a candidate touches:

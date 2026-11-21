@@ -67,8 +67,7 @@ All hosts are `x86_64-linux` NixOS (`den/inventory.nix`).
 
 Changes are delivered through GitHub: each task's branch passes the luvus gate,
 `luvus task merge` integrates it into `luvus/integration`, and `luvus-deliver`
-fast-forwards `main` once nixbot's checks pass on that commit (the Tangled
-mirror is paused). Then a host switches its system with `system-switch`, and
+fast-forwards `main` once nixbot's checks pass on that commit. Then a host switches its system with `system-switch`, and
 each user's standalone home (`homeConfigurations."USER@HOST"`) switches apart
 from it with `nh home switch` or `home-activate`. Deliberately unsupported:
 nix-darwin, macOS, and non-NixOS Linux.

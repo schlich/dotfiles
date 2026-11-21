@@ -17,11 +17,14 @@ let
     builtins.readFile ../../../jj/receive-verification.nu
   );
 
-  # Niri's own default config, minus its waybar autostart: homelab has no
-  # waybar, and the desktop session instead starts the monitor terminal.
+  # Niri's own default config, minus its waybar autostart, with Ghostty in
+  # place of Alacritty on Mod+T: homelab has no waybar, and the desktop
+  # session instead starts the monitor terminal.
   niriConfig = pkgs.runCommand "niri-homelab-config.kdl" { } ''
     substitute ${config.programs.niri.package.src}/resources/default-config.kdl $out \
-      --replace-fail 'spawn-at-startup "waybar"' '// The monitor terminal starts as a systemd user service.'
+      --replace-fail 'spawn-at-startup "waybar"' '// The monitor terminal starts as a systemd user service.' \
+      --replace-fail 'hotkey-overlay-title="Open a Terminal: alacritty" { spawn "alacritty"; }' \
+        'hotkey-overlay-title="Open a Terminal: Ghostty" { spawn "ghostty"; }'
   '';
 
   # The digest's credentials, which the owner encrypts with agenix
@@ -57,10 +60,17 @@ in
 
   networking.hostName = "homelab";
   networking.networkmanager.enable = true;
-  # Helix, which homelab installs, rather than NixOS's default nano.
+  # Helix, which homelab installs, rather than NixOS's default nano, and
+  # Ghostty as the terminal fuzzel and other launchers open.
   environment.variables = {
     EDITOR = "hx";
     VISUAL = "hx";
+    TERMINAL = "ghostty";
+  };
+  # Desktop entries with Terminal=true open in Ghostty too.
+  xdg.terminal-exec = {
+    enable = true;
+    settings.default = [ "com.mitchellh.ghostty.desktop" ];
   };
 
   # sudo also accepts asus's login key from a forwarded SSH agent and falls
@@ -131,8 +141,9 @@ in
     smartmontools
     tmux
     # homelab has no Home Manager Niri config, so Niri's built-in defaults
-    # bind these as its terminal and launcher.
-    alacritty
+    # bind these as its terminal and launcher; niriConfig swaps Alacritty
+    # for Ghostty.
+    ghostty
     fuzzel
   ];
 
@@ -146,7 +157,7 @@ in
     partOf = [ "graphical-session.target" ];
     after = [ "graphical-session.target" ];
     serviceConfig = {
-      ExecStart = "${pkgs.alacritty}/bin/alacritty --title Fieldnotes -e ${lib.getExe fieldnotes}";
+      ExecStart = "${lib.getExe pkgs.ghostty} --title=Fieldnotes -e ${lib.getExe fieldnotes}";
       Environment = [ "FIELDNOTES_CI_REPO=schlich/dotfiles" ];
       Restart = "on-failure";
       RestartSec = 2;

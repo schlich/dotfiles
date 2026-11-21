@@ -72,7 +72,7 @@ VARIABLES
     pcD,         \* the dead-man or boot-time settle; it holds the lock in
                  \* Holding and waits for it in "wait"
     seen,        \* the pending record the settling process read
-    mainRev,     \* Tangled's main
+    mainRev,     \* main's revision
     landed,      \* every revision main has held
     last,        \* last.nuon's revision
     rejected,    \* rejected.nuon

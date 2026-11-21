@@ -2,9 +2,7 @@
 
 The `ci` trunk workflow (`ci.nu` and its launcher, the TLA+ model and the
 lifecycle machine, `context-status`, the MCP server, `ci tower`, and the `ci`
-skill) lives in its own repository,
-[tangled.org/schlich.tngl.sh/ci](https://tangled.org/schlich.tngl.sh/ci),
-mirrored to `github:schlich/ci`. Its README documents the workflow. This
+skill) lives in its own repository, `github:schlich/ci`. Its README documents the workflow. This
 repository takes it as the `ci` flake input: every workspace runs the version
 `flake.lock` pins, and `nix-suite update ci` moves to a newer one, which
 reaches the installed `ci` once the system or Home Manager activates. To try
@@ -26,14 +24,6 @@ Earlier history of the workflow is here: `jj log -- jj/ci.nu`.
 What stays in this directory is this machine's glue around it:
 
 - `dashboard.nu` is `jj-dashboard`, below.
-- `tangled-init.nu` is `tangled-init`, which gives a new repository the
-  `tangled` remote for `schlich.tngl.sh/NAME` and makes it the repository's
-  push remote and trunk in its own JJ config. It does not opt the repository
-  into `ci`. `tangled-init-hook.nu` runs it
-  after a Nushell `jj git init` whose repository has no remotes, so clones and
-  repositories that already publish elsewhere are left alone. Create the
-  repository at https://tangled.org/repo/new; `tangled-init` reports whether
-  it exists yet.
 - `webhook-setup.nu` and `WEBHOOK.md` set up the agent follow-up after
   successful checks.
 - `receive-verification.nu` is homelab's forced command for the

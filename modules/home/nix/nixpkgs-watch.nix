@@ -275,7 +275,6 @@ in
       dotfiles.nixpkgsWatchExempt = {
         ci = "the user's own trunk workflow, which homelab's cache serves";
         fieldnotes = "the user's own dashboard";
-        tangled-dash = "the user's own Tangled dashboard";
         continuum-ide = "the user's own fork of T3 Code";
         clan-core = "clan-cli has to match the clan-core modules this flake imports";
         nix-grpc-store = "the store plugin builds against this system's own Nix";

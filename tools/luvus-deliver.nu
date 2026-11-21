@@ -1,30 +1,21 @@
-# Deliver luvus's integration branch to main. First it judges how risky the
-# delivery is: code works out which hosts each changed file reaches, and Jev
-# judges what the change does. A high-risk delivery stops before anything is
-# pushed until the owner approves that exact commit (`--approve REV`). Then
+# Deliver luvus's integration branch to main. First it works out how risky
+# the delivery is from which hosts each changed file reaches and which paths
+# it changes. A high-risk delivery stops before anything is pushed until the
+# owner approves that exact commit (`--approve REV`). Then
 # it pushes the branch to GitHub, waits for nixbot's checks on that commit,
 # and moves main to it. The main-checks ruleset admits only a commit whose
 # nixbot checks passed, and GitHub refuses a push that is not a
 # fast-forward, so this never rewrites main. It waits for homelab to build,
 # so agents run it as a `job-log` job.
 
-# vcs.nix replaces these with store paths. Tests replace them with
-# LUVUS_DELIVER_QUESTIONS, LUVUS_DELIVER_JEV, and LUVUS_DELIVER_DEN, a JSON
-# file of what den-reach.nix returns.
-const default_questions = "@questions@"
-const default_jev = "@jev@"
+# vcs.nix replaces this with a store path. Tests replace it with
+# LUVUS_DELIVER_DEN, a JSON file of what den-reach.nix returns.
 const default_reach = "@reach@"
 
-# Mirrors jev's credential filter: diff lines that assign one are never sent.
-const credential_pattern = '(KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)[A-Z0-9_]*\s*='
-
-def risk-config [] {
-  (open ($env.LUVUS_DELIVER_QUESTIONS? | default $default_questions)).delivery_risk
-}
-
-def clip [text: string, chars: int] {
-  if ($text | str length) <= $chars { $text } else { $text | str substring 0..($chars - 1) }
-}
+# Changed paths that always need the owner's approval: secrets, the
+# host-local hardware, storage, and key files, and what gates main, the
+# ruleset and this classifier with the Den reach it reads.
+const approval_paths = ['^secrets/' '^hosts/' '^\.github/rulesets/' '^tools/luvus-deliver\.nu$' '^tools/den-reach\.nix$']
 
 # The files a delivery changes, with their line counts; a binary file has
 # none.
@@ -222,41 +213,6 @@ def hosts-of [found: record, den: record] {
   { systems: (do $including $den.systems), homes: (do $including $den.homes) }
 }
 
-# The delivery's diff for Jev: each file's share clipped and credential
-# lines withheld. Secrets and lock files are named without their contents,
-# and so are documentation and comment-only edits, which can describe access
-# or storage without changing either.
-def diff-text [root: string, base: string, head: string, files: list, config: record] {
-  $files | each {|file|
-    let unshown = if ($config.hidden_paths | any {|pattern| $file.path =~ $pattern }) {
-      "contents not shown"
-    } else if ($config.prose_paths | any {|pattern| $file.path =~ $pattern }) {
-      "documentation, not shown"
-    } else if $file.layout_only {
-      "comments and layout only, not shown"
-    } else { null }
-    if $unshown != null {
-      $"diff --git a/($file.path) b/($file.path)\n\(($file.status); ($unshown)\)"
-    } else {
-      let text = (^git -C $root diff --no-color --no-renames -U2 $base $head -- $file.path
-        | lines
-        | each {|line| if $line =~ $credential_pattern { "[line withheld: credential assignment]" } else { $line } }
-        | str join "\n")
-      clip $text $config.max_file_diff_chars
-    }
-  } | str join "\n" | clip $in $config.max_diff_chars
-}
-
-def judge [state: record, config: record] {
-  let jev = ($env.LUVUS_DELIVER_JEV? | default $default_jev)
-  let result = ({ state: $state, questions: $config.questions } | to json --raw | run-external $jev "ask" | complete)
-  if $result.exit_code != 0 {
-    let detail = ($result.stderr | lines | where {|line| $line | str trim | is-not-empty } | get -o 0 | default "no output")
-    error make { msg: $"jev ask exited ($result.exit_code): ($detail)" }
-  }
-  ($result.stdout | from json).answers
-}
-
 const risk_levels = [low medium high critical]
 
 # The highest risk den/model/policy.nix assigns an aspect a file reaches, or null;
@@ -267,25 +223,13 @@ def policy-risk [found: record, risks: record] {
   if ($ranks | is-empty) { null } else { $risk_levels | get ($ranks | math max) }
 }
 
-# Whether a delivery changes how deliveries are judged: the delivery_risk
-# questions and thresholds in jev/questions.nuon. Unreadable counts as
-# changed, as when a delivery adds them.
-def judging-changed [root: string, base: string, head: string] {
-  let read = {|rev| try { ^git -C $root show $"($rev):jev/questions.nuon" | from nuon | get delivery_risk } catch { null } }
-  let before = (do $read $base)
-  $before == null or $before != (do $read $head)
-}
-
-# How risky delivering `head` onto `base` is, and why. Code decides: a
-# delivery is high risk, and needs the owner's approval, when it changes a
-# path that always needs approval or the delivery_risk questions that judge
-# deliveries, when Jev judges that it touches boot,
-# storage, secrets, keys, or access, or could break a host badly, when it
-# reaches several deployed hosts and a mistake could break more than a
-# desktop app there, and when any of this cannot be judged. It is low when
-# no host runs anything it changes, and medium otherwise.
+# How risky delivering `head` onto `base` is, and why. A delivery is high
+# risk, and needs the owner's approval, when it changes a path that always
+# needs approval, when it reaches several deployed hosts through
+# configuration den/model/policy.nix rates high or critical, and when which
+# hosts it reaches cannot be worked out. It is low when no host runs
+# anything it changes, and medium otherwise.
 def classify [root: string, base: string, head: string] {
-  let config = (risk-config)
   let files = (changed-files $root $base $head)
   let refs = (references $root $head)
   let definitions = (aspect-definitions $root $head)
@@ -310,50 +254,15 @@ def classify [root: string, base: string, head: string] {
   let deployed = ($den.reach?.deployed? | default [])
   let hosts = ($files | each {|file| $file.systems ++ ($file.homes | each { split row "@" | last }) } | flatten | uniq | where {|host| $host in $deployed } | sort)
 
-  let state = {
-    context: $config.context
-    delivery: {
-      commits: (^git -C $root log --format=%s --no-merges $"($base)..($head)" | lines)
-      files: ($files | select path status added removed layout_only systems homes policy_risk)
-      flake_inputs_updated: $inputs
-      diff: (diff-text $root $base $head $files $config)
-    }
-  }
-  let judged = (try { { answers: (judge $state $config) } } catch {|err| { error: $err.msg } })
-  let answers = if $judged.answers? != null {
-    {
-      boot_storage: $judged.answers.boot_storage.noul
-      secrets_keys: $judged.answers.secrets_keys.noul
-      access: $judged.answers.access.noul
-      breakage: $judged.answers.breakage.score
-    }
-  } else { null }
-
-  let concerns = [
-    [key label]; [boot_storage "boot or storage"] [secrets_keys "secrets or keys"] [access "access to a host or to main"]
-  ]
   let reasons = (
     []
     | append (if $den.error? != null { [$"which hosts it reaches is unknown: ($den.error)"] } else { [] })
-    # Several hosts count once a mistake could break more than a desktop
-    # app or a user service on them, or when Jev could not say.
-    | append (if ($hosts | length) >= 2 and ($answers == null or $answers.breakage >= $config.several_hosts_min_breakage) {
-      [$"it reaches several hosts: ($hosts | str join ', ')"]
-    } else { [] })
-    # ...and always through configuration den/model/policy.nix rates high or
-    # critical, such as deployment or servers.
+    # Several hosts count through configuration den/model/policy.nix rates
+    # high or critical, such as deployment or servers.
     | append ($files | where {|file|
       $file.policy_risk in [high critical] and (($file.systems ++ ($file.homes | each { split row "@" | last })) | uniq | where {|host| $host in $deployed } | length) >= 2
     } | each {|file| $"($file.path) reaches several hosts through ($file.policy_risk)-risk configuration" })
-    | append ($files | where {|file| $config.approval_paths | any {|pattern| $file.path =~ $pattern } } | each {|file| $"($file.path) always needs approval" })
-    # A delivery that changes the judge cannot be judged by it alone.
-    | append (if ($files | any {|file| $file.path == "jev/questions.nuon" }) and (judging-changed $root $base $head) {
-      ["it changes how deliveries are judged: delivery_risk in jev/questions.nuon"]
-    } else { [] })
-    | append (if $answers == null { [$"Jev could not judge it: ($judged.error)"] } else {
-      $concerns | where {|c| ($answers | get $c.key) >= $config.min_concern } | each {|c| $"Jev: it changes ($c.label) \(p=($answers | get $c.key | math round --precision 2)\)" }
-      | append (if $answers.breakage >= $config.max_breakage { [$"Jev: a mistake could break a host badly \(($answers.breakage | math round --precision 1) of 4\)"] } else { [] })
-    })
+    | append ($files | where {|file| $approval_paths | any {|pattern| $file.path =~ $pattern } } | each {|file| $"($file.path) always needs approval" })
   )
   let reaches_hosts = ($files | any {|file| ($file.systems | is-not-empty) or ($file.homes | is-not-empty) })
   {
@@ -362,7 +271,6 @@ def classify [root: string, base: string, head: string] {
     risk: (if ($reasons | is-not-empty) { "high" } else if not $reaches_hosts { "low" } else { "medium" })
     reasons: $reasons
     hosts: $hosts
-    answers: $answers
     inputs: $inputs
     files: ($files | select path status layout_only systems homes aspects policy_risk)
   }
@@ -371,12 +279,8 @@ def classify [root: string, base: string, head: string] {
 def summary [verdict: record] {
   let short = ($verdict.head | str substring 0..11)
   let reach = if ($verdict.hosts | is-empty) { "no deployed host" } else { $verdict.hosts | str join ", " }
-  let scores = if $verdict.answers == null { "" } else {
-    let a = $verdict.answers
-    $"\n  Jev: breakage ($a.breakage | math round --precision 1) of 4; boot or storage ($a.boot_storage | math round --precision 2), secrets or keys ($a.secrets_keys | math round --precision 2), access ($a.access | math round --precision 2)"
-  }
   let why = ($verdict.reasons | each {|reason| $"\n  - ($reason)" } | str join "")
-  $"Risk of delivering ($short): ($verdict.risk); it reaches ($reach).($scores)($why)"
+  $"Risk of delivering ($short): ($verdict.risk); it reaches ($reach).($why)"
 }
 
 def ledger [] {
@@ -384,8 +288,7 @@ def ledger [] {
   $env.LUVUS_DELIVER_LEDGER? | default ($state | path join "luvus-deliver" "risk.jsonl")
 }
 
-# Keep each delivery's verdict, for review after landing and for retuning
-# the thresholds. A ledger that cannot be written never stops a delivery.
+# Keep each delivery's verdict, for review after landing. A ledger that cannot be written never stops a delivery.
 def record-verdict [verdict: record, approved: bool] {
   try {
     let path = (ledger)
@@ -397,7 +300,6 @@ def record-verdict [verdict: record, approved: bool] {
       risk: $verdict.risk
       hosts: $verdict.hosts
       reasons: $verdict.reasons
-      answers: $verdict.answers
       approved: $approved
     }
     $"($entry | to json --raw)\n" | save --append $path

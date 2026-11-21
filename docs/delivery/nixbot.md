@@ -47,8 +47,8 @@ that manifest and these tables disagree.
 
 ## Registering the App
 
-GitHub is the only forge nixbot and this repository share: nixbot has no
-Tangled backend, and its polling mode watches only the default branch.
+GitHub is the forge nixbot works with here: its polling mode watches only
+the default branch.
 GitHub reaches nixbot through Tailscale Funnel, which homelab's node may
 already use on 443 (the tailnet grants it 443, 8443, and 10000).
 

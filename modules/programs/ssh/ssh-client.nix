@@ -15,10 +15,8 @@
 
 let
   wrapWithConfig = import ../../../lib/wrap-with-config.nix { inherit lib pkgs; };
-  tangledKey = "/home/schlich/.ssh/id_ed25519_tangled";
-  # Hosts without the dedicated key, such as homelab, authenticate to Tangled
-  # with their default key; ssh skips whichever file is missing.
-  defaultKey = "/home/schlich/.ssh/id_ed25519";
+  # asus's login key (hosts/login-keys.nix); the file keeps its old name.
+  loginKey = "/home/schlich/.ssh/id_ed25519_tangled";
 in
 wrapWithConfig {
   package = pkgs.openssh;
@@ -31,18 +29,10 @@ wrapWithConfig {
     "-F"
     (pkgs.writeText "ssh_config" ''
       ${lib.concatMapStrings (file: "Include ${file}\n") includes}
-      Host tangled.org
-        HostName tangled.org
-        User git
-        IdentityFile ${tangledKey}
-        IdentityFile ${defaultKey}
-        IdentitiesOnly yes
-        AddressFamily inet
-
       # homelab's sudo accepts this key from the forwarded agent. Forward it
       # only here: root on the far end can use the agent while connected.
       Host homelab
-        IdentityFile ${tangledKey}
+        IdentityFile ${loginKey}
         IdentitiesOnly yes
         ForwardAgent yes
 
