@@ -22,6 +22,5 @@
   "dir:tools/jj-graph/src" = 17;
   "dir:tools/jj-graph/tests" = 10;
   "dir:workbench" = 9;
-  "dir:xr-workbench/web" = 16;
   "niri:window-rules" = 7;
 }

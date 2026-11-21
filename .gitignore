@@ -12,5 +12,6 @@
 # Hegel's database of failing examples, replayed first on the next run
 **/.hegel/
 
-# IWSDK dev-server state, including its private HTTPS certificate
+# IWSDK dev-server state, including its private HTTPS certificate, which a
+# checkout may still hold from the retired Fieldwork workbench
 /xr-workbench/web/.iwsdk/

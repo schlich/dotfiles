@@ -84,30 +84,6 @@
       );
       jjCi = inputs.ci.packages.${system}.ci;
       jjCiLifecycle = inputs.ci.packages.${system}.jj-ci-lifecycle;
-      xrWorkbench = pkgs.writeShellApplication {
-        name = "xr-workbench";
-        runtimeInputs = [
-          pkgs.nodejs_24
-          pkgs.pnpm
-          pkgs.python3
-          pkgs.d2
-        ];
-        text = ''
-          repo="$(pwd -P)"
-          if [ "$#" -ge 2 ] && [ "$1" = "--repo" ]; then
-            repo="$2"
-            shift 2
-          fi
-          web="$repo/xr-workbench/web"
-          if [ ! -f "$web/package.json" ]; then
-            echo "Run xr-workbench from the repository root, or pass --repo PATH." >&2
-            exit 2
-          fi
-          pnpm --dir "$web" install --frozen-lockfile
-          exec pnpm --dir "$web" run dev -- --repo "$repo" "$@"
-        '';
-        meta.description = "Local IWSDK WebXR workbench for Nix, Nushell, and Jujutsu workflows";
-      };
       jev = import ./jev/package.nix { inherit pkgs; };
       quotaAdvisor = pkgs.writeShellApplication {
         name = "quota-advisor";
@@ -438,7 +414,6 @@
         jjui = pkgs.jjui;
         jj-ci-lifecycle = jjCiLifecycle;
         jj-graph = jjGraph.package;
-        xr-workbench = xrWorkbench;
         quota-advisor = quotaAdvisor;
         nixbot-register = nixbotRegister;
         inherit marimohub;
@@ -513,10 +488,6 @@
         jj-graph = {
           type = "app";
           program = "${jjGraph.package}/bin/jj-graph";
-        };
-        xr-workbench = {
-          type = "app";
-          program = "${xrWorkbench}/bin/xr-workbench";
         };
         quota-advisor = {
           type = "app";
@@ -935,15 +906,12 @@
       # leave them out.
       # They cover disposable hosts, Clan's machines against the systems they
       # deploy, homelab with modules it has not adopted yet, the staged
-      # switch's revert in a VM, and Bombadil's explorations of Fieldwork and
-      # the CI dashboard.
-      # Bombadil explores Fieldwork, a prototype whose bridge answers some
-      # requests with 4xx by design, so its findings report here first, as
-      # do the CI dashboard's until its exploration has a record.
+      # switch's revert in a VM, and Bombadil's exploration of the CI
+      # dashboard, whose findings report here until its exploration has a
+      # record.
       remoteChecks.${system} =
         remoteHostEvaluationChecks
         // clanMachineChecks
-        // import ./xr-workbench/bombadil-check.nix { inherit lib pkgs; }
         // {
           ci-dashboard-bombadil = ciDashboard.exploration;
           # TLC over every three-change graph takes about twelve minutes.

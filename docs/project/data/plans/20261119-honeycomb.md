@@ -136,7 +136,7 @@ discard muscle memory before the new grammar is proven on one tool.
   - `interface/`: `niri`, `noctalia`, `wallpapers`, `nushell`, `config.nu`,
     `jj`.
   - `agents/`: `agent`, `agent-monitor`, `copilot`, `mcp`, `plugins`, `jev`.
-  - `tools/`: with `workbench`, `xr-workbench`, `scripts`, `postmortem` and
+  - `tools/`: with `workbench`, `scripts`, `postmortem` and
     `templates` joining it, which then needs its own regrouping.
   - `tests/`: with `tests.nix` inside it.
   - `docs/`.
