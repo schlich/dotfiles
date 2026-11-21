@@ -18,6 +18,7 @@ let
     '').overrideAttrs
       (_: {
         # Home Manager checks the package version before enabling mutable settings.
+        # nixpkgs-watch: not a workaround: it only gives this wrapper nixpkgs' codex version
         version = pkgs.codex.version;
       });
   # Codex Desktop ships in nixpkgs as `chatgpt`. Its launcher runs the app under
