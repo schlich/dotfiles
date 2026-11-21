@@ -60,7 +60,7 @@ script, use valid Nushell syntax.
   flake-input sources; the ci MCP server for the `ci` workflow in a ci
   repository (see Jujutsu); and the harness's own
   file-reading and editing tools for single files. Fall back to the Nushell
-  evaluate tool only when no dedicated tool fits, such as Tangled, flake
+  evaluate tool only when no dedicated tool fits, such as flake
   evaluation, multi-step pipelines, or combining several results into one
   structured record.
 
@@ -68,7 +68,7 @@ script, use valid Nushell syntax.
   (default: the session's directory). Like the `ci` command, it runs the
   `ci.nu` its package bundles, the version the installed system pins;
   inside the ci repository itself it runs the topic's own `ci.nu` when the
-  topic edits it and `main@tangled`'s otherwise. In a repository whose
+  topic edits it and trunk's otherwise. In a repository whose
   flake.lock moved `ci` ahead of the installed one, `nix develop path:.`
   runs the locked version.
   A tool returns once the command finishes or
@@ -338,13 +338,6 @@ before other work, without asking. Colocation keeps Git working alongside JJ.
 Then track the trunk's remote bookmark, such as
 `jj bookmark track main@origin`.
 
-A new project, one whose repository has no remotes yet, is hosted on Tangled.
-The Nushell `jj git init` runs `tangled-init` for such a repository, which adds
-the `tangled` remote for `schlich.tngl.sh/NAME` and makes it the repository's
-push remote and trunk. Run `tangled-init` yourself when the repository was
-initialized another way, such as through the jj MCP server. Creating the
-repository on Tangled is the user's step; `tangled-init` says whether it exists.
-
 Do not invoke `jj` in interactive mode. Use only non-interactive invocations,
 supplying every required argument or message flag explicitly.
 
@@ -364,7 +357,7 @@ repository that opted into it, a ci repository: its JJ config sets
 opts in with `jj config set --repo ci.enable true`, and the Home Manager
 option `dotfiles.ci.repositories` in `~/Nix/dotfiles` opts in every clone and
 workspace at a path. Opt a repository in only when the user asks: a new
-project is not a ci repository, and `tangled-init` does not make it one.
+project is not a ci repository.
 
 Only in a ci repository do the `ci` command, its MCP server and skill, and the
 rules below that name `ci` apply, and only there does a session start with a

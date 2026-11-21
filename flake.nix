@@ -31,13 +31,10 @@
     terminal.inputs.shell.inputs.rex.inputs.nixpkgs.follows = "system/nixpkgs";
     terminal.inputs.vcs.inputs.ci.inputs.nixpkgs.follows = "system/nixpkgs";
     terminal.inputs.vcs.inputs.ci.inputs.osc7501-nu.follows = "terminal/shell/osc7501-nu";
-    terminal.inputs.vcs.inputs.tangled.inputs.nixpkgs.follows = "system/nixpkgs";
     # Only its non-flake default.nix uses flake-compat. Nix 2.34 cannot
     # refetch the lix tarball it locks (the locked URL keeps a ?rev= that
     # the fetch drops), which fails nixbot's prefetch once the source
     # leaves homelab's store.
-    terminal.inputs.vcs.inputs.tangled.inputs.flake-compat.follows = "";
-    terminal.inputs.vcs.inputs.tangled-dash.inputs.nixpkgs.follows = "system/nixpkgs";
     agents.inputs.fieldnotes.inputs.nixpkgs.follows = "system/nixpkgs";
     agents.inputs.clients.inputs.codex.inputs.nixpkgs.follows = "system/nixpkgs";
     agents.inputs.clients.inputs.codex.inputs.rust-overlay.follows = "builds/rust-overlay";
