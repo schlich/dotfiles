@@ -125,10 +125,54 @@ let
       fi
     done
   '';
-  clientDesktop = pkgs.symlinkJoin {
-    name = "t3code-client-${t3code.version}";
+  # The unit owns ~/.t3 here, and the lock on it admits one server: a
+  # hand-started `t3 serve`, or a bare `t3`, which also runs one, would lock
+  # the unit out until it exits, and dies with its login session. So the
+  # profile's `t3` refuses to start a server and points at the unit; every
+  # other subcommand, and help, version and completions, passes through.
+  # T3_SERVE_FORCE=1 starts one anyway. The unit's own ExecStart calls the
+  # unguarded ${t3code}/bin/t3.
+  serveGuard =
+    real:
+    pkgs.writeShellScript "t3" ''
+      if [ -z "''${T3_SERVE_FORCE-}" ]; then
+        command=
+        value=
+        for arg in "$@"; do
+          if [ -n "$value" ]; then
+            value=
+            continue
+          fi
+          case "$arg" in
+            -h | --help | -v | --version | --completions | --completions=*) exec ${real} "$@" ;;
+            # Flags that take a value; the value is not a subcommand.
+            --mode | --port | --host | --base-dir | --dev-url | --bootstrap-fd | --tailscale-serve-port | --log-level) value=1 ;;
+            -*) ;;
+            *)
+              command="$arg"
+              break
+              ;;
+          esac
+        done
+        case "$command" in
+          help | app | pair | auth | environment | browser | project | thread | up | status | service | update | install | uninstall | theme | trace | doctor | policy | triage | connect) ;;
+          *)
+            echo "t3: ${unit} runs this host's server; use 'systemctl --user restart ${lib.removeSuffix ".service" unit}' (T3_SERVE_FORCE=1 starts another anyway)" >&2
+            exit 64
+            ;;
+        esac
+      fi
+      exec ${real} "$@"
+    '';
+
+  # T3 Code as this home installs it: `t3` behind the serve guard, and the
+  # desktop launcher starting the app as the unit's client.
+  hostPackage = pkgs.symlinkJoin {
+    name = "t3code-host-${t3code.version}";
     paths = [ t3code ];
     postBuild = ''
+      rm "$out/bin/t3"
+      ln -s ${serveGuard "${t3code}/bin/t3"} "$out/bin/t3"
       rm "$out/bin/t3code-desktop"
       cat > "$out/bin/t3code-desktop" <<EOF
       #!${pkgs.runtimeShell}
@@ -140,6 +184,95 @@ let
     '';
     inherit (t3code) meta;
   };
+
+  # With Restart= every failed start enters `failed` and triggers OnFailure=,
+  # so the outage unit announces only the first failure of an outage: it
+  # leaves this stamp, and clearStamp removes it once a server has answered
+  # and stayed up. The notice goes to the journal, to this host's
+  # cross.stream store as `t3code.outage`, and to the desktop when there is
+  # one; the fleet watch below carries a headless server's outage to the
+  # workstations.
+  outageStamp = "%t/t3code-server-outage";
+  outageNotify = pkgs.writeShellScript "t3code-server-outage" ''
+    set -u
+    PATH=${
+      lib.makeBinPath [
+        pkgs.coreutils
+        pkgs.libnotify
+      ]
+    }:${config.home.profileDirectory}/bin:/run/current-system/sw/bin
+    stamp="$1"
+    [ -e "$stamp" ] && exit 0
+    date --iso-8601=seconds > "$stamp"
+    result="$(systemctl --user show ${unit} --property=Result --value 2>/dev/null || true)"
+    msg="T3 Code server on ${cfg.host} failed (''${result:-unknown}); systemd keeps restarting it. journalctl --user -u ${unit}"
+    echo "$msg"
+    if command -v xs >/dev/null; then
+      xs append "$HOME/.local/share/cross.stream/store" t3code.outage \
+        --meta "{\"host\":\"${cfg.host}\",\"result\":\"''${result:-unknown}\"}" >/dev/null 2>&1 || true
+    fi
+    timeout 10 notify-send --app-name "T3 Code" --urgency critical \
+      "T3 Code server down on ${cfg.host}" "$msg" >/dev/null 2>&1 || true
+    exit 0
+  '';
+  # Clears the stamp once the server answers on its port and is still the
+  # unit's main process ten seconds later: a hand-started server on the same
+  # port answers too, while ours exits 78. Never fails the start, and stays
+  # well inside TimeoutStartSec.
+  clearStamp = pkgs.writeShellScript "t3code-server-up" ''
+    PATH=${
+      lib.makeBinPath [
+        pkgs.coreutils
+        pkgs.curl
+      ]
+    }
+    for _ in $(seq 60); do
+      if curl --fail --silent --max-time 2 --output /dev/null ${local}/.well-known/t3/environment; then
+        sleep 10
+        if kill -0 "''${MAINPID:-0}" 2>/dev/null; then rm -f "$1"; fi
+        exit 0
+      fi
+      sleep 1
+    done
+    exit 0
+  '';
+
+  # A workstation polls the other fleet servers' discovery endpoints over the
+  # tailnet and announces one that has missed two polls in a row, once, and
+  # again when it is back.
+  watched = lib.filterAttrs (host: _: host != cfg.host) cfg.fleet;
+  fleetWatch = pkgs.writeShellScript "t3code-fleet-watch" ''
+    set -u
+    PATH=${
+      lib.makeBinPath [
+        pkgs.coreutils
+        pkgs.curl
+        pkgs.libnotify
+      ]
+    }
+    state="$1"
+    mkdir -p "$state"
+    while [ $# -gt 2 ]; do
+      host="$2" url="$3"
+      shift 2
+      misses="$(cat "$state/$host" 2>/dev/null || echo 0)"
+      if curl --fail --silent --max-time 10 --output /dev/null "$url/.well-known/t3/environment"; then
+        if [ "$misses" -ge 2 ]; then
+          echo "T3 Code server on $host is back"
+          timeout 10 notify-send --app-name "T3 Code" "T3 Code server on $host is back" "$url" || true
+        fi
+        rm -f "$state/$host"
+      else
+        misses=$((misses + 1))
+        echo "$misses" > "$state/$host"
+        if [ "$misses" -eq 2 ]; then
+          echo "T3 Code server on $host is not answering at $url"
+          timeout 10 notify-send --app-name "T3 Code" --urgency critical \
+            "T3 Code server down on $host" "$url does not answer; on $host: journalctl --user -u ${unit}" || true
+        fi
+      fi
+    done
+  '';
 in
 {
   imports = [ ./t3code-package.nix ];
@@ -191,24 +324,26 @@ in
   config = mkIf cfg.enable {
     # The desktop package carries `t3` too.
     home.packages =
-      lib.optional (!config.dotfiles.t3code.desktop.enable) t3code
+      lib.optional (!config.dotfiles.t3code.desktop.enable) hostPackage
       # Execution hosts carry Codex even without the desktop's Codex setup
       # (codex.nix); it signs in with `codex login --device-auth`.
       ++ lib.optional (!config.programs.codex.enable) pkgs.codex;
-    dotfiles.t3code.desktop.package = clientDesktop;
+    dotfiles.t3code.desktop.package = hostPackage;
 
     systemd.user.services.t3code-server = {
       Unit = {
         Description = "T3 Code server";
         Documentation = [ "https://github.com/pingdotgg/t3code/blob/main/docs/user/background-service.md" ];
-        # As upstream's unit: give up after five failed starts in five
-        # minutes; `systemctl --user restart` clears it.
-        StartLimitIntervalSec = 300;
-        StartLimitBurst = 5;
+        # Unlike upstream's unit, which gives up after five failed starts in
+        # five minutes, never hit the start limit: the backoff below already
+        # spaces the attempts out.
+        StartLimitIntervalSec = 0;
+        OnFailure = [ "t3code-server-outage.service" ];
       };
       Service = {
         ExecStartPre = lib.optional (kbMcpCommand != null) "${syncAntigravityKbMcp}";
         ExecStart = "${serve} --host 127.0.0.1 --port ${port} --base-dir ${baseDir}";
+        ExecStartPost = "${clearStamp} ${outageStamp}";
         WorkingDirectory = "%h";
         Environment = [
           # The server prefers the login shell's PATH; this is the fallback,
@@ -232,11 +367,16 @@ in
         ]
         ++ lib.optional config.services.gnome-keyring.enable "SSH_AUTH_SOCK=%t/gcr/ssh"
         ++ lib.optional (!cfg.telemetry) "T3CODE_TELEMETRY_ENABLED=false";
+        # Exit status 78: another server already owns ~/.t3. The desktop app
+        # no longer does here (t3code-desktop-as-client turns its local
+        # environment off), so it is a hand-started server, which dies with
+        # its login session. Keep retrying, backing off from 5 seconds to 2
+        # minutes, so the unit takes over within about 2 minutes of that
+        # server exiting.
         Restart = "always";
         RestartSec = "5s";
-        # Exit status 78: another server already owns ~/.t3, such as the
-        # desktop app's own local environment. Restarting cannot help.
-        RestartPreventExitStatus = 78;
+        RestartSteps = 8;
+        RestartMaxDelaySec = "2min";
         # As upstream's unit: signal the server first and the rest of its
         # cgroup only if it outlasts the stop timeout. Agents run in scopes of
         # their own (app-t3code-agents-*.slice); the next server stops any it
@@ -248,6 +388,48 @@ in
         ManagedOOMPreference = "avoid";
       };
       Install.WantedBy = [ "default.target" ];
+    };
+
+    systemd.user.services.t3code-server-outage = {
+      Unit.Description = "Announce a T3 Code server outage";
+      Service = {
+        Type = "oneshot";
+        ExecStart = "${outageNotify} ${outageStamp}";
+      };
+    };
+
+    # Only a graphical session starts the watch, so a headless server never
+    # runs it.
+    systemd.user.services.t3code-fleet-watch = mkIf (watched != { }) {
+      Unit = {
+        Description = "Announce T3 Code fleet servers that stop answering";
+        After = [ "graphical-session.target" ];
+        PartOf = [ "graphical-session.target" ];
+      };
+      Service = {
+        Type = "oneshot";
+        ExecStart = "${fleetWatch} %t/t3code-fleet-watch ${
+          lib.escapeShellArgs (
+            lib.concatLists (
+              lib.mapAttrsToList (host: url: [
+                host
+                url
+              ]) watched
+            )
+          )
+        }";
+      };
+    };
+    systemd.user.timers.t3code-fleet-watch = mkIf (watched != { }) {
+      Unit = {
+        Description = "Poll the T3 Code fleet servers";
+        PartOf = [ "graphical-session.target" ];
+      };
+      Timer = {
+        OnActiveSec = "1min";
+        OnUnitInactiveSec = "2min";
+      };
+      Install.WantedBy = [ "graphical-session.target" ];
     };
 
     # Outside agents on this host reach the server over loopback, where T3
@@ -301,5 +483,29 @@ in
           test "$(wc -l < "$evaluations")" -eq 1
           touch "$out"
         '';
+
+    # The guard refuses to start a server, bare `t3` included, passes every
+    # other subcommand through to the real `t3`, and gives way to
+    # T3_SERVE_FORCE. A stub stands in for `t3` where a server would start.
+    dotfiles.tooling.checks.t3code-serve-guard =
+      let
+        stub = pkgs.writeShellScript "t3-stub" ''echo "ran: $*"'';
+        guard = serveGuard stub;
+      in
+      pkgs.runCommand "t3code-serve-guard-check" { } ''
+        export HOME="$TMPDIR/home"
+        mkdir -p "$HOME"
+        ${guard} serve 2>err && exit 1
+        grep -q 'systemctl --user restart t3code-server' err
+        ${guard} --port 3000 serve 2>/dev/null && exit 1
+        ${guard} 2>/dev/null && exit 1
+        ${guard} --no-browser /tmp 2>/dev/null && exit 1
+        test "$(${guard} thread list --json)" = "ran: thread list --json"
+        test "$(${guard} --log-level debug status)" = "ran: --log-level debug status"
+        test "$(T3_SERVE_FORCE=1 ${guard} serve --port 1)" = "ran: serve --port 1"
+        ${hostPackage}/bin/t3 --version > version
+        test -s version
+        touch "$out"
+      '';
   };
 }
