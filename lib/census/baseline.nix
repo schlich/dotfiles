@@ -1,6 +1,7 @@
 # Collections already over six when the rule arrived, with their sizes.
 # The honeycomb-census check lets these shrink and never grow; delete an
-# entry once its collection is within six. README.md explains the rule.
+# entry once its collection is within six. honeycomb's README
+# (github:schlich/honeycomb) explains the rule.
 {
   "dir:." = 34;
   "dir:.agents/skills" = 7;

@@ -84,7 +84,7 @@
   GitHub's limit of 60 unauthenticated requests an hour nor leaves inputs on a
   cached revision.
 - The flake's inputs are grouped in flakes of at most six under `lib/inputs`
-  (`lib/honeycomb/README.md`); the root `flake.nix` takes the five top groups
+  (`github:schlich/honeycomb`); the root `flake.nix` takes the five top groups
   and says what follows what across them. Modules read an input as
   `inputs.NAME` whichever group holds it. Nix itself names one by its path,
   such as `terminal/shell/xs`; `nix-suite update NAME` and `flake-add --group`
@@ -251,7 +251,7 @@ luvus quality gate and nixbot build.
   branch already contains, and never push `main` directly.
 - Before finishing, check the branch's diff for mixed deliverables, and split
   unrelated work into separate tasks rather than carrying it in one branch.
-- Six at a time (`lib/honeycomb/README.md`). The repository holds at most six
+- Six at a time (`github:schlich/honeycomb`). The repository holds at most six
   open topics (branches `main` does not hold yet), six task worktrees, and six
   open tasks on the board; a branch runs at most six commits ahead of `main`
   before it is delivered or split. Run `honeycomb census` before starting a

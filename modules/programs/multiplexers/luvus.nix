@@ -1,5 +1,6 @@
 {
   config,
+  options,
   inputs,
   lib,
   pkgs,
@@ -17,10 +18,16 @@ let
   jsonFormat = pkgs.formats.json { };
   luvus = import ./luvus-package.nix { inherit inputs lib pkgs; };
 
-  # The prefix is the multiplexer's leader in the input stack (docs/desktop/input.md).
-  multiplexer = lib.findFirst (
-    context: context.implementation == "luvus"
-  ) null config.dotfiles.input.contexts;
+  # Only workstations import the input stack (docs/desktop/input.md); a
+  # server's home runs Luvus with its default prefix.
+  hasInputStack = options ? dotfiles.input;
+
+  # The prefix is the multiplexer's leader in the input stack.
+  multiplexer =
+    if hasInputStack then
+      lib.findFirst (context: context.implementation == "luvus") null config.dotfiles.input.contexts
+    else
+      null;
   prefix = if multiplexer == null then "ctrl+space" else lib.toLower multiplexer.leader;
 
   # The bottom status row shows the prefix and its key hints on the left and,
@@ -139,186 +146,190 @@ in
     '';
   };
 
-  config = {
-    dotfiles.nixpkgsWatch.luvus = {
-      reason = "replace modules/programs/multiplexers/luvus-package.nix (the luvus input's package, rewrapped so its runtime tools follow PATH instead of leading it) with pkgs.luvus, rewrapping that too if its wrapper prepends, and drop the luvus input; drop each patch in luvus-patches/ once the locked luvus contains its pull request (#546 Nushell worker launch, #551 remote scripts under sh)";
-      fix = "https://github.com/RizRiyz/luvus/pull/546";
-    };
-
-    # After the prefix, the honeycomb's keys (lib/honeycomb/README.md). Luvus
-    # already puts panes on H, L, J and K; these move tabs to Y and U, the
-    # keys under the tab bar, and workspaces to N and M. Rebinding a command
-    # drops its other default keys, and the two commands that held Y and M
-    # move to their capitals' neighbours.
-    dotfiles.input.navigation.multiplexer = lib.mkIf (multiplexer != null) (
-      lib.mapAttrs (_: key: [ "${multiplexer.leader}+${key}" ]) {
-        w = "H";
-        e = "L";
-        down = "J";
-        up = "K";
-        nw = "Y";
-        ne = "U";
-        sw = "N";
-        se = "M";
-      }
-    );
-
-    dotfiles.luvus.settings = {
-      inherit prefix;
-      keybindings = {
-        prev_tab = "y";
-        next_tab = "u";
-        prev_node = "n";
-        next_node = "m";
-        copy_mode = "C";
-        open_mission = "O";
+  config = lib.mkMerge [
+    (lib.optionalAttrs hasInputStack {
+      # After the prefix, the honeycomb's keys (github:schlich/honeycomb). Luvus
+      # already puts panes on H, L, J and K; these move tabs to Y and U, the
+      # keys under the tab bar, and workspaces to N and M. Rebinding a command
+      # drops its other default keys, and the two commands that held Y and M
+      # move to their capitals' neighbours.
+      dotfiles.input.navigation.multiplexer = lib.mkIf (multiplexer != null) (
+        lib.mapAttrs (_: key: [ "${multiplexer.leader}+${key}" ]) {
+          w = "H";
+          e = "L";
+          down = "J";
+          up = "K";
+          nw = "Y";
+          ne = "U";
+          sw = "N";
+          se = "M";
+        }
+      );
+    })
+    {
+      dotfiles.nixpkgsWatch.luvus = {
+        reason = "replace modules/programs/multiplexers/luvus-package.nix (the luvus input's package, rewrapped so its runtime tools follow PATH instead of leading it) with pkgs.luvus, rewrapping that too if its wrapper prepends, and drop the luvus input; drop each patch in luvus-patches/ once the locked luvus contains its pull request (#546 Nushell worker launch, #551 remote scripts under sh)";
+        fix = "https://github.com/RizRiyz/luvus/pull/546";
       };
-      # Follow Ghostty's palette, as the editor and shell do.
-      theme = "terminal";
-      language = "en";
-      shell = lib.getExe config.programs.nushell.package;
-      # Nix pins Luvus; an update indicator could not be acted on.
-      check_updates = false;
-      # A replayed `--permission-mode` outlives the session it was meant for.
-      resume_launch_flags = false;
-      allow_nested = false;
-      commander_working_policy = "auto_send";
-      session.persist_pane_screen = true;
-      worktree.provider = "git";
-      notifications = {
-        sound_style = "soft";
-        sound_on_done = false;
-        sound_on_blocked = true;
-      };
-      layout = {
-        show_titles = true;
-        pane_title_path = true;
-        agent_title = true;
-        workspace_paths = true;
-        agent_paths = true;
-        resume_in_new_workspace = true;
-        new_pane_to_workspace_root = false;
-        # A file opens in a pane, so in Helix; the primary editor may be a GUI.
-        file_open =
-          if config.programs.helix.enable then lib.getExe config.programs.helix.package else "readonly";
-        file_click = "preview";
-        files_show_hidden = true;
-        scrollback_bytes = 10 * 1024 * 1024;
-        diff_layout = "auto";
-        diff_wrap = false;
-        diff_context_lines = 3;
-        diff_show_line_numbers = true;
-        diff_marker_style = "symbols";
-        diff_color_mode = "theme";
-        diff_live_refresh = true;
-        # Ghostty speaks the Kitty keyboard protocol; this is the fallback.
-        shift_enter = "esc-cr";
-      };
-    };
 
-    home.activation.luvusSettings = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-      # Luvus keeps its state directory owner-only.
-      if [[ ! -e "$HOME/.luvus" ]]; then
-        run mkdir -m 700 "$HOME/.luvus"
-      fi
-      ${lib.hm.generators.mkImpureConfigMerger {
-        inherit pkgs;
-        format = "json";
-        empty = "{}";
-        jqOperation = ''
-          $dynamic * $static
-          | .bars |= (. // {})
-          | .bars.top_right = ((.bars.top_right // []) - [${modeWidget}])
-          | .bars.off = ((.bars.off // []) - [${modeWidget}])
-          | .bars.bottom_right = ([${modeWidget}] + ((.bars.bottom_right // []) - [${modeWidget}]))
-        '';
-        path = "${config.home.homeDirectory}/.luvus/config.json";
-        staticSettings = jsonFormat.generate "luvus-config.json" cfg.settings;
-        mode = "600";
-      }}
-    '';
-
-    home.packages = [
-      luvusTaskStart
-    ]
-    ++ lib.optionals cfg.autopilot.enable [
-      luvusAutopilot
-      luvusAuto
-    ];
-
-    # Opt-in task chains: wake on `luvus events`, every five minutes, and at
-    # start; each pass rereads the board, so it acts at most once per change.
-    # Pause with `luvus-autopilot pause` or by clicking the bar widget.
-    systemd.user.services.luvus-autopilot = lib.mkIf cfg.autopilot.enable {
-      Unit = {
-        Description = "Start and merge opted-in luvus task chains";
-        After = [ "luvus.service" ];
+      dotfiles.luvus.settings = {
+        inherit prefix;
+        keybindings = {
+          prev_tab = "y";
+          next_tab = "u";
+          prev_node = "n";
+          next_node = "m";
+          copy_mode = "C";
+          open_mission = "O";
+        };
+        # Follow Ghostty's palette, as the editor and shell do.
+        theme = "terminal";
+        language = "en";
+        shell = lib.getExe config.programs.nushell.package;
+        # Nix pins Luvus; an update indicator could not be acted on.
+        check_updates = false;
+        # A replayed `--permission-mode` outlives the session it was meant for.
+        resume_launch_flags = false;
+        allow_nested = false;
+        commander_working_policy = "auto_send";
+        session.persist_pane_screen = true;
+        worktree.provider = "git";
+        notifications = {
+          sound_style = "soft";
+          sound_on_done = false;
+          sound_on_blocked = true;
+        };
+        layout = {
+          show_titles = true;
+          pane_title_path = true;
+          agent_title = true;
+          workspace_paths = true;
+          agent_paths = true;
+          resume_in_new_workspace = true;
+          new_pane_to_workspace_root = false;
+          # A file opens in a pane, so in Helix; the primary editor may be a GUI.
+          file_open =
+            if config.programs.helix.enable then lib.getExe config.programs.helix.package else "readonly";
+          file_click = "preview";
+          files_show_hidden = true;
+          scrollback_bytes = 10 * 1024 * 1024;
+          diff_layout = "auto";
+          diff_wrap = false;
+          diff_context_lines = 3;
+          diff_show_line_numbers = true;
+          diff_marker_style = "symbols";
+          diff_color_mode = "theme";
+          diff_live_refresh = true;
+          # Ghostty speaks the Kitty keyboard protocol; this is the fallback.
+          shift_enter = "esc-cr";
+        };
       };
-      Service = {
-        ExecStart = "${autopilotExe} run --module ${autopilotModule}";
-        # luvus-task-start runs git; the rest is the user's own profile.
-        Environment = [
-          "PATH=${
-            lib.makeBinPath [
-              pkgs.git
-              pkgs.coreutils
-            ]
-          }:%h/.nix-profile/bin:/etc/profiles/per-user/%u/bin:/run/current-system/sw/bin"
-        ];
-        Restart = "always";
-        RestartSec = "10s";
-      };
-      Install.WantedBy = [ "default.target" ];
-    };
 
-    # The watcher's decisions against fixture boards, without a server.
-    dotfiles.tooling.checks.luvus-autopilot =
-      pkgs.runCommand "luvus-autopilot-check" { nativeBuildInputs = [ pkgs.nushell ]; }
-        ''
-          export HOME="$TMPDIR/home"
-          mkdir -p "$HOME"
-          nu --no-config-file ${../../tooling/ai/tests/luvus-autopilot.nu} ${autopilotScript}
-          touch "$out"
-        '';
+      home.activation.luvusSettings = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+        # Luvus keeps its state directory owner-only.
+        if [[ ! -e "$HOME/.luvus" ]]; then
+          run mkdir -m 700 "$HOME/.luvus"
+        fi
+        ${lib.hm.generators.mkImpureConfigMerger {
+          inherit pkgs;
+          format = "json";
+          empty = "{}";
+          jqOperation = ''
+            $dynamic * $static
+            | .bars |= (. // {})
+            | .bars.top_right = ((.bars.top_right // []) - [${modeWidget}])
+            | .bars.off = ((.bars.off // []) - [${modeWidget}])
+            | .bars.bottom_right = ([${modeWidget}] + ((.bars.bottom_right // []) - [${modeWidget}]))
+          '';
+          path = "${config.home.homeDirectory}/.luvus/config.json";
+          staticSettings = jsonFormat.generate "luvus-config.json" cfg.settings;
+          mode = "600";
+        }}
+      '';
 
-    # The server owns every pane, agent, task, and path lease. `luvus server
-    # start` forks this same command into the background; running it here
-    # starts it at login. Its panes inherit the user manager's PATH and SHELL,
-    # as they would from a terminal.
-    systemd.user.services.luvus = {
-      Unit = {
-        Description = "Luvus server for coding agents";
-        # Stopping the server stops its panes and the agents in them, so an
-        # activation that changes this unit leaves the running server alone.
-        X-SwitchMethod = "keep-old";
-      };
-      Service = {
-        ExecStart = "${lib.getExe luvus} --session default server";
-        # `luvus server stop` exits cleanly and stays stopped.
-        Restart = "on-failure";
-        RestartSec = "2s";
-      };
-      Install.WantedBy = [ "default.target" ];
-    };
+      home.packages = [
+        luvus
+        luvusTaskStart
+      ]
+      ++ lib.optionals cfg.autopilot.enable [
+        luvusAutopilot
+        luvusAuto
+      ];
 
-    # Claude Code reports to Luvus through the luvus plugin in
-    # modules/tooling/ai/claude/claude-code.nix.
-    programs.codex = lib.mkIf config.programs.codex.enable {
-      hooks = {
-        SessionStart = [
-          {
-            matcher = "startup|resume";
-            hooks = [ codexHookGroup ];
-          }
-        ];
-        UserPromptSubmit = [ { hooks = [ codexHookGroup ]; } ];
+      # Opt-in task chains: wake on `luvus events`, every five minutes, and at
+      # start; each pass rereads the board, so it acts at most once per change.
+      # Pause with `luvus-autopilot pause` or by clicking the bar widget.
+      systemd.user.services.luvus-autopilot = lib.mkIf cfg.autopilot.enable {
+        Unit = {
+          Description = "Start and merge opted-in luvus task chains";
+          After = [ "luvus.service" ];
+        };
+        Service = {
+          ExecStart = "${autopilotExe} run --module ${autopilotModule}";
+          # luvus-task-start runs git; the rest is the user's own profile.
+          Environment = [
+            "PATH=${
+              lib.makeBinPath [
+                pkgs.git
+                pkgs.coreutils
+              ]
+            }:%h/.nix-profile/bin:/etc/profiles/per-user/%u/bin:/run/current-system/sw/bin"
+          ];
+          Restart = "always";
+          RestartSec = "10s";
+        };
+        Install.WantedBy = [ "default.target" ];
       };
-      # Luvus's bundled skill, matched to the installed binary. Claude Code's
-      # skills/luvus directory already holds the luvus hook plugin.
-      skills.luvus = "${inputs.luvus}/skills/luvus";
-    };
-    programs.opencode.skills = lib.mkIf config.programs.opencode.enable {
-      luvus = "${inputs.luvus}/skills/luvus";
-    };
-  };
+
+      # The watcher's decisions against fixture boards, without a server.
+      dotfiles.tooling.checks.luvus-autopilot =
+        pkgs.runCommand "luvus-autopilot-check" { nativeBuildInputs = [ pkgs.nushell ]; }
+          ''
+            export HOME="$TMPDIR/home"
+            mkdir -p "$HOME"
+            nu --no-config-file ${../../tooling/ai/tests/luvus-autopilot.nu} ${autopilotScript}
+            touch "$out"
+          '';
+
+      # The server owns every pane, agent, task, and path lease. `luvus server
+      # start` forks this same command into the background; running it here
+      # starts it at login. Its panes inherit the user manager's PATH and SHELL,
+      # as they would from a terminal.
+      systemd.user.services.luvus = {
+        Unit = {
+          Description = "Luvus server for coding agents";
+          # Stopping the server stops its panes and the agents in them, so an
+          # activation that changes this unit leaves the running server alone.
+          X-SwitchMethod = "keep-old";
+        };
+        Service = {
+          ExecStart = "${lib.getExe luvus} --session default server";
+          # `luvus server stop` exits cleanly and stays stopped.
+          Restart = "on-failure";
+          RestartSec = "2s";
+        };
+        Install.WantedBy = [ "default.target" ];
+      };
+
+      # Claude Code reports to Luvus through the luvus plugin in
+      # modules/tooling/ai/claude/claude-code.nix.
+      programs.codex = lib.mkIf config.programs.codex.enable {
+        hooks = {
+          SessionStart = [
+            {
+              matcher = "startup|resume";
+              hooks = [ codexHookGroup ];
+            }
+          ];
+          UserPromptSubmit = [ { hooks = [ codexHookGroup ]; } ];
+        };
+        # Luvus's bundled skill, matched to the installed binary. Claude Code's
+        # skills/luvus directory already holds the luvus hook plugin.
+        skills.luvus = "${inputs.luvus}/skills/luvus";
+      };
+      programs.opencode.skills = lib.mkIf config.programs.opencode.enable {
+        luvus = "${inputs.luvus}/skills/luvus";
+      };
+    }
+  ];
 }

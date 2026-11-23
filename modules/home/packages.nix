@@ -143,7 +143,6 @@ in
     cachixSeed
     inputs.xs.packages.${pkgs.stdenv.hostPlatform.system}.default
     (import ../programs/desktop/ai-usagebar-package.nix { inherit inputs pkgs; })
-    (import ../programs/multiplexers/luvus-package.nix { inherit inputs lib pkgs; })
     (import ../tooling/ai/claude/fieldnotes-package.nix { inherit inputs lib pkgs; })
   ];
 

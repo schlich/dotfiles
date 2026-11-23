@@ -24,9 +24,9 @@ let
           );
       });
 
-  # The hub on homelab (lib/honeycomb/runtime/hub), on the tailnet name that
-  # den/inventory.nix gives as network.tailnet.
-  honeycomb = pkgs.callPackage ../../../../lib/honeycomb/runtime/package.nix { };
+  # The hub on homelab (github:schlich/honeycomb, modules/nixos/homelab), on
+  # the tailnet name that den/inventory.nix gives as network.tailnet.
+  inherit (inputs.honeycomb.overlays.default pkgs pkgs) honeycomb;
   hub = "https://homelab.tail338351.ts.net:7444";
 in
 lib.mkIf (config.dotfiles.alternates || config.dotfiles.primary.desktopAgent == "claude") {

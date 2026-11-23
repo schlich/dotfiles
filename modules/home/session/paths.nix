@@ -5,7 +5,7 @@
 }@args:
 
 # The two repositories the configuration names by path. ~ holds six visible
-# folders, one per honeycomb area (lib/honeycomb/default.nix): this
+# folders, one per honeycomb area (github:schlich/honeycomb): this
 # repository sits in the nix area and the knowledge base in research. Every
 # other reference derives from these options.
 let

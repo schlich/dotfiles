@@ -28,7 +28,7 @@ and `--rev` pins a branch, tag, or commit. `--comment` replaces the flake's
 description with a reason the input exists.
 
 This repository's inputs are grouped in flakes of at most six under
-`lib/inputs` (`lib/honeycomb/README.md`), so `--group` is required here: the
+`lib/inputs` (`github:schlich/honeycomb`), so `--group` is required here: the
 group the input belongs with, such as `terminal/shell` or
 `agents/skills/web`. Run `flake-add` without it to list the groups and how
 full each is. A full group means a new one: add a directory with its own

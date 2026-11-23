@@ -12,6 +12,9 @@
     ../../../modules/programs/ssh/ssh.nix
     ../../../modules/programs/vcs/vcs.nix
     ../../../modules/programs/shell/yazi.nix
+    # Luvus and its server, which run this repository's task board on every
+    # host an agent works from.
+    ../../../modules/programs/multiplexers/luvus.nix
     # The knowledge base CLI + sync timer and headless AI CLIs (Claude Code,
     # Codex, Antigravity CLI) with shared skills and MCP servers.
     ../../../modules/tooling/knowledge/iwe.nix

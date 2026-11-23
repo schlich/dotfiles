@@ -80,7 +80,7 @@ let
       normal = {
         # The window menu already moves between splits with H, J, K and L;
         # Y and U, the keys under the bufferline, add the buffer to the left
-        # and right (lib/honeycomb/README.md). Motions inside a buffer stay
+        # and right (github:schlich/honeycomb). Motions inside a buffer stay
         # Helix's own.
         space.w = bufferKeys;
         C-w = bufferKeys;

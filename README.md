@@ -30,7 +30,7 @@ modules/           NixOS and Home Manager modules that aspects import
   home/              shared home state: packages, files, nix, session
   programs/          shell, vcs, desktop, multiplexers, ssh
   tooling/           terminal, editor, and AI client integrations
-lib/               wrap-with-config, closure-diff, honeycomb, input groups
+lib/               wrap-with-config, closure-diff, census, input groups
 deploy/            staged switch, revert log, generation tracking, TLA+ model
 tools/             luvus-deliver, nixpkgs-watch, den-reach, ci-trace, ...
 niri/ noctalia/    compositor config and desktop shell plugins
@@ -39,7 +39,7 @@ tests/             flake checks and Nushell test suites
 docs/              architecture, delivery, desktop, agents, project graph
 ```
 
-`modules/README.md` and `lib/honeycomb/README.md` explain the grouping rule:
+`modules/README.md` and [honeycomb](https://github.com/schlich/honeycomb#readme) explain the grouping rule:
 no directory or flake-input group holds more than six entries.
 
 ## How a host is built

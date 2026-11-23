@@ -5,7 +5,7 @@ binds as a tree, `niri/config.kdl` the other settings, and `niri/session.nu`
 the areas and sessions. The panel is a laptop screen that fits two columns.
 Which keys Niri may claim, and which it leaves to the terminal and editor, is
 in [input.md](input.md). The limit of six that shapes all of this is in
-[lib/honeycomb/README.md](../../lib/honeycomb/README.md).
+[honeycomb](https://github.com/schlich/honeycomb#readme).
 
 ## Doctrine
 

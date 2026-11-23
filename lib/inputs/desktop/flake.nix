@@ -10,6 +10,9 @@
     # default branch only; v0.1.3 predates it.
     dicta.url = "github:schlich/dicta";
     ai-usagebar.url = "github:akitaonrails/ai-usagebar";
+    # The rule of six, the areas and the keys every context shares, with the
+    # `honeycomb` command and the phone's hub.
+    honeycomb.url = "github:schlich/honeycomb";
   };
 
   # `sources` are this group's inputs, with those of the groups inside it,

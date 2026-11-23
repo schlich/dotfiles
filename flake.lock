@@ -276,7 +276,7 @@
         "type": "github"
       }
     },
-    "crane_3": {
+    "crane_2": {
       "locked": {
         "lastModified": 1794962885,
         "narHash": "sha256-zrweT2tXbcWiJMACOhOr2eYFJKVa6g59ouRaZ3BS5Do=",
@@ -291,7 +291,7 @@
         "type": "github"
       }
     },
-    "crane_4": {
+    "crane_3": {
       "locked": {
         "lastModified": 1768873933,
         "narHash": "sha256-CfyzdaeLNGkyAHp3kT5vjvXhA1pVVK7nyDziYxCPsNk=",
@@ -356,6 +356,7 @@
       "inputs": {
         "ai-usagebar": "ai-usagebar",
         "dicta": "dicta",
+        "honeycomb": "honeycomb",
         "niri": "niri",
         "noc-minimizer": "noc-minimizer"
       },
@@ -494,9 +495,9 @@
         "type": "github"
       }
     },
-    "flake-parts_4": {
+    "flake-parts_3": {
       "inputs": {
-        "nixpkgs-lib": "nixpkgs-lib_2"
+        "nixpkgs-lib": "nixpkgs-lib"
       },
       "locked": {
         "lastModified": 1768135262,
@@ -806,6 +807,27 @@
       "original": {
         "owner": "nix-community",
         "repo": "home-manager",
+        "type": "github"
+      }
+    },
+    "honeycomb": {
+      "inputs": {
+        "nixpkgs": [
+          "system",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1795462798,
+        "narHash": "sha256-KxMERu4gTW8mHt8o11tFlTG5OrtQP2t1EMTgWaBZiMM=",
+        "owner": "schlich",
+        "repo": "honeycomb",
+        "rev": "b255279f01b0669c639f67e25dca31be8a6fdc7f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "schlich",
+        "repo": "honeycomb",
         "type": "github"
       }
     },
@@ -1237,7 +1259,21 @@
         "type": "github"
       }
     },
-    "nixpkgs-lib_2": {
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1795085501,
+        "narHash": "sha256-S5keGWzaKpuXo9MNoIC2FfTIuTyTnx8P4NhYJMEsTLI=",
+        "rev": "0bb8272318b4ca41bf0edc6224df3e3e3046b70d",
+        "revCount": 1124497,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/NixOS/nixpkgs/0.1.1124497%2Brev-0bb8272318b4ca41bf0edc6224df3e3e3046b70d/01a1f77f-2057-7973-8ff7-a4c6141aa761/source.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://flakehub.com/f/NixOS/nixpkgs/0.1"
+      }
+    },
+    "nixpkgs-lib": {
       "locked": {
         "lastModified": 1765674936,
         "narHash": "sha256-k00uTP4JNfmejrCLJOwdObYC9jHRrr/5M/a/8L2EIdo=",
@@ -1266,20 +1302,6 @@
         "ref": "nixos-26.05",
         "repo": "nixpkgs",
         "type": "github"
-      }
-    },
-    "nixpkgs_2": {
-      "locked": {
-        "lastModified": 1795085501,
-        "narHash": "sha256-S5keGWzaKpuXo9MNoIC2FfTIuTyTnx8P4NhYJMEsTLI=",
-        "rev": "0bb8272318b4ca41bf0edc6224df3e3e3046b70d",
-        "revCount": 1124497,
-        "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/NixOS/nixpkgs/0.1.1124497%2Brev-0bb8272318b4ca41bf0edc6224df3e3e3046b70d/01a1f77f-2057-7973-8ff7-a4c6141aa761/source.tar.gz"
-      },
-      "original": {
-        "type": "tarball",
-        "url": "https://flakehub.com/f/NixOS/nixpkgs/0.1"
       }
     },
     "noc-minimizer": {
@@ -1360,7 +1382,7 @@
     },
     "nushellWith": {
       "inputs": {
-        "crane": "crane_3",
+        "crane": "crane_2",
         "nixpkgs": [
           "system",
           "nixpkgs"
@@ -1483,7 +1505,7 @@
         "terminal": "terminal"
       }
     },
-    "rust-overlay_2": {
+    "rust-overlay": {
       "inputs": {
         "nixpkgs": [
           "terminal",
@@ -1576,7 +1598,7 @@
         "den": "den",
         "home-manager": "home-manager",
         "impermanence": "impermanence",
-        "nixpkgs": "nixpkgs_2"
+        "nixpkgs": "nixpkgs"
       },
       "locked": {
         "path": "./lib/inputs/system",
@@ -1813,13 +1835,13 @@
     },
     "xs": {
       "inputs": {
-        "crane": "crane_4",
-        "flake-parts": "flake-parts_4",
+        "crane": "crane_3",
+        "flake-parts": "flake-parts_3",
         "nixpkgs": [
           "system",
           "nixpkgs"
         ],
-        "rust-overlay": "rust-overlay_2"
+        "rust-overlay": "rust-overlay"
       },
       "locked": {
         "lastModified": 1795122865,

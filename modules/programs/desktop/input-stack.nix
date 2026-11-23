@@ -1,5 +1,6 @@
 {
   config,
+  inputs,
   lib,
   pkgs,
   ...
@@ -61,9 +62,9 @@ let
     "editor"
   ];
 
-  # The eight navigation keys every context shares (lib/honeycomb): six
-  # directions and two depths.
-  honeycomb = import ../../../lib/honeycomb { inherit lib; };
+  # The eight navigation keys every context shares (github:schlich/honeycomb):
+  # six directions and two depths.
+  honeycomb = inputs.honeycomb.lib;
   # Every chord a context declares for a seat that ends on another key.
   strayChords = honeycomb.strayChords cfg.navigation;
   unknownNavigation = builtins.filter (name: !(builtins.elem name names)) (
@@ -126,7 +127,8 @@ in
 
   config = mkIf cfg.enable {
     # Niri's navigation comes from its bind tree.
-    dotfiles.input.navigation.desktop = (import ../../../niri/binds.nix { inherit lib; }).navigation;
+    dotfiles.input.navigation.desktop =
+      (import ../../../niri/binds.nix { inherit lib honeycomb; }).navigation;
 
     assertions = [
       {

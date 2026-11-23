@@ -61,7 +61,7 @@ in
       ];
     });
     # A branch deleted on the remote goes here too, so the list of remote
-    # branches holds only what is still open (lib/honeycomb/README.md).
+    # branches holds only what is still open (github:schlich/honeycomb).
     fetch.prune = true;
   };
   programs.gpg.enable = true;
@@ -107,7 +107,7 @@ in
     };
     git.executable-path = lib.getExe git;
     # The open topics: every head that trunk does not hold yet. At most six
-    # at a time (lib/honeycomb/README.md); `jj topics` lists them.
+    # at a time (github:schlich/honeycomb); `jj topics` lists them.
     revset-aliases."topics()" = "visible_heads() ~ ::trunk()";
     aliases.topics = [
       "log"

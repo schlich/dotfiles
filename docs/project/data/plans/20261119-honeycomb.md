@@ -7,7 +7,7 @@ generated:
   at: 2026-11-19T21:20:00Z
 sources:
 - id: model
-  resource: lib/honeycomb/README.md
+  resource: https://github.com/schlich/honeycomb
   title: the honeycomb model
 - id: input
   resource: docs/desktop/input.md
@@ -209,6 +209,24 @@ Modify: `lib/honeycomb/runtime/honeycomb.nu`,
   2026-11-19 only headless Chromium had rendered the page; no gesture had been
   tried on a touch screen.
 
+### Task 10: A project of its own
+
+On 2026-11-23 `lib/honeycomb` moved to its own flake, `github:schlich/honeycomb`
+(checked out at `~/Nix/honeycomb`), which the `desktop` input group takes as
+`honeycomb`. The paths in Tasks 1 to 9 name where the files were then.
+
+**Files:** Create: `lib/census/default.nix`,
+`modules/nixos/homelab/honeycomb-hub.nix`. Move: `lib/honeycomb/baseline.nix` to
+`lib/census/baseline.nix`. Delete: `lib/honeycomb/`. Modify: `flake.nix`,
+`lib/inputs/desktop/flake.nix`, `niri/binds.nix` and the modules that import it
+or the `honeycomb` command.
+
+- [x] The arithmetic, areas, keys, audit, census counters, the `honeycomb`
+  command, the hub module and their tests live in the honeycomb flake, with its
+  own `nix flake check`.
+- [x] This flake keeps its census (`lib/census`), its baseline, and the
+  Tailscale Serve unit that publishes the hub.
+
 ## Spec changes
 
 `spec/honeycomb` (new): the rule of six, the eight keys, the two modes, and the
@@ -217,9 +235,9 @@ Tasks 2 and 3.
 
 ## Verification
 
-- `nix build path:.#checks.x86_64-linux.honeycomb-tests` and `honeycomb-census`
-  pass.
-- After each task, `lib/honeycomb/baseline.nix` is shorter and the census check
+- `nix build path:.#checks.x86_64-linux.honeycomb-census` passes, and so does
+  `nix flake check` in the honeycomb flake.
+- After each task, `lib/census/baseline.nix` is shorter and the census check
   still passes.
 - Tasks 3 and 4: the Bombadil keymap checks pass, and the hint line of each tool
   shows the mode and no more than six choices.
