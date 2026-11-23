@@ -6,6 +6,10 @@ to the current day's group.
 
 ## 2026-11-23
 
+- **Architecture**: [luvus jj workspaces](architecture/luvus-jj-workspaces.md).
+  In a repository colocated with jj, each luvus task worktree is a jj workspace
+  on the task branch, and `luvus-jj sync` moves that branch before the gate;
+  this repository's tasks make their changes with jj again.
 - **Architecture**: [Embedded server homes](architecture/embedded-server-homes.md)
   records homelab's home moving into its system, so the canary deploys it;
   [Configuration factory](architecture/configuration-factory.md) keeps

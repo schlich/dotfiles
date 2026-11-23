@@ -8,9 +8,10 @@ tools: ["view", "glob", "rg", "bash", "apply_patch", "task", "jj-status", "jj-lo
 
 You are the generated Copilot specialist for **schlich/dotfiles flake workflow**.
 
-> Superseded in schlich/dotfiles: that repository now takes writes through Git
-> and luvus. There, follow its `AGENTS.md` (Version control, Delivery) where
-> this file says otherwise.
+> Superseded in schlich/dotfiles: that repository now makes changes with jj in
+> luvus task workspaces and delivers them as Git branches through luvus.
+> There, follow its `AGENTS.md` (Version control, Delivery) where this file
+> says otherwise.
 
 ## Scope
 

@@ -237,30 +237,40 @@ luvus quality gate and nixbot build.
 
 ### Version control
 
-- This repository takes writes through Git, driven by luvus. jj and `ci` are
-  set aside here; they stay installed for other repositories, so their
-  global rules do not apply in this one. It stays colocated, so read-only jj
-  commands such as `jj log` still work, but make every change with Git.
-  `dotfiles.tooling.gitWorkflowRepos` lists it, so the jj write guard and
-  ci's context-status hooks leave sessions here, and in its worktrees, alone.
+- This repository is gated, merged, and delivered as Git branches, driven by
+  luvus, and its changes are made with jj. `ci` is set aside here; it stays
+  installed for other repositories, so its rules do not apply in this one.
+  `dotfiles.tooling.gitWorkflowRepos` lists it, so the jj write guard also
+  allows Git writes here and in its worktrees, and ci's context-status hooks
+  leave its sessions alone.
 - One task, one branch, one worktree. Start a task from the luvus
   orchestration board (`Ctrl+Space o`, or `luvus task add` and then
-  `luvus task start ID --agent AGENT`), which creates a Git worktree on its
-  own branch (`luvus/tID`) under `~/.luvus/worktrees/`, or with
-  `luvus worktree create BRANCH` for work outside the board. Work only in the
-  worktree your task owns; never make a task's edits in the `~/Nix/dotfiles`
-  main checkout, which other sessions share.
-- A board task branches from the local `main`, which `luvus-deliver`
-  fast-forwards after each delivery; `luvus worktree create` branches from
-  the focused checkout's HEAD, which can be weeks behind. Before the first
-  edit in a new worktree, run `git fetch origin main` and, while the branch
-  has no commits, `git reset --hard origin/main`.
+  `luvus task start ID --agent AGENT`), which creates a worktree on its own
+  branch (`luvus/tID`) under `~/.luvus/worktrees/`, or with
+  `luvus worktree create BRANCH` for work outside the board. The repository
+  is colocated with jj, so luvus-jj's worktree provider (`tools/luvus-jj.nu`)
+  makes that worktree a jj workspace too, named after the branch
+  (`luvus-tID`), with the branch as a bookmark. Work only in the worktree
+  your task owns; never make a task's edits in the `~/Nix/dotfiles` main
+  checkout, which other sessions share.
+- A task's workspace starts on `luvus/integration` when that holds
+  `trunk()` (`main@origin`), so it sees the tasks merged before it, and
+  otherwise on `trunk()`, as of the last fetch. Before the first edit, run
+  `jj git fetch`; if `trunk()` moved and the task has no changes yet, start
+  over on it with `jj new 'trunk()'`, or with `jj new luvus/integration`
+  when the task needs work merged there but not yet delivered.
 - Give each task the file globs it will touch (`--paths`), so luvus's path
   leases keep two tasks off the same files, and its dependencies (`--deps`)
   when it needs another task's work first.
-- Commit with ordinary Git, in small commits with concise, descriptive
-  messages. Do not rewrite commits that `luvus/integration` or another
-  branch already contains, and never push `main` directly.
+- Make the task's changes with jj, in small changes with concise,
+  descriptive messages (`jj commit -m`, `jj describe -m`), and reshape them
+  with `jj split`, `jj squash`, `jj absorb`, or `jj undo` as needed. luvus
+  gates and merges the task's Git branch, which jj does not move by itself:
+  `luvus-jj sync` points it at the workspace's latest change, finishing a
+  described working copy first and refusing undescribed or conflicted
+  changes, and each task's gate runs it first. Git still works in the
+  workspace as a fallback. Do not rewrite commits that `luvus/integration`
+  or another branch already contains, and never push `main` directly.
 - Before finishing, check the branch's diff for mixed deliverables, and split
   unrelated work into separate tasks rather than carrying it in one branch.
 - Six at a time (`github:schlich/honeycomb`). The repository holds at most six
@@ -273,16 +283,18 @@ luvus quality gate and nixbot build.
 - The three ways to move through the repository stay apart: between topics
   (left and right), along one topic's commits (up and down), and into a
   commit's files or out to the other worktrees (in and out).
-- The jj workspaces under `.jj-workspaces/` and their topics predate this
-  switch. Leave them alone unless the user asks: they hold earlier work,
-  some of it the user's.
+- The jj workspaces under `.jj-workspaces/` and their topics predate the
+  move to luvus. Leave them alone unless the user asks: they hold earlier
+  work, some of it the user's.
 
 ### Delivery
 
 - A task's quality gate is the repository's `gateChecks`: the flake checks
   plus the system and home asus switches to after a delivery. Create tasks
-  with `--gate "nix-fast-build --skip-cached --no-nom --eval-workers 3 --eval-max-memory-size 3072 --flake path:.#gateChecks.x86_64-linux"`,
-  or `--gate "prek run --all-files"` for documentation-only work. The
+  with `--gate "luvus-jj sync && nix-fast-build --skip-cached --no-nom --eval-workers 3 --eval-max-memory-size 3072 --flake path:.#gateChecks.x86_64-linux"`,
+  or `--gate "luvus-jj sync && prek run --all-files"` for documentation-only
+  work. luvus runs the gate with `sh` in the task's worktree, so a task
+  cannot pass with its branch behind its workspace. The
   worker limits keep evaluation within asus's memory: with the default
   eight workers, the two closures pushed one gate past 10 GiB. Let a
   failing gate run to the end: it reports every failed attribute at once,
@@ -292,8 +304,9 @@ luvus quality gate and nixbot build.
   done either way.
 - `luvus task merge ID` merges a done task's branch into `luvus/integration`
   in luvus's own integration worktree, one task at a time. A conflict aborts
-  the merge and marks the task `blocked`: merge `luvus/integration` into the
-  task's branch in its worktree, resolve, rerun the gate, and merge again.
+  the merge and marks the task `blocked`: in the task's workspace, rebase it
+  onto the integration branch (`jj rebase -b @ -d luvus/integration`),
+  resolve the conflicts jj records, rerun the gate, and merge again.
   Resolve conflicts automatically when the intended result is clear; preserve
   the changes from both sides and rerun the relevant checks. Ask only when
   resolving the conflict requires a product decision or unclear intent.
@@ -320,7 +333,8 @@ luvus quality gate and nixbot build.
   failed gate, CI run, or unresolved merge conflict stops delivery and is reported.
 - Once a task is delivered, remove its worktree with
   `luvus worktree remove PATH`, which refuses while a task, lease, or live
-  agent still uses it, and delete its branch with `git branch -D BRANCH`:
+  agent still uses it and forgets its jj workspace too, and delete its
+  branch with `git branch -D BRANCH`:
   `main` holds its commits, and a branch kept after delivery only crowds the
   list of open work. `honeycomb prune` lists every branch `main` already
   holds, and `--yes` removes them with their worktrees; run it with `--yes`
@@ -351,10 +365,10 @@ luvus quality gate and nixbot build.
 
 ### Continuous integration and merge-conflict policy
 
-Keep active work continuously integrated: branch each task from
-`origin/main`, merge `origin/main` into a long-running task branch when it
-falls behind or conflicts, and never let two concurrent actors share one
-worktree. luvus's merge gate integrates finished tasks one at a time in its
+Keep active work continuously integrated: start each task from
+`trunk()` or `luvus/integration`, rebase a long-running task onto
+`trunk()` (`jj rebase -b @ -d 'trunk()'`) when it falls behind or
+conflicts, and never let two concurrent actors share one worktree. luvus's merge gate integrates finished tasks one at a time in its
 own worktree, and `luvus-deliver` moves `main` only to a commit nixbot
 passed.
 
