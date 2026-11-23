@@ -49,7 +49,9 @@ are open, and the projects.
 | Window | West, east | Mod+H, Mod+L                        | Carry the column              |
 |        | In, out    | Mod+J, Mod+K: next, previous window | Carry the window              |
 |        | Back       | Mod+Tab                             |                               |
-|        | Overview   | Mod+O                               |                               |
+|        | Workspace  | Mod+O overview                      |                               |
+|        |            | Mod+PgDn, Mod+PgUp: next, previous  | Carry the column              |
+|        |            | Mod+1 … Mod+7: by position          | Carry the column              |
 | Area   | Six areas  | Mod+Alt+Y U H L N M                 | Carry the column there        |
 |        | Centre     | Mod+Alt+I, inward                   | Carry the column there        |
 |        | Sessions   | Mod+Alt+O, outward                  |                               |
@@ -76,7 +78,9 @@ are open, and the projects.
 |        | Screens    |                                     | Mod+Shift+P: screens off      |
 |        | Quit       |                                     | Mod+Shift+E                   |
 
-Mod+Ctrl+H/J/K/L selects a monitor, and adding Shift carries the column to
+Past a column's first or last window, Mod+J and Mod+K step on to the
+previous or next workspace, and Mod+Shift+J and Mod+Shift+K carry the window
+there. Mod+Ctrl+H/J/K/L selects a monitor, and adding Shift carries the column to
 it. Alt+Tab and Alt+\` are niri's window switcher. The arrow keys, the mouse
 thumb buttons and Mod plus the wheel repeat the window motions; they are
 hidden from the overlay so that it lists one key per action.
@@ -93,7 +97,8 @@ hidden from the overlay so that it lists one key per action.
 
 ## What went away
 
-The digits, the keypad grid, Mod+U and Mod+I, Mod+Home and Mod+End, Mod+C,
-the comma and period, the fine width and height steps, and the numbered
-tabs. Each was a second way to do something a direction key or a preset
-already does.
+The keypad grid, Mod+U and Mod+I, Mod+Home and Mod+End, Mod+C, the comma
+and period, the fine width and height steps, and the numbered tabs. Each was
+a second way to do something a direction key or a preset already does. The
+digits and Page keys came back (2026-11-23) as plain niri workspace
+navigation beside the areas.

@@ -93,32 +93,54 @@ let
       name = "down";
       letter = key.down;
       arrow = "Down";
-      focus = "focus-window-down";
-      move = "move-window-down";
+      focus = "focus-window-or-workspace-down";
+      move = "move-window-down-or-to-workspace-down";
       monitor = "down";
       side = "below";
-      select = "Down the column: its next window";
-      carry = "Carry the window down the column";
+      select = "Down the column, then the next workspace";
+      carry = "Carry the window down, then to the next workspace";
     })
     (motion {
       name = "up";
       letter = key.up;
       arrow = "Up";
-      focus = "focus-window-up";
-      move = "move-window-up";
+      focus = "focus-window-or-workspace-up";
+      move = "move-window-up-or-to-workspace-up";
       monitor = "up";
       side = "above";
-      select = "Up the column: its previous window";
-      carry = "Carry the window up the column";
+      select = "Up the column, then the previous workspace";
+      carry = "Carry the window up, then to the previous workspace";
     })
     (member "back" [
       (bind "Mod+Tab" "Back to the previous window" "focus-window-previous")
     ])
-    (member "overview" [
-      (with' "repeat=false" (bind "Mod+O" "Overview: every workspace" "toggle-overview"))
-      (with' "cooldown-ms=150" (twin "Mod+WheelScrollDown" "focus-workspace-down"))
-      (with' "cooldown-ms=150" (twin "Mod+WheelScrollUp" "focus-workspace-up"))
-    ])
+    # Plain niri workspaces: the strip's next and previous, and each by its
+    # position. The areas (Mod+Alt) reach the same workspaces by name.
+    (member "workspace" (
+      [
+        (with' "repeat=false" (bind "Mod+O" "Overview: every workspace" "toggle-overview"))
+        (bind "Mod+Page_Down" "Next workspace" "focus-workspace-down")
+        (bind "Mod+Page_Up" "Previous workspace" "focus-workspace-up")
+        (bind "Mod+Shift+Page_Down" "Carry the column to the next workspace"
+          "move-column-to-workspace-down"
+        )
+        (bind "Mod+Shift+Page_Up" "Carry the column to the previous workspace"
+          "move-column-to-workspace-up"
+        )
+        (with' "cooldown-ms=150" (twin "Mod+WheelScrollDown" "focus-workspace-down"))
+        (with' "cooldown-ms=150" (twin "Mod+WheelScrollUp" "focus-workspace-up"))
+      ]
+      ++ lib.concatMap (
+        n:
+        let
+          i = toString n;
+        in
+        [
+          (bind "Mod+${i}" "Workspace ${i}" "focus-workspace ${i}")
+          (bind "Mod+Shift+${i}" "Carry the column to workspace ${i}" "move-column-to-workspace ${i}")
+        ]
+      ) (lib.range 1 7)
+    ))
   ];
 
   area =
