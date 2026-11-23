@@ -339,6 +339,12 @@ in
         # spaces the attempts out.
         StartLimitIntervalSec = 0;
         OnFailure = [ "t3code-server-outage.service" ];
+        # Stopping the server ends its agents and terminals, and an activation
+        # run from a T3 terminal dies with them before it can start the server
+        # again. An activation that changes this unit leaves the running server
+        # alone; the new unit takes effect on
+        # `systemctl --user restart t3code-server`.
+        X-SwitchMethod = "keep-old";
       };
       Service = {
         ExecStartPre = lib.optional (kbMcpCommand != null) "${syncAntigravityKbMcp}";
