@@ -5,7 +5,8 @@
     ./inventory.nix
     ./aspects/roles/base.nix
     ./aspects/services/paseo.nix
-    ./aspects/services/t3code.nix
+    ./aspects/services/agent-servers/t3code.nix
+    ./aspects/services/agent-servers/luvus-web.nix
     ./aspects/services/rex.nix
     ./aspects/services/cross-stream.nix
     ./aspects/services/marimohub.nix

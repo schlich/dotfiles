@@ -87,6 +87,7 @@ in
         paseo = true;
         opencodeServer = false;
         t3code = true;
+        luvusWeb = true;
         rex = true;
         crossStream = true;
       };
@@ -95,6 +96,7 @@ in
       "base"
       "paseo"
       "t3code"
+      "luvus-web"
       "rex"
       "cross-stream"
       "server"
@@ -117,6 +119,7 @@ in
         "paseo"
         "opencode-server"
         "t3code"
+        "luvus-web"
         "rex"
         "cross-stream"
       ];
