@@ -1396,6 +1396,22 @@
         "type": "github"
       }
     },
+    "nu-rex-integration": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1795130125,
+        "narHash": "sha256-d11Z4jzcUDSWXayxuz7Lz2cQTwK8i9EpfHtCWgYKWEM=",
+        "owner": "fdncred",
+        "repo": "nu-rex-integration",
+        "rev": "480df663ca4921ce53da8811e0ae4152f17171e8",
+        "type": "github"
+      },
+      "original": {
+        "owner": "fdncred",
+        "repo": "nu-rex-integration",
+        "type": "github"
+      }
+    },
     "nushellWith": {
       "inputs": {
         "crane": "crane_2",
@@ -1531,6 +1547,7 @@
     "shell": {
       "inputs": {
         "nu-plugin-ghostty": "nu-plugin-ghostty",
+        "nu-rex-integration": "nu-rex-integration",
         "nushellWith": "nushellWith",
         "osc7501-nu": "osc7501-nu",
         "rex": "rex",
