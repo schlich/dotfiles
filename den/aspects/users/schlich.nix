@@ -7,8 +7,9 @@
       den.aspects.user-shell
       # Servers such as homelab get the shell home plus server-side remote
       # editor helpers; desktop pieces stay on workstations. These shape only
-      # the standalone home (homeConfigurations."USER@HOST"), so they read
-      # the host through the `home` Den binds there.
+      # the home Den resolves as USER@HOST (den/inventory.nix), standalone or
+      # embedded in the system, so they read the host through the `home` Den
+      # binds there.
       (
         { home, ... }:
         lib.optionalAttrs (home.host.profile.role == "server") {

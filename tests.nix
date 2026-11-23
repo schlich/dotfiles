@@ -214,6 +214,40 @@ in
     expected = true;
   };
 
+  # Where each host's homes are activated: a server's home is part of its
+  # system, and a workstation's stays standalone for quick, sudo-free
+  # iteration (homeActivation in den/model/schema.nix).
+  testInventoryHomesActivateWhereTheirHostDeploys = {
+    expr = lib.mapAttrs (
+      _: host:
+      lib.mapAttrs (_: user: user.homeActivation or "standalone") (
+        lib.filterAttrs (_: user: user.home or false) (host.users or { })
+      )
+    ) hosts;
+    expected = {
+      asus.schlich = "standalone";
+      asus-headless = { };
+      asus-usb.schlich = "standalone";
+      homelab.schlich = "embedded";
+    };
+  };
+
+  # A host that stages each landing of main on its own updates only its
+  # system, so its homes must be part of that system or they would fall
+  # behind main, as homelab's did before it embedded its home.
+  testAutoDeployHostsEmbedTheirHomes = {
+    expr = builtins.attrNames (
+      lib.filterAttrs (
+        _: host:
+        host.policy.autoDeploy
+        && lib.any (user: (user.home or false) && (user.homeActivation or "standalone") != "embedded") (
+          builtins.attrValues (host.users or { })
+        )
+      ) hosts
+    );
+    expected = [ ];
+  };
+
   # Workstations fetch a canary's revert reports over ssh, so a canary needs
   # a destination to fetch them from.
   testCanariesHaveADeployTarget = {

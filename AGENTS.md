@@ -53,7 +53,10 @@
   `homeConfigurations."schlich@asus".activationPackage`. Den derives one home
   for each inventory user with `home = true`, named `USER@HOST` as
   `nh home switch` expects (`den/inventory.nix`); each takes its host's
-  package set and sees the system as `osConfig`.
+  package set and sees the system as `osConfig`. A user whose
+  `homeActivation` is `embedded` (schlich on homelab) gets no
+  `homeConfigurations` entry: the Home Manager NixOS module builds that same
+  home into the host's system.
 - Add user packages in `modules/home/packages.nix`, version-control wrappers in
   `modules/programs/vcs/vcs.nix`, and AI client configuration in
   `modules/tooling/ai/`.
@@ -180,7 +183,8 @@ luvus quality gate and nixbot build.
   Do not retry a reverted revision without the user's approval.
 - homelab is the canary: its inventory policy sets `autoDeploy`, so its own
   `nixos-switch-main-auto` timer stages each landing of `main` through the
-  same watch. That timer is configuration, not an agent action; it does not
+  same watch. Its home is embedded in its system, so the timer deploys the
+  home too. That timer is configuration, not an agent action; it does not
   authorize an agent to switch any host. A revert there reaches asus as a
   desktop notification; `deploy-reverts --all` on asus lists it.
 - Clan can push a landed `main` to a host instead
@@ -192,15 +196,22 @@ luvus quality gate and nixbot build.
 - Create a NixOS generation only when the candidate
   `system.build.toplevel` store path differs from the active
   `/run/current-system` target. If they match, do not switch merely to record a
-  source change. The toplevel no longer contains the home: a Home Manager
-  change, `home.packages` included, never needs a NixOS generation. See
+  source change. asus's toplevel does not contain its home: a Home Manager
+  change, `home.packages` included, never needs a NixOS generation there.
+  homelab's does, so a home change there is a system change. See
   `docs/architecture.md` for the full policy.
 - `generation` says which system and Home Manager generation a host runs,
   which commit each came from, and whether `main` has moved past it. Use it
   to answer what a host is running before proposing a switch or activation.
-- Home Manager runs standalone, apart from the system, so applying a change
-  is two steps: `system-switch` for the system, then the home. Clan and a
-  plain `system-switch` never apply a home. Apply a home with
+- A workstation's home is standalone and a server's embedded, as each
+  inventory user's `homeActivation` says. On homelab the home is part of the
+  system: every switch, the canary timer's and Clan's included, applies it,
+  its packages are in `/etc/profiles/per-user/schlich`, `home-activate`
+  refuses there, and `system-switch --with-home` only notes the home came
+  with the switch.
+- On asus, Home Manager runs standalone, apart from the system, so applying a
+  change is two steps: `system-switch` for the system, then the home. Clan
+  and a plain `system-switch` never apply a standalone home. Apply one with
   `nh home switch`, which builds `homeConfigurations."$USER@$HOSTNAME"` from
   this checkout (`NH_FLAKE`) and needs no `sudo`; prefer `home-activate`,
   which runs it and records the change each generation came from for
@@ -208,7 +219,8 @@ luvus quality gate and nixbot build.
   a successful switch it activates the home from the same commit, so the
   switch after a closure-changing landing always passes it. Outside that,
   activate a home only when the user asks.
-  `home.packages` install into `~/.nix-profile`, not `/etc/profiles/per-user`.
+  A standalone home's `home.packages` install into `~/.nix-profile`, not
+  `/etc/profiles/per-user`.
 - `system-switch` refuses to start when the running system still embeds the
   user's Home Manager and main's standalone home is not active yet, because
   that switch would remove every user package (as on asus on 2026-10-19).

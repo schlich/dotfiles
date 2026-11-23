@@ -24,17 +24,26 @@ typed inventory -> host aspect composition -> Den host/user pipeline
                  -> NixOS + Home Manager module graph -> outputs/checks
 ```
 
-User configuration is supplied by Den user aspects. Home Manager runs
-standalone, apart from the system: an inventory user with `home = true`
-(schlich on asus, asus-usb and homelab) gets the flake output
+User configuration is supplied by Den user aspects. An inventory user with
+`home = true` (schlich on asus, asus-usb and homelab) has a Home Manager home,
+and the user's `homeActivation` fact says where it is activated. A
+workstation's home runs standalone, apart from the system, for quick,
+sudo-free iteration: schlich on asus and asus-usb gets the flake output
 `homeConfigurations."USER@HOST"`, the name `nh home switch` looks up for that
-user on that host. `den/inventory.nix` builds each home from its host's
-package set and passes the evaluated system as `osConfig`, so home modules
-still read system facts; `den/aspects/users/home-manager-host.nix` adds the overlays
-those homes need to exactly those hosts. No system embeds or activates a
-home, so applying a change is two steps, the system and then the home, and
-Clan and a plain `system-switch` change only the system (see "Applying a
-home" below). Every such user gets the
+user on that host. A server's home is part of its system, the usual NixOS
+precedent: schlich on homelab is `homeActivation = "embedded"`, so the Home
+Manager NixOS module builds that home into homelab's system and activates it
+with every switch, and there is no `homeConfigurations."schlich@homelab"`.
+Either way `den/inventory.nix` resolves the home in the same Den `home`
+context from the same modules, so the two differ only in where they are
+activated (a standalone home also carries the `home-manager` CLI). Each home
+builds from its host's package set and sees the evaluated system as
+`osConfig`, so home modules still read system facts;
+`den/aspects/users/home-manager-host.nix` adds the overlays those homes need
+to exactly those hosts, and imports an embedded home's modules under the
+host's `home-manager.users`. Applying a standalone home is a second step after
+the system, which Clan and a plain `system-switch` never take; an embedded one
+comes with the system (see "Applying a home" below). Every such user gets the
 shell home (`user-shell`: Nushell, its
 prompt and history tools, git, jj, ssh and the command-line tools), and
 workstations add the desktop home (`user-desktop`: terminals, editors, agent
@@ -62,11 +71,14 @@ Choose the path the wrapper names by how long the program runs:
 - A long-running graphical program that reloads its configuration names a
   stable path that a switch updates, so a reload picks up the new
   configuration: `/etc/niri/config.kdl` for niri, which never runs in the
-  sandbox, and the user's profile (`~/.nix-profile`) for Ghostty.
+  sandbox, and the user's profile (`home.profileDirectory`: `~/.nix-profile`
+  for a standalone home, `/etc/profiles/per-user/USER` for an embedded one)
+  for Ghostty.
 
 Do not move a program that agents run to `/etc`: the Claude Desktop sandbox
 shows no host `/etc/ssh` or `/etc/gitconfig`, while `/nix/store` and `$HOME`,
-which holds the standalone home's `~/.nix-profile`, stay visible. Where Home Manager adds shell
+which holds the standalone home's `~/.nix-profile`, stay visible. (The
+desktop app runs on asus, whose home is standalone.) Where Home Manager adds shell
 integration but cannot safely manage an app's settings, keep
 `programs.<name>.enable` with the wrapped `package` and no `settings`, after
 checking at the locked revision that the module writes no file without
@@ -145,10 +157,20 @@ already active, and records the result in `/var/lib/nixos-switch-main`.
 
 ## Applying a home
 
-The system and the home are separate generations, so a change that touches
-both is applied in two steps: `system-switch` for the system, then
-`home-activate` (or `nh home switch`) for the home. A system switch never
-removes a standalone home's packages, which live in `~/.nix-profile`.
+On a host whose home is embedded (homelab), the home is part of the system
+generation: its packages live in `/etc/profiles/per-user/USER`, the system's
+`home-manager-USER` unit activates it, and every system switch, the canary's
+timer and Clan included, applies it. A home change there makes a new system
+toplevel, so it warrants a NixOS generation like any system change.
+`home-activate` refuses there and points to `system-switch`, and
+`system-switch --with-home` only notes that the switch already activated the
+home.
+
+On a host with a standalone home (asus), the system and the home are separate
+generations, so a change that touches both is applied in two steps:
+`system-switch` for the system, then `home-activate` (or `nh home switch`) for
+the home. A system switch never removes a standalone home's packages, which
+live in `~/.nix-profile`.
 
 The one exception was the move to a standalone home. A system that still
 embeds Home Manager carries the user's packages in
@@ -171,6 +193,17 @@ stops and names both ways forward:
 
 `--with-home` also works on any later switch, to apply both steps from
 landed main at once. Without it, `system-switch` changes only the system.
+
+The opposite move, from a standalone to an embedded home (homelab, November
+2026), removes nothing: the first embedded switch fills
+`/etc/profiles/per-user/USER` and leaves `~/.nix-profile` alone. But the old
+standalone home stays installed there as `home-manager-path`, and
+`~/.nix-profile/bin` comes before the per-user profile on PATH, so its stale
+tools shadow the new ones until it is removed with
+`nix profile remove home-manager-path`, once the embedded switch has become
+the boot default. A later rollback to a system from before the move would
+then leave neither profile holding the home; `nix profile rollback` restores
+the old entry first.
 
 ## Which commit a generation came from
 
@@ -196,8 +229,10 @@ the generation instead:
 generations, the revision behind the running one, whether GitHub's `main` has
 moved past it, and the running Home Manager generation with the change or
 commit it was built from (unrecorded after a bare `nh home switch` or a
-hand-run `activate`). The system and the home are applied separately, so
-their commits may differ. `generation --line` is a one-line form for
+hand-run `activate`). Where the home is standalone, the system and the home
+are applied separately, so their commits may differ; where the system embeds
+it, `generation` reports the home as part of the system generation, from the
+system's commit (`hm N in system`). `generation --line` is a one-line form for
 a status bar, and `--json` the full record. A host switched another way, such
 as by Clan or `nixos-rebuild`, shows its source as unrecorded.
 
@@ -299,9 +334,11 @@ user escalates with sudo on the target. asus has no `deploy.targetHost`, so
 `clan machines update asus` reaches it over ssh to localhost. Deploying from
 an unlanded topic skips the landing gate, and Clan offers no preview goal to
 reserve it for, so do not.
-Home Manager changes, `home.packages` included, never change the NixOS
-toplevel: the home is standalone, and `nh home switch` (or `home-activate`, or
-`system-switch --with-home`) applies it on each host apart from the system. A
-landing therefore reaches a host's home only when someone switches that home
-there; the canary's timer and Clan update systems alone, and neither runs the
-check `system-switch` makes before a system stops embedding a home.
+homelab's home is embedded in its system, so the canary's timer and Clan
+deploy it with every landing, and its tools, such as `luvus-deliver` and the
+T3 Code server's, follow `main` with the system. On a host with a standalone
+home, Home Manager changes, `home.packages` included, never change the NixOS
+toplevel: `nh home switch` (or `home-activate`, or `system-switch --with-home`) applies the home apart from the system, so a landing reaches it
+only when someone switches that home there. Neither the timer nor Clan runs
+the check `system-switch` makes before a system stops embedding a home, so a
+host never moves from an embedded to a standalone home by either.

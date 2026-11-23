@@ -113,13 +113,15 @@ Where it is declared:
 ## One-time setup
 
 The configuration activates like any other: after delivery,
-`system-switch --with-home` on asus; homelab stages the system on its own,
-and its home needs activating there (build
-`homeConfigurations."schlich@homelab".activationPackage` from main and run
-its `activate`). Its first standalone activation refused to replace a
-`nixfmt` installed with `nix profile`, the same store path the home ships;
+`system-switch --with-home` on asus. homelab's home is part of its system
+(`homeActivation = "embedded"` in `den/inventory.nix`), so its canary timer
+stages the home, the T3 Code server's user unit included, with each landing;
+nothing needs activating there by hand. The server finds its tools through
+`home.profileDirectory`, which on homelab is `/etc/profiles/per-user/schlich`.
+(While homelab's home was standalone, its first activation refused to replace
+a `nixfmt` installed with `nix profile`, the same store path the home ships;
 `nix profile remove nixfmt` cleared it, and activation moved
-`~/.config/atuin/config.toml` aside as `config.toml.hm-backup`.
+`~/.config/atuin/config.toml` aside as `config.toml.hm-backup`.)
 
 ### On each execution host
 

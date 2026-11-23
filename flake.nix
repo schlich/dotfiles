@@ -390,7 +390,9 @@
       # Den's systems, not Clan's: the clan CLI deploys these.
       nixosConfigurations = denFlake.nixosConfigurations;
       # Standalone homes named USER@HOST, which `nh home switch` picks for
-      # the current user and host.
+      # the current user and host. A home the system embeds (homeActivation
+      # = "embedded", as on homelab) is Den's flake.embeddedHomes instead,
+      # which stays internal: only its system activates it.
       homeConfigurations = denFlake.homeConfigurations;
       inherit (clan.config) clanInternals;
       clan = clan.config;

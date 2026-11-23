@@ -246,8 +246,11 @@ in
       # Build and activate this host's standalone Home Manager configuration
       # with `nh home switch`. It builds the working copy, which may hold
       # edits main lacks, so it records the change each generation came from
-      # for `generation`.
+      # for `generation`. A home the Home Manager NixOS module builds into
+      # the system (homeActivation = "embedded" in den/inventory.nix) has no
+      # standalone configuration to switch, so it refuses there.
       const repo = "${config.dotfiles.paths.dotfiles}"
+      const embedded = ${lib.boolToString config.submoduleSupport.enable}
 
       # The change whose files the build reads: an empty working-copy change
       # adds nothing to its parent. Asking JJ also snapshots the working copy,
@@ -279,6 +282,9 @@ in
 
       # Extra arguments go to `nh home switch`, such as --ask or --dry.
       def --wrapped main [...args] {
+        if $embedded {
+          error make { msg: $"($env.USER)'s home on ${osConfig.networking.hostName} is part of its NixOS system, which activates it with every switch. Run `system-switch` to apply main, home included." }
+        }
         let change = (working-change)
         ^${lib.getExe config.programs.nh.package} home switch $"path:($repo)" --configuration $"${config.home.username}@${osConfig.networking.hostName}" ...$args
         if not ("--dry" in $args or "-n" in $args) { record $change }

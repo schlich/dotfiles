@@ -229,9 +229,24 @@ in
             type = types.bool;
             default = false;
             description = ''
-              Whether the user has a standalone Home Manager configuration on
-              this host, flake output homeConfigurations."USER@HOST", which
-              `nh home switch` applies apart from the system.
+              Whether the user has a Home Manager home on this host. Where it
+              is activated is homeActivation's choice.
+            '';
+          };
+          homeActivation = mkOption {
+            type = types.enum [
+              "standalone"
+              "embedded"
+            ];
+            default = "standalone";
+            description = ''
+              Where a user with `home = true` has that home activated.
+              `standalone`: flake output homeConfigurations."USER@HOST", which
+              `nh home switch` (or home-activate) applies apart from the
+              system, for quick, sudo-free iteration on a workstation.
+              `embedded`: the Home Manager NixOS module builds the same home
+              into the host's system, so it deploys with every switch, as a
+              server's should (den/aspects/users/home-manager-host.nix).
             '';
           };
         };

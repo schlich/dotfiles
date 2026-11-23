@@ -7,9 +7,13 @@
 
 let
   cfg = config.services.jj-ci-webhook;
-  # The tools ci runs come from schlich's standalone Home Manager profile,
-  # which `nh home switch` maintains apart from the system.
-  homePath = "/home/schlich/.nix-profile";
+  # The tools ci runs come from schlich's Home Manager profile: the per-user
+  # profile when the system embeds the home (home.profileDirectory), or the
+  # standalone home's ~/.nix-profile, which `nh home switch` maintains apart
+  # from the system.
+  homePath =
+    config.home-manager.users.schlich.home.profileDirectory
+      or "${config.users.users.schlich.home}/.nix-profile";
   listener = pkgs.writeShellApplication {
     name = "jj-ci-webhook";
     runtimeInputs = [ pkgs.python3 ];
