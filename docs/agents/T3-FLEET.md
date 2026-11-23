@@ -67,6 +67,12 @@ Where it is declared:
   limit, so it takes over within about 2 minutes of another owner of
   `~/.t3` exiting. (On homelab in November 2026 it gave up on exit 78 and
   sat `failed` for days while a hand-started server held the lock.)
+- **Activation leaves it running.** A home switch keeps the running server
+  and its agents, even when it changes the unit: stopping the server would
+  end its terminals, and an activation run from one of them with it. An
+  update to the server takes effect on
+  `systemctl --user restart t3code-server`; run it when no agent is
+  mid-turn.
 - **No hand-started servers.** On a server host the profile's `t3` refuses
   `t3 serve`, and a bare `t3`, which runs a server too, with a pointer to
   `systemctl --user restart t3code-server`; every other subcommand passes

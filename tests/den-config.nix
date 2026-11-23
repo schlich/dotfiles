@@ -266,6 +266,9 @@ let
     }
     # The server unit keeps retrying while another server holds ~/.t3 and
     # announces the outage (homelab sat `failed` from 2026-11-21 on exit 78).
+    # A home activation keeps the running server: on 2026-11-23 one run from a
+    # T3 terminal on homelab stopped the server, died with its terminals, and
+    # never started it again.
     // lib.optionalAttrs (config.dotfiles.t3code.server.enable or false) {
       "testHome_${userName}_T3codeServerRecovers" = {
         expr =
@@ -277,12 +280,14 @@ let
             startLimit = unit.Unit.StartLimitIntervalSec or null;
             onFailure = unit.Unit.OnFailure or null;
             outageUnit = config.systemd.user.services ? t3code-server-outage;
+            switchMethod = unit.Unit.X-SwitchMethod or null;
           };
         expected = {
           preventExitStatus = false;
           startLimit = 0;
           onFailure = [ "t3code-server-outage.service" ];
           outageUnit = true;
+          switchMethod = "keep-old";
         };
       };
     };
