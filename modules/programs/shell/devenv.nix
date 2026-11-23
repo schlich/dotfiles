@@ -64,16 +64,19 @@ let
   devenv = import ../../../lib/wrap-with-config.nix { inherit lib pkgs; } {
     package = pkgs.devenv;
     env.DEVENV_USER_CONFIG = "${userConfig}";
-    # devenv ships secretspec beside itself; the repository's own copy in
-    # modules/home/packages.nix is the one on PATH.
+    # devenv ships secretspec beside itself; nixpkgs' own copy below is the
+    # one on PATH, so it does not follow devenv's release cadence.
     postBuild = ''
       rm "$out/bin/secretspec"
     '';
   };
 in
 {
-  # Ahead of the plain devenv in modules/home/packages.nix.
-  home.packages = [ (lib.hiPrio devenv) ];
+  # Every shell home (den/aspects/users/terminal.nix), servers included.
+  home.packages = [
+    devenv
+    pkgs.secretspec
+  ];
 
   dotfiles.retiredHomeFiles = [ ".config/devenv/config.yaml" ];
 

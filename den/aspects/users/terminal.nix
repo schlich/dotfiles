@@ -12,6 +12,9 @@
     ../../../modules/programs/ssh/ssh.nix
     ../../../modules/programs/vcs/vcs.nix
     ../../../modules/programs/shell/yazi.nix
+    # Agents enter devenv projects on servers too, such as T3 Code's on
+    # homelab, whose `.envrc` needs the devenv command.
+    ../../../modules/programs/shell/devenv.nix
     # Luvus and its server, which run this repository's task board on every
     # host an agent works from.
     ../../../modules/programs/multiplexers/luvus.nix
