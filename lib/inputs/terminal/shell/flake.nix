@@ -21,6 +21,12 @@
     # nixpkgs. flake.lock pins the exact release; `nix-suite update rex`
     # moves to the newest snapshot.
     rex.url = "https://pkgs.superlogical.com/rex/nix/snapshot.tar.gz";
+    # nurx: Nushell commands and hooks for Rex (panes, status, and events as
+    # tables; OSC 7501 status per command; `nurx on` across Rex hosts).
+    nu-rex-integration = {
+      url = "github:fdncred/nu-rex-integration";
+      flake = false;
+    };
   };
 
   # `sources` are this group's inputs, with those of the groups inside it,
