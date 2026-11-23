@@ -20,56 +20,63 @@ let
   rex = lib.getExe config.programs.rex.package;
   jq = lib.getExe pkgs.jq;
 
-  # What `rex skill setup` installs, declared instead of written at runtime.
-  # The skill is a stub that asks the installed rex for its guide, so it
-  # follows Rex upgrades. Session naming stays off, as a plain setup leaves it.
-  skill = pkgs.writeTextDir "SKILL.md" ''
-    ---
-    name: rex
-    description: Use the rex CLI to manage Rex sessions, open tabs, arrange panes, run commands, inspect terminal output, and control connected Rex apps.
-    metadata:
-      rex-stub: "2"
-    ---
-    <!-- Installed by Home Manager (modules/tooling/terminals/rex.nix). -->
-
-    Run `rex __internal skill --feature-session-naming=false` and follow the guide it prints. The guide comes from
-    the installed Rex CLI, so it describes the commands available in that version.
-
-    If the command fails, the installed Rex version predates the guide. Start with
-    `rex whoami --json`, then use `rex --help` and `rex COMMAND --help`.
-  '';
-  # The SessionStart hook tells the agent which Rex session and terminal it
-  # runs in. It never fails the session, whether or not a shell runs it.
-  sessionStart = pkgs.writeShellScript "rex-session-start" ''
-    ${rex} __internal session-start --agent "$1" --feature-session-naming=false 2>/dev/null || true
-  '';
-  sessionStartHook = agent: extra: {
-    hooks = [
-      (
-        {
-          type = "command";
-          command = "${sessionStart} ${agent}";
-          timeout = 5;
-        }
-        // extra
-      )
-    ];
+  # What `rex skill setup` installs, generated from the package at build time
+  # so it follows Rex upgrades. Setup needs no server, network, or runtime
+  # directory. Session naming stays off, as a plain setup leaves it.
+  #
+  #   claude-skill/, agents-skill/  the rex skill stub
+  #   claude-plugin/                its SessionStart hook as a Claude Code
+  #                                 plugin; Claude Code rewrites settings.json
+  #                                 at runtime and keeps plugins beside skills
+  #                                 in ~/.claude/skills, hence `rex-session`
+  #   codex/hooks.json              Rex's Codex hooks file, for reference
+  #   codex/session-start           the command from that file, as a script
+  #
+  # Each hook command's bare `rex` becomes the package's store path; should
+  # Rex change the command's shape, the substitution misses and it falls back
+  # to PATH.
+  codexHook = {
+    timeout = 5;
+    statusMessage = "Loading Rex terminal context";
   };
-  # Claude Code keeps plugins beside skills in ~/.claude/skills, so the plugin
-  # needs a name other than the skill's.
-  claudePlugin = pkgs.runCommand "claude-code-rex-session" { } ''
-    install -Dm644 ${
-      pkgs.writers.writeJSON "plugin.json" {
-        name = "rex-session";
-        description = "Tell each session which Rex session and terminal it runs in.";
+  agentFiles =
+    pkgs.runCommand "rex-agent-files"
+      {
+        nativeBuildInputs = [ pkgs.jq ];
+        inherit rex;
+        pinRex = ''.hooks.SessionStart[].hooks[].command |= sub("-c 'rex "; "-c '\($rex) ")'';
+        plugin = builtins.toJSON {
+          name = "rex-session";
+          description = "Tell each session which Rex session and terminal it runs in.";
+        };
       }
-    } $out/.claude-plugin/plugin.json
-    install -Dm644 ${
-      pkgs.writers.writeJSON "hooks.json" {
-        hooks.SessionStart = [ (sessionStartHook "claude" { }) ];
-      }
-    } $out/hooks/hooks.json
-  '';
+      ''
+        export HOME=$TMPDIR/home
+        mkdir -p $HOME
+        $rex skill setup --autostart=false --agent claude --agent codex --agent opencode
+
+        mkdir -p $out
+        cp -r $HOME/.claude/skills/rex $out/claude-skill
+        cp -r $HOME/.agents/skills/rex $out/agents-skill
+
+        install -Dm644 /dev/stdin $out/claude-plugin/.claude-plugin/plugin.json <<<"$plugin"
+        mkdir -p $out/claude-plugin/hooks $out/codex
+        jq --arg rex "$rex" '{hooks: .hooks}' $HOME/.claude/settings.json \
+          | jq --arg rex "$rex" "$pinRex" >$out/claude-plugin/hooks/hooks.json
+        jq --arg rex "$rex" "$pinRex" $HOME/.codex/hooks.json >$out/codex/hooks.json
+
+        # Codex's hook entry is declared in Nix (see programs.codex below), so
+        # fail the build if Rex's own entry stops matching it.
+        jq -e '.hooks.SessionStart | length == 1 and (.[0].hooks | length == 1)
+                 and .[0].hooks[0].timeout == ${toString codexHook.timeout}
+                 and .[0].hooks[0].statusMessage == "${codexHook.statusMessage}"' \
+          $out/codex/hooks.json >/dev/null
+        {
+          echo '#!${pkgs.runtimeShell}'
+          echo "exec $(jq -r '.hooks.SessionStart[0].hooks[0].command' $out/codex/hooks.json)"
+        } >$out/codex/session-start
+        chmod +x $out/codex/session-start
+      '';
 in
 {
   imports = [ inputs.rex.homeManagerModules.default ];
@@ -101,13 +108,27 @@ in
     # plugin, since it rewrites settings.json at runtime. Codex and OpenCode
     # share ~/.agents/skills; OpenCode has no command hooks.
     programs.claude-code = lib.mkIf config.programs.claude-code.enable {
-      skills.rex = skill;
-      plugins.rex-session = claudePlugin;
+      skills.rex = "${agentFiles}/claude-skill";
+      plugins.rex-session = "${agentFiles}/claude-plugin";
     };
-    home.file.".agents/skills/rex".source = skill;
+    home.file.".agents/skills/rex".source = "${agentFiles}/agents-skill";
+    # Luvus also sets programs.codex.hooks (modules/programs/multiplexers/
+    # luvus.nix), so Rex's generated hooks.json cannot be the whole file, and
+    # reading it here would be import-from-derivation. The entry is declared
+    # instead and runs the generated command; the build checks its fields.
     programs.codex = lib.mkIf config.programs.codex.enable {
       hooks.SessionStart = [
-        (sessionStartHook "codex" { statusMessage = "Loading Rex terminal context"; })
+        {
+          hooks = [
+            (
+              {
+                type = "command";
+                command = "${agentFiles}/codex/session-start";
+              }
+              // codexHook
+            )
+          ];
+        }
       ];
     };
 
