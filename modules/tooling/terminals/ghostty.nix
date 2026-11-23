@@ -16,7 +16,7 @@ let
     copy-on-select = true;
     font-family = "Monaspace Krypton";
     # Splits and tabs on Alt, with the honeycomb's keys
-    # (lib/honeycomb/README.md): H and L for the split to the west and east,
+    # (github:schlich/honeycomb): H and L for the split to the west and east,
     # J and K down and up the stack, and Y and U, the keys under the tab
     # bar, for the tab to the left and right. Niri columns and areas carry
     # layouts and sessions. Alt+n/i/o and Alt+arrows stay with Helix

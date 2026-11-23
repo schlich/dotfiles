@@ -145,7 +145,7 @@ in
       fix = "https://github.com/RizRiyz/luvus/pull/546";
     };
 
-    # After the prefix, the honeycomb's keys (lib/honeycomb/README.md). Luvus
+    # After the prefix, the honeycomb's keys (github:schlich/honeycomb). Luvus
     # already puts panes on H, L, J and K; these move tabs to Y and U, the
     # keys under the tab bar, and workspaces to N and M. Rebinding a command
     # drops its other default keys, and the two commands that held Y and M

@@ -1,5 +1,6 @@
 {
   config,
+  inputs,
   lib,
   pkgs,
   ...
@@ -81,6 +82,10 @@ in
   # the niri-desk commands Home Manager installs (modules/home/files.nix).
   # homelab sets its own config, which takes precedence over this default.
   environment.etc."niri/config.kdl".source = lib.mkDefault (
-    pkgs.writeText "niri-config.kdl" (import ../../../niri/binds.nix { inherit lib; }).config
+    pkgs.writeText "niri-config.kdl"
+      (import ../../../niri/binds.nix {
+        inherit lib;
+        honeycomb = inputs.honeycomb.lib;
+      }).config
   );
 }

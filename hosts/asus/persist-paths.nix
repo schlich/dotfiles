@@ -45,7 +45,7 @@
 
   users.schlich = {
     directories = [
-      # The six honeycomb area folders (lib/honeycomb/default.nix), which hold
+      # The six honeycomb area folders (github:schlich/honeycomb), which hold
       # every project (dotfiles in Nix, kb and Zotero in Research), parked
       # ones in each area's .parked, and the XDG dirs in Life. Anything else
       # created at the top of ~ is wiped at reboot.

@@ -35,7 +35,8 @@ in
 {
   imports = [
     ./discord-digest.nix
-    ../../../lib/honeycomb/runtime/hub/module.nix
+    inputs.honeycomb.nixosModules.hub
+    ./honeycomb-hub.nix
     ../../tooling/knowledge/kb-git/module.nix
   ];
 
@@ -44,7 +45,7 @@ in
   dotfiles.checkout = "/home/schlich/dotfiles";
 
   # The phone's view of the seven areas, which asus keeps current
-  # (lib/honeycomb/README.md).
+  # (github:schlich/honeycomb), published on the tailnet by honeycomb-hub.nix.
   services.honeycomb-hub.enable = true;
 
   # Private Tailscale Serve HTTPS remote for ~/Research/kb so asus and homelab

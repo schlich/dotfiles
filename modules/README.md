@@ -3,7 +3,7 @@
 The repository's composition layer is `../den/`. This directory contains
 ordinary NixOS and Home Manager modules that are imported by Den aspects.
 No directory here holds more than six entries
-(`../lib/honeycomb/README.md`); a seventh means a new group.
+(`github:schlich/honeycomb`); a seventh means a new group.
 
 - `nixos/` contains system modules, grouped as `base`, `workstation`,
   `builds`, `homelab`, `fleet` and `services`.

@@ -294,7 +294,7 @@ in
     # Counts a repository's open topics, worktrees and tasks, luvus's
     # workspaces and Claude's sessions per area against six, prunes the
     # branches trunk already holds, and files Claude's sidebar by area
-    # (lib/honeycomb/README.md).
-    (pkgs.callPackage ../../../lib/honeycomb/runtime/package.nix { })
+    # (github:schlich/honeycomb).
+    (inputs.honeycomb.overlays.default pkgs pkgs).honeycomb
   ];
 }

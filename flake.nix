@@ -3,7 +3,7 @@
 
   inputs = {
     # Each group is a flake of at most six inputs or further groups
-    # (lib/honeycomb/README.md). `nix flake update terminal/shell/xs` updates
+    # (github:schlich/honeycomb). `nix flake update terminal/shell/xs` updates
     # one input.
     system.url = "path:./lib/inputs/system";
     builds.url = "path:./lib/inputs/builds";
@@ -25,6 +25,7 @@
     desktop.inputs.noc-minimizer.inputs.nixpkgs.follows = "system/nixpkgs";
     desktop.inputs.dicta.inputs.nixpkgs.follows = "system/nixpkgs";
     desktop.inputs.ai-usagebar.inputs.nixpkgs.follows = "system/nixpkgs";
+    desktop.inputs.honeycomb.inputs.nixpkgs.follows = "system/nixpkgs";
     terminal.inputs.luvus.inputs.nixpkgs.follows = "system/nixpkgs";
     terminal.inputs.shell.inputs.nushellWith.inputs.nixpkgs.follows = "system/nixpkgs";
     terminal.inputs.shell.inputs.xs.inputs.nixpkgs.follows = "system/nixpkgs";
@@ -528,29 +529,19 @@
       # CI runs every attribute here as its own job, so a new check needs no
       # workflow change. Run the same set locally with `nix-fast-build`.
       checks.${system} = {
-        # The hexagon arithmetic behind the rule of six (lib/honeycomb).
-        honeycomb-tests =
-          let
-            tests = import ./lib/honeycomb/tests.nix { inherit lib; };
-            failures = lib.runTests tests;
-          in
-          pkgs.writeText "honeycomb-tests" (
-            assert lib.assertMsg (failures == [ ])
-              "honeycomb-tests failed:\n${lib.generators.toPretty { } failures}";
-            lib.concatMapStrings (test: "${test}\n") (builtins.attrNames tests)
-          );
-        # No collection may newly pass six members. The ones that already do
-        # (lib/honeycomb/baseline.nix) warn when they grow, until regrouped.
+        # No collection may newly pass six members (github:schlich/honeycomb).
+        # The ones that already do (lib/census/baseline.nix) warn when they
+        # grow, until regrouped.
         honeycomb-census =
           let
-            honeycomb = import ./lib/honeycomb { inherit lib; };
-            census = import ./lib/honeycomb/census.nix {
-              inherit lib;
+            honeycomb = inputs.honeycomb.lib;
+            census = import ./lib/census {
+              inherit lib honeycomb;
               root = ./.;
             };
             result = honeycomb.audit {
               inherit census;
-              baseline = import ./lib/honeycomb/baseline.nix;
+              baseline = import ./lib/census/baseline.nix;
             };
           in
           pkgs.writeText "honeycomb-census" (
@@ -678,7 +669,11 @@
             }
             ''
               niri validate --config ${
-                pkgs.writeText "niri-config.kdl" (import ./niri/binds.nix { inherit lib; }).config
+                pkgs.writeText "niri-config.kdl"
+                  (import ./niri/binds.nix {
+                    inherit lib;
+                    honeycomb = inputs.honeycomb.lib;
+                  }).config
               }
               touch "$out"
             '';
@@ -793,24 +788,6 @@
               export HOME="$TMPDIR/home"
               mkdir -p "$HOME"
               ${pkgs.nushell}/bin/nu --no-config-file ${./tests/envrc-nu.nu} ${./nushell/envrc-nu.nu}
-              touch "$out"
-            '';
-        # `honeycomb sidebar`, `sessions`, `flower` and `hub apply` on a
-        # fixture of Claude's sidebar, and the phone's hub on requests as
-        # Tailscale Serve passes them on (lib/honeycomb/runtime).
-        nushell-honeycomb =
-          pkgs.runCommand "nushell-honeycomb-check"
-            {
-              nativeBuildInputs = [ pkgs.nushell ];
-            }
-            ''
-              export HOME="$TMPDIR/home"
-              mkdir -p "$HOME"
-              ${pkgs.nushell}/bin/nu --no-config-file ${./lib/honeycomb/runtime/tests.nu} ${./lib/honeycomb/runtime/honeycomb.nu} ${
-                pkgs.writeText "honeycomb-areas.json" (
-                  builtins.toJSON (import ./lib/honeycomb { inherit lib; }).areas
-                )
-              } ${./lib/honeycomb/runtime/hub/server.nu} ${lib.getExe pkgs.http-nu}
               touch "$out"
             '';
         nushell-parse =

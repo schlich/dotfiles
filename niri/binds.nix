@@ -1,6 +1,7 @@
-{ lib }:
+# `honeycomb` is the honeycomb flake's `lib` (github:schlich/honeycomb).
+{ lib, honeycomb }:
 
-# niri's binds as a honeycomb (lib/honeycomb/README.md): six cells of at most
+# niri's binds as a honeycomb: six cells of at most
 # six members each. A member is one thing to remember; its chords are the
 # plain key, the Shift form, and hidden twins on other devices. This file
 # renders the `binds` block that config.kdl leaves out.
@@ -12,7 +13,6 @@
 #   Mod + Ctrl + key   the same motion between monitors
 #   Mod + Alt + key    the seven areas, by the direction each sits in
 let
-  honeycomb = import ../lib/honeycomb { inherit lib; };
   key = lib.mapAttrs (_: lib.toUpper) honeycomb.keys;
 
   # The home area is the centre; the other six sit around it (honeycomb's
