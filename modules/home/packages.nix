@@ -98,8 +98,6 @@ in
     wget
     nix-tree
     nix-du
-    # The luvus task gate runs the flake checks with it.
-    nix-fast-build
     nix-output-monitor
     graphviz
     systemctl-tui

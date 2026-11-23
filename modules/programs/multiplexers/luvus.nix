@@ -368,6 +368,9 @@ in
       home.packages = [
         luvus
         luvusTaskStart
+        # Task gates run the flake checks with it (AGENTS.md), on every host
+        # whose luvus server runs them, servers included.
+        pkgs.nix-fast-build
         # Task gates run `luvus-jj sync`, which does nothing outside a jj
         # task workspace, so it is installed either way.
         luvusJj
