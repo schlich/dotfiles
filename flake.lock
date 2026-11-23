@@ -1380,6 +1380,22 @@
         "type": "github"
       }
     },
+    "nu-plugin-ghostty": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1795473820,
+        "narHash": "sha256-ijqFbWlCpO9Rxxc5Fit9zK2f82GagB4lEoGSyV9Vx7Y=",
+        "owner": "cablehead",
+        "repo": "nu_plugin_ghostty",
+        "rev": "c980bb55eba0ed8007b182af472c7ed4dd8be643",
+        "type": "github"
+      },
+      "original": {
+        "owner": "cablehead",
+        "repo": "nu_plugin_ghostty",
+        "type": "github"
+      }
+    },
     "nushellWith": {
       "inputs": {
         "crane": "crane_2",
@@ -1462,22 +1478,6 @@
         "skills"
       ]
     },
-    "ptyZZZ": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1793669677,
-        "narHash": "sha256-uVpEv8zATkgJ+FXHPFd07RbRaB6tjNulNYjyjMUwXpk=",
-        "owner": "cablehead",
-        "repo": "ptyZZZ",
-        "rev": "106feb217c55c086ae936e2e3c6994be7d66a668",
-        "type": "github"
-      },
-      "original": {
-        "owner": "cablehead",
-        "repo": "ptyZZZ",
-        "type": "github"
-      }
-    },
     "rex": {
       "inputs": {
         "nixpkgs": [
@@ -1530,9 +1530,9 @@
     },
     "shell": {
       "inputs": {
+        "nu-plugin-ghostty": "nu-plugin-ghostty",
         "nushellWith": "nushellWith",
         "osc7501-nu": "osc7501-nu",
-        "ptyZZZ": "ptyZZZ",
         "rex": "rex",
         "xs": "xs"
       },

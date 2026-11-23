@@ -11,8 +11,10 @@
       url = "github:schlich/osc7501.nu";
       flake = false;
     };
-    ptyZZZ = {
-      url = "github:cablehead/ptyZZZ";
+    # Terminals kept in libghostty-vt, driven from Nushell and readable as
+    # HTML rows (modules/programs/shell/nu-plugin-ghostty).
+    nu-plugin-ghostty = {
+      url = "github:cablehead/nu_plugin_ghostty";
       flake = false;
     };
     # Rex, the multiplexer for all work (prebuilt, snapshot channel); not in
