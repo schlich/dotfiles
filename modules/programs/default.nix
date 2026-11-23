@@ -12,6 +12,7 @@
     ./desktop/input-stack.nix
     ./vcs/jj-hunk.nix
     ./multiplexers/luvus.nix
+    ./shell/nu-plugin-ghostty
     ./shell/shell.nix
     ./ssh/ssh.nix
     ./vcs/vcs.nix
