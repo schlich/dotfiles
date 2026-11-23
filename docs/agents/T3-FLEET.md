@@ -61,7 +61,27 @@ Where it is declared:
 - **One server per `~/.t3`.** T3 holds an exclusive lock on its state
   directory. On asus the desktop app therefore runs without a local
   environment: its `t3code-desktop` launcher turns that off before every
-  start. A server that finds the lock taken exits 78 and is not restarted.
+  start. A server that finds the lock taken exits 78.
+- **The unit outlasts competitors.** `t3code-server` restarts on every
+  exit, backing off from 5 seconds to 2 minutes, and never hits a start
+  limit, so it takes over within about 2 minutes of another owner of
+  `~/.t3` exiting. (On homelab in November 2026 it gave up on exit 78 and
+  sat `failed` for days while a hand-started server held the lock.)
+- **No hand-started servers.** On a server host the profile's `t3` refuses
+  `t3 serve`, and a bare `t3`, which runs a server too, with a pointer to
+  `systemctl --user restart t3code-server`; every other subcommand passes
+  through. `T3_SERVE_FORCE=1 t3 serve …` starts one anyway, for a server on
+  another `--base-dir`. The unit itself runs the unguarded binary.
+- **Outages are announced once.** A failure of the unit starts
+  `t3code-server-outage`, which notifies only for the first failure of an
+  outage (a stamp in `$XDG_RUNTIME_DIR`, cleared once a start answers and
+  stays up). It writes a line to its journal
+  (`journalctl --user -u t3code-server-outage`), appends `t3code.outage`
+  to the host's cross.stream store, and sends a desktop notification where
+  there is a desktop. A workstation also runs `t3code-fleet-watch`, which
+  polls the other fleet servers' discovery endpoints every 2 minutes and
+  notifies when one misses two polls in a row, and again when it is back:
+  that is how homelab's outages reach asus.
 - **Tailscale Serve run by root**, not `t3 serve --tailscale-serve`, which
   needs Tailscale operator rights for the user, and so for every agent the
   user runs.

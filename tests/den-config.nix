@@ -193,26 +193,50 @@ let
   # server, on loopback, only where the inventory runs it. Den keys a home's
   # scope by its name, so homes of one user that shared a name would all
   # resolve as one host's (den/inventory.nix names them USER@HOST).
-  homeTests = host: userName: config: {
-    "testHome_${userName}_FollowsItsHost" = {
-      expr = {
-        desktop = config.programs.ghostty.enable;
-        traces = (config.dotfiles.ci.tracesEndpoint or null) != null;
-        t3code = config.dotfiles.t3code.server.enable or false;
-        t3codeLoopback =
-          !(config.dotfiles.t3code.server.enable or false)
-          || lib.hasInfix "-t3code-serve --host 127.0.0.1 --port 3773 " (
-            toString config.systemd.user.services.t3code-server.Service.ExecStart
-          );
+  homeTests =
+    host: userName: config:
+    {
+      "testHome_${userName}_FollowsItsHost" = {
+        expr = {
+          desktop = config.programs.ghostty.enable;
+          traces = (config.dotfiles.ci.tracesEndpoint or null) != null;
+          t3code = config.dotfiles.t3code.server.enable or false;
+          t3codeLoopback =
+            !(config.dotfiles.t3code.server.enable or false)
+            || lib.hasInfix "-t3code-serve --host 127.0.0.1 --port 3773 " (
+              toString config.systemd.user.services.t3code-server.Service.ExecStart
+            );
+        };
+        expected = {
+          desktop = host.profile.role == "workstation";
+          traces = host.services.nixObservability;
+          t3code = host.services.t3code;
+          t3codeLoopback = true;
+        };
       };
-      expected = {
-        desktop = host.profile.role == "workstation";
-        traces = host.services.nixObservability;
-        t3code = host.services.t3code;
-        t3codeLoopback = true;
+    }
+    # The server unit keeps retrying while another server holds ~/.t3 and
+    # announces the outage (homelab sat `failed` from 2026-11-21 on exit 78).
+    // lib.optionalAttrs (config.dotfiles.t3code.server.enable or false) {
+      "testHome_${userName}_T3codeServerRecovers" = {
+        expr =
+          let
+            unit = config.systemd.user.services.t3code-server;
+          in
+          {
+            preventExitStatus = unit.Service ? RestartPreventExitStatus;
+            startLimit = unit.Unit.StartLimitIntervalSec or null;
+            onFailure = unit.Unit.OnFailure or null;
+            outageUnit = config.systemd.user.services ? t3code-server-outage;
+          };
+        expected = {
+          preventExitStatus = false;
+          startLimit = 0;
+          onFailure = [ "t3code-server-outage.service" ];
+          outageUnit = true;
+        };
       };
     };
-  };
 
   homesOf = name: lib.filterAttrs (_: user: user.home) hosts.${name}.users;
 
