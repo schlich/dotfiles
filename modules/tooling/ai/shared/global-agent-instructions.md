@@ -331,9 +331,10 @@ decisions, how-tos, and personal notes.
 # Jujutsu
 
 A repository listed in the Home Manager option
-`dotfiles.tooling.gitWorkflowRepos`, currently `~/Nix/dotfiles`, takes writes
-through Git and luvus instead. In it, and in its luvus worktrees, the rules in
-this section and `ci` do not apply: follow that repository's `AGENTS.md`.
+`dotfiles.tooling.gitWorkflowRepos`, currently `~/Nix/dotfiles`, is gated and
+delivered as Git branches through luvus instead of `ci`. In it, and in its
+luvus task workspaces, never run `ci`, and where its `AGENTS.md` differs from
+this section, follow `AGENTS.md`.
 
 When a repository uses Git but has no JJ repository, such as when a `jj`
 command reports that there is no jj repo, run `jj git init --colocate` in it
@@ -429,6 +430,14 @@ that worktree, otherwise with
 `jj workspace add --revision 'trunk()' --name NAME .jj-workspaces/NAME` there.
 Then open and edit only that JJ workspace. In a repository with topic
 workspaces, agents must not edit an unconverted Git worktree.
+
+A luvus task worktree in a repository colocated with JJ is the exception:
+luvus-jj's worktree provider makes it a JJ workspace of its own
+(`jj workspace root` prints the worktree), so work in it directly. luvus
+gates and merges the task's Git branch (`luvus/tID`), which JJ does not move
+by itself: run `luvus-jj sync` before `luvus task done` to point it at the
+workspace's latest change. `luvus worktree remove PATH` removes the workspace
+and the worktree together.
 
 When the working-copy diff contains multiple coherent deliverables, split it
 into separate JJ changes before publishing them or treating the work as
