@@ -3,7 +3,7 @@ type: architecture
 description: How Den composes hosts from typed inventory and aspects, and why program configuration ships with the package instead of Home Manager links.
 generated:
   by: claude-code/opus-5.5
-  at: 2026-10-16T16:45:00Z
+  at: 2026-11-23T21:00:00Z
 sources:
 - id: arch
   resource: docs/architecture.md
@@ -25,8 +25,9 @@ defaults, hardware, a workstation profile, host overrides) into one record of
 evaluation. `den/hosts.nix` then selects explicit aspects from `den/aspects/`,
 and Den's host and user pipeline resolves them into the module graph that
 `nixosConfigurations`, `checks`, and Clan's machines share. Each user with
-`home = true` gets a standalone home, `homeConfigurations."USER@HOST"`, built
-from its host's package set with the system as `osConfig`.
+`home = true` gets a home built from its host's package set with the system as
+`osConfig`: a standalone `homeConfigurations."USER@HOST"`, or, where the user's
+`homeActivation` is `embedded` (servers), the same home inside the system.
 
 ``` text
 typed inventory -> host aspect composition -> Den host/user pipeline
@@ -38,15 +39,17 @@ typed inventory -> host aspect composition -> Den host/user pipeline
 deployment, staged switches, and reverts, lives in `docs/architecture.md`; this
 note records the decisions a plan must not undo.
 
-## Decision: Home Manager runs standalone
+## Decision: a workstation's Home Manager runs standalone
 
-No system embeds a home: `nh home switch` applies a home on its host, apart from
-`system-switch` and Clan, and the `USER@HOST` name is what it looks up. A home
-change then never warrants a NixOS generation, and `home.packages` install into
-`~/.nix-profile`. The rejected alternative, the Home Manager NixOS module with
-`useUserPackages`, tied every home edit to a system switch and left no `nh home`
-target. The cost is that a landing reaches a home only when someone switches it
-there; homelab's canary timer stages systems alone.
+No workstation embeds its home: `nh home switch` applies a home on its host,
+apart from `system-switch` and Clan, and the `USER@HOST` name is what it looks
+up. A home change then never warrants a NixOS generation there, and
+`home.packages` install into `~/.nix-profile`. The rejected alternative, the
+Home Manager NixOS module with `useUserPackages`, tied every home edit to a
+system switch and left no `nh home` target. The cost is that a landing reaches a
+standalone home only when someone switches it there. Servers take that
+alternative instead, since their tools must follow `main` with the canary's
+system: see [Embedded server homes](embedded-server-homes.md).
 
 ## Decision: configuration ships with the package
 

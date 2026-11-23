@@ -17,6 +17,8 @@ rejected are as valuable as the one you picked.*
 
 [Configuration factory](architecture/configuration-factory.md)
 
+[Embedded server homes](architecture/embedded-server-homes.md)
+
 [Local CI tower dashboard feed](architecture/ci-nix-dashboard.md)
 
 [Tailscale HTTPS ports](architecture/tailscale-https-ports.md)

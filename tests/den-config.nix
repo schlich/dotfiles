@@ -95,6 +95,23 @@ let
         };
       };
 
+      # A server's home is part of its system, so the canary's own timer
+      # deploys it with each landing of main. Its packages are in the per-user
+      # profile, which units such as the T3 Code server's find through
+      # home.profileDirectory.
+      testEmbedsTheUsersHome = {
+        expr = {
+          unit = config.systemd.services ? "home-manager-schlich";
+          profile = config.home-manager.users.schlich.home.profileDirectory;
+          standalone = homeConfigurations ? "schlich@homelab";
+        };
+        expected = {
+          unit = true;
+          profile = "/etc/profiles/per-user/schlich";
+          standalone = false;
+        };
+      };
+
       # Private Tailscale-only Git HTTP remote for ~/Research/kb.
       testPublishesKbGitOnTailnetOnly = {
         expr = {
@@ -188,7 +205,7 @@ let
     };
   };
 
-  # A standalone home follows the host it is named for: the desktop home only
+  # A home follows the host it is named for: the desktop home only
   # on a workstation, ci's traces only where the viewer runs, and the T3 Code
   # server, on loopback, only where the inventory runs it. Den keys a home's
   # scope by its name, so homes of one user that shared a name would all
@@ -238,6 +255,37 @@ let
       };
     };
 
+  # Each home is activated where its inventory says: standalone, as
+  # homeConfigurations."USER@HOST" with nothing of it in the system, or
+  # embedded, as the system's home-manager.users.USER and its unit, with no
+  # homeConfigurations entry for `nh home switch` to apply apart from it.
+  activationTests = name: userName: user: config: {
+    "testHome_${userName}_ActivatesWhereTheInventorySays" = {
+      expr = {
+        standalone = homeConfigurations ? "${userName}@${name}";
+        embedded = (config.home-manager.users or { }) ? ${userName};
+        unit = config.systemd.services ? "home-manager-${userName}";
+      };
+      expected =
+        let
+          embedded = user.homeActivation == "embedded";
+        in
+        {
+          standalone = !embedded;
+          inherit embedded;
+          unit = embedded;
+        };
+    };
+  };
+
+  # The evaluated home, wherever it is activated.
+  homeConfig =
+    name: userName: user: config:
+    if user.homeActivation == "embedded" then
+      config.home-manager.users.${userName}
+    else
+      homeConfigurations."${userName}@${name}".config;
+
   homesOf = name: lib.filterAttrs (_: user: user.home) hosts.${name}.users;
 
   # Decided from the inventory alone, so dropping a host's empty group never
@@ -255,7 +303,9 @@ let
         // lib.optionalAttrs config.services.tailscale.enable (tailscaleServeTests config)
         // (hostTests.${name} or (_: { })) config
         // lib.concatMapAttrs (
-          userName: _: homeTests host userName homeConfigurations."${userName}@${name}".config
+          userName: user:
+          activationTests name userName user config
+          // homeTests host userName (homeConfig name userName user config)
         ) (homesOf name)
       )
       (

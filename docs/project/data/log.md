@@ -4,6 +4,13 @@ The history of this workspace, newest first. The `ship` skill appends a dated
 group on every release; any skill that creates or retires a document adds a line
 to the current day's group.
 
+## 2026-11-23
+
+- **Architecture**: [Embedded server homes](architecture/embedded-server-homes.md)
+  records homelab's home moving into its system, so the canary deploys it;
+  [Configuration factory](architecture/configuration-factory.md) keeps
+  standalone homes for workstations.
+
 ## 2026-11-21
 
 - **Retired**: [Reactive CI and Nix dashboard](features/ci-nix-dashboard.md).

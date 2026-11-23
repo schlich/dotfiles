@@ -23,6 +23,10 @@
 # the switch deployed, once the switch succeeds. DEPLOY_REPO, DEPLOY_HOST,
 # DEPLOY_GIT, and DEPLOY_NIX name main's repository, the host, and the git
 # and nix this uses.
+#
+# A host whose inventory embeds the user's home (homeActivation =
+# "embedded", as on homelab) activates it with the system, so there is no
+# gap to guard, and --with-home only says so.
 
 const BIN = '/run/current-system/sw/bin'
 const APP = 'nixos-switch-main'
@@ -186,6 +190,10 @@ def activate-home [last] {
         error make { msg: "The switch recorded no revision, so no home was activated; run home-activate." }
     }
     let short = ($last.rev | str substring 0..11)
+    if (embedded-home) {
+        print $"(home-name)'s home is part of this host's system, so the switch to ($short) activated it; --with-home has nothing more to do."
+        return
+    }
     let home = (standalone-home $last.rev)
     if $home == null {
         print $"main at ($short) builds no standalone home for (home-name); none activated."
@@ -202,7 +210,7 @@ def activate-home [last] {
 }
 
 def main [
-    --with-home # after a successful switch, activate this user's standalone home from the same commit
+    --with-home # after a successful switch, activate this user's standalone home from the same commit; a no-op where the system embeds the home
 ] {
     let gap = (home-gap)
     if $gap != null and not $with_home {

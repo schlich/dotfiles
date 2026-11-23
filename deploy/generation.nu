@@ -8,8 +8,11 @@
 # standalone Home Manager generation it builds from a working copy, as does
 # `system-switch --with-home` for the home it activates from landed main.
 #
-# Home Manager is standalone: a plain system switch never changes the home,
-# so the two may come from different commits, and each shows its own.
+# Where Home Manager is standalone, a plain system switch never changes the
+# home, so the two may come from different commits, and each shows its own.
+# Where the system embeds the home (homeActivation = "embedded" in
+# den/inventory.nix, as on homelab), the home is part of the system
+# generation and comes from the system's commit.
 
 const SYSTEM = '/nix/var/nix/profiles/system'
 
@@ -72,12 +75,27 @@ def main-state [rows: list] {
     { rev: $rev, state: $state }
 }
 
-# The running standalone Home Manager generation, and the change it came
-# from when home-activate or `system-switch --with-home` built it; a bare
+# Whether the running system activates this user's home through the Home
+# Manager NixOS module, whose unit it names after the user.
+def embedded-home [] {
+    $"/run/current-system/etc/systemd/system/home-manager-($env.USER).service" | path exists
+}
+
+# The running Home Manager generation, and where it came from: the system
+# generation's own commit when the system embeds it, otherwise the change
+# home-activate or `system-switch --with-home` built it from; a bare
 # `nh home switch` leaves none.
-def home [] {
+def home [system_source] {
     let profile = (home-state | path join nix profiles home-manager)
     let running = (resolve $profile)
+    if (embedded-home) {
+        return {
+            generation: (generation-of $profile $running)
+            path: $running
+            origin: 'system'
+            source: $system_source
+        }
+    }
     if $running == null { return null }
     let activated = (entries (home-state | path join home-activate generations.jsonl) | where activation == $running | last 1 | get 0?)
     {
@@ -100,6 +118,7 @@ def summary [report: record] {
         let from = match $report.home.origin {
             'home-activate' => $" from ($report.home.source.change)(if $report.home.source.landed { '' } else { ' unlanded' })"
             'system-switch' => $" from main ($report.home.source.commit)"
+            'system' => ' in system'
             _ => ' unrecorded'
         }
         $" · hm ($report.home.generation)($from)"
@@ -116,6 +135,7 @@ def main [
     let running = (resolve /run/current-system)
     let generation = (generation-of $SYSTEM $running)
     let rows = (entries ((state) | path join generations.jsonl) | where toplevel == $running)
+    let source = (system-source $rows)
     let report = {
         host: (sys host | get hostname)
         system: {
@@ -125,9 +145,9 @@ def main [
             boot_default: (generation-of $SYSTEM (resolve $SYSTEM))
             staged: ((state) | path join pending.nuon | path exists)
         }
-        source: (system-source $rows)
+        source: $source
         main: (if $offline { null } else { main-state $rows })
-        home: (home)
+        home: (home $source)
     }
     if $json { return ($report | to json) }
     if $line { return (summary $report) }
