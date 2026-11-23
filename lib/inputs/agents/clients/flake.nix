@@ -2,8 +2,6 @@
   description = "Honeycomb input group: agent programs";
 
   inputs = {
-    # Build Codex from the fork that contains the execution-tool transcript renderer.
-    codex.url = "github:schlich/codex/d0e6fb56b19d";
     # Anthropic's official Linux build of Claude Desktop, which nixpkgs lacks.
     llm-agents.url = "github:numtide/llm-agents.nix";
     # Continuum IDE, the user's fork of T3 Code

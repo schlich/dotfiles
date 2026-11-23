@@ -74,7 +74,12 @@ let
   # memory, so a setting made while it runs would not last.
   desktopAsClient = pkgs.writeShellScript "t3code-desktop-as-client" ''
     set -euo pipefail
-    PATH=${lib.makeBinPath [ pkgs.coreutils ]}
+    PATH=${
+      lib.makeBinPath [
+        pkgs.coreutils
+        pkgs.diffutils
+      ]
+    }
     settings="$1"
     if [ -s "$settings" ] && ${jq} -e '.localEnvironmentEnabled == false' "$settings" >/dev/null 2>&1; then
       exit 0
@@ -89,6 +94,36 @@ let
       printf '%s\n' '{"localEnvironmentEnabled":false}' > "$tmp"
     fi
     mv -f "$tmp" "$settings"
+  '';
+  kbMcpCommand = config.programs.mcp.servers.kb.command or null;
+  # T3 Code isolates Antigravity under ~/.t3/userdata/providers/antigravity/<id>/
+  # (its own GEMINI_HOME), so those profiles do not read ~/.gemini/config/mcp_config.json.
+  # Merge the `kb` MCP server into every existing profile's config/mcp_config.json
+  # while preserving any user-added servers.
+  syncAntigravityKbMcp = pkgs.writeShellScript "t3code-antigravity-kb-mcp" ''
+    set -euo pipefail
+    PATH=${lib.makeBinPath [ pkgs.coreutils ]}
+    providers_dir="''${T3CODE_HOME:-$HOME/.t3}/userdata/providers/antigravity"
+    [ -d "$providers_dir" ] || exit 0
+    for profile in "$providers_dir"/*; do
+      [ -d "$profile" ] || continue
+      cfg="$profile/config/mcp_config.json"
+      mkdir -p "$profile/config"
+      tmp="$(mktemp "$cfg.XXXXXX")"
+      if [ -s "$cfg" ] && ${jq} -e 'type == "object"' "$cfg" >/dev/null 2>&1; then
+        ${jq} --arg cmd ${lib.escapeShellArg kbMcpCommand} \
+          '.mcpServers = ((.mcpServers // {}) + {kb: {command: $cmd, args: []}})' \
+          "$cfg" > "$tmp"
+      else
+        ${jq} -n --arg cmd ${lib.escapeShellArg kbMcpCommand} \
+          '{mcpServers: {kb: {command: $cmd, args: []}}}' > "$tmp"
+      fi
+      if [ -f "$cfg" ] && cmp -s "$tmp" "$cfg"; then
+        rm -f "$tmp"
+      else
+        mv -f "$tmp" "$cfg"
+      fi
+    done
   '';
   clientDesktop = pkgs.symlinkJoin {
     name = "t3code-client-${t3code.version}";
@@ -172,6 +207,7 @@ in
         StartLimitBurst = 5;
       };
       Service = {
+        ExecStartPre = lib.optional (kbMcpCommand != null) "${syncAntigravityKbMcp}";
         ExecStart = "${serve} --host 127.0.0.1 --port ${port} --base-dir ${baseDir}";
         WorkingDirectory = "%h";
         Environment = [
@@ -224,6 +260,12 @@ in
     programs.codex.settings.mcp_servers.t3 = mkIf (cfg.mcp && config.programs.codex.enable) {
       url = "${local}/mcp";
     };
+
+    home.activation.t3codeAntigravityKbMcp = mkIf (kbMcpCommand != null) (
+      lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+        run ${syncAntigravityKbMcp}
+      ''
+    );
 
     dotfiles.nushellAutoload.t3f = t3f;
 

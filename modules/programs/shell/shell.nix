@@ -135,6 +135,7 @@ in
   # autoload reaches the agent MCP server too. See docs/architecture.md.
   programs.nushell = {
     enable = true;
+    loadSessionVariables = true;
     environmentVariables = {
       COLORTERM = "truecolor";
       STARSHIP_CONFIG = "${starshipConfig}";

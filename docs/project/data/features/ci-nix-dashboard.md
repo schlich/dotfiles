@@ -1,10 +1,11 @@
 ---
 type: feature
-description: An interactive local and homelab-tailnet view of CI topics, runs, Nix generation, and trunk activity.
-stage: implemented
+description: An interactive local and homelab-tailnet view of CI topics, runs, Nix generation, and trunk activity, retired in favour of Fieldnotes.
+stage: deprecated
+status: deprecated
 generated:
-  by: codex/gpt-6-luna
-  at: 2026-10-16T18:24:00Z
+  by: claude-code/opus-5.5
+  at: 2026-11-21T04:30:00Z
 sources:
 - id: ci-flake-input
   resource: flake.nix
@@ -12,6 +13,11 @@ sources:
 ---
 
 # Reactive CI and Nix dashboard
+
+*Deprecated 2026-11-21: the owner retired it. homelab no longer runs the
+dashboard or its Tailscale Serve endpoint on 8443, and `tools/ci-dashboard`
+with its `ci-dashboard-feeds` and `ci-dashboard-bombadil` checks is gone.
+Fieldnotes' CI panel shows the same GitHub Actions view.*
 
 ## Purpose
 

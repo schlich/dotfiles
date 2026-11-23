@@ -82,7 +82,6 @@ in
     (callPackage ./openchamber/openchamber.nix { })
     xdg-user-dirs
     bubblewrap
-    antigravity-cli
     # The Antigravity app: once signed in, ai-usagebar reads the quota from
     # its saved Google session, which the CLI's `agy` server does not expose.
     antigravity
@@ -144,7 +143,6 @@ in
     cachixSeed
     inputs.xs.packages.${pkgs.stdenv.hostPlatform.system}.default
     (import ../programs/desktop/ai-usagebar-package.nix { inherit inputs pkgs; })
-    inputs.tangled-dash.packages.${pkgs.stdenv.hostPlatform.system}.default
     (import ../programs/multiplexers/luvus-package.nix { inherit inputs lib pkgs; })
     (import ../tooling/ai/claude/fieldnotes-package.nix { inherit inputs lib pkgs; })
   ];

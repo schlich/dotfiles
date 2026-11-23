@@ -10,12 +10,10 @@
   "dir:docs/project/data" = 20;
   "dir:docs/project/data/architecture" = 10;
   "dir:docs/project/data/plans" = 12;
-  "dir:jj" = 8;
   "dir:modules/tooling/ai/scripts" = 13;
   "dir:modules/tooling/ai/tests" = 10;
   "dir:tests" = 13;
   "dir:tools" = 12;
-  "dir:tools/ci-dashboard" = 8;
   "dir:tools/discord-digest" = 7;
   "dir:tools/discord-digest/src/discord_digest" = 7;
   "dir:tools/jj-graph" = 7;

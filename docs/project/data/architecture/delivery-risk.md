@@ -1,9 +1,9 @@
 ---
 type: architecture
-description: luvus-deliver judges each delivery's risk before pushing; code works out which hosts it reaches from Den, Jev judges what it changes, and a high-risk delivery waits for the owner's approval of that exact commit.
+description: luvus-deliver works out each delivery's risk before pushing from which hosts it reaches and which paths it changes, and a high-risk delivery waits for the owner's approval of that exact commit; Jev judged what it changed until 2026-11-21.
 generated:
-  by: claude-code
-  at: 2026-10-29T10:00:00Z
+  by: claude-code/opus-5.5
+  at: 2026-11-21T05:00:00Z
 sources:
 - id: deliver
   resource: tools/luvus-deliver.nu
@@ -11,9 +11,6 @@ sources:
 - id: reach
   resource: tools/den-reach.nix
   title: Which aspects each host's system and each home includes
-- id: questions
-  resource: jev/questions.nuon
-  title: The delivery_risk questions and thresholds
 - id: tests
   resource: tests/luvus-deliver.nu
   title: The nushell-luvus-deliver check
@@ -23,6 +20,17 @@ sources:
 ---
 
 # Delivery risk
+
+*Changed 2026-11-21: the owner removed Jev from delivery. Code alone decides
+now: high risk is a path under `secrets/`, `hosts/`, or `.github/rulesets/`, a
+change to `tools/luvus-deliver.nu` or `tools/den-reach.nix` (the approval paths
+live in the classifier itself, so changing them needs approval), several
+deployed hosts through configuration the policy rates high or critical, or a
+delivery whose reach cannot be worked out. Several hosts alone no longer stop
+a delivery, and boot, storage, secrets, keys, or access outside those paths
+deliver as medium. The `delivery_risk` questions left `jev/questions.nuon`; the
+ledger no longer records Jev's answers. Jev stays for its other questions.
+What follows is the decision as it stood from 2026-10-29.*
 
 A reference architecture for fleets of coding agents routes each change through
 a risk classifier: a low-risk change lands and is reviewed afterwards, a

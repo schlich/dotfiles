@@ -5,9 +5,16 @@
       den.batteries.define-user
       den.aspects.user-core
       den.aspects.user-shell
-      # Servers such as homelab get the shell home only. These shape only
+      # Servers such as homelab get the shell home plus server-side remote
+      # editor helpers; desktop pieces stay on workstations. These shape only
       # the standalone home (homeConfigurations."USER@HOST"), so they read
       # the host through the `home` Den binds there.
+      (
+        { home, ... }:
+        lib.optionalAttrs (home.host.profile.role == "server") {
+          includes = [ den.aspects.user-server ];
+        }
+      )
       (
         { home, ... }:
         lib.optionalAttrs (home.host.profile.role == "workstation") {

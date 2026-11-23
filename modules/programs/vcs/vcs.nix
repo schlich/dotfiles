@@ -31,15 +31,12 @@ let
   };
   # Plans, checks, and normalizes change graphs (tools/jj-graph/README.md).
   jjGraph = (import ../../../tools/jj-graph { inherit lib pkgs; }).package;
-  # dotfiles' delivery: luvus/integration to main once Jev's risk verdict
-  # allows it and nixbot passes on it, with the `delivery_risk` questions in
-  # jev/questions.nuon.
-  jev = import ../../../jev/package.nix { inherit pkgs; };
+  # dotfiles' delivery: luvus/integration to main once its risk verdict
+  # allows it and nixbot passes on it.
   luvusDeliver = pkgs.writeNuScriptBin "luvus-deliver" (
-    builtins.replaceStrings
-      [ "@questions@" "@jev@" "@reach@" ]
-      [ "${../../../jev/questions.nuon}" "${jev}/bin/jev" "${../../../tools/den-reach.nix}" ]
-      (builtins.readFile ../../../tools/luvus-deliver.nu)
+    builtins.replaceStrings [ "@reach@" ] [ "${../../../tools/den-reach.nix}" ] (
+      builtins.readFile ../../../tools/luvus-deliver.nu
+    )
   );
 in
 {
@@ -125,27 +122,15 @@ in
       "--"
       (lib.getExe jjGraph)
     ];
-    # GitHub (origin) holds dotfiles' trunk and topics; Tangled only mirrors
-    # main, which `ci land` pushes there itself. Tangled still holds the ci
-    # repository's trunk, with GitHub as its mirror. Elsewhere jj keeps its
-    # own remote defaults; a global main@tangled broke every repository
-    # without one. New repositories hosted on Tangled get their settings in
-    # their own config from `tangled-init`.
+    # GitHub (origin) holds dotfiles' trunk and topics. Elsewhere jj keeps
+    # its own remote defaults; a global trunk() broke every repository
+    # without that remote.
     "--scope" = [
       {
         "--when".repositories = [ config.dotfiles.paths.dotfiles ];
         git.push = "origin";
         git.fetch = "origin";
         revset-aliases."trunk()" = "main@origin";
-      }
-      {
-        "--when".repositories = [ "~/Nix/ci" ];
-        git.push = "tangled";
-        git.fetch = [
-          "tangled"
-          "origin"
-        ];
-        revset-aliases."trunk()" = "main@tangled";
       }
     ];
   };
@@ -158,7 +143,6 @@ in
     ci.jj-describe
     config.dotfiles.ci.package
     (pkgs.writeNuScriptBin "jj-dashboard" (builtins.readFile ../../../jj/dashboard.nu))
-    (pkgs.writeNuScriptBin "tangled-init" (builtins.readFile ../../../jj/tangled-init.nu))
     ci.context-status
     luvusDeliver
   ];
@@ -175,7 +159,5 @@ in
     jj-guard = ciNushell.guard;
     # `jw NAME` changes to a JJ workspace's root.
     jj-workspace = ciNushell.workspace;
-    # `jj git init` of a repository without remotes runs `tangled-init`.
-    jj-tangled-init = ../../../jj/tangled-init-hook.nu;
   };
 }

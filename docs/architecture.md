@@ -75,7 +75,7 @@ with the app's writable runtime configuration.
 
 These stay in Home Manager:
 
-- Agent clients (Claude Code, Codex, Copilot, OpenCode): their
+- Agent clients (Claude Code, Codex, Copilot, OpenCode, Zed): their
   configuration directories are runtime state.
 - GnuPG: `GNUPGHOME` also holds the keys.
 - gh's `config.yml` and `hosts.yml`, which gh writes itself.
@@ -84,13 +84,14 @@ These stay in Home Manager:
 - Helix's `languages.toml`: Helix reads it only from its configuration
   directory, and patching the built-in copy would rebuild Helix without the
   binary cache.
-- Nushell's `config.nu`: no variable names it, an explicit `--config` also
-  loads for scripts and `nu -c`, and the vendor autoload directories reach the
-  agent MCP server as well as interactive sessions. Autoload files that only
-  define commands ship in the user's profile through
-  `dotfiles.nushellAutoload` instead. Starship's `init nu` embeds the
-  unwrapped binary's path, so `config.nu` sets `STARSHIP_CONFIG` rather than
-  a wrapper.
+- Nushell's `config.nu` and `env.nu`: no variable names them, an explicit
+  `--config` also loads for scripts and `nu -c`, `env.nu` loads Home Manager's
+  session variables (`programs.nushell.loadSessionVariables`), and the vendor
+  autoload directories reach the agent MCP server as well as interactive
+  sessions. Autoload files that only define commands ship in the user's profile
+  through `dotfiles.nushellAutoload` instead. Starship's `init nu` embeds the
+  unwrapped binary's path, so `config.nu` sets `STARSHIP_CONFIG` rather than a
+  wrapper.
 - intelli-shell's `config.toml`: its only directory override also moves its
   database.
 

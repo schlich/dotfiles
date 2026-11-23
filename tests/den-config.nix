@@ -94,6 +94,23 @@ let
           fqdn = homelabFqdn;
         };
       };
+
+      # Private Tailscale-only Git HTTP remote for ~/Research/kb.
+      testPublishesKbGitOnTailnetOnly = {
+        expr = {
+          enabled = config.services.kb-git.enable;
+          claim = config.dotfiles.tailscale.https.kb-git;
+          serve = lib.hasSuffix "/bin/tailscale serve --https=7445 http://127.0.0.1:${toString config.services.kb-git.port}" config.systemd.services.kb-git-serve.serviceConfig.ExecStart;
+        };
+        expected = {
+          enabled = true;
+          claim = {
+            port = 7445;
+            funnel = false;
+          };
+          serve = true;
+        };
+      };
     };
 
     asus = config: {

@@ -31,16 +31,11 @@
     terminal.inputs.shell.inputs.rex.inputs.nixpkgs.follows = "system/nixpkgs";
     terminal.inputs.vcs.inputs.ci.inputs.nixpkgs.follows = "system/nixpkgs";
     terminal.inputs.vcs.inputs.ci.inputs.osc7501-nu.follows = "terminal/shell/osc7501-nu";
-    terminal.inputs.vcs.inputs.tangled.inputs.nixpkgs.follows = "system/nixpkgs";
     # Only its non-flake default.nix uses flake-compat. Nix 2.34 cannot
     # refetch the lix tarball it locks (the locked URL keeps a ?rev= that
     # the fetch drops), which fails nixbot's prefetch once the source
     # leaves homelab's store.
-    terminal.inputs.vcs.inputs.tangled.inputs.flake-compat.follows = "";
-    terminal.inputs.vcs.inputs.tangled-dash.inputs.nixpkgs.follows = "system/nixpkgs";
     agents.inputs.fieldnotes.inputs.nixpkgs.follows = "system/nixpkgs";
-    agents.inputs.clients.inputs.codex.inputs.nixpkgs.follows = "system/nixpkgs";
-    agents.inputs.clients.inputs.codex.inputs.rust-overlay.follows = "builds/rust-overlay";
     agents.inputs.clients.inputs.llm-agents.inputs.nixpkgs.follows = "system/nixpkgs";
     agents.inputs.clients.inputs.continuum-ide.inputs.nixpkgs.follows = "system/nixpkgs";
     agents.inputs.clients.inputs.paseo.inputs.nixpkgs.follows = "system/nixpkgs";
@@ -68,9 +63,6 @@
       inherit (inputs) nixpkgs nushellWith;
       system = "x86_64-linux";
       overlays = [
-        (_final: _prev: {
-          codex = inputs.codex.packages.${system}.codex-rs;
-        })
         nushellWith.overlays.default
       ];
       pkgs = import nixpkgs {
@@ -132,7 +124,6 @@
       dagger = import ./modules/programs/vcs/dagger-package.nix { inherit lib pkgs; };
       inherit (pkgs) iwe;
       marimohub = import ./modules/tooling/knowledge/marimohub-package.nix { inherit lib pkgs; };
-      ciDashboard = import ./tools/ci-dashboard/checks.nix { inherit lib pkgs; };
       jjGraph = import ./tools/jj-graph { inherit lib pkgs; };
       workbench = import ./workbench { inherit pkgs lib iwe; };
       workbenchImages = lib.mapAttrs' (
@@ -574,8 +565,6 @@
           PYTHONPATH=src python3 -m unittest discover -s tests -v
           touch "$out"
         '';
-        # Hegel properties of the CI dashboard's feed reductions.
-        ci-dashboard-feeds = ciDashboard.feeds;
         # discord-digest's build runs its tests.
         discord-digest = pkgs.callPackage ./tools/discord-digest/package.nix { };
         # jj-graph's build runs its lints, its Hegel properties (some in real
@@ -743,7 +732,7 @@
               touch "$out"
             '';
         # luvus-deliver's risk classification and approval on a throwaway
-        # repository, with a stub jev and a fixture of Den's reach. Nix
+        # repository, with a fixture of Den's reach. Nix
         # parses both versions of a changed module to spot comment edits.
         nushell-luvus-deliver =
           pkgs.runCommand "nushell-luvus-deliver-check"
@@ -757,7 +746,7 @@
             ''
               export HOME="$TMPDIR/home"
               mkdir -p "$HOME"
-              ${pkgs.nushell}/bin/nu --no-config-file ${./tests/luvus-deliver.nu} ${./tools/luvus-deliver.nu} ${./jev/questions.nuon}
+              ${pkgs.nushell}/bin/nu --no-config-file ${./tests/luvus-deliver.nu} ${./tools/luvus-deliver.nu}
               touch "$out"
             '';
         # How the staged switch judges each kind of unit a candidate touches:
@@ -935,17 +924,14 @@
       # leave them out.
       # They cover disposable hosts, Clan's machines against the systems they
       # deploy, homelab with modules it has not adopted yet, the staged
-      # switch's revert in a VM, and Bombadil's explorations of Fieldwork and
-      # the CI dashboard.
+      # switch's revert in a VM, and Bombadil's exploration of Fieldwork.
       # Bombadil explores Fieldwork, a prototype whose bridge answers some
-      # requests with 4xx by design, so its findings report here first, as
-      # do the CI dashboard's until its exploration has a record.
+      # requests with 4xx by design, so its findings report here first.
       remoteChecks.${system} =
         remoteHostEvaluationChecks
         // clanMachineChecks
         // import ./xr-workbench/bombadil-check.nix { inherit lib pkgs; }
         // {
-          ci-dashboard-bombadil = ciDashboard.exploration;
           # TLC over every three-change graph takes about twelve minutes.
           jj-graph-model-exhaustive = jjGraph.exhaustive;
           deploy-revert = import ./tests/deploy-revert.nix { inherit pkgs; };
