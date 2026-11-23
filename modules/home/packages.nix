@@ -130,10 +130,6 @@ in
     stripe-cli
     wl-clipboard-rs
     gh-stack
-    # The repository's wrappers depend on secretspec; keep this copy ahead of
-    # the one devenv bundles so PATH does not follow devenv's release cadence.
-    (lib.hiPrio secretspec)
-    devenv
     jev
     questOpen
     nixOtel
