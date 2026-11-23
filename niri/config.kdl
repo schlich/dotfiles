@@ -118,6 +118,12 @@ layout {
     // Set gaps around windows in logical pixels.
     gaps 16
 
+    // Keep an empty workspace above the first as well as below the last, so
+    // Mod+Shift+K past the top opens a new one as Mod+Shift+J does past the
+    // bottom. It takes index 1, so the digit binds count from 2
+    // (niri/binds.nix).
+    empty-workspace-above-first
+
     // When to center a column when changing focus, options are:
     // - "never", default behavior, focusing an off-screen column will keep at the left
     //   or right edge of the screen.
