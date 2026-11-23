@@ -143,6 +143,8 @@ in
   environment.systemPackages = with pkgs; [
     fieldnotes
     btop
+    # FlakeHub's CLI, from nixpkgs as on the workstation.
+    fh
     helix
     smartmontools
     tmux
