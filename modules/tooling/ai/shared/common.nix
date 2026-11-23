@@ -28,6 +28,8 @@ let
     inherit xs;
     ci = config.dotfiles.ci.package;
   };
+  # The `honeycomb` command's package, which also ships `honeycomb-mcp`.
+  inherit (inputs.honeycomb.overlays.default pkgs pkgs) honeycomb;
   sudoplz = pkgs.callPackage ./sudoplz.nix { };
   # Hides the 2026-07-28 MCP handshake from servers that claim it but
   # answer tools/list without its required fields (atuin 18.21 and 18.23).
@@ -111,6 +113,10 @@ in
       kb.command = "${kbMcp}/bin/kb-mcp";
       # The `ci` trunk workflow as tools, in the client's working directory.
       ci.command = "${ciMcp}/bin/ci-mcp";
+      # The six-at-a-time counts (census, prune, sessions, sidebar, flower)
+      # as tools, so an agent checks them before starting another topic
+      # (github:schlich/honeycomb). Only `prune` with `yes` changes anything.
+      honeycomb.command = lib.getExe' honeycomb "honeycomb-mcp";
       # Stately's hosted HTTP MCP server provides access to state-machine
       # design tools; authentication is handled by the MCP client.
       stately.url = "https://mcp.stately.ai/mcp";

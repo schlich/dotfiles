@@ -818,11 +818,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795462798,
-        "narHash": "sha256-KxMERu4gTW8mHt8o11tFlTG5OrtQP2t1EMTgWaBZiMM=",
+        "lastModified": 1795468921,
+        "narHash": "sha256-29Vw1xuDpMSLY+nJQXNMhIt4PM7evKFspbvdbNCEKgI=",
         "owner": "schlich",
         "repo": "honeycomb",
-        "rev": "b255279f01b0669c639f67e25dca31be8a6fdc7f",
+        "rev": "0b6ea2dc2ca919670e1dda599d873f61071007db",
         "type": "github"
       },
       "original": {
