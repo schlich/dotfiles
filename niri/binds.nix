@@ -116,6 +116,8 @@ let
     ])
     # Plain niri workspaces: the strip's next and previous, and each by its
     # position. The areas (Mod+Alt) reach the same workspaces by name.
+    # niri keeps an empty workspace at index 1 (empty-workspace-above-first
+    # in config.kdl), so Mod+1 is index 2, the first that can hold windows.
     (member "workspace" (
       [
         (with' "repeat=false" (bind "Mod+O" "Overview: every workspace" "toggle-overview"))
@@ -134,10 +136,11 @@ let
         n:
         let
           i = toString n;
+          idx = toString (n + 1);
         in
         [
-          (bind "Mod+${i}" "Workspace ${i}" "focus-workspace ${i}")
-          (bind "Mod+Shift+${i}" "Carry the column to workspace ${i}" "move-column-to-workspace ${i}")
+          (bind "Mod+${i}" "Workspace ${i}" "focus-workspace ${idx}")
+          (bind "Mod+Shift+${i}" "Carry the column to workspace ${i}" "move-column-to-workspace ${idx}")
         ]
       ) (lib.range 1 7)
     ))

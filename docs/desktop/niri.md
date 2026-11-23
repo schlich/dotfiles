@@ -80,7 +80,10 @@ are open, and the projects.
 
 Past a column's first or last window, Mod+J and Mod+K step on to the
 previous or next workspace, and Mod+Shift+J and Mod+Shift+K carry the window
-there. Mod+Ctrl+H/J/K/L selects a monitor, and adding Shift carries the column to
+there. niri keeps an empty workspace at both ends of the strip
+(`empty-workspace-above-first`), so carrying past either end opens a new
+one; Mod+1 counts from the first workspace after the empty top one.
+Mod+Ctrl+H/J/K/L selects a monitor, and adding Shift carries the column to
 it. Alt+Tab and Alt+\` are niri's window switcher. The arrow keys, the mouse
 thumb buttons and Mod plus the wheel repeat the window motions; they are
 hidden from the overlay so that it lists one key per action.
