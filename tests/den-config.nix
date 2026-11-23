@@ -181,6 +181,28 @@ let
     };
   };
 
+  # Luvus Web's system half, as for the T3 Code server: the owner lingers on
+  # a stationary host and Serve publishes the bridge on the tailnet alone.
+  luvusWebTests = name: config: {
+    testLuvusWebIsPublishedToTheTailnetOnly = {
+      expr = {
+        owner = config.dotfiles.luvusWeb.user;
+        linger = config.users.users.${config.dotfiles.luvusWeb.user}.linger;
+        claim = config.dotfiles.tailscale.https.luvus-web;
+        serve = lib.hasSuffix "/bin/tailscale serve --https=4174 http://127.0.0.1:4174" config.systemd.services.luvus-web-tailscale-serve.serviceConfig.ExecStart;
+      };
+      expected = {
+        owner = lib.head (builtins.attrNames (homesOf name));
+        linger = if hosts.${name}.hardware.portable then null else true;
+        claim = {
+          port = 4174;
+          funnel = false;
+        };
+        serve = true;
+      };
+    };
+  };
+
   # A unit that runs `tailscale serve` or `tailscale funnel` when the system
   # starts it fails a switch that restarts tailscaled before the daemon is
   # back, even though Restart= recovers it seconds later: asus reverted the
@@ -229,6 +251,33 @@ let
           traces = host.services.nixObservability;
           t3code = host.services.t3code;
           t3codeLoopback = true;
+        };
+      };
+      # The bridge runs where the inventory says, answers to the host's
+      # tailnet name, and keeps its pairing link out of the journal.
+      "testHome_${userName}_LuvusWebFollowsItsHost" = {
+        expr = {
+          web = config.dotfiles.luvus.web.enable;
+          unit = config.systemd.user.services ? luvus-web;
+        }
+        // lib.optionalAttrs config.dotfiles.luvus.web.enable (
+          let
+            unit = config.systemd.user.services.luvus-web;
+          in
+          {
+            publicUrl = config.dotfiles.luvus.web.publicUrl;
+            output = unit.Service.StandardOutput;
+            after = unit.Unit.After;
+          }
+        );
+        expected = {
+          web = host.services.luvusWeb;
+          unit = host.services.luvusWeb;
+        }
+        // lib.optionalAttrs host.services.luvusWeb {
+          publicUrl = "https://${host.name}.${host.network.tailnet}:4174";
+          output = "truncate:%t/luvus-web.pairing";
+          after = [ "luvus.service" ];
         };
       };
     }
@@ -305,6 +354,7 @@ let
         lib.optionalAttrs host.deploy.enable (deployTests name config)
         // lib.optionalAttrs (host.profile.remote && name != "homelab") (remoteClientTests config)
         // lib.optionalAttrs host.services.t3code (t3codeTests name config)
+        // lib.optionalAttrs host.services.luvusWeb (luvusWebTests name config)
         // lib.optionalAttrs config.services.tailscale.enable (tailscaleServeTests config)
         // (hostTests.${name} or (_: { })) config
         // lib.concatMapAttrs (

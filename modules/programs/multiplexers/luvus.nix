@@ -74,6 +74,38 @@ let
       ]
       (builtins.readFile autopilotScript)
   );
+
+  # Luvus Web prints a one-use pairing link at start. The unit writes its
+  # output to a file in the owner-only runtime directory, kept out of the
+  # journal, and this prints the link from it.
+  webLinkFile = "luvus-web.pairing";
+  luvusWebLink = pkgs.writeNuScriptBin "luvus-web-link" ''
+    # Print Luvus Web's pairing link. --new restarts the bridge for a fresh
+    # one, which unpairs every browser; a paired browser can make more links
+    # under Devices instead.
+    def main [--new] {
+      let file = $"($env.XDG_RUNTIME_DIR)/${webLinkFile}"
+      if $new {
+        ^systemctl --user restart luvus-web.service
+        sleep 500ms
+      }
+      for _ in 1..50 {
+        let links = if ($file | path exists) {
+          open --raw $file | lines | where $it =~ '#pair='
+        } else { [] }
+        if ($links | is-not-empty) {
+          let age = (date now) - (ls $file | get 0.modified)
+          print ($links | last)
+          if $age > 5min {
+            print $"Probably expired: links work for five minutes and this one is ($age | format duration min) old. Make one under Devices in a paired browser, or run `luvus-web-link --new`, which unpairs every browser."
+          }
+          return
+        }
+        sleep 200ms
+      }
+      error make { msg: $"no pairing link in ($file); see `systemctl --user status luvus-web`" }
+    }
+  '';
   autopilotExe = "${luvusAutopilot}/bin/luvus-autopilot";
   # `luvus-auto ID` marks a task for the watcher; `luvus-auto --off ID`
   # unmarks it, and its downstream tasks unless they are marked themselves.
@@ -135,6 +167,33 @@ in
       Run luvus-autopilot, which starts and merges luvus tasks marked with
       `luvus-auto ID` and the tasks downstream of them.
     '';
+  };
+
+  options.dotfiles.luvus.web = {
+    enable = lib.mkEnableOption ''
+      Luvus Web, the browser client of this home's Luvus server, as a user
+      unit with terminal control. It listens on loopback only; something in
+      front of it must supply HTTPS at publicUrl
+      (modules/nixos/services/user-servers/luvus-web.nix)
+    '';
+    port = lib.mkOption {
+      type = lib.types.port;
+      default = 4174;
+      description = "The bridge's loopback port.";
+    };
+    publicUrl = lib.mkOption {
+      type = lib.types.strMatching "https://[^/]+";
+      example = "https://homelab.example.ts.net:4174";
+      description = ''
+        The HTTPS origin browsers reach the bridge at. Pairing links use it,
+        and the bridge answers only to it and to loopback.
+      '';
+    };
+    maxDevices = lib.mkOption {
+      type = lib.types.ints.between 1 8;
+      default = 4;
+      description = "How many browser profiles may be paired at once.";
+    };
   };
 
   options.dotfiles.luvus.settings = lib.mkOption {
@@ -254,7 +313,52 @@ in
       ++ lib.optionals cfg.autopilot.enable [
         luvusAutopilot
         luvusAuto
-      ];
+      ]
+      ++ lib.optional cfg.web.enable luvusWebLink;
+
+      # The web bridge, in the foreground as `luvus web` runs it. It attaches
+      # to the server above; one it started itself would live in this unit
+      # and die with it, so it waits for that server to answer first.
+      # Browsers stay paired until the bridge stops, so a restart unpairs them.
+      systemd.user.services.luvus-web = lib.mkIf cfg.web.enable {
+        Unit = {
+          Description = "Luvus Web, the browser client of the Luvus server";
+          Wants = [ "luvus.service" ];
+          After = [ "luvus.service" ];
+          StartLimitIntervalSec = 0;
+        };
+        Service = {
+          ExecStartPre = pkgs.writeShellScript "luvus-web-wait-for-server" ''
+            for _ in $(${lib.getExe' pkgs.coreutils "seq"} 120); do
+              ${lib.getExe luvus} --session default ping >/dev/null 2>&1 && exit 0
+              ${lib.getExe' pkgs.coreutils "sleep"} 0.5
+            done
+            echo "luvus-web: the Luvus server (luvus.service) did not answer within a minute" >&2
+            exit 1
+          '';
+          ExecStart = lib.escapeShellArgs [
+            (lib.getExe luvus)
+            "--session"
+            "default"
+            "web"
+            "--control"
+            "--no-open"
+            "--port"
+            (toString cfg.web.port)
+            "--max-devices"
+            (toString cfg.web.maxDevices)
+            "--public-url"
+            cfg.web.publicUrl
+            "--origin"
+            cfg.web.publicUrl
+          ];
+          StandardOutput = "truncate:%t/${webLinkFile}";
+          StandardError = "journal";
+          Restart = "on-failure";
+          RestartSec = "5s";
+        };
+        Install.WantedBy = [ "default.target" ];
+      };
 
       # Opt-in task chains: wake on `luvus events`, every five minutes, and at
       # start; each pass rereads the board, so it acts at most once per change.

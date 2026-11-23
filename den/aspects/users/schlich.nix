@@ -43,11 +43,18 @@
         }
       )
       # The T3 Code server runs in the home of the host's one user with a
-      # home (den/aspects/services/t3code.nix).
+      # home (den/aspects/services/agent-servers/t3code.nix).
       (
         { home, ... }:
         lib.optionalAttrs home.host.services.t3code {
           includes = [ den.aspects.t3code-home ];
+        }
+      )
+      # Likewise Luvus Web (den/aspects/services/agent-servers/luvus-web.nix).
+      (
+        { home, ... }:
+        lib.optionalAttrs home.host.services.luvusWeb {
+          includes = [ den.aspects.luvus-web-home ];
         }
       )
     ];

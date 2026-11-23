@@ -79,6 +79,7 @@ let
       paseo = "the Paseo daemon";
       opencodeServer = "the OpenCode HTTP server";
       t3code = "the T3 Code server, an execution environment for the agent fleet";
+      luvusWeb = "Luvus Web, the browser client of the home user's Luvus server, on the tailnet";
       rex = "the personal Rex terminal server for the host's home user";
       crossStream = "the system cross.stream service, for hosts without the Home Manager one";
     };

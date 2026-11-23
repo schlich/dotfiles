@@ -64,6 +64,10 @@ let
       aspect = "t3code";
     }
     {
+      service = "luvusWeb";
+      aspect = "luvus-web";
+    }
+    {
       service = "rex";
       aspect = "rex";
     }

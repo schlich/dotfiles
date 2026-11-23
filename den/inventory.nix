@@ -28,6 +28,7 @@ let
       paseo = false;
       opencodeServer = false;
       t3code = false;
+      luvusWeb = false;
       rex = false;
       crossStream = false;
     };
@@ -121,6 +122,8 @@ let
           opencodeServer = true;
           # The always-on execution environment of the agent fleet.
           t3code = true;
+          # Its Luvus server, reachable from a browser like T3 Code.
+          luvusWeb = true;
           rex = true;
           crossStream = true;
         };

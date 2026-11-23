@@ -21,7 +21,7 @@ in
   # every user service before a login unlocks the keyring.
   den.aspects.t3code = {
     meta = config.myConfig.aspectPolicy.remote;
-    nixos.imports = [ ../../../modules/nixos/services/user-servers/t3code.nix ];
+    nixos.imports = [ ../../../../modules/nixos/services/user-servers/t3code.nix ];
     includes = [
       (
         { host, ... }:
@@ -47,7 +47,7 @@ in
   den.aspects.t3code-home = {
     meta = config.myConfig.aspectPolicy.remote;
     homeManager = {
-      imports = [ ../../../modules/tooling/ai/clients/t3code/t3code-server.nix ];
+      imports = [ ../../../../modules/tooling/ai/clients/t3code/t3code-server.nix ];
       dotfiles.t3code.server = {
         enable = true;
         inherit port fleet;
