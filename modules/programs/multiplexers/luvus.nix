@@ -213,9 +213,11 @@ let
     }
   '';
   autopilotExe = "${luvusAutopilot}/bin/luvus-autopilot";
+  # The wrapped git (vcs.nix), whose own configuration carries the gh
+  # credential helper: a plain git ahead of it cannot push to GitHub.
   autopilotPath = "${
     lib.makeBinPath [
-      pkgs.git
+      config.programs.git.package
       pkgs.coreutils
     ]
   }:%h/.nix-profile/bin:/etc/profiles/per-user/%u/bin:/run/current-system/sw/bin";
