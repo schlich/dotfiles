@@ -76,6 +76,56 @@ let
     '';
     meta.description = "Push this machine's builds of the flake checks to Cachix";
   };
+  wland =
+    let
+      pname = "wland";
+      version = "0.1.0-261124-3c987e5";
+    in
+    pkgs.stdenvNoCC.mkDerivation {
+      inherit pname version;
+
+      src = pkgs.fetchurl {
+        url = "https://github.com/pithings/wland/releases/download/v${version}/wland.tgz";
+        hash = "sha256-x5zrz+MEnF2aSfreR6gfgdjG8v6VRYOeejWlSKPKahE=";
+      };
+
+      nativeBuildInputs = [
+        pkgs.brotli
+        pkgs.makeWrapper
+      ];
+
+      installPhase = ''
+        runHook preInstall
+
+        mkdir -p "$out/lib/wland/zig-out/bin" "$out/bin"
+        cp -r dist package.json LICENSE "$out/lib/wland/"
+
+        # Decompress the statically linked baseline x86_64 wlandr relay into
+        # zig-out/bin/wlandr (which dist/index.mjs checks before unpacking to
+        # XDG_CACHE_HOME) and expose it on PATH too.
+        brotli -dc dist/wlandr-linux-x64.br > "$out/lib/wland/zig-out/bin/wlandr"
+        chmod 755 "$out/lib/wland/zig-out/bin/wlandr"
+        ln -s "$out/lib/wland/zig-out/bin/wlandr" "$out/bin/wlandr"
+
+        makeWrapper "${lib.getExe pkgs.nodejs}" "$out/bin/wland" \
+          --add-flags "$out/lib/wland/dist/cli.mjs"
+
+        runHook postInstall
+      '';
+
+      meta = {
+        description = "Wayland apps, composited in the browser: a Wayland compositor in WebAssembly";
+        homepage = "https://github.com/pithings/wland";
+        changelog = "https://github.com/pithings/wland/releases/tag/v${version}";
+        license = [
+          lib.licenses.mpl20
+          lib.licenses.mit
+        ];
+        sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];
+        mainProgram = "wland";
+        platforms = [ "x86_64-linux" ];
+      };
+    };
 in
 {
   home.packages = with pkgs; [
@@ -136,6 +186,7 @@ in
     nixOtel
     cachix
     cachixSeed
+    wland
     inputs.xs.packages.${pkgs.stdenv.hostPlatform.system}.default
     (import ../programs/desktop/ai-usagebar-package.nix { inherit inputs pkgs; })
     (import ../tooling/ai/claude/fieldnotes-package.nix { inherit inputs lib pkgs; })
@@ -150,6 +201,11 @@ in
     openchamber = {
       inherit (pkgs.callPackage ./openchamber/openchamber.nix { }) version;
       reason = "replace modules/home/openchamber/openchamber.nix, a build of the npm release, with pkgs.openchamber in modules/home/packages.nix";
+    };
+    wland = {
+      inherit (wland) version;
+      repo = "pithings/wland";
+      reason = "replace wland, the release tarball modules/home/packages.nix wraps, with pkgs.wland";
     };
     ai-usagebar.reason = "replace modules/programs/desktop/ai-usagebar-package.nix (the ai-usagebar input's package, with sqlite added, tests skipped, and libsecret + antigravity-cli wrapped into PATH) with pkgs.ai-usagebar, and drop the ai-usagebar input";
   };
