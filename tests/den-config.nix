@@ -244,6 +244,7 @@ let
       "testHome_${userName}_FollowsItsHost" = {
         expr = {
           desktop = config.programs.ghostty.enable;
+          hostBadge = config.dotfiles.shell.hostBadge.enable;
           traces = (config.dotfiles.ci.tracesEndpoint or null) != null;
           t3code = config.dotfiles.t3code.server.enable or false;
           t3codeLoopback =
@@ -254,6 +255,7 @@ let
         };
         expected = {
           desktop = host.profile.role == "workstation";
+          hostBadge = host.profile.role == "server";
           traces = host.services.nixObservability;
           t3code = host.services.t3code;
           t3codeLoopback = true;

@@ -1,4 +1,5 @@
 {
+  config,
   inputs,
   lib,
   pkgs,
@@ -6,6 +7,7 @@
 }:
 
 let
+  cfg = config.dotfiles.shell.hostBadge;
   wrapWithConfig = import ../../../lib/wrap-with-config.nix { inherit lib pkgs; };
   toml = pkgs.formats.toml { };
 
@@ -85,10 +87,19 @@ let
     # host and not only over ssh, so a session always shows which machine
     # it runs on; `$all` follows with every other module.
     format = "$hostname\${custom.generation}$all";
-    hostname = {
-      ssh_only = false;
-      format = "[$hostname]($style) ";
-    };
+    hostname =
+      if cfg.enable then
+        {
+          ssh_only = false;
+          ssh_symbol = "";
+          format = "[ $hostname ]($style) ";
+          style = cfg.style;
+        }
+      else
+        {
+          ssh_only = false;
+          format = "[$hostname]($style) ";
+        };
     custom.generation = {
       shell = [ "${promptGeneration}" ];
       use_stdin = false;
@@ -148,117 +159,128 @@ in
   # dotfiles.nushellAutoload, which vcs.nix also sets.
   imports = [ ./nushell-autoload.nix ];
 
-  # config.nu sources Atuin's init scripts below, so Home Manager's atuin
-  # module is not needed.
-  home.packages = [ atuin ];
-
-  # The hosts' overlay (modules/nixos/base/user/nushell-package.nix) carries a
-  # Nushell newer than nixpkgs; this home builds from that package set.
-  dotfiles.nixpkgsWatch.nushell = {
-    inherit (pkgs.nushell) version;
-    reason = "delete modules/nixos/base/user/nushell-package.nix and its imports in modules/nixos/base/user/default.nix and flake.nix";
-  };
-
-  programs.carapace = {
-    enable = true;
-    enableNushellIntegration = true;
-  };
-
-  # The module still adds the Nushell hook, which calls this package; the
-  # wrapper's DIRENV_CONFIG directory carries direnv.toml and nix-direnv.
-  programs.direnv = {
-    enable = true;
-    package = direnv;
-    enableNushellIntegration = true;
-    nix-direnv.enable = false;
-  };
-
-  programs.intelli-shell = {
-    enable = true;
-    enableNushellIntegration = true;
-  };
-
-  # config.nu stays a Home Manager link: Nushell has no variable that names
-  # it, an explicit --config also loads for scripts and `nu -c`, and vendor
-  # autoload reaches the agent MCP server too. See docs/architecture.md.
-  programs.nushell = {
-    enable = true;
-    loadSessionVariables = true;
-    environmentVariables = {
-      COLORTERM = "truecolor";
-      STARSHIP_CONFIG = "${starshipConfig}";
+  options.dotfiles.shell.hostBadge = {
+    enable = lib.mkEnableOption "a high-contrast hostname pill in the Starship prompt";
+    style = lib.mkOption {
+      type = lib.types.str;
+      default = "bold black bg:yellow";
+      description = "Starship style for the hostname pill when hostBadge is enabled.";
     };
-    configFile.source = ../../../config.nu;
-    extraConfig = lib.mkMerge [
-      ''
-        source ${atuinPtyProxyNushellConfig}
-        source ${atuinNushellConfig}
-        source ${../../../mcp/agent-shell.nu}
-        use ${../../../mcp/rlm.nu} *
-        source ${../../../mcp/terminal-events.nu}
-        setup-terminal-events
-        source ${../../../nushell/project.nu}
-        source ${../../../nushell/context-status.nu}
-        setup-context-status
-      ''
-      # Program Status Protocol (OSC 7501): `pst` reports status to the
-      # terminal, and background jobs show as jobs/<id> records. The jobs
-      # hook wraps PROMPT_COMMAND, so it must run after starship sets it.
-      (lib.mkAfter ''
-        use ${inputs.osc7501-nu}/pst
-        pst jobs install
-      '')
-      # A project's .envrc.nu loads as the `envrc` overlay once direnv has
-      # loaded the project. Its hooks wrap direnv's prompt hook, which the
-      # direnv module adds with mkAfter (1500), so they install after it.
-      (lib.mkOrder 1600 ''
-        source ${../../../nushell/envrc-nu.nu}
-        setup-envrc-nu
-      '')
-      # Rex (modules/tooling/terminals/rex.nix). nurx appends its hooks, so it
-      # loads after every other hook setup. Only `status` (OSC 7501 per
-      # command) and `tint` are on: the picker, `last`, and `layout` need a
-      # Rex app to show anything, and Linux has none yet. Rex puts its own
-      # `rex` first on PATH in each terminal, but the session's PATH setup
-      # runs after it, so it goes back to the front here.
-      (lib.mkOrder 1700 ''
-        if ($env.REX_BIN_DIR? | is-not-empty) {
-          $env.PATH = ($env.PATH | where $it != $env.REX_BIN_DIR | prepend $env.REX_BIN_DIR)
-        }
-        use ${inputs.nu-rex-integration}/nurx.nu *
-        nurx enable status tint
-      '')
+  };
+
+  config = {
+    # config.nu sources Atuin's init scripts below, so Home Manager's atuin
+    # module is not needed.
+    home.packages = [ atuin ];
+
+    # The hosts' overlay (modules/nixos/base/user/nushell-package.nix) carries a
+    # Nushell newer than nixpkgs; this home builds from that package set.
+    dotfiles.nixpkgsWatch.nushell = {
+      inherit (pkgs.nushell) version;
+      reason = "delete modules/nixos/base/user/nushell-package.nix and its imports in modules/nixos/base/user/default.nix and flake.nix";
+    };
+
+    programs.carapace = {
+      enable = true;
+      enableNushellIntegration = true;
+    };
+
+    # The module still adds the Nushell hook, which calls this package; the
+    # wrapper's DIRENV_CONFIG directory carries direnv.toml and nix-direnv.
+    programs.direnv = {
+      enable = true;
+      package = direnv;
+      enableNushellIntegration = true;
+      nix-direnv.enable = false;
+    };
+
+    programs.intelli-shell = {
+      enable = true;
+      enableNushellIntegration = true;
+    };
+
+    # config.nu stays a Home Manager link: Nushell has no variable that names
+    # it, an explicit --config also loads for scripts and `nu -c`, and vendor
+    # autoload reaches the agent MCP server too. See docs/architecture.md.
+    programs.nushell = {
+      enable = true;
+      loadSessionVariables = true;
+      environmentVariables = {
+        COLORTERM = "truecolor";
+        STARSHIP_CONFIG = "${starshipConfig}";
+      };
+      configFile.source = ../../../config.nu;
+      extraConfig = lib.mkMerge [
+        ''
+          source ${atuinPtyProxyNushellConfig}
+          source ${atuinNushellConfig}
+          source ${../../../mcp/agent-shell.nu}
+          use ${../../../mcp/rlm.nu} *
+          source ${../../../mcp/terminal-events.nu}
+          setup-terminal-events
+          source ${../../../nushell/project.nu}
+          source ${../../../nushell/context-status.nu}
+          setup-context-status
+        ''
+        # Program Status Protocol (OSC 7501): `pst` reports status to the
+        # terminal, and background jobs show as jobs/<id> records. The jobs
+        # hook wraps PROMPT_COMMAND, so it must run after starship sets it.
+        (lib.mkAfter ''
+          use ${inputs.osc7501-nu}/pst
+          pst jobs install
+        '')
+        # A project's .envrc.nu loads as the `envrc` overlay once direnv has
+        # loaded the project. Its hooks wrap direnv's prompt hook, which the
+        # direnv module adds with mkAfter (1500), so they install after it.
+        (lib.mkOrder 1600 ''
+          source ${../../../nushell/envrc-nu.nu}
+          setup-envrc-nu
+        '')
+        # Rex (modules/tooling/terminals/rex.nix). nurx appends its hooks, so it
+        # loads after every other hook setup. Only `status` (OSC 7501 per
+        # command) and `tint` are on: the picker, `last`, and `layout` need a
+        # Rex app to show anything, and Linux has none yet. Rex puts its own
+        # `rex` first on PATH in each terminal, but the session's PATH setup
+        # runs after it, so it goes back to the front here.
+        (lib.mkOrder 1700 ''
+          if ($env.REX_BIN_DIR? | is-not-empty) {
+            $env.PATH = ($env.PATH | where $it != $env.REX_BIN_DIR | prepend $env.REX_BIN_DIR)
+          }
+          use ${inputs.nu-rex-integration}/nurx.nu *
+          nurx enable status tint
+        '')
+      ];
+    };
+
+    dotfiles.nushellAutoload.xs = "${inputs.xs}/xs.nu";
+
+    # Without settings the module links no starship.toml. Its session
+    # variable would name ~/.config/starship.toml, so point it at the same
+    # store file as config.nu.
+    programs.starship = {
+      enable = true;
+      enableNushellIntegration = true;
+    };
+    home.sessionVariables.STARSHIP_CONFIG = lib.mkForce "${starshipConfig}";
+
+    dotfiles.retiredHomeFiles = [
+      ".config/atuin/config.toml"
+      ".config/direnv/direnv.toml"
+      ".config/direnv/lib/hm-nix-direnv.sh"
+      ".config/starship.toml"
     ];
-  };
 
-  dotfiles.nushellAutoload.xs = "${inputs.xs}/xs.nu";
+    programs.zoxide = {
+      enable = true;
+      enableNushellIntegration = true;
+    };
 
-  # Without settings the module links no starship.toml. Its session
-  # variable would name ~/.config/starship.toml, so point it at the same
-  # store file as config.nu.
-  programs.starship = {
-    enable = true;
-    enableNushellIntegration = true;
-  };
-  home.sessionVariables.STARSHIP_CONFIG = lib.mkForce "${starshipConfig}";
-
-  dotfiles.retiredHomeFiles = [
-    ".config/atuin/config.toml"
-    ".config/direnv/direnv.toml"
-    ".config/direnv/lib/hm-nix-direnv.sh"
-    ".config/starship.toml"
-  ];
-
-  programs.zoxide = {
-    enable = true;
-    enableNushellIntegration = true;
-  };
-
-  programs.intelli-shell.settings.ai = {
-    enabled = true;
-    catalog.main = {
-      provider = "openai";
-      model = "gpt-5.6-luna";
+    programs.intelli-shell.settings.ai = {
+      enabled = true;
+      catalog.main = {
+        provider = "openai";
+        model = "gpt-5.6-luna";
+      };
     };
   };
 }
