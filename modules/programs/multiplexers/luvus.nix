@@ -111,17 +111,74 @@ let
   # It starts workers through luvus-task-start, which finishes the launch in
   # Nushell panes and bases each worktree on luvus/integration, so a task
   # sees the dependencies the watcher merged.
+  #
+  # In the repositories it lists it also merges every gated task that is
+  # done, and with deliver.enable it starts deliverUnit, which runs
+  # luvus-deliver once luvus/integration has been quiet for a while.
   autopilotScript = ../../tooling/ai/scripts/luvus-autopilot.nu;
+  deliverUnit = "luvus-autodeliver.service";
+  deliverEnabled = cfg.autopilot.enable && cfg.autopilot.deliver.enable;
+  flock = lib.getExe' pkgs.util-linux "flock";
+  git = lib.getExe config.programs.git.package;
   luvusAutopilot = pkgs.writeNuScriptBin "luvus-autopilot" (
     builtins.replaceStrings
-      [ "@luvus@" "@taskStart@" "@notifySend@" "@flock@" ]
+      [
+        "@luvus@"
+        "@taskStart@"
+        "@notifySend@"
+        "@flock@"
+        "@git@"
+        "@systemctl@"
+        "@deliver@"
+        "@mergeRepos@"
+        "@deliverRepo@"
+        "@deliverUnit@"
+        "@quiet@"
+      ]
       [
         (lib.getExe luvus)
         "${luvusTaskStart}/bin/luvus-task-start"
         (lib.getExe' pkgs.libnotify "notify-send")
-        (lib.getExe' pkgs.util-linux "flock")
+        flock
+        git
+        # The user manager's own, which the running system provides.
+        "systemctl"
+        # vcs.nix installs it; the delivery unit's PATH finds it.
+        "luvus-deliver"
+        (lib.concatStringsSep ":" cfg.autopilot.repositories)
+        (lib.optionalString deliverEnabled cfg.autopilot.deliver.repository)
+        (lib.optionalString deliverEnabled deliverUnit)
+        cfg.autopilot.deliver.quiet
       ]
       (builtins.readFile autopilotScript)
+  );
+
+  # The repository's gate (AGENTS.md), which luvus-ship runs by default.
+  defaultGate = "luvus-jj sync && nix-fast-build --skip-cached --no-nom --eval-workers 3 --eval-max-memory-size 3072 --flake path:.#gateChecks.x86_64-linux";
+
+  # A finished task worktree into luvus/integration in one step
+  # (tools/luvus-ship.nu).
+  luvusShip = pkgs.writeNuScriptBin "luvus-ship" (
+    builtins.replaceStrings
+      [
+        "@luvus@"
+        "@luvusJj@"
+        "@flock@"
+        "@git@"
+        "@systemctl@"
+        "@gate@"
+        "@deliverUnit@"
+      ]
+      [
+        (lib.getExe luvus)
+        "${luvusJj}/bin/luvus-jj"
+        flock
+        git
+        "systemctl"
+        defaultGate
+        (lib.optionalString deliverEnabled deliverUnit)
+      ]
+      (builtins.readFile ../../../tools/luvus-ship.nu)
   );
 
   # Luvus Web prints a one-use pairing link at start. The unit writes its
@@ -156,6 +213,12 @@ let
     }
   '';
   autopilotExe = "${luvusAutopilot}/bin/luvus-autopilot";
+  autopilotPath = "${
+    lib.makeBinPath [
+      pkgs.git
+      pkgs.coreutils
+    ]
+  }:%h/.nix-profile/bin:/etc/profiles/per-user/%u/bin:/run/current-system/sw/bin";
   # `luvus-auto ID` marks a task for the watcher; `luvus-auto --off ID`
   # unmarks it, and its downstream tasks unless they are marked themselves.
   luvusAuto = pkgs.writeNuScriptBin "luvus-auto" ''
@@ -209,13 +272,45 @@ let
   '';
 in
 {
-  options.dotfiles.luvus.autopilot.enable = lib.mkOption {
-    type = lib.types.bool;
-    default = false;
-    description = ''
-      Run luvus-autopilot, which starts and merges luvus tasks marked with
-      `luvus-auto ID` and the tasks downstream of them.
-    '';
+  options.dotfiles.luvus.autopilot = {
+    enable = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Run luvus-autopilot, which starts and merges luvus tasks marked with
+        `luvus-auto ID` and the tasks downstream of them.
+      '';
+    };
+    repositories = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      example = [ "/home/schlich/dotfiles" ];
+      description = ''
+        Checkouts whose gated tasks the autopilot merges into
+        luvus/integration as soon as they are done, without `luvus-auto`.
+        Tasks already done when it first sees them stay a backlog.
+      '';
+    };
+    deliver = {
+      enable = lib.mkEnableOption ''
+        delivering luvus/integration to main from the autopilot, with
+        luvus-deliver and its mitigations, once the branch has been quiet
+        for `quiet`. Enable it on one host per repository'';
+      repository = lib.mkOption {
+        type = lib.types.str;
+        default = config.dotfiles.paths.dotfiles;
+        defaultText = lib.literalExpression "config.dotfiles.paths.dotfiles";
+        description = "The checkout whose luvus/integration the autopilot delivers.";
+      };
+      quiet = lib.mkOption {
+        type = lib.types.str;
+        default = "10min";
+        description = ''
+          How long luvus/integration must stay put before it is delivered, so
+          tasks merged together are delivered together. A Nushell duration.
+        '';
+      };
+    };
   };
 
   options.dotfiles.luvus.jjWorktrees.enable = lib.mkOption {
@@ -374,6 +469,7 @@ in
         # Task gates run `luvus-jj sync`, which does nothing outside a jj
         # task workspace, so it is installed either way.
         luvusJj
+        luvusShip
       ]
       ++ lib.optionals cfg.autopilot.enable [
         luvusAutopilot
@@ -430,24 +526,45 @@ in
       # Pause with `luvus-autopilot pause` or by clicking the bar widget.
       systemd.user.services.luvus-autopilot = lib.mkIf cfg.autopilot.enable {
         Unit = {
-          Description = "Start and merge opted-in luvus task chains";
+          Description = "Start and merge luvus tasks, and trigger deliveries";
           After = [ "luvus.service" ];
         };
         Service = {
           ExecStart = "${autopilotExe} run --module ${autopilotModule}";
           # luvus-task-start runs git; the rest is the user's own profile.
-          Environment = [
-            "PATH=${
-              lib.makeBinPath [
-                pkgs.git
-                pkgs.coreutils
-              ]
-            }:%h/.nix-profile/bin:/etc/profiles/per-user/%u/bin:/run/current-system/sw/bin"
-          ];
+          Environment = [ "PATH=${autopilotPath}" ];
           Restart = "always";
           RestartSec = "10s";
         };
         Install.WantedBy = [ "default.target" ];
+      };
+
+      # One delivery at a time: the autopilot starts this unit, and systemd
+      # never runs a second copy beside a running one. luvus-deliver waits up
+      # to two hours for nixbot and the canary, so the unit has no start
+      # timeout. Its output is in the journal and in the log file each run
+      # names under ~/.local/state/luvus-autopilot/logs/.
+      systemd.user.services.luvus-autodeliver = lib.mkIf deliverEnabled {
+        Unit = {
+          Description = "Deliver luvus/integration to main";
+          After = [ "luvus.service" ];
+        };
+        Service = {
+          Type = "exec";
+          ExecStart = "${autopilotExe} deliver";
+          # luvus-deliver pushes through gh's credential helper, asks nixbot's
+          # check runs with gh, and reaches canaries over ssh.
+          Environment = [
+            "PATH=${
+              lib.makeBinPath [
+                pkgs.gh
+                pkgs.openssh
+                pkgs.libnotify
+              ]
+            }:${autopilotPath}"
+            "SSH_AUTH_SOCK=%t/gcr/ssh"
+          ];
+        };
       };
 
       # The server keeps a linked module across restarts; this links the
@@ -487,13 +604,15 @@ in
             touch "$out"
           '';
 
-      # The watcher's decisions against fixture boards, without a server.
+      # The watcher's merge and delivery decisions against fixture boards,
+      # without a server, and luvus-ship parsed.
       dotfiles.tooling.checks.luvus-autopilot =
         pkgs.runCommand "luvus-autopilot-check" { nativeBuildInputs = [ pkgs.nushell ]; }
           ''
             export HOME="$TMPDIR/home"
             mkdir -p "$HOME"
             nu --no-config-file ${../../tooling/ai/tests/luvus-autopilot.nu} ${autopilotScript}
+            nu --no-config-file -c "nu-check --debug ${../../../tools/luvus-ship.nu}"
             touch "$out"
           '';
 

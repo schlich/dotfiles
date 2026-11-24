@@ -25,6 +25,7 @@ let
       jjCiWebhook = false;
       nixObservability = false;
       luvusAutopilot = false;
+      luvusDeliver = false;
       paseo = false;
       opencodeServer = false;
       t3code = false;
@@ -124,6 +125,11 @@ let
           t3code = true;
           # Its Luvus server, reachable from a browser like T3 Code.
           luvusWeb = true;
+          # Most agent sessions run here, so its autopilot merges their gated
+          # tasks and delivers them; as the canary, it then deploys them
+          # itself before anyone switches a workstation.
+          luvusAutopilot = true;
+          luvusDeliver = true;
           rex = true;
           crossStream = true;
         };
