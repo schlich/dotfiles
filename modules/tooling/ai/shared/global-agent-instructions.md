@@ -183,7 +183,9 @@ script, use valid Nushell syntax.
   hooks. A reporting job's log still raises
   `⚠ ALARM: LINE` for trouble it did not report, such as an evaluator
   that died; only a job that writes no reports, such as a bare
-  `nix build`, falls back to log lines that match its pattern. After five
+  `nix build`, falls back to log lines that match its pattern. For such a
+  job whose log is noisy, run `watch-job LOG --done-only`, which prints
+  only the `JOB:` and `DONE` lines. After five
   quiet minutes, and every five after that, a `⋯ STILL PHASE DURATION, quiet DURATION: LAST LINE` heartbeat says where the job is. If the
   Monitor expires before `DONE`, start the same command again; it resumes
   where the last one stopped. Without Monitor, check the done marker
