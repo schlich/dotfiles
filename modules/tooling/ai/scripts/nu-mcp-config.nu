@@ -36,11 +36,25 @@ if ($env.T3_FLEET_DIRENV? == "1") {
 # typed with `pst report` instead, which reaches the watcher as a record.
 # Capturing the closure's value would cost the streaming log and the exit
 # code of its last external command.
+#
+# With --rex, the closure runs in a Rex terminal instead, labelled
+# `job:LOG-NAME` in the Rex session `jobs`, which stays open after it exits:
+# its screen, exit code, and OSC 7501 records stay readable with
+# `rex capture -b job:LOG-NAME`, `rex wait`, and `nurx status` once the job
+# is over. Only the closure's source travels, to a fresh `nu -n`: it sees no
+# captured variables and none of this session's commands, so it suits
+# external programs such as `ci land` or `nix build`. The terminal's screen is
+# copied into LOG as it changes, and its reports still reach
+# `LOG.status.jsonl`, so `watch-job` follows it the same way.
 def job-log [
   log: path # Log file, usually in the session scratchpad
   task: closure # Work to run, ending in an external command or text; redirect nothing inside it
   --cwd: path # Directory to run in (default: the current one)
+  --rex # Run in a kept-open Rex terminal, job:LOG-NAME, so a failure can be read later
 ]: nothing -> record {
+  if $rex {
+    return (job-log-rex $log $task ($cwd | default $env.PWD))
+  }
   let log = ($log | path expand)
   let cwd = ($cwd | default $env.PWD | path expand)
   mkdir ($log | path dirname)
@@ -64,6 +78,77 @@ def job-log [
     job-event $"($topic).done" { outcome: $outcome }
   })
   { job: $id, log: $log }
+}
+
+# job-log --rex: the same files as job-log, from a job that runs in a Rex
+# terminal. A Nushell job here creates the terminal, copies its screen into
+# LOG every --interval until it exits, and writes the outcome from Rex's exit
+# status. Lines go to LOG once the next line starts, so a progress line that
+# keeps rewriting itself is copied in its final form.
+def job-log-rex [log: path, task: closure, cwd: path, --interval: duration = 2sec]: nothing -> record {
+  let log = ($log | path expand)
+  let cwd = ($cwd | path expand)
+  mkdir ($log | path dirname)
+  for suffix in [done.nuon status.jsonl seen] { rm --force $"($log).($suffix)" }
+  "" | save --force $log
+  let topic = $"job.(random uuid)"
+  # The closure's body: its source without the braces and an empty `||`.
+  let source = (view source $task | str trim | str replace --regex '^\{\s*(\|\s*\|)?' '' | str replace --regex '\}$' '' | str trim)
+  let name = $"job:($log | path basename)"
+  let label = ($source | str replace --all --regex '\s+' ' ' | str substring 0..<120)
+  { pid: $nu.pid, topic: $topic, task: $"rex ($name): ($label)", cwd: $cwd, started: (date now) } | save --force $"($log).job.nuon"
+
+  # One Rex session holds every job's terminal; create it, empty, if needed.
+  let sessions = (^rex ls --json | from json | get sessions)
+  if ($sessions | where label == jobs | is-empty) {
+    { label: jobs } | to json --raw | ^rex api call session.create - | ignore
+  }
+  # A rerun of the same log replaces its old terminal rather than leaving two
+  # with one label.
+  ^rex block ls -s jobs --json | from json | get blocks | where label? == $name | each {|b| ^rex block close -s jobs $b.block_id | complete } | ignore
+  let created = (^rex run -s jobs --label $name --keep-open --focus=false --cwd $cwd --json -- env $"PST_FILE=($log).status.jsonl" $nu.current-exe -n -c $source | from json)
+  let block = ($created.block_ids | first)
+
+  job-event $"($topic).start" { log: $log, cwd: $cwd, pid: $nu.pid, rex_block: $block }
+  let id = (job spawn --description ($log | path basename) {
+    let outcome = try {
+      follow-rex-block $log $block $name $interval
+    } catch {|err|
+      { exit_code: 1, rex_block: $block, error: $"job-log --rex: ($err.msg)" }
+    }
+    $outcome | save --force $"($log).done.nuon"
+    job-event $"($topic).done" { outcome: $outcome }
+  })
+  { job: $id, log: $log, rex: { session: jobs, block: $block, label: $name } }
+}
+
+# Copy a Rex job terminal's screen into LOG until its program exits, and
+# return the outcome for `LOG.done.nuon`.
+def follow-rex-block [log: path, block: string, name: string, interval: duration]: nothing -> record {
+    mut copied = 0
+    mut outcome: any = null
+    while $outcome == null {
+      # rex takes Go durations, such as 2000ms.
+      let waited = (^rex wait -s jobs --for $"($interval // 1ms)ms" --json $block | complete)
+      let ended = ($waited.stdout | str trim | is-not-empty)
+      let screen = (^rex capture -s jobs -b $block --trim --unwrap | complete | get stdout | lines)
+      # The last line may still change, until the terminal's program exits.
+      let ready = (if $ended { $screen | length } else { [(($screen | length) - 1) 0] | math max })
+      if $ready > $copied {
+        $screen | slice $copied..<$ready | each {|l| $"($l)\n" } | str join | save --append $log
+        $copied = $ready
+      }
+      if $ended {
+        let payload = ($waited.stdout | from json)
+        let code = ($payload.exit_code? | default $waited.exit_code)
+        $outcome = (if $code == 0 {
+          { exit_code: 0, rex_block: $block }
+        } else {
+          { exit_code: $code, rex_block: $block, error: $"kept in Rex: rex capture -s jobs -b ($name)" }
+        })
+      }
+    }
+    $outcome
 }
 
 # Announce a job event on the local cross.stream store, where `watch-job` and
