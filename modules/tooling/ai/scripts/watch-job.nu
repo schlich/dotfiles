@@ -270,13 +270,14 @@ def main [
   --interval: duration = 2sec # How often to read the files between job events
   --quiet-after: duration = 5min # How long without an event before each heartbeat
   --replay # Start from the beginning instead of the saved position
+  --no-cursor # Replay without changing the saved position for other watchers
   --done-only # Print only the JOB and DONE lines, for a noisy job that sends no status reports
 ] {
   let log = ($log | path expand)
   let cursor = $"($log).seen"
   let status = $"($log).status.jsonl"
   let job = (job-record $log)
-  mut seen = if $replay or not ($cursor | path exists) { { log: 0, status: 0 } } else { open $cursor | from nuon }
+  mut seen = if $replay or $no_cursor or not ($cursor | path exists) { { log: 0, status: 0 } } else { open $cursor | from nuon }
   mut last_event = (date now)
   mut last_line = if ($log | path exists) { last-text (open --raw $log | lines) } else { null }
   # A re-armed Monitor still times the phases it saw start, and names the
@@ -352,7 +353,7 @@ def main [
       }
       $events | each { print $in } | ignore
       if ($events | is-not-empty) { $last_event = (date now) }
-      $seen | to nuon | save --force $cursor
+      if not $no_cursor { $seen | to nuon | save --force $cursor }
       if $outcome != null {
         print (done-line $outcome $job.started)
         return
