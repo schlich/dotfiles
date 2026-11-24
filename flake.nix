@@ -768,6 +768,19 @@
               ${pkgs.nushell}/bin/nu --no-config-file ${./tests/staged-switch-units.nu} ${./deploy/switch.nu}
               touch "$out"
             '';
+        # system-switch's step tracker, journal/closure-diff parsers, and
+        # structured Nushell summary formatter.
+        nushell-system-switch =
+          pkgs.runCommand "nushell-system-switch-check"
+            {
+              nativeBuildInputs = [ pkgs.nushell ];
+            }
+            ''
+              export HOME="$TMPDIR/home"
+              mkdir -p "$HOME"
+              ${pkgs.nushell}/bin/nu --no-config-file ${./tests/system-switch.nu} ${./deploy/system-switch.nu}
+              touch "$out"
+            '';
         # The Mod+Slash keymap overlay replayed headlessly with `tui debug`.
         nushell-keymap =
           let
