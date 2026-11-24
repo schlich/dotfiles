@@ -166,10 +166,16 @@ luvus quality gate and nixbot build.
   `main`; others cannot be switched to.
 - `system-switch` applies GitHub's `main` without sudo through the
   `nixos-switch-main` unit, which polkit lets the user start, and prints the
-  switch's output and any failed units. After `luvus-deliver` moves `main`,
-  the agent that delivered runs `system-switch --with-home` on asus at once,
-  without asking, and reports the outcome; a delivery that changed no closure
-  creates no generation. Ask first only when the change needs manual steps
+  switch's output and any failed units. `system-switch HOST` names the host
+  it switches and works from any host: elsewhere it runs the switch on HOST
+  over ssh. Always name the host; a bare `system-switch` switches whichever
+  machine the session runs on, which is not always asus. After
+  `luvus-deliver` moves `main`, it ends by listing what each deployed host
+  still needs, by store path, with the command that applies it
+  (`luvus-deliver hosts` lists it again later). The agent that delivered
+  runs the command it gives for asus, `system-switch asus --with-home`, at
+  once, without asking, and reports the outcome; a host listed as up to date
+  needs nothing. Ask first only when the change needs manual steps
   before activation. A change to boot, storage, encryption, or security
   configuration switches like any other once `luvus-deliver`'s mitigations
   have passed, canary first included. Switch another host only when the user asks.

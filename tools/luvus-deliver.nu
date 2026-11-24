@@ -314,6 +314,8 @@ def classify [root: string, base: string, head: string] {
     hosts: $hosts
     inputs: $inputs
     canaries: ($den.reach?.canaries? | default {})
+    deployed: $deployed
+    destinations: ($den.reach?.destinations? | default {})
     files: ($files | select path status layout_only systems homes aspects policy_risk)
   }
 }
@@ -571,6 +573,136 @@ def wait-canaries [canaries: record, sha: string, since: string, deadline: datet
   } | flatten
 }
 
+# What each host should run at `rev`, by the store paths of its system and
+# of the standalone homes built for it, in one evaluation. Tests replace it
+# with LUVUS_DELIVER_CLOSURES, a JSON file of what this returns.
+const closures_expr = r#'
+let
+  outputs = builtins.getFlake "@flake@";
+  hosts = builtins.fromJSON ''@hosts@'';
+  homes = outputs.homeConfigurations or { };
+  homesOf = host: builtins.filter (name: builtins.match ".*@${host}" name != null) (builtins.attrNames homes);
+in
+builtins.listToAttrs (map (host: {
+  name = host;
+  value = {
+    system = outputs.nixosConfigurations.${host}.config.system.build.toplevel.outPath;
+    homes = builtins.listToAttrs (map (name: {
+      inherit name;
+      value = homes.${name}.activationPackage.outPath;
+    }) (homesOf host));
+  };
+}) hosts)
+'#
+
+def wanted-closures [root: string, rev: string, hosts: list<string>] {
+  if ($env.LUVUS_DELIVER_CLOSURES? | is-not-empty) {
+    return (open $env.LUVUS_DELIVER_CLOSURES)
+  }
+  let expr = ($closures_expr | str replace '@flake@' $"git+file://($root)?rev=($rev)" | str replace '@hosts@' ($hosts | to json --raw))
+  let result = (^nix eval --impure --json --expr $expr | complete)
+  if $result.exit_code != 0 {
+    let detail = ($result.stderr | lines | where {|line| $line =~ 'error' } | get -o 0 | default ($result.stderr | str trim))
+    error make { msg: $"evaluating the hosts at ($rev | str substring 0..11) failed: ($detail)" }
+  }
+  $result.stdout | from json
+}
+
+# What `generation --json` reports on a host: here directly, elsewhere over
+# ssh. Tests replace it with LUVUS_DELIVER_GENERATIONS, a JSON file of each
+# host's report, where a missing host is unreachable.
+def running-on [host: string, destination: string] {
+  if ($env.LUVUS_DELIVER_GENERATIONS? | is-not-empty) {
+    let report = (open $env.LUVUS_DELIVER_GENERATIONS | get -o $host)
+    return (if $report == null { { error: "unreachable (fixture)" } } else { $report })
+  }
+  let here = ($env.LUVUS_DELIVER_HOST? | default (sys host | get hostname))
+  let result = if $host == $here {
+    ^generation --json --offline | complete
+  } else {
+    ^timeout --kill-after=5 60 ssh -o BatchMode=yes -o ConnectTimeout=10 $destination generation --json --offline | complete
+  }
+  if $result.exit_code != 0 {
+    return { error: ($result.stderr | str trim | lines | last 1 | get -o 0 | default $"exit ($result.exit_code)") }
+  }
+  try { $result.stdout | from json } catch { { error: "generation printed no report" } }
+}
+
+# Whether a running system is the one `wanted` evaluates to. The staged
+# switch (deploy/switch.nu) builds it again under a label that ends in the
+# evaluated path's hash, so its running path differs but names that hash;
+# Clan deploys the evaluated path itself.
+def same-system [running, wanted: string] {
+  if $running == null { return false }
+  let hash = ($wanted | path basename | split row "-" | first)
+  $running == $wanted or ($running | str ends-with $"-($hash)")
+}
+
+# For each deployed host, what it still needs to run `rev`, and the command
+# that applies it. A host's system and this user's standalone home are
+# compared by store path with what `rev` builds, so a landing that changes
+# nothing a host runs leaves it up to date. A canary stages main by itself,
+# so it gets no command. `system-switch HOST` works from any host.
+def host-steps [root: string, rev: string, reach: record] {
+  let hosts = ($reach.deployed? | default [] | sort)
+  if ($hosts | is-empty) { return [] }
+  let wanted = (wanted-closures $root $rev $hosts)
+  let canaries = ($reach.canaries? | default {} | columns)
+  $hosts | each {|host|
+    let destination = ($reach.destinations? | default {} | get -o $host | default $host)
+    let command = $"system-switch ($host) --with-home"
+    let report = (running-on $host $destination)
+    let want = ($wanted | get -o $host)
+    if $report.error? != null {
+      { host: $host, state: unreachable, needs: [], command: $command, detail: $report.error }
+    } else if $want == null {
+      { host: $host, state: unknown, needs: [], command: null, detail: $"($rev | str substring 0..11) builds no system for it" }
+    } else {
+      let home = ($want.homes? | default {} | get -o $"($env.USER)@($host)")
+      let needs = (
+        (if not (same-system $report.system?.path? $want.system) { [system] } else { [] })
+        ++ (if $home != null and $report.home?.path? != $home { [home] } else { [] })
+      )
+      let generation = ($report.system?.generation? | default '?')
+      if ($needs | is-empty) {
+        { host: $host, state: current, needs: [], command: null, detail: $"generation ($generation)" }
+      } else if $host in $canaries and $home == null {
+        let detail = if ($report.system?.staged? | default false) { "staging it now" } else { "its own timer stages main" }
+        { host: $host, state: behind, needs: $needs, command: null, detail: $detail }
+      } else {
+        { host: $host, state: behind, needs: $needs, command: $command, detail: $"runs generation ($generation)" }
+      }
+    }
+  }
+}
+
+def steps-summary [steps: list, rev: string] {
+  let width = ($steps | get host | each { str length } | append 0 | math max)
+  let lines = ($steps | each {|step|
+    let name = ($step.host | fill --width $width)
+    match $step.state {
+      current => $"  ($name)  up to date \(($step.detail)\)"
+      unreachable => $"  ($name)  unreachable: ($step.detail); once it answers: ($step.command)"
+      unknown => $"  ($name)  ($step.detail)"
+      _ => {
+        let what = ($step.needs | str join ' and ')
+        if $step.command == null { $"  ($name)  needs its ($what): ($step.detail)" } else { $"  ($name)  needs its ($what) → ($step.command)" }
+      }
+    }
+  })
+  [$"What each host needs to run main at ($rev | str substring 0..11):"] ++ $lines | str join "\n"
+}
+
+# Print what each host needs after a delivery. Main has already moved, so a
+# failure here only says so.
+def report-hosts [root: string, rev: string, reach: record] {
+  try {
+    print (steps-summary (host-steps $root $rev $reach) $rev)
+  } catch {|err|
+    print $"Could not work out what each host needs: ($err.msg). Run `luvus-deliver hosts` to try again."
+  }
+}
+
 # Tell the owner after the fact that a high-risk delivery landed and what
 # mitigated it. A missing notifier never stops a delivery.
 def notify-landed [verdict: record] {
@@ -646,6 +778,19 @@ def "main risk" [
   }
   let verdict = (classify $at.root $at.main $at.sha)
   if $json { $verdict | to json } else { summary $verdict }
+}
+
+# Say what each deployed host still needs to run main, and the command that
+# applies it, as a delivery does once main has moved.
+def "main hosts" [
+  --repo: path = "." # Any checkout of the repository
+  --json             # Print the steps as JSON
+] {
+  let root = (^git -C $repo rev-parse --show-toplevel | str trim)
+  ^git -C $root fetch --quiet origin main
+  let rev = (^git -C $root rev-parse origin/main | str trim)
+  let steps = (host-steps $root $rev (den-reach $root $rev))
+  if $json { $steps | to json } else { steps-summary $steps $rev }
 }
 
 def main [
@@ -725,4 +870,5 @@ def main [
     record-verdict $verdict delivered
     notify-landed $verdict
   }
+  report-hosts $root $sha ($verdict | select deployed canaries destinations)
 }

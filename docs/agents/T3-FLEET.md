@@ -113,7 +113,7 @@ Where it is declared:
 ## One-time setup
 
 The configuration activates like any other: after delivery,
-`system-switch --with-home` on asus. homelab's home is part of its system
+`system-switch asus --with-home`, from any host. homelab's home is part of its system
 (`homeActivation = "embedded"` in `den/inventory.nix`), so its canary timer
 stages the home, the T3 Code server's user unit included, with each landing;
 nothing needs activating there by hand. The server finds its tools through

@@ -10,7 +10,7 @@
 Pick one and keep the matching sentence:
 **refactor**: No host's system or home closure changes, so delivering it creates no generation.
 **behavior**: Changes user-facing behavior. After `luvus-deliver` moves main,
-the agent that delivered switches asus with `system-switch --with-home`.
+the agent that delivered switches asus with `system-switch asus --with-home`.
 Create a NixOS generation only if the candidate system toplevel differs from
 the active system.
 **breaking**: Changes user-facing behavior and needs the manual steps below
