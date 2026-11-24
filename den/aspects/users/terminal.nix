@@ -40,7 +40,7 @@
     ../../../modules/tooling/terminals/rex.nix
     ../../../modules/tooling/editors/helix.nix
     ../../../modules/tooling/editors/zed.nix
-    ../../../modules/tooling/keymap-checks.nix
+    ../../../modules/tooling/keymap-checks
     ../../../modules/tooling/ai/shared/plugins.nix
     ../../../modules/tooling/ai/clients/t3code/t3code.nix
     ../../../modules/tooling/ai/clients/continuum-ide.nix
