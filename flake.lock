@@ -963,11 +963,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795558024,
-        "narHash": "sha256-UaO4S0lEIer8sQktyaUtSvUJu6LZAMSTYZEtfqD8Dn8=",
+        "lastModified": 1795558751,
+        "narHash": "sha256-S73Qfd8+o9l8ze1oZSTTfQci9cInIeHG1RJNVSPs0KE=",
         "owner": "schlich",
         "repo": "jj-graph",
-        "rev": "f72b76c79f236624509adbbb0ad36e67796391a9",
+        "rev": "a45eb4b11e80c195d7bc101c93354c8b100547c0",
         "type": "github"
       },
       "original": {
