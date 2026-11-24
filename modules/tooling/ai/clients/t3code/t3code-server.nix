@@ -102,7 +102,12 @@ let
   # while preserving any user-added servers.
   syncAntigravityKbMcp = pkgs.writeShellScript "t3code-antigravity-kb-mcp" ''
     set -euo pipefail
-    PATH=${lib.makeBinPath [ pkgs.coreutils ]}
+    PATH=${
+      lib.makeBinPath [
+        pkgs.coreutils
+        pkgs.diffutils
+      ]
+    }
     providers_dir="''${T3CODE_HOME:-$HOME/.t3}/userdata/providers/antigravity"
     [ -d "$providers_dir" ] || exit 0
     for profile in "$providers_dir"/*; do
