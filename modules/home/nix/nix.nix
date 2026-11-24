@@ -71,7 +71,7 @@ in
         update [INPUT...]
                     Update flake.lock, every input or the named ones, with
                     gh's GitHub token
-        build       Build an installable with nix-output-monitor (nom)
+        build       Build an installable with rom
         nh          Run nh with the supplied arguments
 
       Dependency and store inspection:
@@ -202,10 +202,10 @@ in
         run-step "Nix formatting" { ^nix fmt -- --check }
         run-step "Flake checks" { ^nix flake check path:. }
         run-step "Home Manager build" {
-          ^nom build path:.#homeConfigurations.schlich@asus.activationPackage
+          ^rom build path:.#homeConfigurations.schlich@asus.activationPackage
         }
         run-step "NixOS build" {
-          ^nom build path:.#nixosConfigurations.asus.config.system.build.toplevel
+          ^rom build path:.#nixosConfigurations.asus.config.system.build.toplevel
         }
         print "Nix validation passed."
       }
@@ -220,7 +220,7 @@ in
             if ($args | is-empty) {
               error make { msg: "build requires an installable, for example path:.#nixosConfigurations.asus.config.system.build.toplevel" }
             }
-            ^nom build ...$args
+            ^rom build ...$args
           }
           "nh" => (^nh ...$args)
           "tree" => (^nix-tree ...$args)
