@@ -31,10 +31,15 @@ let
   # (tools/discord-digest/README.md). The digest stays off until they exist.
   discordDigestSecret = ../../../secrets/discord-digest/env.age;
   discordDigestReady = builtins.pathExists discordDigestSecret;
+
+  gerritBackend = "127.0.0.1:8079";
+  gerritServePort = toString config.dotfiles.tailscale.https.gerrit.port;
+  tailscale = "${config.services.tailscale.package}/bin/tailscale";
 in
 {
   imports = [
     ./discord-digest.nix
+    ../fleet/tailscale-https.nix
     inputs.honeycomb.nixosModules.hub
     ./honeycomb-hub.nix
     ../../tooling/knowledge/kb-git/module.nix
@@ -51,6 +56,49 @@ in
   # Private Tailscale Serve HTTPS remote for ~/Research/kb so asus and homelab
   # sync without SSH keys or port-2222 plumbing.
   services.kb-git.enable = true;
+
+  dotfiles.tailscale.https.gerrit.port = 7446;
+  services.gerrit = {
+    enable = true;
+    serverId = "38daeb2c-94ab-4f2a-80d4-ea753c2e833e";
+    listenAddress = gerritBackend;
+    settings = {
+      gerrit.canonicalWebUrl = "https://${config.dotfiles.fleet.fqdn}:${gerritServePort}/";
+      httpd.listenUrl = "proxy-https://${gerritBackend}";
+      # Serve supplies the identity on the loopback-only backend.
+      auth = {
+        type = "HTTP";
+        httpHeader = "Tailscale-User-Login";
+        httpEmailHeader = "Tailscale-User-Login";
+        httpDisplaynameHeader = "Tailscale-User-Name";
+        httpTrustedProxyNetworks = "127.0.0.1/32";
+      };
+      # Git uses HTTPS through the same Serve endpoint.
+      sshd.listenAddress = "off";
+    };
+  };
+
+  systemd.services.gerrit-serve = {
+    description = "Publish Gerrit privately on the tailnet";
+    wantedBy = [ "multi-user.target" ];
+    requires = [
+      "gerrit.socket"
+      "tailscaled.service"
+    ];
+    after = [
+      "gerrit.socket"
+      "tailscaled.service"
+    ];
+    serviceConfig = {
+      Type = "simple";
+      ExecStartPre = config.dotfiles.tailscale.waitForBackend;
+      TimeoutStartSec = "2min";
+      ExecStart = "${tailscale} serve --https=${gerritServePort} http://${gerritBackend}";
+      ExecStop = "${tailscale} serve --https=${gerritServePort} off";
+      Restart = "on-failure";
+      RestartSec = "10s";
+    };
+  };
 
   services.discord-digest = lib.mkIf discordDigestReady {
     enable = true;

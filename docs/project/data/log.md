@@ -6,6 +6,8 @@ to the current day's group.
 
 ## 2026-11-23
 
+- **Homelab**: Configured private Gerrit with tailnet sign-in and Git over
+  HTTPS. Activation awaits delivery.
 - **Tooling**: Packaged the upstream Jujutsu description generator and added
   the `jj ai-describe` alias. It asks Claude Code (Haiku by default) instead of
   `llm`, so a Claude subscription covers it without API keys.
