@@ -87,6 +87,42 @@ def main [script: path] {
     run-sync $script --root $homelab --debounce 0sec --host homelab
     assert equal (git --git-dir $bare show main:index.md | str trim) "# Index\nversion asus"
 
+    # 6. Stale origin: asus's origin still points at the old remote while the
+    #    configured remote is a new, empty bare repo. kb-sync renames the old
+    #    remote out of the way, adds the configured one, and seeds it with main
+    #    even though main already tracks main@origin-old (jj refuses to create
+    #    an untracked remote bookmark without tracking it first).
+    let fresh = ($tmp | path join "fresh.git")
+    git init --bare --initial-branch=main $fresh | ignore
+    jj --no-pager -R $asus git fetch --remote origin | complete | ignore
+    jj --no-pager -R $asus new "main@origin" | complete | ignore
+    let stale = (run-sync $script --root $asus --remote-url $fresh --manual --host asus)
+    assert ($stale.stderr | str contains "renamed it to 'origin-old'") $"expected a stale-origin warning, got: ($stale.stderr)"
+    let remotes = (jj --no-pager -R $asus git remote list | lines | split column --regex '\s+' name url)
+    assert equal ($remotes | where name == origin | get 0.url) $fresh
+    assert equal ($remotes | where name == origin-old | get 0.url) $bare
+    assert equal (git --git-dir $fresh show main:index.md | str trim) "# Index\nversion asus"
+    # A later run with the same URL is a no-op for the remotes.
+    let steady = (run-sync $script --root $asus --remote-url $fresh --manual --host asus)
+    assert (not ($steady.stderr | str contains "renamed")) "remote should not be renamed twice"
+
+    # 7. A timer-mode push the remote rejects fails the run with a non-zero exit.
+    let hook = ($fresh | path join "hooks" "pre-receive")
+    "#!/bin/sh\necho rejected by test >&2\nexit 1\n" | save -f $hook
+    chmod +x $hook
+    "# Rejected\n" | save ($asus | path join "rejected.md")
+    let rejected = (nu --no-config-file $script --root $asus --remote-url $fresh --debounce 0sec --host asus | complete)
+    assert ($rejected.exit_code != 0) $"expected a failed timer push to exit non-zero, got: ($rejected)"
+    assert ($rejected.stderr | str contains "push failed") $"expected push failure on stderr, got: ($rejected.stderr)"
+
+    # 8. Lock contention on a timer run stays a clean exit.
+    let lock = ($tmp | path join ".asus.sync.lock")
+    let holder = (job spawn { ^flock $lock sleep 5 })
+    sleep 500ms
+    let busy = (nu --no-config-file $script --root $asus --remote-url $fresh --debounce 0sec --host asus | complete)
+    job kill $holder
+    assert equal $busy.exit_code 0 $"lock contention should exit 0, got: ($busy)"
+
     print "kb-sync-test: all cases passed"
   } catch {|err|
     rm -rf $tmp

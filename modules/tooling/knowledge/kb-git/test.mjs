@@ -164,7 +164,21 @@ try {
     "initial note",
   ]);
 
-  // First sync auto-adds origin from --remote-url and seeds main from @-.
+  // asus predates the Tailscale remote: its origin still points elsewhere.
+  const staleBare = path.join(tmp, "stale.git");
+  await execClean("git", ["init", "--bare", "--initial-branch=main", staleBare]);
+  await execClean("jj", [
+    "--no-pager",
+    "-R",
+    asus,
+    "git",
+    "remote",
+    "add",
+    "origin",
+    staleBare,
+  ]);
+
+  // First sync replaces the stale origin with --remote-url and seeds main from @-.
   await runNu(
     "--root",
     asus,
@@ -174,6 +188,20 @@ try {
     "--host",
     "asus",
   );
+
+  const { stdout: remoteList } = await execFileAsync(
+    "jj",
+    ["--no-pager", "-R", asus, "git", "remote", "list"],
+    { env: testEnv },
+  );
+  const remotes = Object.fromEntries(
+    remoteList
+      .trim()
+      .split("\n")
+      .map((l) => l.trim().split(/\s+/)),
+  );
+  assert.equal(remotes.origin, remoteUrl, "origin should be the configured URL");
+  assert.equal(remotes["origin-old"], staleBare, "stale origin kept as origin-old");
 
   // Verify on-push hook fired.
   for (let i = 0; i < 40 && !fs.existsSync(pushMarker); i++) {
