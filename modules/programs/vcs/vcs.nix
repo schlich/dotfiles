@@ -81,6 +81,8 @@ in
     ];
     ui.diff-editor = "oyui";
     ui.diff-instructions = false;
+    ui.merge-editor = "kdiff3";
+    merge-tools.kdiff3.program = lib.getExe pkgs.kdiff3;
     merge-tools.oyui = {
       program = "oyui";
       edit-args = [
