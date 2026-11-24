@@ -34,7 +34,7 @@ let
 
   gerritBackend = "127.0.0.1:8079";
   gerritServePort = toString config.dotfiles.tailscale.https.gerrit.port;
-  tailscale = "${config.services.tailscale.package}/bin/tailscale";
+  tailscaleServe = config.dotfiles.tailscale.serve;
 in
 {
   imports = [
@@ -93,8 +93,8 @@ in
       Type = "simple";
       ExecStartPre = config.dotfiles.tailscale.waitForBackend;
       TimeoutStartSec = "2min";
-      ExecStart = "${tailscale} serve --https=${gerritServePort} http://${gerritBackend}";
-      ExecStop = "${tailscale} serve --https=${gerritServePort} off";
+      ExecStart = "${tailscaleServe} serve --https=${gerritServePort} http://${gerritBackend}";
+      ExecStop = "${tailscaleServe} serve --https=${gerritServePort} off";
       Restart = "on-failure";
       RestartSec = "10s";
     };
