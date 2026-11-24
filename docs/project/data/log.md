@@ -6,6 +6,8 @@ to the current day's group.
 
 ## 2026-11-23
 
+- **Version control**: Configured KDiff3 for `jj resolve` to show the common
+  ancestor, both sides, and the editable merge result together.
 - **Architecture**: [Delivery risk](architecture/delivery-risk.md) no longer
   holds a delivery for approval. A high-risk verdict names mitigations that run
   in its place: secret recipients, ruleset guarantees, the boot menu's rollback,
