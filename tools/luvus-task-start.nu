@@ -7,11 +7,14 @@
 # only when the pane shows Nushell's parse error, so it does nothing once luvus
 # launches workers in Nushell syntax itself.
 #
-# luvus also bases a task's worktree on this checkout's own `main`, which can
-# lag `origin/main`; when it finishes the launch, this first moves a still
-# empty worktree to `luvus/integration`, which holds every merged task, so a
-# task builds on its dependencies before they are delivered. It falls back to
-# `origin/main` when the integration branch is missing or lacks `origin/main`.
+# luvus's own Git provider also bases a task's worktree on this checkout's own
+# `main`, which can lag `origin/main`; when it finishes the launch, this first
+# moves a still empty worktree to `luvus/integration`, which holds every merged
+# task, so a task builds on its dependencies before they are delivered. It
+# falls back to `origin/main` when the integration branch is missing or lacks
+# `origin/main`. luvus-jj's provider already starts a jj repository's task
+# there, short of a fetch since; Git's reset then moves the jj workspace with
+# it, and jj follows on its next command.
 
 const NU_LAUNCH = 'run-external $env.LUVUS_BIN_PATH __task-worker'
 # The packaged luvus, substituted at build time.

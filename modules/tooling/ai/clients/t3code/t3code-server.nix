@@ -30,6 +30,41 @@ let
   unit = "t3code-server.service";
   jq = lib.getExe pkgs.jq;
 
+  watchProjectJob = pkgs.writeNuScriptBin "watch-project-job" (
+    builtins.readFile ../../scripts/watch-project-job.nu
+  );
+  jobsAction = {
+    id = "dotfiles-jobs";
+    name = "Jobs";
+    command = "${watchProjectJob}/bin/watch-project-job";
+    icon = "configure";
+    runOnWorktreeCreate = false;
+  };
+  # T3 owns this writable file. Update only our action, before the server
+  # reads it, and leave existing project overrides and other actions alone.
+  syncJobsAction = pkgs.writeShellScript "t3code-sync-jobs-action" ''
+    set -euo pipefail
+    PATH=${lib.makeBinPath [ pkgs.coreutils ]}
+    umask 077
+    settings="$1"
+    mkdir -p "$(dirname "$settings")"
+    tmp="$(mktemp "$settings.XXXXXX")"
+    trap 'rm -f "$tmp"' EXIT
+    if [ -e "$settings" ]; then
+      input="$settings"
+    else
+      input=${pkgs.writeText "t3code-empty-settings.json" "{}"}
+    fi
+    ${jq} -e --argjson action ${lib.escapeShellArg (builtins.toJSON jobsAction)} '
+      .defaultProjectScripts |= ((. // []) |
+        if any(.[]; .id == $action.id)
+        then map(if .id == $action.id then $action else . end)
+        else . + [$action]
+        end)
+    ' "$input" > "$tmp"
+    mv -f "$tmp" "$settings"
+  '';
+
   # Agents run their commands in non-interactive bash (`bash -c`), which
   # reads BASH_ENV first. This loads the direnv environment of the command's
   # directory, as an interactive shell's hook would, so a command sees its
@@ -102,7 +137,12 @@ let
   # while preserving any user-added servers.
   syncAntigravityKbMcp = pkgs.writeShellScript "t3code-antigravity-kb-mcp" ''
     set -euo pipefail
-    PATH=${lib.makeBinPath [ pkgs.coreutils ]}
+    PATH=${
+      lib.makeBinPath [
+        pkgs.coreutils
+        pkgs.diffutils
+      ]
+    }
     providers_dir="''${T3CODE_HOME:-$HOME/.t3}/userdata/providers/antigravity"
     [ -d "$providers_dir" ] || exit 0
     for profile in "$providers_dir"/*; do
@@ -347,7 +387,10 @@ in
         X-SwitchMethod = "keep-old";
       };
       Service = {
-        ExecStartPre = lib.optional (kbMcpCommand != null) "${syncAntigravityKbMcp}";
+        ExecStartPre = [
+          "-${syncJobsAction} ${baseDir}/userdata/settings.json"
+        ]
+        ++ lib.optional (kbMcpCommand != null) "${syncAntigravityKbMcp}";
         ExecStart = "${serve} --host 127.0.0.1 --port ${port} --base-dir ${baseDir}";
         ExecStartPost = "${clearStamp} ${outageStamp}";
         WorkingDirectory = "%h";

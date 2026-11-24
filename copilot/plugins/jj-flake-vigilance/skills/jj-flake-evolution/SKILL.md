@@ -7,8 +7,9 @@ description: Repository workflow for evolving this flake with jj discipline, Git
 
 This skill is the repeatable workflow for **flake and host evolution in schlich/dotfiles**.
 
-> Superseded: schlich/dotfiles now takes writes through Git and luvus. Follow
-> its `AGENTS.md` (Version control, Delivery) where this skill says otherwise.
+> Superseded: schlich/dotfiles now makes changes with jj in luvus task
+> workspaces and delivers them as Git branches through luvus. Follow its
+> `AGENTS.md` (Version control, Delivery) where this skill says otherwise.
 
 ## Project context
 

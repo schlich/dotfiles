@@ -1,10 +1,13 @@
 # Deliver luvus's integration branch to main. First it works out how risky
 # the delivery is from which hosts each changed file reaches and which paths
-# it changes. A high-risk delivery stops before anything is pushed until the
-# owner approves that exact commit (`--approve REV`). Then
-# it pushes the branch to GitHub, waits for nixbot's checks on that commit,
-# and moves main to it. The main-checks ruleset admits only a commit whose
-# nixbot checks passed, and GitHub refuses a push that is not a
+# it changes. A high-risk delivery never waits for a person: its verdict
+# names the mitigations that must pass instead, and a failed mitigation fails
+# the delivery like a failed check. Those that judge the commit run before
+# anything is pushed; canary-first runs once main has moved, so the
+# delivering agent switches no other host until the canary has deployed the
+# commit. Then it pushes the branch to GitHub, waits for nixbot's checks on
+# that commit, and moves main to it. The main-checks ruleset admits only a
+# commit whose nixbot checks passed, and GitHub refuses a push that is not a
 # fast-forward, so this never rewrites main. It waits for homelab to build,
 # so agents run it as a `job-log` job.
 
@@ -12,10 +15,25 @@
 # LUVUS_DELIVER_DEN, a JSON file of what den-reach.nix returns.
 const default_reach = "@reach@"
 
-# Changed paths that always need the owner's approval: secrets, the
-# host-local hardware, storage, and key files, and what gates main, the
-# ruleset and this classifier with the Den reach it reads.
-const approval_paths = ['^secrets/' '^hosts/' '^\.github/rulesets/' '^tools/luvus-deliver\.nu$' '^tools/den-reach\.nix$']
+# Changed paths that carry a mitigation whatever hosts they reach: secrets
+# and the keys they are encrypted to, host-local hardware, storage, and boot
+# files, what gates main, and this classifier with the Den reach it reads.
+# A change under hosts/NAME/ also checks that NAME's boot menu keeps earlier
+# generations (boot-rollback).
+const guarded_paths = [
+  { pattern: '^secrets/', mitigation: secret-recipients }
+  { pattern: '^hosts/login-keys\.nix$', mitigation: secret-recipients }
+  { pattern: '^hosts/', mitigation: canary-first }
+  { pattern: '^\.github/rulesets/', mitigation: ruleset-guarantees }
+  { pattern: '^tools/luvus-deliver\.nu$', mitigation: classifier-stricter }
+  { pattern: '^tools/den-reach\.nix$', mitigation: classifier-stricter }
+]
+
+# The mitigations this classifier knows, in the order they run.
+const known_mitigations = [classifier-stricter secret-recipients ruleset-guarantees boot-rollback canary-first]
+
+# A boot menu shorter than this leaves too little to roll back to.
+const min_boot_generations = 3
 
 # The files a delivery changes, with their line counts; a binary file has
 # none.
@@ -223,12 +241,23 @@ def policy-risk [found: record, risks: record] {
   if ($ranks | is-empty) { null } else { $risk_levels | get ($ranks | math max) }
 }
 
-# How risky delivering `head` onto `base` is, and why. A delivery is high
-# risk, and needs the owner's approval, when it changes a path that always
-# needs approval, when it reaches several deployed hosts through
-# configuration den/model/policy.nix rates high or critical, and when which
-# hosts it reaches cannot be worked out. It is low when no host runs
-# anything it changes, and medium otherwise.
+# One entry per mitigation, with every reason that asked for it and the
+# hosts it concerns.
+def gather [found: list] {
+  $known_mitigations | each {|id|
+    let asked = ($found | where id == $id)
+    if ($asked | is-empty) { null } else {
+      { id: $id, why: ($asked | get why | uniq), hosts: ($asked | get hosts | flatten | uniq | sort) }
+    }
+  } | compact
+}
+
+# How risky delivering `head` onto `base` is, why, and what mitigates it. A
+# delivery is high risk when it changes a guarded path, when it reaches
+# several deployed hosts through configuration den/model/policy.nix rates
+# high or critical, and when which hosts it reaches cannot be worked out;
+# each of those names the mitigations that must pass. It is low when no
+# host runs anything it changes, and medium otherwise.
 def classify [root: string, base: string, head: string] {
   let files = (changed-files $root $base $head)
   let refs = (references $root $head)
@@ -254,24 +283,37 @@ def classify [root: string, base: string, head: string] {
   let deployed = ($den.reach?.deployed? | default [])
   let hosts = ($files | each {|file| $file.systems ++ ($file.homes | each { split row "@" | last }) } | flatten | uniq | where {|host| $host in $deployed } | sort)
 
-  let reasons = (
+  let known_hosts = if $den.reach? != null { $den.reach.systems | columns } else { [] }
+
+  let found = (
     []
-    | append (if $den.error? != null { [$"which hosts it reaches is unknown: ($den.error)"] } else { [] })
+    # Den could not say what it reaches, so it may reach every host: the
+    # canary deploys it before any other host does.
+    | append (if $den.error? != null { [{ id: canary-first, why: $"which hosts it reaches is unknown: ($den.error)", hosts: [] }] } else { [] })
     # Several hosts count through configuration den/model/policy.nix rates
     # high or critical, such as deployment or servers.
     | append ($files | where {|file|
       $file.policy_risk in [high critical] and (($file.systems ++ ($file.homes | each { split row "@" | last })) | uniq | where {|host| $host in $deployed } | length) >= 2
-    } | each {|file| $"($file.path) reaches several hosts through ($file.policy_risk)-risk configuration" })
-    | append ($files | where {|file| $approval_paths | any {|pattern| $file.path =~ $pattern } } | each {|file| $"($file.path) always needs approval" })
+    } | each {|file| { id: canary-first, why: $"($file.path) reaches several hosts through ($file.policy_risk)-risk configuration", hosts: [] } })
+    | append ($files | each {|file|
+      $guarded_paths | where {|guard| $file.path =~ $guard.pattern } | each {|guard| { id: $guard.mitigation, why: $"($file.path) is guarded", hosts: [] } }
+    } | flatten)
+    | append ($files | each {|file|
+      let host = ($file.path | parse --regex '^hosts/(?<host>[^/]+)/' | get -o 0.host)
+      if $host != null and $host in $known_hosts { [{ id: boot-rollback, why: $"($file.path) is ($host)'s own configuration", hosts: [$host] }] } else { [] }
+    } | flatten)
   )
+  let mitigations = (gather $found)
   let reaches_hosts = ($files | any {|file| ($file.systems | is-not-empty) or ($file.homes | is-not-empty) })
   {
     base: $base
     head: $head
-    risk: (if ($reasons | is-not-empty) { "high" } else if not $reaches_hosts { "low" } else { "medium" })
-    reasons: $reasons
+    risk: (if ($mitigations | is-not-empty) { "high" } else if not $reaches_hosts { "low" } else { "medium" })
+    reasons: ($mitigations | get -o why | default [] | flatten | uniq)
+    mitigations: $mitigations
     hosts: $hosts
     inputs: $inputs
+    canaries: ($den.reach?.canaries? | default {})
     files: ($files | select path status layout_only systems homes aspects policy_risk)
   }
 }
@@ -280,7 +322,263 @@ def summary [verdict: record] {
   let short = ($verdict.head | str substring 0..11)
   let reach = if ($verdict.hosts | is-empty) { "no deployed host" } else { $verdict.hosts | str join ", " }
   let why = ($verdict.reasons | each {|reason| $"\n  - ($reason)" } | str join "")
-  $"Risk of delivering ($short): ($verdict.risk); it reaches ($reach).($why)"
+  let plan = if ($verdict.mitigations | is-empty) { "" } else {
+    $"\nMitigations: ($verdict.mitigations | get id | str join ', ')"
+  }
+  $"Risk of delivering ($short): ($verdict.risk); it reaches ($reach).($why)($plan)"
+}
+
+# The files of `paths` at `rev`, in a new temporary directory.
+def extract [root: string, rev: string, paths: list<string>] {
+  let dir = (mktemp --directory)
+  let present = ($paths | where {|path| (^git -C $root cat-file -e $"($rev):($path)" | complete).exit_code == 0 })
+  if ($present | is-not-empty) {
+    ^git -C $root archive --format=tar $rev ...$present | ^tar -x -C $dir
+  }
+  $dir
+}
+
+# The recipient stanzas of an age file's header: `-> TYPE ARGS...` lines
+# before the `---` MAC line. An armored file is read as its decoded body.
+def age-stanzas [file: path] {
+  let raw = (open --raw $file | into binary)
+  let end = ($raw | bytes index-of 0x[0a 2d 2d 2d 20])
+  if $end < 0 { return null }
+  $raw | bytes at 0..<$end | decode utf-8 | lines | where {|line| $line starts-with "-> " } | each {|line| $line | str substring 3.. | split row " " }
+}
+
+# The tag age writes in an ssh-ed25519 or ssh-rsa stanza: the first four
+# bytes of the SHA-256 of the key's wire encoding, in unpadded base64.
+def ssh-tag [key: string] {
+  $key | split row " " | get 1 | decode base64 | hash sha256 --binary | bytes at 0..3 | encode base64 | str trim --right --char "="
+}
+
+# secret-recipients: every age file under secrets/ at `head` is declared in
+# secrets/secrets.nix and encrypted to exactly the keys it declares, read
+# from each file's header without decrypting it. A forgotten rekey, a key
+# dropped from a file, or a file nobody declared fails it.
+def check-secrets [root: string, head: string] {
+  let dir = (extract $root $head [secrets hosts])
+  let declared = (^nix-instantiate --eval --strict --json --store dummy:// ($dir | path join secrets secrets.nix) | complete)
+  let problems = if $declared.exit_code != 0 {
+    [$"secrets/secrets.nix does not evaluate: ($declared.stderr | lines | where {|line| $line =~ 'error' } | get -o 0 | default ($declared.stderr | str trim))"]
+  } else {
+    let declared = ($declared.stdout | from json)
+    ^git -C $root ls-tree -r --name-only $head secrets | lines | where {|path| $path ends-with ".age" } | each {|path|
+      let name = ($path | str substring 8..)
+      let keys = ($declared | get -o $name | get -o publicKeys)
+      let stanzas = (age-stanzas ($dir | path join $path))
+      if $keys == null {
+        [$"($path) is not declared in secrets/secrets.nix"]
+      } else if $stanzas == null {
+        [$"($path) has no age header"]
+      } else {
+        let want = ($keys | each {|key| if ($key | str starts-with "age1") { "X25519" } else { $"($key | split row ' ' | first) (ssh-tag $key)" } } | sort)
+        # age adds a grease stanza of a made-up type to every header.
+        let have = ($stanzas | where {|s| ($s | first) in [X25519 ssh-ed25519 ssh-rsa] } | each {|s| if ($s | first) == "X25519" { "X25519" } else { $"($s | first) ($s | get 1)" } } | sort)
+        if $want == $have { [] } else { [$"($path) is encrypted to ($have | str join ', '), but secrets.nix declares ($want | str join ', '); rekey it with agenix"] }
+      }
+    } | flatten
+  }
+  rm --recursive --force $dir
+  $problems
+}
+
+# ruleset-guarantees: the main-checks ruleset at `head` still guards main as
+# it did at `base`: active on the default branch, no bypass actors, no
+# deleting or rewriting main, and both nixbot checks required from the same
+# GitHub App.
+def check-ruleset [root: string, base: string, head: string] {
+  let file = ".github/rulesets/main-checks.json"
+  let read = {|rev| let shown = (^git -C $root show $"($rev):($file)" | complete); if $shown.exit_code == 0 { try { $shown.stdout | from json } catch { null } } else { null } }
+  let after = (do $read $head)
+  if $after == null { return [$"($file) is missing or not JSON"] }
+  let before = (do $read $base)
+  let required = ($after.rules? | default [] | where type == required_status_checks | get -o 0.parameters.required_status_checks | default [])
+  let app = {|rules, context| $rules | where context == $context | get -o 0.integration_id }
+  let earlier = ($before.rules? | default [] | where type == required_status_checks | get -o 0.parameters.required_status_checks | default [])
+  let types = ($after.rules? | default [] | get type)
+  [
+    (if $after.enforcement? != "active" { "it is not active" })
+    (if "~DEFAULT_BRANCH" not-in ($after.conditions?.ref_name?.include? | default []) { "it no longer covers the default branch" })
+    (if ($after.bypass_actors? | default [] | is-not-empty) { "it has bypass actors" })
+    (if "deletion" not-in $types { "it no longer blocks deleting main" })
+    (if "non_fast_forward" not-in $types { "it no longer blocks rewriting main" })
+    ...([nixbot/nix-eval nixbot/nix-build] | each {|context|
+      let id = (do $app $required $context)
+      let was = (do $app $earlier $context)
+      if $id == null { $"it no longer requires ($context)" } else if $was != null and $id != $was { $"($context) is required from App ($id) instead of ($was)" }
+    })
+  ] | compact | each {|problem| $"($file): ($problem)" }
+}
+
+# What each host's boot loaders keep at `rev`: for limine, systemd-boot,
+# and grub, whether it is enabled and how many generations its menu keeps
+# (null for all). Tests replace the evaluation with LUVUS_DELIVER_LOADERS.
+def loaders [root: string, rev: string, host: string] {
+  if ($env.LUVUS_DELIVER_LOADERS? | is-not-empty) {
+    return (open $env.LUVUS_DELIVER_LOADERS | get $host)
+  }
+  let apply = 'l: map (n: { loader = n; enable = l.${n}.enable or false; limit = l.${n}.maxGenerations or (l.${n}.configurationLimit or null); }) [ "limine" "systemd-boot" "grub" ]'
+  let result = (^nix eval --json $"git+file://($root)?rev=($rev)#nixosConfigurations.($host).config.boot.loader" --apply $apply | complete)
+  if $result.exit_code != 0 {
+    error make { msg: ($result.stderr | lines | where {|line| $line =~ 'error' } | get -o 0 | default ($result.stderr | str trim)) }
+  }
+  $result.stdout | from json
+}
+
+# boot-rollback: a change to a host's own hardware, storage, or boot files
+# leaves its boot menu with earlier generations to roll back to. The staged
+# switch keeps the boot default until the host's watch passes; this makes
+# sure a host that then fails to boot can still choose the one before.
+def check-boot [root: string, head: string, hosts: list<string>] {
+  $hosts | each {|host|
+    let found = (try { { loaders: (loaders $root $head $host) } } catch {|err| { error: $err.msg } })
+    if $found.error? != null {
+      [$"($host)'s boot loader could not be evaluated: ($found.error)"]
+    } else {
+      let enabled = ($found.loaders | where enable)
+      if ($enabled | is-empty) {
+        [$"($host) enables none of limine, systemd-boot, or grub, so its boot menu cannot be checked"]
+      } else {
+        $enabled | where {|l| $l.limit != null and $l.limit < $min_boot_generations } | each {|l| $"($host)'s ($l.loader) keeps only ($l.limit) generations; keep at least ($min_boot_generations) to roll back" }
+      }
+    }
+  } | flatten
+}
+
+# classifier-stricter: the classifier `head` brings judges the delivery as
+# well, with its own Den reach, and every mitigation either asks for runs.
+# So a change cannot relax the classifier that judges it, and one that adds
+# a mitigation applies it at once. Its own mitigations must be ones this
+# classifier knows how to run.
+def check-classifier [root: string, branch: string, head: string] {
+  let dir = (extract $root $head [tools/luvus-deliver.nu tools/den-reach.nix])
+  let script = ($dir | path join tools luvus-deliver.nu)
+  let result = if ($script | path exists) {
+    let reach = ($dir | path join tools den-reach.nix)
+    let env_reach = if ($reach | path exists) { { LUVUS_DELIVER_REACH: $reach } } else { {} }
+    with-env $env_reach { ^$nu.current-exe --no-config-file $script risk --repo $root --branch $branch --json | complete }
+  } else { { exit_code: 1, stderr: "it deletes tools/luvus-deliver.nu" } }
+  rm --recursive --force $dir
+  if $result.exit_code != 0 {
+    return { problems: [$"the new classifier could not judge this delivery: ($result.stderr | lines | where {|line| $line =~ '(?i)error|msg' } | get -o 0 | default ($result.stderr | str trim))"], mitigations: [] }
+  }
+  let theirs = (try { $result.stdout | from json | get -o mitigations | default [] } catch { null })
+  if $theirs == null { return { problems: ["the new classifier's verdict is not JSON"], mitigations: [] } }
+  let unknown = ($theirs | get -o id | default [] | where {|id| $id not-in $known_mitigations })
+  {
+    problems: ($unknown | each {|id| $"the new classifier asks for ($id), which the installed one cannot run yet; deliver the classifier first, then the change that needs it" })
+    mitigations: ($theirs | where {|m| $m.id in $known_mitigations } | each {|m| { id: $m.id, why: ($m.why | each {|w| $"new classifier: ($w)" }), hosts: ($m.hosts? | default []) } })
+  }
+}
+
+# Run every mitigation that judges the commit itself, before anything is
+# pushed. Returns the verdict with the classifier's plan merged in and each
+# mitigation's outcome; a failure stops the delivery.
+def mitigate-before [root: string, branch: string, verdict: record] {
+  mut plan = $verdict.mitigations
+  mut outcomes = []
+  if "classifier-stricter" in ($plan | get id) {
+    let judged = (check-classifier $root $branch $verdict.head)
+    $outcomes = ($outcomes | append { id: classifier-stricter, ok: ($judged.problems | is-empty), problems: $judged.problems })
+    $plan = (gather ($plan ++ $judged.mitigations | each {|m| $m.why | each {|why| { id: $m.id, why: $why, hosts: $m.hosts } } } | flatten))
+  }
+  let ids = ($plan | get -o id | default [])
+  if "secret-recipients" in $ids {
+    let problems = (check-secrets $root $verdict.head)
+    $outcomes = ($outcomes | append { id: secret-recipients, ok: ($problems | is-empty), problems: $problems })
+  }
+  if "ruleset-guarantees" in $ids {
+    let problems = (check-ruleset $root $verdict.base $verdict.head)
+    $outcomes = ($outcomes | append { id: ruleset-guarantees, ok: ($problems | is-empty), problems: $problems })
+  }
+  if "boot-rollback" in $ids {
+    let problems = (check-boot $root $verdict.head ($plan | where id == boot-rollback | get 0.hosts))
+    $outcomes = ($outcomes | append { id: boot-rollback, ok: ($problems | is-empty), problems: $problems })
+  }
+  if "canary-first" in $ids and ($verdict.canaries | is-empty) {
+    $outcomes = ($outcomes | append { id: canary-first, ok: false, problems: ["no canary host is known to deploy it first"] })
+  }
+  for outcome in $outcomes {
+    print $"(if $outcome.ok { '✓' } else { '✗' }) ($outcome.id)($outcome.problems | each {|p| $"\n    ($p)" } | str join '')"
+  }
+  $verdict | merge { mitigations: $plan, outcomes: $outcomes }
+}
+
+# The canary's view of `sha`: deployed once its recorded running system came
+# from that revision, or a later one that produced the same system; failed
+# once it reverted or rejected it; otherwise still waiting.
+def canary-state [host: string, destination: string, sha: string, since: string] {
+  # A delivery run on the canary itself asks it directly, not over ssh.
+  let here = ($env.LUVUS_DELIVER_HOST? | default (sys host | get hostname))
+  let ssh = if $host == $here {
+    {|args: list| ^($args | first) ...($args | skip 1 | each {|arg| $arg | str trim --char "'" }) | complete }
+  } else {
+    {|args: list| ^timeout --kill-after=5 60 ssh -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 $destination ...$args | complete }
+  }
+  # Quoted, since the remote login shell parses the command line.
+  let reverts = (do $ssh [deploy-reverts --json --since $"'($since)'"])
+  if $reverts.exit_code != 0 { return { state: unreachable, detail: ($reverts.stderr | str trim | lines | last 1 | get -o 0 | default "") } }
+  let reverted = (try { $reverts.stdout | from json | where {|row| $row.rev? == $sha } } catch { [] })
+  if ($reverted | is-not-empty) {
+    let row = ($reverted | last)
+    return { state: failed, detail: $"($row.phase? | default 'watch') breached ($row.breached? | default [] | str join ', '); report ($row.report? | default '')" }
+  }
+  let report = (do $ssh [generation --json])
+  if $report.exit_code != 0 { return { state: unreachable, detail: ($report.stderr | str trim | lines | last 1 | get -o 0 | default "") } }
+  let report = (try { $report.stdout | from json } catch { null })
+  if $report == null { return { state: waiting, detail: "no report" } }
+  let source = ($report.source? | default {})
+  let ran = [($source.rev? | default "") ($source.matches_through?.rev? | default "")]
+  if $sha in $ran and not ($report.system?.staged? | default false) {
+    { state: deployed, detail: $"generation ($report.system?.generation? | default '?')" }
+  } else {
+    { state: waiting, detail: (if ($report.system?.staged? | default false) { "staging" } else { "not deployed yet" }) }
+  }
+}
+
+# canary-first: once main has moved, wait until every canary has staged the
+# commit through its own health watch and made it the boot default, before
+# the delivering agent switches any other host. A canary that reverts it,
+# or that cannot be reached until the deadline, fails the delivery, so no
+# other host is switched to it.
+def wait-canaries [canaries: record, sha: string, since: string, deadline: datetime, poll: duration] {
+  let short = ($sha | str substring 0..11)
+  $canaries | transpose host destination | each {|canary|
+    mut done = false
+    mut result = []
+    mut last = ""
+    while not $done {
+      let state = (canary-state $canary.host $canary.destination $sha $since)
+      if $state.state == deployed {
+        print $"✓ canary-first: ($canary.host) deployed ($short) \(($state.detail)\)."
+        $done = true
+      } else if $state.state == failed {
+        $result = [$"($canary.host) reverted ($short): ($state.detail)"]
+        $done = true
+      } else if (date now) > $deadline {
+        $result = [$"($canary.host) had not deployed ($short) by the deadline: ($state.state), ($state.detail)"]
+        $done = true
+      } else {
+        let line = $"Waiting for canary ($canary.host) to deploy ($short): ($state.state), ($state.detail)."
+        if $line != $last { print $line }
+        $last = $line
+        sleep $poll
+      }
+    }
+    $result
+  } | flatten
+}
+
+# Tell the owner after the fact that a high-risk delivery landed and what
+# mitigated it. A missing notifier never stops a delivery.
+def notify-landed [verdict: record] {
+  if $verdict.risk != "high" { return }
+  let short = ($verdict.head | str substring 0..11)
+  try {
+    ^notify-send --app-name luvus-deliver $"High-risk delivery landed: ($short)" $"Mitigated by ($verdict.mitigations | get id | str join ', '). Review it in risk.jsonl." | complete | ignore
+  }
 }
 
 def ledger [] {
@@ -288,8 +586,10 @@ def ledger [] {
   $env.LUVUS_DELIVER_LEDGER? | default ($state | path join "luvus-deliver" "risk.jsonl")
 }
 
-# Keep each delivery's verdict, for review after landing. A ledger that cannot be written never stops a delivery.
-def record-verdict [verdict: record, approved: bool] {
+# Keep each delivery's verdict and how its mitigations ended, for review
+# after landing. `stage` says how far the delivery got. A ledger that cannot
+# be written never stops a delivery.
+def record-verdict [verdict: record, stage: string] {
   try {
     let path = (ledger)
     mkdir ($path | path dirname)
@@ -300,7 +600,9 @@ def record-verdict [verdict: record, approved: bool] {
       risk: $verdict.risk
       hosts: $verdict.hosts
       reasons: $verdict.reasons
-      approved: $approved
+      mitigations: ($verdict.mitigations | get -o id | default [])
+      outcomes: ($verdict.outcomes? | default [])
+      stage: $stage
     }
     $"($entry | to json --raw)\n" | save --append $path
   }
@@ -350,7 +652,6 @@ def main [
   --repo: path = "."                     # Any checkout of the repository
   --branch: string = "luvus/integration" # The branch luvus merges finished tasks into
   --check: list<string> = [nixbot/nix-eval nixbot/nix-build] # The required check runs on GitHub
-  --approve: string                      # The commit the owner approved, for a high-risk delivery
   --timeout: duration = 2hr
   --poll: duration = 30sec
 ] {
@@ -366,21 +667,16 @@ def main [
   if (^git -C $root merge-base --is-ancestor $main $sha | complete).exit_code != 0 {
     error make { msg: $"($branch) does not contain origin/main; merge main into it before delivering." }
   }
-  # An approval names the commit the owner saw, never a branch, so it cannot
-  # carry over to commits merged after it.
-  let approved = if $approve == null { false } else {
-    let named = (^git -C $root rev-parse --verify --quiet $"($approve)^{commit}" | complete)
-    if $approve !~ '^[0-9a-f]{7,40}$' or $named.exit_code != 0 or ($named.stdout | str trim) != $sha {
-      error make { msg: $"--approve names ($approve), but this delivery is ($short); approval covers one exact commit." }
-    }
-    true
-  }
+  let started = (date now | format date "%Y-%m-%dT%H:%M:%S%:z")
   let verdict = (classify $root $main $sha)
   print (summary $verdict)
-  record-verdict $verdict $approved
-  if $verdict.risk == "high" and not $approved {
-    error make { msg: $"Delivering ($short) needs the owner's approval first. Show them the reasons above, and once they approve this commit, run `luvus-deliver --approve ($short)`." }
+  let verdict = (mitigate-before $root $branch $verdict)
+  let failed = ($verdict.outcomes | where not ok)
+  if ($failed | is-not-empty) {
+    record-verdict $verdict mitigation-failed
+    error make { msg: $"Not delivering ($short): ($failed | get id | str join ', ') failed. Fix what it names on the task's branch and deliver again." }
   }
+  record-verdict $verdict pushing
   print $"Pushing ($branch) at ($short)."
   ^git -C $root push --quiet origin $"($sha):refs/heads/($branch)"
   let slug = (do { cd $root; ^gh repo view --json nameWithOwner --jq .nameWithOwner } | str trim)
@@ -414,4 +710,19 @@ def main [
   ^git -C $root push --quiet origin $"($sha):refs/heads/main"
   advance-local-main $root $sha
   print $"Delivered: main is now ($short)."
+  if "canary-first" in ($verdict.mitigations | get -o id | default []) {
+    let problems = (wait-canaries $verdict.canaries $sha $started $deadline $poll)
+    let outcome = { id: canary-first, ok: ($problems | is-empty), problems: $problems }
+    let verdict = ($verdict | update outcomes { append $outcome })
+    if ($problems | is-not-empty) {
+      record-verdict $verdict canary-failed
+      notify-landed $verdict
+      error make { msg: $"main is at ($short), but the canary did not deploy it: ($problems | str join '; '). Switch no other host to it; fix forward with a new delivery." }
+    }
+    record-verdict $verdict delivered
+    notify-landed $verdict
+  } else {
+    record-verdict $verdict delivered
+    notify-landed $verdict
+  }
 }

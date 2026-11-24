@@ -1,4 +1,4 @@
-# luvus-deliver's risk classification and approval, on a throwaway
+# luvus-deliver's risk classification and mitigations, on a throwaway
 # repository with a bare origin and a fixture of what tools/den-reach.nix
 # returns, so nothing reaches GitHub:
 #   nu --no-config-file tests/luvus-deliver.nu tools/luvus-deliver.nu
@@ -30,8 +30,13 @@ def main [script: path] {
     homes: { "schlich@asus": [user-shell], "schlich@homelab": [user-shell] }
     deployed: [asus homelab]
     risks: { base: medium, workstation: medium, homelab-platform: high, user-shell: null }
+    canaries: { homelab: "ssh://homelab:2222" }
   } | to json | save $den
   let ledger = ($tmp | path join risk.jsonl)
+  # What each host's boot loaders keep, in place of evaluating them.
+  let loaders = ($tmp | path join loaders.json)
+  let set_loaders = {|limit| { asus: [{ loader: limine, enable: true, limit: $limit } { loader: grub, enable: false, limit: 100 }] } | to json | save --force $loaders }
+  do $set_loaders null
 
   let origin = ($tmp | path join origin.git)
   let repo = ($tmp | path join repo)
@@ -55,7 +60,26 @@ def main [script: path] {
   do $write "modules/programs/shell.nix" "{ imports = [ ./tool.nix ]; programs.nushell.enable = true; }\n"
   do $write "modules/programs/tool.nix" "{ inputs, ... }: { home.packages = [ inputs.tool.packages.default ]; }\n"
   do $write "docs/guide.md" "# Guide\n"
-  do $write "secrets/token.age" "age-encrypted-v1\n"
+  # An age file's header names each recipient; GPxkSA is the tag of the
+  # declared key, so the first file is encrypted as declared.
+  let admin = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINJRdPuDm1hX5iOgHNl63aUVPIUvkMhAFlBaoxOiSPEA"
+  let age = {|tags: list, body: string|
+    ["age-encryption.org/v1" ...($tags | each {|tag| $"-> ssh-ed25519 ($tag) c2hhcmVk\nYm9keQ" }) "-> x-grease abc\nZ3JlYXNl" $"--- bWFj\n($body)"] | str join "\n"
+  }
+  do $write "secrets/secrets.nix" $"{\n  \"token.age\".publicKeys = [ \"($admin)\" ];\n}\n"
+  do $write "secrets/token.age" (do $age [GPxkSA] "v1")
+  let ruleset = {|bypass: list|
+    {
+      name: main-checks, target: branch, enforcement: active
+      conditions: { ref_name: { include: ["~DEFAULT_BRANCH"], exclude: [] } }
+      rules: [
+        { type: deletion } { type: non_fast_forward }
+        { type: required_status_checks, parameters: { required_status_checks: [{ context: nixbot/nix-eval, integration_id: 7 } { context: nixbot/nix-build, integration_id: 7 }] } }
+      ]
+      bypass_actors: $bypass
+    } | to json
+  }
+  do $write ".github/rulesets/main-checks.json" (do $ruleset [])
   let lock = {|rev: string|
     { nodes: { root: { inputs: { nixpkgs: nixpkgs, tool: tool } }, nixpkgs: { locked: { rev: a } }, tool: { locked: { rev: $rev } } }, root: root, version: 7 } | to json
   }
@@ -79,6 +103,8 @@ def main [script: path] {
       HOME: $tmp
       LUVUS_DELIVER_DEN: $den
       LUVUS_DELIVER_LEDGER: $ledger
+      LUVUS_DELIVER_LOADERS: $loaders
+      LUVUS_DELIVER_HOST: ($env.LUVUS_DELIVER_HOST? | default "builder")
     } { ^$nu.current-exe --no-config-file $script ...$args | complete }
   }
   let verdict = {||
@@ -129,36 +155,58 @@ def main [script: path] {
   let regrouped = (do $verdict)
   $failures = ($failures | append (expect "an input updated inside a group is named as modules name it" [$regrouped.inputs $regrouped.hosts] [[tool] [asus homelab]]))
 
-  do $case secret { "secrets/token.age": "age-encrypted-v2\n" } | ignore
+  do $case secret { "secrets/token.age": (do $age [GPxkSA] "v2") } | ignore
   let secret = (do $verdict)
-  $failures = ($failures | append (expect "a secret always needs approval" [$secret.risk ($secret.reasons | any { str contains "secrets/token.age always needs approval" })] [high true]))
+  $failures = ($failures | append (expect "a secret is mitigated by checking its recipients" [$secret.risk ($secret.mitigations | get id)] [high [secret-recipients]]))
   do $case gate { "tools/luvus-deliver.nu": "def main [] { }\n" } | ignore
   let gate = (do $verdict)
-  $failures = ($failures | append (expect "a change to the classifier always needs approval" [$gate.risk ($gate.reasons | any { str contains "tools/luvus-deliver.nu always needs approval" })] [high true]))
+  $failures = ($failures | append (expect "a change to the classifier is judged by it too" [$gate.risk ($gate.mitigations | get id)] [high [classifier-stricter]]))
+  do $case hardware { "hosts/asus/hardware-configuration.nix": "{ fileSystems.\"/\".device = \"/dev/sda\"; }\n" } | ignore
+  let hardware = (do $verdict)
+  $failures = ($failures | append (expect "a host's own files are mitigated by its boot menu and the canary" [$hardware.risk ($hardware.mitigations | get id) ($hardware.mitigations | where id == boot-rollback | get 0.hosts)] [high [boot-rollback canary-first] [asus]]))
 
-  # Delivering: a high-risk delivery stops before it pushes unless the owner
-  # approved that exact commit. Past the push, `gh` cannot reach GitHub, so
-  # these runs end there.
+  # Delivering: a high-risk delivery never waits for approval. Mitigations
+  # that judge the commit run before the push, and a failed one stops the
+  # delivery with nothing pushed. Past the push, `gh` cannot reach GitHub,
+  # so these runs end there.
   let pushed = {||
     let found = (^git -C $origin rev-parse --verify --quiet refs/heads/luvus/integration | complete)
     let sha = ($found.stdout | str trim)
     if $found.exit_code == 0 { ^git -C $origin update-ref -d refs/heads/luvus/integration }
     $sha
   }
-  let risky = (do $case risky { "hosts/asus/hardware-configuration.nix": "{ fileSystems.\"/\".device = \"/dev/sda\"; }\n" })
-  let refused = (do $run [--repo $repo])
-  $failures = ($failures | append (expect "a high-risk delivery stops before pushing" [($refused.exit_code != 0) ($refused.stderr | str contains "needs the owner's approval") (do $pushed)] [true true ""]))
-  let wrong = (do $run [--repo $repo --approve ($main_sha | str substring 0..11)])
-  $failures = ($failures | append (expect "an approval of another commit is refused" [($wrong.stderr | str contains "approval covers one exact commit") (do $pushed)] [true ""]))
-  let by_branch = (do $run [--repo $repo --approve luvus/integration])
-  $failures = ($failures | append (expect "an approval must name a commit, not a branch" [($by_branch.stderr | str contains "approval covers one exact commit") (do $pushed)] [true ""]))
-  do $run [--repo $repo --approve ($risky | str substring 0..11)] | ignore
-  $failures = ($failures | append (expect "an approved high-risk delivery is pushed" (do $pushed) $risky))
-  let low = (do $case low { "docs/guide.md": "# Guide\n\nLast words.\n" })
-  do $run [--repo $repo] | ignore
-  $failures = ($failures | append (expect "a low-risk delivery is pushed without approval" (do $pushed) $low))
+  let deliver = {|name: string, edits: record|
+    let head = (do $case $name $edits)
+    let result = (do $run [--repo $repo])
+    { head: $head, result: $result, pushed: (do $pushed) }
+  }
+  let rekeyed = (do $deliver unrekeyed { "secrets/token.age": (do $age [JgP3tw] "v3") })
+  $failures = ($failures | append (expect "a secret not encrypted to its declared keys stops before pushing" [($rekeyed.result.stderr | str contains "secret-recipients failed") ($rekeyed.result.stdout | str contains "rekey it with agenix") $rekeyed.pushed] [true true ""]))
+  let undeclared = (do $deliver undeclared { "secrets/other.age": (do $age [GPxkSA] "x") })
+  $failures = ($failures | append (expect "an undeclared secret stops before pushing" [($undeclared.result.stdout | str contains "secrets/other.age is not declared") $undeclared.pushed] [true ""]))
+  let rekey = (do $deliver rekeyed { "secrets/token.age": (do $age [GPxkSA] "v4") })
+  $failures = ($failures | append (expect "a secret encrypted to its declared keys is pushed without approval" $rekey.pushed $rekey.head))
+
+  let bypass = (do $deliver bypass { ".github/rulesets/main-checks.json": (do $ruleset [{ actor_id: 1, actor_type: RepositoryRole }]) })
+  $failures = ($failures | append (expect "a ruleset that loses a guarantee stops before pushing" [($bypass.result.stdout | str contains "it has bypass actors") $bypass.pushed] [true ""]))
+
+  do $set_loaders 1
+  let short_menu = (do $deliver short-menu { "hosts/asus/hardware-configuration.nix": "{ fileSystems.\"/\".device = \"/dev/sdb\"; }\n" })
+  $failures = ($failures | append (expect "a host change that leaves too short a boot menu stops before pushing" [($short_menu.result.stdout | str contains "keeps only 1 generations") $short_menu.pushed] [true ""]))
+  do $set_loaders null
+  let hardware_ok = (do $deliver hardware-ok { "hosts/asus/hardware-configuration.nix": "{ fileSystems.\"/\".device = \"/dev/sdc\"; }\n" })
+  $failures = ($failures | append (expect "a host change with a full boot menu is pushed without approval" $hardware_ok.pushed $hardware_ok.head))
+
+  let broken = (do $deliver broken-classifier { "tools/luvus-deliver.nu": "def main [] { }\n" })
+  $failures = ($failures | append (expect "a classifier that cannot judge its own delivery stops before pushing" [($broken.result.stderr | str contains "classifier-stricter failed") $broken.pushed] [true ""]))
+  let working = (do $deliver working-classifier { "tools/luvus-deliver.nu": (open --raw $script) })
+  $failures = ($failures | append (expect "a classifier that judges its own delivery is pushed without approval" [($working.result.stdout | str contains "✓ classifier-stricter") $working.pushed] [true $working.head]))
+
+  let low = (do $deliver low { "docs/guide.md": "# Guide\n\nLast words.\n" })
+  $failures = ($failures | append (expect "a low-risk delivery is pushed" $low.pushed $low.head))
   let entries = (open --raw $ledger | lines | each { from json })
-  $failures = ($failures | append (expect "the ledger keeps each delivery's verdict and approval" ($entries | select risk approved) [[risk approved]; [high false] [high true] [low false]]))
+  $failures = ($failures | append (expect "the ledger keeps how each delivery's mitigations ended" ($entries | where head == $rekeyed.head | get 0 | select risk stage) { risk: high, stage: mitigation-failed }))
+  $failures = ($failures | append (expect "the ledger names each mitigation's outcome" ($entries | where head == $rekey.head | get 0.outcomes | select id ok) [[id ok]; [secret-recipients true]]))
 
   # Past nixbot's checks, which a gh stub reports as passed, a delivery moves
   # main on the remote and the local main that luvus starts board tasks from.
@@ -176,6 +224,39 @@ def main [script: path] {
   let path = ($env.PATH | each {|p| $p | split row (char esep) } | flatten | prepend $bin)
   with-env { PATH: $path } { do $run [--repo $repo] } | ignore
   $failures = ($failures | append (expect "a delivery fast-forwards main and the local main tasks start from" [(^git -C $origin rev-parse main | str trim) (^git -C $repo rev-parse main | str trim)] [$shipped $shipped]))
+
+  # canary-first: once main moves, the delivery waits for the canary, which
+  # an ssh stub answers from CANARY_REVERTED and CANARY_RAN.
+  [
+    "#!/bin/sh"
+    "for arg; do last=\"$arg\"; case \"$arg\" in deploy-reverts) cmd=reverts ;; generation) cmd=generation ;; esac; done"
+    "case \"$cmd\" in"
+    "  reverts) if [ -n \"$CANARY_REVERTED\" ]; then printf '[{\"rev\":\"%s\",\"phase\":\"watch\",\"breached\":[\"settle\"],\"report\":\"/r.md\"}]' \"$CANARY_REVERTED\"; else echo '[]'; fi ;;"
+    "  generation) printf '{\"system\":{\"generation\":9,\"staged\":false},\"source\":{\"rev\":\"%s\",\"matches_through\":null}}' \"$CANARY_RAN\" ;;"
+    "esac"
+  ] | str join "\n" | save ($bin | path join ssh)
+  ^chmod +x ($bin | path join ssh)
+  let canary = {|name: string, file: string, reverted: bool|
+    let head = (do $case $name { $file: $"{ shared = \"($name)\"; }\n" })
+    let result = (with-env { PATH: $path, CANARY_RAN: $head, CANARY_REVERTED: (if $reverted { $head } else { "" }) } { do $run [--repo $repo --poll "1sec"] })
+    { head: $head, result: $result, main: (^git -C $origin rev-parse main | str trim) }
+  }
+  let deployed = (do $canary canary-ok "hosts/shared.nix" false)
+  $failures = ($failures | append (expect "a canary-first delivery finishes once the canary deployed it" [$deployed.result.exit_code ($deployed.result.stdout | str contains "✓ canary-first: homelab deployed") $deployed.main] [0 true $deployed.head]))
+  let reverted = (do $canary canary-reverted "hosts/shared.nix" true)
+  $failures = ($failures | append (expect "a canary that reverts the delivery fails it after main moved" [($reverted.result.exit_code != 0) ($reverted.result.stderr | str contains "Switch no other host to it") $reverted.main] [true true $reverted.head]))
+  let stages = (open --raw $ledger | lines | each { from json } | where head in [$deployed.head $reverted.head] | where stage in [delivered canary-failed] | get stage)
+  $failures = ($failures | append (expect "the ledger records how the canary ended" $stages [delivered canary-failed]))
+
+  # Run on the canary itself, the delivery asks it directly: its own
+  # generation and deploy-reverts, which the stub's ssh would refuse.
+  for name in [deploy-reverts generation] {
+    ["#!/bin/sh" $"exec ($bin)/ssh canary ($name) \"$@\""] | str join "\n" | save ($bin | path join $name)
+    ^chmod +x ($bin | path join $name)
+  }
+  ["#!/bin/sh" "[ \"$1\" = canary ] || exit 255"] | append (open --raw ($bin | path join ssh) | lines | skip 1) | str join "\n" | save --force ($bin | path join ssh)
+  let local = (with-env { LUVUS_DELIVER_HOST: homelab } { do $canary canary-local "hosts/shared.nix" false })
+  $failures = ($failures | append (expect "a delivery run on the canary asks it directly" [$local.result.exit_code ($local.result.stdout | str contains "✓ canary-first: homelab deployed")] [0 true]))
 
   rm --recursive $tmp
   if ($failures | is-not-empty) {

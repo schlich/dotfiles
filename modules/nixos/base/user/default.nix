@@ -1,6 +1,10 @@
 { lib, pkgs, ... }:
 
 {
+  # Every host with this user runs Nushell as its login shell; the overlay
+  # carries the version nixpkgs has not shipped yet (nushell-package.nix).
+  nixpkgs.overlays = [ (import ./nushell-package.nix) ];
+
   users.defaultUserShell = pkgs.nushell;
   users.users.schlich = {
     # asus's UID; a host whose account predates this declaration sets its own.
@@ -12,7 +16,7 @@
       "networkmanager"
     ];
     # Any host in the fleet may log in here, over the LAN or Tailscale.
-    openssh.authorizedKeys.keys = builtins.attrValues (import ../../../hosts/login-keys.nix);
+    openssh.authorizedKeys.keys = builtins.attrValues (import ../../../../hosts/login-keys.nix);
   };
   environment.shells = [ pkgs.nushell ];
   # Nushell searches share/nushell/vendor/autoload in the system and per-user

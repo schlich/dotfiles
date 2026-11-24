@@ -3,7 +3,7 @@
 {
   imports = [
     ./core.nix
-    ./user.nix
+    ./user
     ./files.nix
   ];
 }

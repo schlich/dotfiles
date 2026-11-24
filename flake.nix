@@ -20,7 +20,6 @@
     builds.inputs.iets.inputs.nixpkgs.follows = "system/nixpkgs";
     builds.inputs.nix-grpc-store.inputs.nixpkgs.follows = "system/nixpkgs";
     builds.inputs.nixbot.inputs.nixpkgs.follows = "system/nixpkgs";
-    builds.inputs.npr.inputs.nixpkgs.follows = "system/nixpkgs";
     desktop.inputs.niri.inputs.nixpkgs.follows = "system/nixpkgs";
     desktop.inputs.noc-minimizer.inputs.nixpkgs.follows = "system/nixpkgs";
     desktop.inputs.dicta.inputs.nixpkgs.follows = "system/nixpkgs";
@@ -64,6 +63,8 @@
       inherit (inputs) nixpkgs nushellWith;
       system = "x86_64-linux";
       overlays = [
+        # The hosts' Nushell, so the checks run the scripts with it.
+        (import ./modules/nixos/base/user/nushell-package.nix)
         nushellWith.overlays.default
       ];
       pkgs = import nixpkgs {
@@ -440,6 +441,14 @@
         # A Rust build this flake owns, with a `timings` output holding
         # cargo's build timing report (lib/with-cargo-timings.nix).
         jj-hunk = import ./modules/programs/vcs/jj-hunk-package.nix { inherit inputs lib pkgs; };
+        # nu_plugin_ghostty and the libghostty-vt it links, which nixpkgs
+        # ships too old (modules/programs/shell/nu-plugin-ghostty).
+        libghostty-vt =
+          pkgs.callPackage ./modules/programs/shell/nu-plugin-ghostty/libghostty-vt/package.nix
+            { };
+        nu-plugin-ghostty = import ./modules/programs/shell/nu-plugin-ghostty/package.nix {
+          inherit inputs lib pkgs;
+        };
       }
       // workbenchImages;
 
@@ -905,11 +914,14 @@
       # deploy, homelab with modules it has not adopted yet, the staged
       # switch's revert in a VM, and Bombadil's exploration of Fieldwork.
       # Bombadil explores Fieldwork, a prototype whose bridge answers some
-      # requests with 4xx by design, so its findings report here first.
+      # requests with 4xx by design, so its findings report here first; the
+      # keymap checks of programs that do not follow the keymap rules yet,
+      # such as jjui, report here too.
       remoteChecks.${system} =
         remoteHostEvaluationChecks
         // clanMachineChecks
         // import ./xr-workbench/bombadil-check.nix { inherit lib pkgs; }
+        // import ./modules/tooling/keymap-checks/remote.nix { inherit inputs lib pkgs; }
         // {
           # TLC over every three-change graph takes about twelve minutes.
           jj-graph-model-exhaustive = jjGraph.exhaustive;

@@ -3,8 +3,8 @@ type: tracker
 description: What the dotfiles configuration is, who it serves, and the rules every plan and spec derives from.
 stage: living
 generated:
-  by: codex
-  at: 2026-11-19T23:47:00Z
+  by: claude-code/opus-5.5
+  at: 2026-11-23T21:40:00Z
 sources:
 - id: flake
   resource: flake.nix
@@ -78,8 +78,9 @@ nix-darwin, macOS, and non-NixOS Linux.
   composition, Clan for push deployment, impermanence, and the Niri flake
   (`flake.nix`).
 - **Nushell** for scripts, deploy logic (`deploy/switch.nu`), and delivery
-  (`tools/luvus-deliver.nu`); Git, driven by luvus, for version control, on
-  GitHub. The `ci` workflow ships from here for other repositories only.
+  (`tools/luvus-deliver.nu`); jj for changes, in luvus task workspaces, and Git
+  branches, driven by luvus, for gating and delivery, on GitHub. The `ci`
+  workflow ships from here for other repositories only.
 - **Layout**: `den/` owns the inventory, aspects, and host composition; `hosts/`
   holds hardware and storage facts only; `modules/` holds ordinary NixOS and
   Home Manager modules the aspects consume; `lib/` holds helpers such as
@@ -137,3 +138,5 @@ From the author:
   Constraints, and Authoring rules from the setup interview.
 - 2026-10-29 — Platforms, Stack, and Constraints describe delivery through luvus
   and nixbot, which replaced `ci land`, and the standalone home's profile.
+- 2026-11-23 — Stack: changes are made with jj again, in luvus task workspaces
+  that are also the tasks' Git worktrees.

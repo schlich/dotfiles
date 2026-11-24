@@ -22,12 +22,8 @@ let
       exec ${iwe}/bin/iwec --transport stdio
     }
   '';
-  # The ci input's MCP server, which starts the same `ci` as the shell; with
-  # xs it announces its jobs on cross.stream.
-  ciMcp = inputs.ci.packages.${pkgs.stdenv.hostPlatform.system}.ci-mcp.override {
-    inherit xs;
-    ci = config.dotfiles.ci.package;
-  };
+  # The `honeycomb` command's package, which also ships `honeycomb-mcp`.
+  inherit (inputs.honeycomb.overlays.default pkgs pkgs) honeycomb;
   sudoplz = pkgs.callPackage ./sudoplz.nix { };
   # Hides the 2026-07-28 MCP handshake from servers that claim it but
   # answer tools/list without its required fields (atuin 18.21 and 18.23).
@@ -109,8 +105,10 @@ in
       };
       # The personal knowledge base, for agents working in other repositories.
       kb.command = "${kbMcp}/bin/kb-mcp";
-      # The `ci` trunk workflow as tools, in the client's working directory.
-      ci.command = "${ciMcp}/bin/ci-mcp";
+      # The six-at-a-time counts (census, prune, sessions, sidebar, flower)
+      # as tools, so an agent checks them before starting another topic
+      # (github:schlich/honeycomb). Only `prune` with `yes` changes anything.
+      honeycomb.command = lib.getExe' honeycomb "honeycomb-mcp";
       # Stately's hosted HTTP MCP server provides access to state-machine
       # design tools; authentication is handled by the MCP client.
       stately.url = "https://mcp.stately.ai/mcp";
@@ -156,7 +154,8 @@ in
     };
   };
 
-  # Follow `job-log` and ci MCP jobs as a Monitor running watch-job does,
+  # Follow `job-log` jobs (and earlier ci MCP jobs' records) as a Monitor
+  # running watch-job does,
   # with a local cross.stream store and without one.
   dotfiles.tooling.checks.watch-job =
     pkgs.runCommand "watch-job-check"
@@ -170,6 +169,23 @@ in
         export HOME="$TMPDIR/home"
         mkdir -p "$HOME"
         nu --config ${../scripts/nu-mcp-config.nu} ${../tests/watch-job.nu} ${../scripts/watch-job.nu}
+        touch "$out"
+      '';
+
+  # `job-log --rex` against a Rex server of the check's own: a passing and a
+  # failing job, the log and status watch-job reads, and the kept terminal.
+  dotfiles.tooling.checks.job-log-rex =
+    pkgs.runCommand "job-log-rex-check"
+      {
+        nativeBuildInputs = [
+          pkgs.nushell
+          inputs.rex.packages.${pkgs.stdenv.hostPlatform.system}.rex
+        ];
+      }
+      ''
+        export HOME="$TMPDIR/home" SHELL=${pkgs.runtimeShell}
+        mkdir -p "$HOME"
+        nu --config ${../scripts/nu-mcp-config.nu} ${../tests/job-log-rex.nu}
         touch "$out"
       '';
 

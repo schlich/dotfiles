@@ -124,10 +124,10 @@ in
         default = [ ];
         example = [ "/home/me/project" ];
         description = ''
-          Repositories that take writes through Git, with luvus, rather than
-          through jj and ci. Agent sessions started inside one, or inside any
-          of its linked worktrees, may run mutating git, and get no ci
-          workspace claims or context.
+          Repositories gated and delivered as Git branches through luvus
+          rather than through ci. Agent sessions started inside one, or
+          inside any of its linked worktrees, may run mutating git as well as
+          jj, and get no ci workspace claims or context.
         '';
       };
     };

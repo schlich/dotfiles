@@ -74,6 +74,31 @@ in
     )
   ) den.homes.x86_64-linux;
   deployed = builtins.filter (name: hosts.${name}.deploy.enable) (builtins.attrNames hosts);
+  # The canaries, which deploy main themselves, by the ssh destination a
+  # workstation reaches them at, as den/aspects/fleet/deploy-policy.nix
+  # names them. A delivery's canary-first mitigation waits for them.
+  canaries = builtins.listToAttrs (
+    map
+      (
+        name:
+        let
+          host = hosts.${name};
+        in
+        {
+          inherit name;
+          value =
+            if host.deploy.sshPort == null then
+              host.deploy.targetHost
+            else
+              "ssh://${host.deploy.targetHost}:${toString host.deploy.sshPort}";
+        }
+      )
+      (
+        builtins.filter (name: hosts.${name}.policy.autoDeploy && hosts.${name}.deploy.targetHost != null) (
+          builtins.attrNames hosts
+        )
+      )
+  );
   # The risk den/model/policy.nix assigns each aspect, or null for none.
   risks = builtins.mapAttrs (_: aspect: (aspect.meta or { }).risk or null) den.aspects;
 }

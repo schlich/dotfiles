@@ -77,6 +77,13 @@ let
         } >$out/codex/session-start
         chmod +x $out/codex/session-start
       '';
+
+  # The server's init.lua, kept in the store and named by REX_CONFIG rather
+  # than linked into ~/.config/rex. It loads nurx's `nurx_pick` action, which
+  # stays idle until a Rex app connects to answer rex.ui prompts.
+  initLua = pkgs.writeText "rex-init.lua" ''
+    dofile("${inputs.nu-rex-integration}/nurx.lua")
+  '';
 in
 {
   imports = [ inputs.rex.homeManagerModules.default ];
@@ -102,7 +109,12 @@ in
       # not use; ssh.nix includes it in the wrapped ssh's config instead.
       sshGuard = false;
     };
-    services.rex.enable = true;
+    services.rex = {
+      enable = true;
+      environment.REX_CONFIG = "${initLua}";
+    };
+    # `rex config check` and other CLI reads of the config find the same file.
+    home.sessionVariables.REX_CONFIG = "${initLua}";
 
     # Claude Code reads the skill from ~/.claude/skills and its hooks from a
     # plugin, since it rewrites settings.json at runtime. Codex and OpenCode

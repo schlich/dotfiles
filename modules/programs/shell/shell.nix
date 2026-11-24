@@ -111,6 +111,13 @@ in
   # module is not needed.
   home.packages = [ atuin ];
 
+  # The hosts' overlay (modules/nixos/base/user/nushell-package.nix) carries a
+  # Nushell newer than nixpkgs; this home builds from that package set.
+  dotfiles.nixpkgsWatch.nushell = {
+    inherit (pkgs.nushell) version;
+    reason = "delete modules/nixos/base/user/nushell-package.nix and its imports in modules/nixos/base/user/default.nix and flake.nix";
+  };
+
   programs.carapace = {
     enable = true;
     enableNushellIntegration = true;
@@ -166,6 +173,19 @@ in
       (lib.mkOrder 1600 ''
         source ${../../../nushell/envrc-nu.nu}
         setup-envrc-nu
+      '')
+      # Rex (modules/tooling/terminals/rex.nix). nurx appends its hooks, so it
+      # loads after every other hook setup. Only `status` (OSC 7501 per
+      # command) and `tint` are on: the picker, `last`, and `layout` need a
+      # Rex app to show anything, and Linux has none yet. Rex puts its own
+      # `rex` first on PATH in each terminal, but the session's PATH setup
+      # runs after it, so it goes back to the front here.
+      (lib.mkOrder 1700 ''
+        if ($env.REX_BIN_DIR? | is-not-empty) {
+          $env.PATH = ($env.PATH | where $it != $env.REX_BIN_DIR | prepend $env.REX_BIN_DIR)
+        }
+        use ${inputs.nu-rex-integration}/nurx.nu *
+        nurx enable status tint
       '')
     ];
   };

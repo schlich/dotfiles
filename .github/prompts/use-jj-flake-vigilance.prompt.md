@@ -5,8 +5,9 @@ agent: project-specialist
 
 # Reconcile the jj-first flake workflow
 
-> Superseded: this repository now takes writes through Git and luvus. Where
-> this prompt says otherwise, follow `AGENTS.md` (Version control, Delivery).
+> Superseded: this repository now makes changes with jj in luvus task
+> workspaces and delivers them as Git branches through luvus. Where this
+> prompt says otherwise, follow `AGENTS.md` (Version control, Delivery).
 
 Work on: ${input:task:Describe the change, question, or repo state to reconcile}
 

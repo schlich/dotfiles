@@ -32,12 +32,16 @@ let
   };
 
   # Every remote host but homelab, which serves them, fetches from homelab's
-  # cache and builds on it, both at its tailnet name.
+  # cache through local ncro and builds on it, both at its tailnet name.
   remoteClientTests = config: {
     testUsesHomelabCacheAndBuilderOnTheTailnet = {
       expr = {
         fqdn = config.dotfiles.fleet.hosts.homelab.fqdn;
-        substituter = builtins.elem "http://${homelabFqdn}:${toString cache.port}" config.nix.settings.substituters;
+        ncroEnabled = config.services.ncro.enable;
+        ncroUpstream = builtins.any (u: u.url == "http://${homelabFqdn}:${toString cache.port}") (
+          config.services.ncro.settings.upstreams or [ ]
+        );
+        substituter = builtins.elem "http://127.0.0.1:8085" config.nix.settings.substituters;
         trustsCache = builtins.elem cache.publicKey config.nix.settings.trusted-public-keys;
         builders = map (machine: machine.hostName) config.nix.buildMachines;
         builderAddress = lib.hasInfix "Host homelab-builder\n  HostName ${homelabFqdn}\n  Port ${toString builder.port}\n" config.programs.ssh.extraConfig;
@@ -45,6 +49,8 @@ let
       };
       expected = {
         fqdn = homelabFqdn;
+        ncroEnabled = true;
+        ncroUpstream = true;
         substituter = true;
         trustsCache = true;
         builders = [ "homelab-builder" ];

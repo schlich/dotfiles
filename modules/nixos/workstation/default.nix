@@ -6,7 +6,7 @@
     ./codex.nix
     ./desktop.nix
     ../fleet/jj-ci-webhook.nix
-    ../base/user.nix
+    ../base/user
     ./docker.nix
     ../base/files.nix
   ];

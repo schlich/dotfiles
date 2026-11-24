@@ -75,7 +75,7 @@ try {
         (res) => {
           res.resume();
           resolve(res.statusCode);
-        }
+        },
       )
       .on("error", reject);
   });
@@ -90,7 +90,7 @@ try {
         (res) => {
           res.resume();
           resolve(res.statusCode);
-        }
+        },
       )
       .on("error", reject);
   });
@@ -112,7 +112,7 @@ try {
       (upRes) => {
         res.writeHead(upRes.statusCode || 500, upRes.headers);
         upRes.pipe(res);
-      }
+      },
     );
     upstream.on("error", (err) => {
       if (!res.headersSent) res.writeHead(502);
@@ -121,7 +121,9 @@ try {
     req.pipe(upstream);
   });
   const proxyPort = await new Promise((resolve) => {
-    proxyServer.listen(0, "127.0.0.1", () => resolve(proxyServer.address().port));
+    proxyServer.listen(0, "127.0.0.1", () =>
+      resolve(proxyServer.address().port),
+    );
   });
   const remoteUrl = `http://127.0.0.1:${proxyPort}/kb.git`;
 
@@ -149,11 +151,29 @@ try {
     "user.email",
     "test@example.com",
   ]);
-  fs.writeFileSync(path.join(asus, "index.md"), "# Index\nfrom asus over tailscale\n");
-  await execClean("jj", ["--no-pager", "-R", asus, "commit", "-m", "initial note"]);
+  fs.writeFileSync(
+    path.join(asus, "index.md"),
+    "# Index\nfrom asus over tailscale\n",
+  );
+  await execClean("jj", [
+    "--no-pager",
+    "-R",
+    asus,
+    "commit",
+    "-m",
+    "initial note",
+  ]);
 
   // First sync auto-adds origin from --remote-url and seeds main from @-.
-  await runNu("--root", asus, "--remote-url", remoteUrl, "--manual", "--host", "asus");
+  await runNu(
+    "--root",
+    asus,
+    "--remote-url",
+    remoteUrl,
+    "--manual",
+    "--host",
+    "asus",
+  );
 
   // Verify on-push hook fired.
   for (let i = 0; i < 40 && !fs.existsSync(pushMarker); i++) {
@@ -161,7 +181,7 @@ try {
   }
   assert(
     fs.existsSync(pushMarker),
-    "expected KB_GIT_ON_PUSH hook to fire after git-receive-pack"
+    "expected KB_GIT_ON_PUSH hook to fire after git-receive-pack",
   );
 
   // 5. homelab does not exist yet: kb-sync --fetch-only --remote-url auto-clones it.
@@ -172,17 +192,35 @@ try {
     remoteUrl,
     "--fetch-only",
     "--host",
-    "homelab"
+    "homelab",
   );
   assert.equal(
     fs.readFileSync(path.join(homelab, "index.md"), "utf8"),
-    "# Index\nfrom asus over tailscale\n"
+    "# Index\nfrom asus over tailscale\n",
   );
 
   // 6. Configure user identity on homelab (like wrapped jj in user sessions)
   //    without touching @'s empty author from the system-service clone, then write and push.
-  await execClean("jj", ["--no-pager", "-R", homelab, "config", "set", "--repo", "user.name", "Test User"]);
-  await execClean("jj", ["--no-pager", "-R", homelab, "config", "set", "--repo", "user.email", "test@example.com"]);
+  await execClean("jj", [
+    "--no-pager",
+    "-R",
+    homelab,
+    "config",
+    "set",
+    "--repo",
+    "user.name",
+    "Test User",
+  ]);
+  await execClean("jj", [
+    "--no-pager",
+    "-R",
+    homelab,
+    "config",
+    "set",
+    "--repo",
+    "user.email",
+    "test@example.com",
+  ]);
   fs.writeFileSync(path.join(homelab, "homelab.md"), "# From Homelab\n");
   await runNu(
     "--root",
@@ -191,7 +229,7 @@ try {
     remoteUrl,
     "--manual",
     "--host",
-    "homelab"
+    "homelab",
   );
   await runNu(
     "--root",
@@ -200,11 +238,11 @@ try {
     remoteUrl,
     "--fetch-only",
     "--host",
-    "asus"
+    "asus",
   );
   assert.equal(
     fs.readFileSync(path.join(asus, "homelab.md"), "utf8"),
-    "# From Homelab\n"
+    "# From Homelab\n",
   );
 
   console.log("kb-git-test: all cases passed");

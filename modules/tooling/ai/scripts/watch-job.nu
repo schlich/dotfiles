@@ -55,6 +55,10 @@
 #   ✗ DONE exit 3 after 1sec: error message
 #   ✗ DONE lost: owner 4194305 exited without a result
 #
+# --done-only prints the JOB line and the DONE line and nothing between them,
+# for a noisy job that sends no reports, whose log lines would only flood the
+# Monitor. The position is still kept, so a re-armed watcher resumes quietly.
+#
 # Both kinds of job announce their start and end on cross.stream, under a
 # topic of their own. The watcher follows that topic and reads the files on
 # each of its frames and on the store's heartbeat every --interval, so the
@@ -266,12 +270,14 @@ def main [
   --interval: duration = 2sec # How often to read the files between job events
   --quiet-after: duration = 5min # How long without an event before each heartbeat
   --replay # Start from the beginning instead of the saved position
+  --no-cursor # Replay without changing the saved position for other watchers
+  --done-only # Print only the JOB and DONE lines, for a noisy job that sends no status reports
 ] {
   let log = ($log | path expand)
   let cursor = $"($log).seen"
   let status = $"($log).status.jsonl"
   let job = (job-record $log)
-  mut seen = if $replay or not ($cursor | path exists) { { log: 0, status: 0 } } else { open $cursor | from nuon }
+  mut seen = if $replay or $no_cursor or not ($cursor | path exists) { { log: 0, status: 0 } } else { open $cursor | from nuon }
   mut last_event = (date now)
   mut last_line = if ($log | path exists) { last-text (open --raw $log | lines) } else { null }
   # A re-armed Monitor still times the phases it saw start, and names the
@@ -338,16 +344,16 @@ def main [
         $events = ($events | append (hooks-line $hooks))
         $hooks = []
       }
-      $events = ($events | compact)
+      $events = if $done_only { [] } else { $events | compact }
       $last_line = (last-text $logged | default $last_line)
-      if ($events | is-empty) and ((date now) - $last_event) >= $quiet_after and $outcome == null and $alive {
+      if not $done_only and ($events | is-empty) and ((date now) - $last_event) >= $quiet_after and $outcome == null and $alive {
         # A running phase is timed from its start, not its latest update.
         let phase = if $latest == null { null } else { $started | get --optional ($latest.id? | default '') | default $latest }
         $events = [(heartbeat $phase ((date now) - $last_event) $last_line)]
       }
       $events | each { print $in } | ignore
       if ($events | is-not-empty) { $last_event = (date now) }
-      $seen | to nuon | save --force $cursor
+      if not $no_cursor { $seen | to nuon | save --force $cursor }
       if $outcome != null {
         print (done-line $outcome $job.started)
         return

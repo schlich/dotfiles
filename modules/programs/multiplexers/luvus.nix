@@ -57,6 +57,55 @@ let
     )
   );
 
+  # Task worktrees as jj workspaces (tools/luvus-jj.nu). In a repository
+  # colocated with jj, the provider makes each task's Git worktree a jj
+  # workspace on the task branch; `luvus-jj sync` points that branch at the
+  # latest change, since luvus gates and merges the branch.
+  luvusJjSource =
+    builtins.replaceStrings
+      [ "@jj@" "@git@" "@stat@" "@luvus@" ]
+      [
+        (lib.getExe config.programs.jujutsu.package)
+        (lib.getExe config.programs.git.package)
+        (lib.getExe' pkgs.coreutils "stat")
+        (lib.getExe luvus)
+      ]
+      (builtins.readFile ../../../tools/luvus-jj.nu);
+  luvusJj = pkgs.writeNuScriptBin "luvus-jj" luvusJjSource;
+  jjWorktreesId = "dotfiles.jj-worktrees";
+  # Luvus picks a worktree provider by module id (worktree.provider) and
+  # sends it each request on stdin, which only `nu --stdin` reads.
+  jjWorktreesModule =
+    let
+      provider = [
+        "${pkgs.nushell}/bin/nu"
+        "--stdin"
+        "--no-config-file"
+        "${pkgs.writeText "luvus-jj.nu" luvusJjSource}"
+        "provider"
+      ];
+    in
+    pkgs.runCommand "luvus-jj-worktrees-module" { } ''
+      mkdir "$out"
+      cp ${
+        (pkgs.formats.toml { }).generate "luvus-module.toml" {
+          id = jjWorktreesId;
+          name = "jj worktrees";
+          version = "0.1.0";
+          min_luvus_version = "0.14.0";
+          description = "Make each task worktree in a repository colocated with jj a jj workspace too.";
+          platforms = [ "linux" ];
+          worktree_provider = {
+            command = provider;
+            remove_command = provider;
+            # Deletions confirmed in the UI come here too, with the
+            # directory's identity, instead of to `git worktree remove`.
+            identity_bound_remove = true;
+          };
+        }
+      } "$out/luvus-module.toml"
+    '';
+
   # The dependency watcher: starts and merges opted-in task chains when their
   # upstream tasks merge (modules/tooling/ai/scripts/luvus-autopilot.nu).
   # It starts workers through luvus-task-start, which finishes the launch in
@@ -169,6 +218,16 @@ in
     '';
   };
 
+  options.dotfiles.luvus.jjWorktrees.enable = lib.mkOption {
+    type = lib.types.bool;
+    default = true;
+    description = ''
+      Make each luvus task worktree in a repository colocated with jj a jj
+      workspace as well (tools/luvus-jj.nu). Off, luvus makes plain Git
+      worktrees everywhere.
+    '';
+  };
+
   options.dotfiles.luvus.web = {
     enable = lib.mkEnableOption ''
       Luvus Web, the browser client of this home's Luvus server, as a user
@@ -252,7 +311,7 @@ in
         allow_nested = false;
         commander_working_policy = "auto_send";
         session.persist_pane_screen = true;
-        worktree.provider = "git";
+        worktree.provider = if cfg.jjWorktrees.enable then jjWorktreesId else "git";
         notifications = {
           sound_style = "soft";
           sound_on_done = false;
@@ -309,6 +368,12 @@ in
       home.packages = [
         luvus
         luvusTaskStart
+        # Task gates run the flake checks with it (AGENTS.md), on every host
+        # whose luvus server runs them, servers included.
+        pkgs.nix-fast-build
+        # Task gates run `luvus-jj sync`, which does nothing outside a jj
+        # task workspace, so it is installed either way.
+        luvusJj
       ]
       ++ lib.optionals cfg.autopilot.enable [
         luvusAutopilot
@@ -384,6 +449,43 @@ in
         };
         Install.WantedBy = [ "default.target" ];
       };
+
+      # The server keeps a linked module across restarts; this links the
+      # provider at first and again whenever a generation moves it, which
+      # changes the unit and so restarts it.
+      systemd.user.services.luvus-jj-worktrees = lib.mkIf cfg.jjWorktrees.enable {
+        Unit = {
+          Description = "Register luvus-jj's worktree provider with the Luvus server";
+          Wants = [ "luvus.service" ];
+          After = [ "luvus.service" ];
+          StartLimitIntervalSec = 0;
+        };
+        Service = {
+          Type = "oneshot";
+          RemainAfterExit = true;
+          ExecStart = "${luvusJj}/bin/luvus-jj register ${jjWorktreesModule}";
+          Restart = "on-failure";
+          RestartSec = "10s";
+        };
+        Install.WantedBy = [ "default.target" ];
+      };
+
+      # The provider, sync, and prune against scratch repositories.
+      dotfiles.tooling.checks.luvus-jj =
+        pkgs.runCommand "luvus-jj-check"
+          {
+            nativeBuildInputs = [
+              pkgs.nushell
+              pkgs.git
+              pkgs.jujutsu
+            ];
+          }
+          ''
+            export HOME="$TMPDIR/home"
+            mkdir -p "$HOME"
+            nu --no-config-file ${../../../tests/luvus-jj.nu} ${../../../tools/luvus-jj.nu}
+            touch "$out"
+          '';
 
       # The watcher's decisions against fixture boards, without a server.
       dotfiles.tooling.checks.luvus-autopilot =

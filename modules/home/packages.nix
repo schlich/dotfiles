@@ -84,7 +84,7 @@ in
     bubblewrap
     # The Antigravity app: once signed in, ai-usagebar reads the quota from
     # its saved Google session, which the CLI's `agy` server does not expose.
-    antigravity
+    antigravity-ide
     eilmeldung
     acreomApp
     super-productivity
@@ -98,9 +98,7 @@ in
     wget
     nix-tree
     nix-du
-    # The luvus task gate runs the flake checks with it.
-    nix-fast-build
-    nix-output-monitor
+    rom
     graphviz
     systemctl-tui
     systemd-manager-tui
@@ -132,10 +130,6 @@ in
     stripe-cli
     wl-clipboard-rs
     gh-stack
-    # The repository's wrappers depend on secretspec; keep this copy ahead of
-    # the one devenv bundles so PATH does not follow devenv's release cadence.
-    (lib.hiPrio secretspec)
-    devenv
     jev
     questOpen
     nixOtel
@@ -156,6 +150,6 @@ in
       inherit (pkgs.callPackage ./openchamber/openchamber.nix { }) version;
       reason = "replace modules/home/openchamber/openchamber.nix, a build of the npm release, with pkgs.openchamber in modules/home/packages.nix";
     };
-    ai-usagebar.reason = "replace modules/programs/desktop/ai-usagebar-package.nix (the ai-usagebar input's package, with sqlite added and its tests skipped) with pkgs.ai-usagebar, and drop the ai-usagebar input";
+    ai-usagebar.reason = "replace modules/programs/desktop/ai-usagebar-package.nix (the ai-usagebar input's package, with sqlite added, tests skipped, and libsecret + antigravity-cli wrapped into PATH) with pkgs.ai-usagebar, and drop the ai-usagebar input";
   };
 }

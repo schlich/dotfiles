@@ -1,4 +1,4 @@
-# The ci package that the shell and the ci MCP server both run. On a host
+# The ci package that the shell runs. On a host
 # with a local OpenTelemetry viewer, its NixOS module sets tracesEndpoint, and
 # ci sends each dispatch and landing there as a trace when the run ends.
 # The variable rides on the package, so only ci exports traces, not every

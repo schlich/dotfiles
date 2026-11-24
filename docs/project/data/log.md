@@ -6,6 +6,22 @@ to the current day's group.
 
 ## 2026-11-23
 
+- **Homelab**: Configured private Gerrit with tailnet sign-in and Git over
+  HTTPS. Activation awaits delivery.
+- **Tooling**: Packaged the upstream Jujutsu description generator and added
+  the `jj ai-describe` alias. It asks Claude Code (Haiku by default) instead of
+  `llm`, so a Claude subscription covers it without API keys.
+- **Version control**: Configured KDiff3 for `jj resolve` to show the common
+  ancestor, both sides, and the editable merge result together.
+- **Architecture**: [Delivery risk](architecture/delivery-risk.md) no longer
+  holds a delivery for approval. A high-risk verdict names mitigations that run
+  in its place: secret recipients, ruleset guarantees, the boot menu's rollback,
+  the changed classifier's own verdict, and canary first, which waits for
+  homelab to deploy the commit before any other host switches.
+- **Architecture**: [luvus jj workspaces](architecture/luvus-jj-workspaces.md).
+  In a repository colocated with jj, each luvus task worktree is a jj workspace
+  on the task branch, and `luvus-jj sync` moves that branch before the gate;
+  this repository's tasks make their changes with jj again.
 - **Architecture**: [Embedded server homes](architecture/embedded-server-homes.md)
   records homelab's home moving into its system, so the canary deploys it;
   [Configuration factory](architecture/configuration-factory.md) keeps

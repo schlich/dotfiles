@@ -1,13 +1,13 @@
 ---
 type: architecture
-description: luvus-deliver works out each delivery's risk before pushing from which hosts it reaches and which paths it changes, and a high-risk delivery waits for the owner's approval of that exact commit; Jev judged what it changed until 2026-11-21.
+description: luvus-deliver works out each delivery's risk before pushing from which hosts it reaches and which paths it changes, and a high-risk delivery runs the mitigations its verdict names instead of waiting for the owner (since 2026-11-23); Jev judged what it changed until 2026-11-21.
 generated:
   by: claude-code/opus-5.5
   at: 2026-11-21T05:00:00Z
 sources:
 - id: deliver
   resource: tools/luvus-deliver.nu
-  title: The classification, the approval, and the ledger
+  title: The classification, the mitigations, and the ledger
 - id: reach
   resource: tools/den-reach.nix
   title: Which aspects each host's system and each home includes
@@ -20,6 +20,34 @@ sources:
 ---
 
 # Delivery risk
+
+*Changed 2026-11-23: the owner asked that high-risk deliveries stop holding up
+automation. Nothing waits for approval and `--approve` is gone. The same
+triggers now name mitigations, and a failed mitigation fails the delivery like a
+failed check:*
+
+- *`secrets/` or `hosts/login-keys.nix`: `secret-recipients`, before the push.
+  Every age file is declared in `secrets/secrets.nix`, and the ssh tags in its
+  header match exactly the keys declared, read without decrypting.*
+- *`.github/rulesets/`: `ruleset-guarantees`, before the push. `main-checks`
+  stays active on the default branch, has no bypass actors, blocks deletion and
+  non-fast-forward pushes, and requires both nixbot checks from the same App.*
+- *`hosts/NAME/`: `boot-rollback`, before the push. NAME's enabled boot loader
+  keeps at least three generations, or all of them.*
+- *`tools/luvus-deliver.nu` or `tools/den-reach.nix`: `classifier-stricter`,
+  before the push. The changed classifier judges the delivery too, and every
+  mitigation either asks for runs; one the installed classifier cannot run
+  fails it.*
+- *`hosts/`, several hosts through high- or critical-risk configuration, or an
+  unknown reach: `canary-first`, after `main` moves. It waits until every
+  canary (`policy.autoDeploy`, named by `tools/den-reach.nix`) has staged the
+  commit and made it the boot default; a revert, or no answer by the deadline,
+  fails the delivery, and no other host switches to it.*
+
+*The ledger records each mitigation's outcome and how far the delivery got
+(`stage`), and a high-risk landing sends a desktop notification for review
+afterwards. Dropping a path from impermanence's persistence needs no backup:
+impermanence stops bind-mounting it, but its data stays under `/persist`.*
 
 *Changed 2026-11-21: the owner removed Jev from delivery. Code alone decides
 now: high risk is a path under `secrets/`, `hosts/`, or `.github/rulesets/`, a

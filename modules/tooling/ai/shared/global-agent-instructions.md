@@ -57,23 +57,20 @@ script, use valid Nushell syntax.
   for Jujutsu log, diff, status, describe, bookmark, abandon, and push; the
   GitHub MCP server for GitHub pull requests, issues, Actions runs, and
   releases; the Nix MCP server for nixpkgs packages, options, and pinned
-  flake-input sources; the ci MCP server for the `ci` workflow in a ci
-  repository (see Jujutsu); and the harness's own
+  flake-input sources; and the harness's own
   file-reading and editing tools for single files. Fall back to the Nushell
   evaluate tool only when no dedicated tool fits, such as flake
   evaluation, multi-step pipelines, or combining several results into one
   structured record.
 
-- The ci MCP server runs each command as a job in the given `workspace`
-  (default: the session's directory). Like the `ci` command, it runs the
+- Run the `ci` workflow in a ci repository (see Jujutsu) from the Nushell
+  evaluate tool, and its long commands, such as `ci preflight`,
+  `ci dispatch`, and `ci land`, with `job-log`. The `ci` command runs the
   `ci.nu` its package bundles, the version the installed system pins;
   inside the ci repository itself it runs the topic's own `ci.nu` when the
   topic edits it and trunk's otherwise. In a repository whose
   flake.lock moved `ci` ahead of the installed one, `nix develop path:.`
   runs the locked version.
-  A tool returns once the command finishes or
-  its `wait_seconds` elapse; poll a `running` result with its `job` tool,
-  which also serves `ci dispatch` and `ci land`.
 
 - When a shell is needed, use the Nushell evaluate tool rather than invoking
   `nu -c` through Bash. It preserves the session and structured results and
@@ -149,7 +146,7 @@ script, use valid Nushell syntax.
   nothing while it runs, and a call that outlasts about two minutes is
   silently promoted to a bare Nushell job you must collect with `job recv`.
   Run anything that may take that long, such as `nix build`, a test suite,
-  or `ci land` without the ci MCP server, with the session's `job-log`
+  or `ci land`, with the session's `job-log`
   command instead, not with Bash:
 
   ```nu
@@ -183,16 +180,13 @@ script, use valid Nushell syntax.
   hooks. A reporting job's log still raises
   `⚠ ALARM: LINE` for trouble it did not report, such as an evaluator
   that died; only a job that writes no reports, such as a bare
-  `nix build`, falls back to log lines that match its pattern. After five
+  `nix build`, falls back to log lines that match its pattern. For such a
+  job whose log is noisy, run `watch-job LOG --done-only`, which prints
+  only the `JOB:` and `DONE` lines. After five
   quiet minutes, and every five after that, a `⋯ STILL PHASE DURATION, quiet DURATION: LAST LINE` heartbeat says where the job is. If the
   Monitor expires before `DONE`, start the same command again; it resumes
   where the last one stopped. Without Monitor, check the done marker
   before reporting.
-
-- When a ci MCP tool returns `state: running`, follow it the same way
-  instead of polling `job` in a loop: start a Monitor running `watch-job`
-  on the result's `log_path`, and read the final record with `job` once
-  `DONE` arrives.
 
 - A `⏸ BLOCKED` line, or a `✗ DONE` with a nonzero exit or `lost`, needs
   the user: tell them, and send a push
@@ -318,7 +312,7 @@ decisions, how-tos, and personal notes.
   static Codex defaults belong on its wrapped package; Home Manager can still
   manage non-mutating skills and context files.
 - When nixpkgs lacks a package or ships an older version than a task needs,
-  run `npr <attribute>` (add `--days 60` for a slow-moving package) before
+  run `GH_TOKEN=(gh auth token) nh search prs <attribute>` (add `--days 60` for a slow-moving package) before
   proposing a workaround such as an extra flake input, an overlay, an
   override, or a version pin, and before answering when an update will reach
   nixpkgs. It lists that package's recent nixpkgs pull requests and which
@@ -331,9 +325,10 @@ decisions, how-tos, and personal notes.
 # Jujutsu
 
 A repository listed in the Home Manager option
-`dotfiles.tooling.gitWorkflowRepos`, currently `~/Nix/dotfiles`, takes writes
-through Git and luvus instead. In it, and in its luvus worktrees, the rules in
-this section and `ci` do not apply: follow that repository's `AGENTS.md`.
+`dotfiles.tooling.gitWorkflowRepos`, currently `~/Nix/dotfiles`, is gated and
+delivered as Git branches through luvus instead of `ci`. In it, and in its
+luvus task workspaces, never run `ci`, and where its `AGENTS.md` differs from
+this section, follow `AGENTS.md`.
 
 When a repository uses Git but has no JJ repository, such as when a `jj`
 command reports that there is no jj repo, run `jj git init --colocate` in it
@@ -362,7 +357,7 @@ option `dotfiles.ci.repositories` in `~/Nix/dotfiles` opts in every clone and
 workspace at a path. Opt a repository in only when the user asks: a new
 project is not a ci repository.
 
-Only in a ci repository do the `ci` command, its MCP server and skill, and the
+Only in a ci repository do the `ci` command and its skill, and the
 rules below that name `ci` apply, and only there does a session start with a
 context-status note or have its first edit claim the workspace. Everywhere
 else, use plain JJ for whatever the user asks, and never run `ci`, not even
@@ -429,6 +424,14 @@ that worktree, otherwise with
 `jj workspace add --revision 'trunk()' --name NAME .jj-workspaces/NAME` there.
 Then open and edit only that JJ workspace. In a repository with topic
 workspaces, agents must not edit an unconverted Git worktree.
+
+A luvus task worktree in a repository colocated with JJ is the exception:
+luvus-jj's worktree provider makes it a JJ workspace of its own
+(`jj workspace root` prints the worktree), so work in it directly. luvus
+gates and merges the task's Git branch (`luvus/tID`), which JJ does not move
+by itself: run `luvus-jj sync` before `luvus task done` to point it at the
+workspace's latest change. `luvus worktree remove PATH` removes the workspace
+and the worktree together.
 
 When the working-copy diff contains multiple coherent deliverables, split it
 into separate JJ changes before publishing them or treating the work as
