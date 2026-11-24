@@ -3,8 +3,8 @@ type: plan
 description: Run T3 Code 0.1.4 as a declarative user service on asus and homelab, published to the tailnet, so the desktop and phone drive agents on both and agents delegate across them.
 created: 2026-10-29
 generated:
-  by: claude-code/opus-5.5
-  at: 2026-10-29T13:50:00Z
+  by: codex/gpt-6.2-sol
+  at: 2026-11-24T05:42:31Z
 sources:
 - id: t3-docs
   resource: https://github.com/pingdotgg/t3code/tree/v0.1.4/docs/user
@@ -18,6 +18,9 @@ sources:
 - id: fleet-doc
   resource: docs/agents/T3-FLEET.md
   title: The fleet's architecture, setup and verification
+- id: fleet-service
+  resource: modules/tooling/ai/clients/t3code/t3code-server.nix
+  title: The fleet server and its shared Jobs action
 ---
 
 # Run a T3 Code agent fleet
@@ -50,6 +53,11 @@ Rejected: `t3 service install` (imperative, self-updating, pins one store path),
 agents), a managed T3 Connect tunnel (public exposure the tailnet makes
 unnecessary), and a second T3 home for the desktop app (two environments on one
 machine).
+
+The fleet service provisions a shared **Jobs** action in T3's writable settings.
+On projects that inherit the server's actions, it follows the latest job in the
+thread's workspace in the terminal drawer. It uses the same job events for
+Nushell and Rex-backed runs.
 
 ## Implementation Steps
 
