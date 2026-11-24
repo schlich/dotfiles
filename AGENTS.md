@@ -169,9 +169,10 @@ luvus quality gate and nixbot build.
   switch's output and any failed units. After `luvus-deliver` moves `main`,
   the agent that delivered runs `system-switch --with-home` on asus at once,
   without asking, and reports the outcome; a delivery that changed no closure
-  creates no generation. Ask first instead when the change needs manual steps
-  before activation, or touches boot, storage, encryption, or security
-  configuration. Switch another host only when the user asks.
+  creates no generation. Ask first only when the change needs manual steps
+  before activation. A change to boot, storage, encryption, or security
+  configuration switches like any other once `luvus-deliver`'s mitigations
+  have passed, canary first included. Switch another host only when the user asks.
 - The switch is staged: the new system runs without becoming the boot default
   while the host's health checks are watched, and a breach reverts it and
   writes a report under `/var/lib/nixos-switch-main/reports/`. When a switch
@@ -322,15 +323,23 @@ luvus quality gate and nixbot build.
   into it first.
 - A user request to publish or deliver authorizes the whole path: gate,
   merge, `luvus-deliver`, and the switch "Applying configuration" describes.
-  A high-risk delivery stops before it pushes and names why: it changes
-  `secrets/`, `hosts/`, the rulesets, or the classifier itself; it reaches
-  several hosts through configuration `den/model/policy.nix` rates high or
-  critical; or which hosts it reaches cannot be worked out. Show the owner
-  those reasons and ask. Once
-  they approve, rerun `luvus-deliver --approve REV` with the commit it names;
-  never pass `--approve` without that approval. Each verdict is kept in
-  `~/.local/state/luvus-deliver/risk.jsonl` for review after landing. A
-  failed gate, CI run, or unresolved merge conflict stops delivery and is reported.
+  A high-risk delivery never waits for the owner. It changes `secrets/`,
+  `hosts/`, the rulesets, or the classifier itself, reaches several hosts
+  through configuration `den/model/policy.nix` rates high or critical, or
+  reaches hosts that cannot be worked out. Its verdict names the mitigations
+  that run in its place. Before the push: `secret-recipients` (every age file
+  is declared and encrypted to exactly its declared keys), `ruleset-guarantees`
+  (`main-checks` still guards `main`), `boot-rollback` (a changed host's
+  boot menu keeps earlier generations), and `classifier-stricter` (the
+  changed classifier judges the delivery too). After `main` moves:
+  `canary-first`, which waits until homelab has staged the commit and made
+  it its boot default. A failed mitigation fails the delivery like a failed
+  check: fix it on a task branch and deliver again. When `canary-first`
+  fails, `main` has moved, but switch no other host to it; fix forward. Each
+  verdict and its mitigations' outcomes are kept in
+  `~/.local/state/luvus-deliver/risk.jsonl` for review after landing, and a
+  high-risk landing sends a desktop notification. A failed gate, CI run,
+  mitigation, or unresolved merge conflict stops delivery and is reported.
 - Once a task is delivered, remove its worktree with
   `luvus worktree remove PATH`, which refuses while a task, lease, or live
   agent still uses it and forgets its jj workspace too, and delete its
