@@ -326,7 +326,7 @@ luvus quality gate and nixbot build.
   From a finished worktree, run `luvus-ship --task ID` as a `job-log` job:
   it runs prek, `luvus-jj sync`, and the gate, merges exactly the commit
   the gate passed into `luvus/integration` (aborting on a conflict), and
-  marks the task merged. A failure stops it with the step and what to fix;
+  marks the task done with a note naming both commits. A failure stops it with the step and what to fix;
   rerun it afterwards. homelab's autopilot (`luvus-autopilot`,
   `services.luvusAutopilot`) also merges every gated task that luvus
   workers finish (`done`) in that checkout, and, with
