@@ -60,3 +60,7 @@ the author decides per package). The cache check stays limited to inputs that
 follow this flake's nixpkgs, evaluated without import-from-derivation, so an
 input such as atuin, whose flake needs IFD, reports an error rather than
 building during the check.
+
+The ncro input uses upstream's nixpkgs pin so the existing 2.4.0 revision can
+substitute from FlakeHub Cache. Its watch entry still tracks when nixpkgs can
+replace the upstream NixOS module.

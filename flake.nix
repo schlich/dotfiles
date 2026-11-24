@@ -20,7 +20,6 @@
     builds.inputs.iets.inputs.nixpkgs.follows = "system/nixpkgs";
     builds.inputs.nix-grpc-store.inputs.nixpkgs.follows = "system/nixpkgs";
     builds.inputs.nixbot.inputs.nixpkgs.follows = "system/nixpkgs";
-    builds.inputs.ncro.inputs.nixpkgs.follows = "system/nixpkgs";
     desktop.inputs.niri.inputs.nixpkgs.follows = "system/nixpkgs";
     desktop.inputs.noc-minimizer.inputs.nixpkgs.follows = "system/nixpkgs";
     desktop.inputs.dicta.inputs.nixpkgs.follows = "system/nixpkgs";
