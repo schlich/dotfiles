@@ -30,38 +30,24 @@ let
   unit = "t3code-server.service";
   jq = lib.getExe pkgs.jq;
 
-  watchProjectJob = pkgs.writeNuScriptBin "watch-project-job" (
-    builtins.readFile ../../scripts/watch-project-job.nu
-  );
-  jobsAction = {
-    id = "dotfiles-jobs";
-    name = "Jobs";
-    command = "${watchProjectJob}/bin/watch-project-job";
-    icon = "configure";
-    runOnWorktreeCreate = false;
-  };
-  # T3 owns this writable file. Update only our action, before the server
-  # reads it, and leave existing project overrides and other actions alone.
-  syncJobsAction = pkgs.writeShellScript "t3code-sync-jobs-action" ''
+  # Each job an agent starts gets a terminal of its own in that agent's
+  # thread, streaming the job (scripts/t3code-jobs.ts); job-stream is what
+  # those terminals run, and it works in any terminal.
+  jobStream = pkgs.writeNuScriptBin "job-stream" (builtins.readFile ../../scripts/job-stream.nu);
+  jobsBridge = ../../scripts/t3code-jobs.ts;
+  # The click-to-run Jobs action this replaced. T3 owns the writable settings
+  # file, so remove only that action, before the server reads it, and leave
+  # every other action and project override alone.
+  dropJobsAction = pkgs.writeShellScript "t3code-drop-jobs-action" ''
     set -euo pipefail
     PATH=${lib.makeBinPath [ pkgs.coreutils ]}
     umask 077
     settings="$1"
-    mkdir -p "$(dirname "$settings")"
+    [ -e "$settings" ] || exit 0
+    ${jq} -e '.defaultProjectScripts | any(.[]?; .id == "dotfiles-jobs")' "$settings" >/dev/null 2>&1 || exit 0
     tmp="$(mktemp "$settings.XXXXXX")"
     trap 'rm -f "$tmp"' EXIT
-    if [ -e "$settings" ]; then
-      input="$settings"
-    else
-      input=${pkgs.writeText "t3code-empty-settings.json" "{}"}
-    fi
-    ${jq} -e --argjson action ${lib.escapeShellArg (builtins.toJSON jobsAction)} '
-      .defaultProjectScripts |= ((. // []) |
-        if any(.[]; .id == $action.id)
-        then map(if .id == $action.id then $action else . end)
-        else . + [$action]
-        end)
-    ' "$input" > "$tmp"
+    ${jq} -e '.defaultProjectScripts |= map(select(.id != "dotfiles-jobs"))' "$settings" > "$tmp"
     mv -f "$tmp" "$settings"
   '';
 
@@ -363,11 +349,13 @@ in
 
   config = mkIf cfg.enable {
     # The desktop package carries `t3` too.
-    home.packages =
-      lib.optional (!config.dotfiles.t3code.desktop.enable) hostPackage
-      # Execution hosts carry Codex even without the desktop's Codex setup
-      # (codex.nix); it signs in with `codex login --device-auth`.
-      ++ lib.optional (!config.programs.codex.enable) pkgs.codex;
+    home.packages = [
+      jobStream
+    ]
+    ++ lib.optional (!config.dotfiles.t3code.desktop.enable) hostPackage
+    # Execution hosts carry Codex even without the desktop's Codex setup
+    # (codex.nix); it signs in with `codex login --device-auth`.
+    ++ lib.optional (!config.programs.codex.enable) pkgs.codex;
     dotfiles.t3code.desktop.package = hostPackage;
 
     systemd.user.services.t3code-server = {
@@ -388,7 +376,7 @@ in
       };
       Service = {
         ExecStartPre = [
-          "-${syncJobsAction} ${baseDir}/userdata/settings.json"
+          "-${dropJobsAction} ${baseDir}/userdata/settings.json"
         ]
         ++ lib.optional (kbMcpCommand != null) "${syncAntigravityKbMcp}";
         ExecStart = "${serve} --host 127.0.0.1 --port ${port} --base-dir ${baseDir}";
@@ -435,6 +423,34 @@ in
         CPUWeight = 1000;
         IOWeight = 1000;
         ManagedOOMPreference = "avoid";
+      };
+      Install.WantedBy = [ "default.target" ];
+    };
+
+    # Opens a terminal in an agent's thread for each job it starts. The
+    # server's restarts only drop its socket, which it reopens; it restarts
+    # daily itself, to issue a fresh terminal-only token before the last one
+    # expires.
+    systemd.user.services.t3code-jobs = {
+      Unit = {
+        Description = "Stream each agent job into a terminal of its T3 Code thread";
+        Wants = [ unit ];
+        After = [ unit ];
+      };
+      Service = {
+        ExecStart = "${lib.getExe pkgs.bun} run ${jobsBridge}";
+        Environment = [
+          "T3CODE_URL=${local}"
+          "T3_BIN=${t3code}/bin/t3"
+          "XS_BIN=xs"
+          "XS_STORE=${config.home.homeDirectory}/.local/share/cross.stream/store"
+          "JOB_STREAM=${jobStream}/bin/job-stream"
+          "STATE_DIR=%S/t3code-jobs"
+          "PATH=${config.home.profileDirectory}/bin:/etc/profiles/per-user/${config.home.username}/bin:/run/current-system/sw/bin"
+        ];
+        Restart = "always";
+        RestartSec = "10s";
+        RuntimeMaxSec = "1d";
       };
       Install.WantedBy = [ "default.target" ];
     };
@@ -530,6 +546,33 @@ in
           got="$(cd allowed && BASH_ENV=${bashEnv} "$wrapper" export json | ${jq} -r '.T3CODE_CHECK // empty')"
           test "$got" = loaded
           test "$(wc -l < "$evaluations")" -eq 1
+          touch "$out"
+        '';
+
+    # The bridge compiles, and job-stream prints a finished job's log and how
+    # it ended.
+    dotfiles.tooling.checks.t3code-jobs =
+      pkgs.runCommand "t3code-jobs-check"
+        {
+          nativeBuildInputs = [
+            pkgs.bun
+            pkgs.nushell
+            pkgs.coreutils
+          ];
+        }
+        ''
+          export HOME="$TMPDIR/home"
+          mkdir -p "$HOME"
+          bun build ${jobsBridge} --target bun --outdir "$TMPDIR/bridge" > /dev/null
+          log="$TMPDIR/job.log"
+          printf 'first\nsecond\n' > "$log"
+          echo '{task: "fake job", cwd: "/tmp", started: 2026-11-24T00:00:00+00:00}' > "$log.job.nuon"
+          echo '{exit_code: 3, error: "it broke"}' > "$log.done.nuon"
+          shown="$(${jobStream}/bin/job-stream "$log")"
+          # The header starts with a colour code.
+          echo "$shown" | grep -q 'JOB.*fake job'
+          echo "$shown" | grep -qx 'second'
+          echo "$shown" | grep -q 'DONE.*exit 3.*it broke'
           touch "$out"
         '';
 

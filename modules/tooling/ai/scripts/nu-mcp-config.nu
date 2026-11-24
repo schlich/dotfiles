@@ -28,7 +28,9 @@ if ($env.T3_FLEET_DIRENV? == "1") {
 # this Nushell's pid, the job's cross.stream topic, and what it runs where
 # since when to `LOG.job.nuon`, so a watcher can name the job, tell a lost
 # job from a slow one, and wake the moment it ends.
-# Follow it with a Monitor running `watch-job LOG`.
+# Follow it with a Monitor running `watch-job LOG`. A job an agent in T3 Code
+# starts also names its thread (T3CODE_THREAD_ID), so t3code-jobs opens a
+# terminal in that thread's drawer that streams the log.
 #
 # The log takes only text, written as the commands produce it, so the closure
 # must end in an external command or text: a record, a list, or null cannot
@@ -64,8 +66,8 @@ def job-log [
   let topic = $"job.(random uuid)"
   # The closure's source, on one line, is what the watcher's JOB line runs.
   let label = (view source $task | str trim --char '{' | str trim --char '}' | str replace --all --regex '\s+' ' ' | str trim | str substring 0..<120)
-  { pid: $nu.pid, topic: $topic, task: $label, cwd: $cwd, started: (date now) } | save --force $"($log).job.nuon"
-  job-event $"($topic).start" { log: $log, cwd: $cwd, pid: $nu.pid }
+  { pid: $nu.pid, topic: $topic, task: $label, cwd: $cwd, started: (date now), thread: $env.T3CODE_THREAD_ID? } | save --force $"($log).job.nuon"
+  job-event $"($topic).start" ({ log: $log, cwd: $cwd, pid: $nu.pid } | merge (job-thread))
   let id = (job spawn --description ($log | path basename) {
     let outcome = try {
       cd $cwd
@@ -96,7 +98,7 @@ def job-log-rex [log: path, task: closure, cwd: path, --interval: duration = 2se
   let source = (view source $task | str trim | str replace --regex '^\{\s*(\|\s*\|)?' '' | str replace --regex '\}$' '' | str trim)
   let name = $"job:($log | path basename)"
   let label = ($source | str replace --all --regex '\s+' ' ' | str substring 0..<120)
-  { pid: $nu.pid, topic: $topic, task: $"rex ($name): ($label)", cwd: $cwd, started: (date now) } | save --force $"($log).job.nuon"
+  { pid: $nu.pid, topic: $topic, task: $"rex ($name): ($label)", cwd: $cwd, started: (date now), thread: $env.T3CODE_THREAD_ID? } | save --force $"($log).job.nuon"
 
   # One Rex session holds every job's terminal; create it, empty, if needed.
   let sessions = (^rex ls --json | from json | get sessions)
@@ -109,7 +111,7 @@ def job-log-rex [log: path, task: closure, cwd: path, --interval: duration = 2se
   let created = (^rex run -s jobs --label $name --keep-open --focus=false --cwd $cwd --json -- env $"PST_FILE=($log).status.jsonl" $nu.current-exe -n -c $source | from json)
   let block = ($created.block_ids | first)
 
-  job-event $"($topic).start" { log: $log, cwd: $cwd, pid: $nu.pid, rex_block: $block }
+  job-event $"($topic).start" ({ log: $log, cwd: $cwd, pid: $nu.pid, rex_block: $block } | merge (job-thread))
   let id = (job spawn --description ($log | path basename) {
     let outcome = try {
       follow-rex-block $log $block $name $interval
@@ -149,6 +151,12 @@ def follow-rex-block [log: path, block: string, name: string, interval: duration
       }
     }
     $outcome
+}
+
+# The T3 Code thread whose agent runs this session, for a job's start event.
+def job-thread []: nothing -> record {
+  let thread = ($env.T3CODE_THREAD_ID? | default '')
+  if $thread == '' { {} } else { { thread: $thread } }
 }
 
 # Announce a job event on the local cross.stream store, where `watch-job` and

@@ -3,8 +3,8 @@ type: plan
 description: Run T3 Code 0.1.4 as a declarative user service on asus and homelab, published to the tailnet, so the desktop and phone drive agents on both and agents delegate across them.
 created: 2026-10-29
 generated:
-  by: codex/gpt-6.2-sol
-  at: 2026-11-24T05:42:31Z
+  by: claude-code/opus-5
+  at: 2026-11-24T13:50:00Z
 sources:
 - id: t3-docs
   resource: https://github.com/pingdotgg/t3code/tree/v0.1.4/docs/user
@@ -20,7 +20,10 @@ sources:
   title: The fleet's architecture, setup and verification
 - id: fleet-service
   resource: modules/tooling/ai/clients/t3code/t3code-server.nix
-  title: The fleet server and its shared Jobs action
+  title: The fleet server and its job terminals
+- id: jobs-bridge
+  resource: modules/tooling/ai/scripts/t3code-jobs.ts
+  title: t3code-jobs, which opens a terminal in a thread for each of its jobs
 ---
 
 # Run a T3 Code agent fleet
@@ -54,10 +57,15 @@ agents), a managed T3 Connect tunnel (public exposure the tailnet makes
 unnecessary), and a second T3 home for the desktop app (two environments on one
 machine).
 
-The fleet service provisions a shared **Jobs** action in T3's writable settings.
-On projects that inherit the server's actions, it follows the latest job in the
-thread's workspace in the terminal drawer. It uses the same job events for
-Nushell and Rex-backed runs.
+Each job an agent starts gets a terminal of its own in that agent's thread.
+`job-log` records the thread (`T3CODE_THREAD_ID`) in its cross.stream start
+event, and the `t3code-jobs` unit opens a terminal named after the job's log in
+that thread over the server's `/ws` RPC, with a token that can only operate
+terminals, and runs `job-stream LOG` there. A rerun replaces the job's tab.
+Nushell and Rex-backed runs work the same way. It replaced a click-to-run
+**Jobs** action, which followed only the latest job in the thread's workspace
+and missed jobs run from task worktrees (2026-11-24). T3 offers no way to open
+the drawer itself, so the tabs wait there until it is opened.
 
 ## Implementation Steps
 
