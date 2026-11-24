@@ -159,7 +159,7 @@
       }
     }
   }
-  # `nixpkgs-watch check`: whether a pull request npr found for a watched
+  # `nixpkgs-watch check`: whether a pull request `nh search prs` found for a watched
   # package, but which is not titled as that package's own, bears on the
   # workaround. Each pull request is judged once, from its title.
   nixpkgs_watch: {

@@ -112,9 +112,9 @@
       "inputs": {
         "gen-inspect": "gen-inspect",
         "iets": "iets",
+        "ncro": "ncro",
         "nix-grpc-store": "nix-grpc-store",
-        "nixbot": "nixbot",
-        "npr": "npr"
+        "nixbot": "nixbot"
       },
       "locked": {
         "path": "./lib/inputs/builds",
@@ -1098,6 +1098,27 @@
         "type": "github"
       }
     },
+    "ncro": {
+      "inputs": {
+        "nixpkgs": [
+          "system",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1795462421,
+        "narHash": "sha256-KYLLZofXDLakJYZS5UjOO3vEt7D6w2HLSqFV4jBTR1M=",
+        "owner": "manic-systems",
+        "repo": "ncro",
+        "rev": "f973c8888dbd53334e2c42a782af43bb65e8b2fd",
+        "type": "github"
+      },
+      "original": {
+        "owner": "manic-systems",
+        "repo": "ncro",
+        "type": "github"
+      }
+    },
     "niks3": {
       "inputs": {
         "nixpkgs": [
@@ -1342,27 +1363,6 @@
         "agents",
         "skills"
       ]
-    },
-    "npr": {
-      "inputs": {
-        "nixpkgs": [
-          "system",
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1794951514,
-        "narHash": "sha256-GQMEmB71EUdS3JggFcxnpAqCLyov/DBjXzpRK8vMOoE=",
-        "owner": "manic-systems",
-        "repo": "npr",
-        "rev": "63e952f7f3e8c9ee02c3077340d909681e285940",
-        "type": "github"
-      },
-      "original": {
-        "owner": "manic-systems",
-        "repo": "npr",
-        "type": "github"
-      }
     },
     "nu-batteries-src": {
       "flake": false,

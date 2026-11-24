@@ -16,6 +16,21 @@ alias nrb = nh os switch
 alias nhs = nh home switch
 alias nixfmt = nix fmt
 
+# Interactively dissect Nix closures without pinning nixtopsy as a flake input.
+# Examples: `nixtopsy`, `nixtopsy nixpkgs#hello`, `nixtopsy --derivation .#`
+def --wrapped nixtopsy [...args: string] {
+    ^nix run github:manic-systems/nixtopsy -- ...$args
+}
+
+# Dissect a closure from a binary cache without downloading it locally.
+def nixtopsy-remote [
+    installable: string
+    --store: string = "https://cache.nixos.org"
+] {
+    let out_path = (^nix eval --raw $"($installable).outPath" | str trim)
+    ^nix run github:manic-systems/nixtopsy -- --store $store $out_path
+}
+
 # source ~/.config/nushell/completions/niri.nu
 # use completions *
 
