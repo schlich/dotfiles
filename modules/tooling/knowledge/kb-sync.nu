@@ -18,20 +18,65 @@ def --wrapped jj-must [root: path, ...args: string]: nothing -> string {
   $res.stdout | str trim
 }
 
-def has-remote [root: path, remote: string]: nothing -> bool {
+def remote-urls [root: path]: nothing -> record {
   let res = (run-jj $root git remote list)
   if $res.exit_code != 0 {
-    return false
+    return {}
   }
   $res.stdout
   | lines
-  | each {|line| $line | split row --regex '\s+' | first }
-  | any {|name| $name == $remote }
+  | where {|line| ($line | str trim | is-not-empty) }
+  | each {|line|
+    let parts = ($line | str trim | split row --regex '\s+')
+    { name: ($parts | first), url: ($parts | skip 1 | str join " ") }
+  }
+  | reduce --fold {} {|it, acc| $acc | upsert $it.name $it.url }
+}
+
+def normalize-url [url: string]: nothing -> string {
+  $url | str trim | str replace --regex '/+$' ''
+}
+
+# Rename a remote whose URL differs from the configured one out of the way and
+# add the configured URL under the expected name, so a host that predates the
+# configured remote stops syncing with the old one.
+def reconcile-remote [root: path, remote: string, url: string] {
+  let remotes = (remote-urls $root)
+  let current = ($remotes | get --optional $remote)
+  if $current == null {
+    jj-must $root git remote add $remote $url | ignore
+    return
+  }
+  if (normalize-url $current) == (normalize-url $url) {
+    return
+  }
+  let preferred = if ($current =~ 'github\.com') { "github" } else { $"($remote)-old" }
+  let taken = ($remotes | columns)
+  let new_name = (
+    [$preferred] | append (2..99 | each {|i| $"($preferred)-($i)" })
+    | where {|n| $n not-in $taken }
+    | first
+  )
+  print --stderr $"kb-sync: warning: remote '($remote)' pointed at ($current), not the configured ($url); renamed it to '($new_name)' and added '($remote)' -> ($url)."
+  jj-must $root git remote rename $remote $new_name | ignore
+  jj-must $root git remote add $remote $url | ignore
 }
 
 def remote-ref-exists [root: path, branch: string, remote: string]: nothing -> bool {
   let res = (run-jj $root log -r $"($branch)@($remote)" --no-graph -T "commit_id")
   $res.exit_code == 0 and ($res.stdout | str trim | is-not-empty)
+}
+
+# jj refuses to create a remote bookmark that is not tracked yet (for example
+# main@origin on an empty remote while main tracks another remote), so track it
+# before pushing. There is no --allow-new in the pinned jj.
+def push-bookmark [root: path, remote: string, bookmark: string]: nothing -> record {
+  if not (remote-ref-exists $root $bookmark $remote) {
+    let _ = (run-jj $root bookmark track $"($bookmark)@($remote)")
+  }
+  with-env { KB_SYNC_INTERNAL: "1" } {
+    run-jj $root git push --remote $remote --bookmark $bookmark
+  }
 }
 
 def newest-mtime [root: path]: nothing -> any {
@@ -113,28 +158,19 @@ def push-rev-once [
     jj-must $root op restore $pre_rebase_op
     let side = $"sync/($host)/(date now | format date '%Y%m%d-%H%M%S')"
     jj-must $root bookmark set $side -r $rev
-    let pushed = (
-      with-env { KB_SYNC_INTERNAL: "1" } {
-        run-jj $root git push --remote $remote --bookmark $side
-      }
-    )
+    let pushed = (push-bookmark $root $remote $side)
     if $pushed.exit_code != 0 {
-      print --stderr $"kb-sync: conflict detected and side-branch push failed: ($pushed.stderr | str trim)"
-    } else {
-      if $has_remote_branch {
-        jj-must $root new $remote_ref
-      }
-      print --stderr $"kb-sync: conflict on ($branch); saved diverged change to ($side) and kept ($branch) clean."
+      error make { msg: $"kb-sync: conflict detected and side-branch push of ($side) failed: ($pushed.stderr | str trim)" }
     }
+    if $has_remote_branch {
+      jj-must $root new $remote_ref
+    }
+    print --stderr $"kb-sync: conflict on ($branch); saved diverged change to ($side) and kept ($branch) clean."
     return { ok: false, conflict: true, stderr: "conflict" }
   }
 
   jj-must $root bookmark set $branch -r $rev
-  let pushed = (
-    with-env { KB_SYNC_INTERNAL: "1" } {
-      run-jj $root git push --remote $remote --bookmark $branch
-    }
-  )
+  let pushed = (push-bookmark $root $remote $branch)
   if $pushed.exit_code == 0 {
     let wc_is_empty = ((jj-must $root log -r "@" --no-graph -T "empty") == "true")
     let parent_id = (jj-must $root log -r "@-" --no-graph -T "commit_id")
@@ -154,8 +190,9 @@ def push-with-retry [
   remote: string
   branch: string
   host: string
-  manual: bool
 ] {
+  # A failed push is an error on timer runs too, so the oneshot unit shows
+  # failed instead of reporting success while every push is rejected.
   let first = (push-rev-once $root $rev $remote $branch $host)
   if $first.ok or $first.conflict {
     return
@@ -164,21 +201,12 @@ def push-with-retry [
   # Push race: another host pushed between our fetch and push. Fetch and retry once.
   let refetch = (run-jj $root git fetch --remote $remote)
   if $refetch.exit_code != 0 {
-    let msg = $"kb-sync: retry fetch failed: ($refetch.stderr | str trim)"
-    if $manual {
-      error make { msg: $msg }
-    }
-    print --stderr $msg
-    return
+    error make { msg: $"kb-sync: push failed \(($first.stderr)) and retry fetch failed: ($refetch.stderr | str trim)" }
   }
 
   let second = (push-rev-once $root $rev $remote $branch $host)
   if (not $second.ok) and (not $second.conflict) {
-    let msg = $"kb-sync: push failed after retry: ($second.stderr)"
-    if $manual {
-      error make { msg: $msg }
-    }
-    print --stderr $msg
+    error make { msg: $"kb-sync: push failed after retry: ($second.stderr)" }
   }
 }
 
@@ -269,13 +297,13 @@ def do-sync [
           $local_branch.stdout | str trim
         }
         if ($unpushed | is-not-empty) {
-          push-with-retry $root $branch $remote $branch $host $manual
+          push-with-retry $root $branch $remote $branch $host
           return
         }
       } else if (not $has_remote_branch) {
         let parent_non_root = (jj-must $root log -r '@- & ~root()' --no-graph -T "commit_id")
         if ($parent_non_root | is-not-empty) {
-          push-with-retry $root "@-" $remote $branch $host $manual
+          push-with-retry $root "@-" $remote $branch $host
           return
         }
       }
@@ -315,7 +343,7 @@ def do-sync [
     jj-must $root metaedit --update-author -r "@"
   }
 
-  push-with-retry $root "@" $remote $branch $host $manual
+  push-with-retry $root "@" $remote $branch $host
 }
 
 def main [
@@ -353,10 +381,13 @@ def main [
       mkdir $lock_dir
     }
     let lock_file = ($lock_dir | path join $".($expanded_root | path basename).sync.lock")
+    # flock exits with this code when it cannot take the lock, so lock
+    # contention is told apart from a failed sync in the child.
+    let lock_busy = 75
     let flock_args = if ($manual or $fetch_only) {
-      ["-w" "30" $lock_file]
+      ["-E" ($lock_busy | into string) "-w" "30" $lock_file]
     } else {
-      ["-n" $lock_file]
+      ["-E" ($lock_busy | into string) "-n" $lock_file]
     }
     let self_args = (
       [
@@ -377,11 +408,15 @@ def main [
     )
     if ($res.stdout | is-not-empty) { print -n $res.stdout }
     if ($res.stderr | is-not-empty) { print --stderr -n $res.stderr }
-    # For non-blocking timer runs, exit 1 from flock simply means another sync holds the lock.
-    if $res.exit_code != 0 and ($manual or $fetch_only) {
-      exit $res.exit_code
+    # For non-blocking timer runs, lock contention means another sync is
+    # already running: a clean exit. Any other failure fails the unit.
+    if $res.exit_code == 0 {
+      return
     }
-    return
+    if $res.exit_code == $lock_busy and not ($manual or $fetch_only) {
+      return
+    }
+    exit $res.exit_code
   }
 
   let ssh_cmd = ($env.GIT_SSH_COMMAND? | default "ssh -o BatchMode=yes -o ConnectTimeout=5 -o ServerAliveInterval=5 -o ServerAliveCountMax=2")
@@ -402,15 +437,13 @@ def main [
       return
     }
 
-    if not (has-remote $kb_root $remote) {
-      if ($resolved_url | is-not-empty) {
-        jj-must $kb_root git remote add $remote $resolved_url
-      } else {
-        if $manual {
-          error make { msg: $"kb-sync: remote '($remote)' is not configured in ($kb_root)" }
-        }
-        return
+    if ($resolved_url | is-not-empty) {
+      reconcile-remote $kb_root $remote $resolved_url
+    } else if $remote not-in (remote-urls $kb_root | columns) {
+      if $manual {
+        error make { msg: $"kb-sync: remote '($remote)' is not configured in ($kb_root)" }
       }
+      return
     }
 
     do-sync $kb_root $remote $branch $debounce $manual $fetch_only $host_name

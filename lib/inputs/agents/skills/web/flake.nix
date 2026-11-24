@@ -3,7 +3,8 @@
 
   inputs = {
     archify = {
-      url = "github:tt-a1i/archify";
+      # Pinned to a release tag; bump the tag to update.
+      url = "github:tt-a1i/archify/v3.3.0";
       flake = false;
     };
     effective-html = {
