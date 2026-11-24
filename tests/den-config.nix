@@ -215,6 +215,36 @@ let
     };
   };
 
+  # OmniRoute stays on loopback and is published privately on the tailnet
+  # over HTTPS, with production cookie/API-key settings and tailnet origin.
+  omnirouteTests = name: config: {
+    testOmnirouteIsPublishedToTheTailnetOnly = {
+      expr = {
+        enabled = config.services.omniroute.enable;
+        host = config.services.omniroute.settings.OMNIROUTE_SERVER_HOST;
+        port = config.services.omniroute.settings.PORT;
+        cookieSecure = config.services.omniroute.settings.AUTH_COOKIE_SECURE;
+        requireApiKey = config.services.omniroute.settings.REQUIRE_API_KEY;
+        publicUrl = config.services.omniroute.settings.NEXT_PUBLIC_BASE_URL;
+        claim = config.dotfiles.tailscale.https.omniroute;
+        serve = lib.hasSuffix "/bin/tailscale serve --https=20128 http://127.0.0.1:20128" config.systemd.services.omniroute-serve.serviceConfig.ExecStart;
+      };
+      expected = {
+        enabled = true;
+        host = "127.0.0.1";
+        port = "20128";
+        cookieSecure = "true";
+        requireApiKey = "true";
+        publicUrl = "https://${name}.${hosts.${name}.network.tailnet}:20128";
+        claim = {
+          port = 20128;
+          funnel = false;
+        };
+        serve = true;
+      };
+    };
+  };
+
   # A unit that runs `tailscale serve` or `tailscale funnel` when the system
   # starts it fails a switch that restarts tailscaled before the daemon is
   # back (asus reverted the 2026-11-03 nixpkgs update over t3code-tailscale-serve),
@@ -401,6 +431,7 @@ let
         // lib.optionalAttrs (host.profile.remote && name != "homelab") (remoteClientTests config)
         // lib.optionalAttrs host.services.t3code (t3codeTests name config)
         // lib.optionalAttrs host.services.luvusWeb (luvusWebTests name config)
+        // lib.optionalAttrs host.services.omniroute (omnirouteTests name config)
         // lib.optionalAttrs config.services.tailscale.enable (tailscaleServeTests config)
         // (hostTests.${name} or (_: { })) config
         // lib.concatMapAttrs (

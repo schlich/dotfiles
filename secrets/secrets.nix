@@ -26,4 +26,11 @@ in
     admin
     homelab
   ];
+
+  # OmniRoute's optional environmentFile (JWT_SECRET, API_KEY_SECRET,
+  # OMNIROUTE_WS_BRIDGE_SECRET, etc.; modules/nixos/services/agent-servers/omniroute.nix).
+  "omniroute/env.age".publicKeys = [
+    admin
+    homelab
+  ];
 }
