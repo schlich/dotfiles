@@ -88,8 +88,12 @@ let
   status = lib.mapAttrs (
     name: entry:
     let
-      available = builtins.hasAttr entry.package pkgs;
-      nixpkgs = if available then pkgs.${entry.package}.version or null else null;
+      # The locked nixpkgs itself, not this home's package set, whose
+      # overlays may carry the workaround under the same name (as Nushell's
+      # does).
+      upstream = inputs.nixpkgs.legacyPackages.${system};
+      available = builtins.hasAttr entry.package upstream;
+      nixpkgs = if available then upstream.${entry.package}.version or null else null;
       node = if entry.input == null then null else lockNode entry.input;
       original = if node == null then { } else node.original;
     in

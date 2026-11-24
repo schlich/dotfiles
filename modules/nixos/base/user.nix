@@ -1,6 +1,10 @@
 { lib, pkgs, ... }:
 
 {
+  # Every host with this user runs Nushell as its login shell; the overlay
+  # carries the version nixpkgs has not shipped yet (nushell-package.nix).
+  nixpkgs.overlays = [ (import ./nushell-package.nix) ];
+
   users.defaultUserShell = pkgs.nushell;
   users.users.schlich = {
     # asus's UID; a host whose account predates this declaration sets its own.

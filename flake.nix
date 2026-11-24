@@ -64,6 +64,8 @@
       inherit (inputs) nixpkgs nushellWith;
       system = "x86_64-linux";
       overlays = [
+        # The hosts' Nushell, so the checks run the scripts with it.
+        (import ./modules/nixos/base/nushell-package.nix)
         nushellWith.overlays.default
       ];
       pkgs = import nixpkgs {
