@@ -132,6 +132,17 @@ def main [watch_job: path] {
   })
   $failures = ($failures | append (check "quiet job gets a heartbeat" $result.run ['^JOB: ' '^▶ build: Building$' '^⋯ STILL build [12]sec, quiet 1sec: building desktop-primary$' '^✓ DONE exit 0 after \dsec$'] $result.took 5sec))
 
+  # --done-only prints only the JOB and DONE lines of a noisy job that sends
+  # no reports: no pattern matches, alarms, or heartbeats between them.
+  let log = ($tmp | path join noisy.log)
+  job-log $log { ^sh -c 'echo "=== build"; echo "error: evaluation worker 1 was killed"; sleep 1.6; echo "error: boom"; exit 3' } | ignore
+  let result = (do {
+    let started = (date now)
+    let run = (^timeout 30 nu --no-config-file $watch_job $log --interval 200ms --quiet-after 1sec --done-only | complete)
+    { run: $run, took: ((date now) - $started) }
+  })
+  $failures = ($failures | append (check "done-only prints JOB and DONE alone" $result.run ['^JOB: ' '^✗ DONE exit 3 after \dsec: '] $result.took 5sec))
+
   # Without a store the watcher reads on a timer, and a line written in two
   # parts is read once it is whole.
   let log = ($tmp | path join offline.log)
