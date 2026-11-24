@@ -19,7 +19,7 @@
 # - Evaluation warns once the locked nixpkgs ships the package (at least
 #   `version`, when set), so the build after `nix flake update nixpkgs` says
 #   the workaround can go.
-# - A daily timer asks npr which nixpkgs pull requests for each package are
+# - A daily timer asks `nh search prs` which nixpkgs pull requests for each package are
 #   open or have reached the unstable channels, asks GitHub whether an
 #   entry's upstream `fix` is in the release nixpkgs ships, asks the public
 #   binary caches whether upstream's own build of an `input` is
@@ -31,7 +31,6 @@ let
   inherit (lib) mkOption types;
   cfg = config.dotfiles.nixpkgsWatch;
   system = pkgs.stdenv.hostPlatform.system;
-  npr = inputs.npr.packages.${system}.default;
   luvus = import ../../programs/multiplexers/luvus-package.nix { inherit inputs lib pkgs; };
   marimohub = import ../../tooling/knowledge/marimohub-package.nix { inherit lib pkgs; };
 
@@ -141,7 +140,7 @@ let
     name = "nixpkgs-watch";
     text = ''
       export NIXPKGS_WATCH_STATUS=${pkgs.writeText "nixpkgs-watch.json" (builtins.toJSON status)}
-      export NIXPKGS_WATCH_NPR=${npr}/bin/npr
+      export NIXPKGS_WATCH_NH=${lib.getExe config.programs.nh.package}
       export NIXPKGS_WATCH_NOTIFY=${pkgs.libnotify}/bin/notify-send
       export NIXPKGS_WATCH_JEV=${jev}/bin/jev
       export NIXPKGS_WATCH_QUESTIONS=${../../../jev/questions.nuon}
@@ -187,7 +186,7 @@ in
             package = mkOption {
               type = types.str;
               default = name;
-              description = "nixpkgs attribute name, which is also npr's search term.";
+              description = "nixpkgs attribute name, which is also the `nh search prs` search term.";
             };
             version = mkOption {
               type = types.nullOr types.str;
@@ -264,12 +263,11 @@ in
 
   config = lib.mkMerge [
     {
-      # For checking a package by hand: `npr <attribute>`.
-      home.packages = [ npr ];
-
-      dotfiles.nixpkgsWatch.npr.reason = "replace the npr input's package in modules/home/nix/nixpkgs-watch.nix with pkgs.npr and drop the npr input";
-
-      # A workaround of the systems, which share this home's nixpkgs.
+      # Workarounds of the systems, which share this home's nixpkgs.
+      dotfiles.nixpkgsWatch.ncro = {
+        inherit (inputs.ncro.packages.${system}.default) version;
+        reason = "replace inputs.ncro.nixosModules.default in modules/nixos/builds/homelab-cache-client.nix with nixpkgs' services.ncro and drop the ncro input";
+      };
       dotfiles.nixpkgsWatch.marimohub = {
         inherit (marimohub) version;
         repo = "marimo-team/marimohub";
@@ -318,8 +316,8 @@ in
           Type = "oneshot";
           ExecStart = "${lib.getExe nixpkgsWatch} check --notify --queue-tasks";
           Environment = [
-            # npr searches through gh, which carries the GitHub login; the
-            # cache check runs the system's nix.
+            # nh search prs uses gh's token, and the cache check runs the
+            # system's nix.
             "PATH=${lib.makeBinPath [ config.programs.gh.package ]}:/run/current-system/sw/bin"
           ];
           # Evaluating an input with upstream's own lock fetches upstream's

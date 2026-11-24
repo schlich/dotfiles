@@ -40,7 +40,7 @@
     MemorySwapMax = "4G";
     OOMPolicy = "continue";
   };
-  # nh wraps nix with nom's build tree, dix's package diff, and a
+  # nh wraps nix with rom's build tree, dix's package diff, and a
   # confirmation before activation. `nh os switch` applies the working copy
   # directly, so `system-switch` stays the staged way to apply `main`.
   # Its weekly `nh clean all` replaces nix.gc: it keeps the newest generations
