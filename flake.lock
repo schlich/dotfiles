@@ -79,15 +79,16 @@
     "archify": {
       "flake": false,
       "locked": {
-        "lastModified": 1794916930,
-        "narHash": "sha256-fII0jYhErYSQY4dbc/8cKL/kex5/tefl9Rw01nSYYwA=",
+        "lastModified": 1795368669,
+        "narHash": "sha256-e7i1mOip2iHvErOLF07thZeBpICvGj2fUgRlXfjHwBE=",
         "owner": "tt-a1i",
         "repo": "archify",
-        "rev": "44781293f38728baf04dbad33ce1a0cef8c39cca",
+        "rev": "af3aaf3c36762f2afb62a4a09533f6c7273b07e5",
         "type": "github"
       },
       "original": {
         "owner": "tt-a1i",
+        "ref": "v3.3.0",
         "repo": "archify",
         "type": "github"
       }
