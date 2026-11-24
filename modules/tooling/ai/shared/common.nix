@@ -179,6 +179,23 @@ in
         touch "$out"
       '';
 
+  # `job-log --rex` against a Rex server of the check's own: a passing and a
+  # failing job, the log and status watch-job reads, and the kept terminal.
+  dotfiles.tooling.checks.job-log-rex =
+    pkgs.runCommand "job-log-rex-check"
+      {
+        nativeBuildInputs = [
+          pkgs.nushell
+          inputs.rex.packages.${pkgs.stdenv.hostPlatform.system}.rex
+        ];
+      }
+      ''
+        export HOME="$TMPDIR/home" SHELL=${pkgs.runtimeShell}
+        mkdir -p "$HOME"
+        nu --config ${../scripts/nu-mcp-config.nu} ${../tests/job-log-rex.nu}
+        touch "$out"
+      '';
+
   # `mcp probe` against a stdio server, and `secret with` against a stub
   # secretspec.
   dotfiles.tooling.checks.mcp-probe =
