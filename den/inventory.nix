@@ -32,6 +32,7 @@ let
       luvusWeb = false;
       rex = false;
       crossStream = false;
+      omniroute = false;
     };
     # Clan logs in as the everyday user and escalates with sudo.
     deploy.targetUser = "schlich";
@@ -132,6 +133,8 @@ let
           luvusDeliver = true;
           rex = true;
           crossStream = true;
+          # Multi-provider AI gateway, published privately on the tailnet.
+          omniroute = true;
         };
         deploy = {
           enable = true;

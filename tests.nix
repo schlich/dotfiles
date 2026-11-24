@@ -90,6 +90,7 @@ in
         luvusWeb = true;
         rex = true;
         crossStream = true;
+        omniroute = false;
       };
     };
     expected = [
@@ -122,6 +123,7 @@ in
         "luvus-web"
         "rex"
         "cross-stream"
+        "omniroute"
       ];
     };
   };
