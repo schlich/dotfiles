@@ -11,8 +11,8 @@
 #   4. merges exactly the commit the gate passed into luvus/integration, in
 #      the worktree that has it checked out, under the lock the autopilot
 #      takes, and aborts the merge on a conflict;
-#   5. with --task, marks the task merged on the board with a note naming
-#      both commits.
+#   5. with --task, marks the task done on the board with a note naming both
+#      commits.
 # Every step is appended to the autopilot's events.jsonl, and reported to
 # PST_FILE, so `job-log` and `watch-job` follow it. It is resumable: a branch
 # integration already holds is not merged again.
@@ -161,9 +161,12 @@ def main [
     record-event shipped ($base | merge { integration_before: $integration, integration_after: $merged })
     print $"Merged ($branch) at ($short) into luvus/integration at ($merged | str substring 0..11)."
     if $task != null {
+      # luvus sets `merged` only from its own `task merge`, so the board
+      # records `done` and the note says where the work went. A task with a
+      # branch luvus knows then merges as a no-op, which marks it merged.
       let note = $"shipped ($branch) at ($short) into luvus/integration at ($merged | str substring 0..11)"
-      try { luvus-json task update $task --status merged --note $note | ignore } catch {|e|
-        print $"Could not mark ($task) merged: ($e.msg)"
+      try { luvus-json task update $task --status done --note $note | ignore } catch {|e|
+        print $"Could not record ($task) on the board: ($e.msg)"
       }
     }
   }
