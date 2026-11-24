@@ -31,6 +31,7 @@
     terminal.inputs.shell.inputs.rex.inputs.nixpkgs.follows = "system/nixpkgs";
     terminal.inputs.vcs.inputs.ci.inputs.nixpkgs.follows = "system/nixpkgs";
     terminal.inputs.vcs.inputs.ci.inputs.osc7501-nu.follows = "terminal/shell/osc7501-nu";
+    terminal.inputs.vcs.inputs.jj-graph.inputs.nixpkgs.follows = "system/nixpkgs";
     # Only its non-flake default.nix uses flake-compat. Nix 2.34 cannot
     # refetch the lix tarball it locks (the locked URL keeps a ?rev= that
     # the fetch drops), which fails nixbot's prefetch once the source
@@ -126,7 +127,9 @@
       dagger = import ./modules/programs/vcs/dagger-package.nix { inherit lib pkgs; };
       inherit (pkgs) iwe;
       marimohub = import ./modules/tooling/knowledge/marimohub-package.nix { inherit lib pkgs; };
-      jjGraph = import ./tools/jj-graph { inherit lib pkgs; };
+      # jj-normalize and its model checks, from github:schlich/jj-graph.
+      jjGraph = inputs.jj-graph.packages.${system};
+      jjGraphChecks = inputs.jj-graph.checks.${system};
       workbench = import ./workbench { inherit pkgs lib iwe; };
       workbenchImages = lib.mapAttrs' (
         name: environment: lib.nameValuePair "workbench-image-${name}" environment.image
@@ -432,7 +435,7 @@
         jj = pkgs.jujutsu;
         jjui = pkgs.jjui;
         jj-ci-lifecycle = jjCiLifecycle;
-        jj-graph = jjGraph.package;
+        inherit (jjGraph) jj-normalize;
         xr-workbench = xrWorkbench;
         quota-advisor = quotaAdvisor;
         nixbot-register = nixbotRegister;
@@ -515,9 +518,9 @@
           type = "app";
           program = "${pkgs.jjui}/bin/jjui";
         };
-        jj-graph = {
+        jj-normalize = {
           type = "app";
-          program = "${jjGraph.package}/bin/jj-graph";
+          program = "${jjGraph.jj-normalize}/bin/jj-normalize";
         };
         xr-workbench = {
           type = "app";
@@ -571,11 +574,11 @@
         '';
         # discord-digest's build runs its tests.
         discord-digest = pkgs.callPackage ./tools/discord-digest/package.nix { };
-        # jj-graph's build runs its lints, its Hegel properties (some in real
-        # jj repositories), and its conformance to spec/Normalize.qnt; the
-        # model check simulates and model checks the specifications.
-        jj-graph = jjGraph.package;
-        jj-graph-model = jjGraph.model;
+        # jj-normalize's build runs its lints, its Hegel properties (some in
+        # real jj repositories), and its conformance to spec/Normalize.qnt;
+        # the model check simulates and model checks the specifications.
+        # Both come from the jj-graph input and rebuild only when it moves.
+        inherit (jjGraphChecks) jj-normalize jj-normalize-model;
         marimohub = marimohub;
         # One Markdown file as an IWE node and a marimo notebook: IWE
         # validates the corpus, marimo executes the demo in the Nix
@@ -1069,7 +1072,7 @@
         // import ./modules/tooling/keymap-checks/remote.nix { inherit inputs lib pkgs; }
         // {
           # TLC over every three-change graph takes about twelve minutes.
-          jj-graph-model-exhaustive = jjGraph.exhaustive;
+          inherit (jjGraph) jj-normalize-model-exhaustive;
           deploy-revert = import ./tests/deploy-revert.nix { inherit pkgs; };
           marimohub-homelab-evaluation = marimohubHomelabEvaluationCheck;
           discord-digest-homelab-evaluation = discordDigestHomelabEvaluationCheck;

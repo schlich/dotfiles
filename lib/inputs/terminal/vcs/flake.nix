@@ -6,6 +6,9 @@
     # from GitHub. Every workspace runs the version this lock pins;
     # `nix-suite update ci` moves to a newer one.
     ci.url = "github:schlich/ci";
+    # jj-graph, whose jj-normalize plans, checks, and normalizes change
+    # graphs; jj runs it as `jj normalize`.
+    jj-graph.url = "github:schlich/jj-graph";
     # Built from its own lock file, without its flake's separate nixpkgs; bump
     # the tag to update jj-hunk.
     jj-hunk = {

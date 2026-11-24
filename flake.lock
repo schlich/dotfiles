@@ -955,6 +955,27 @@
         "type": "github"
       }
     },
+    "jj-graph": {
+      "inputs": {
+        "nixpkgs": [
+          "system",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1795558024,
+        "narHash": "sha256-UaO4S0lEIer8sQktyaUtSvUJu6LZAMSTYZEtfqD8Dn8=",
+        "owner": "schlich",
+        "repo": "jj-graph",
+        "rev": "f72b76c79f236624509adbbb0ad36e67796391a9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "schlich",
+        "repo": "jj-graph",
+        "type": "github"
+      }
+    },
     "jj-hunk": {
       "flake": false,
       "locked": {
@@ -1864,6 +1885,7 @@
       "inputs": {
         "ci": "ci",
         "gh-stack": "gh-stack",
+        "jj-graph": "jj-graph",
         "jj-hunk": "jj-hunk"
       },
       "locked": {

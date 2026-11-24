@@ -105,8 +105,9 @@ let
         exec ${pkgs.bash}/bin/bash ${scripts}/jj-ai-describe "$@"
       '';
     };
-  # Plans, checks, and normalizes change graphs (tools/jj-graph/README.md).
-  jjGraph = (import ../../../tools/jj-graph { inherit lib pkgs; }).package;
+  # Plans, checks, and normalizes change graphs, from the jj-graph input
+  # (crates/jj-normalize/README.md there).
+  jjNormalize = inputs.jj-graph.packages.${pkgs.stdenv.hostPlatform.system}.jj-normalize;
   # dotfiles' delivery: luvus/integration to main once its risk verdict
   # allows it and nixbot passes on it.
   luvusDeliver = pkgs.writeNuScriptBin "luvus-deliver" (
@@ -192,13 +193,13 @@ in
       "-r"
       "topics()"
     ];
-    # `jj graph check`, `jj graph normalize`, and the rest of jj-graph's
-    # commands, run against the repository jj is in.
-    aliases.graph = [
+    # `jj normalize check`, `jj normalize plan`, and the rest of
+    # jj-normalize's commands, run against the repository jj is in.
+    aliases.normalize = [
       "util"
       "exec"
       "--"
-      (lib.getExe jjGraph)
+      (lib.getExe jjNormalize)
     ];
     aliases.ai-describe = [
       "util"
@@ -222,7 +223,7 @@ in
   home.packages = [
     git
     jj
-    jjGraph
+    jjNormalize
     jjAiDescribe
     pkgs.llm
     pkgs.oyui

@@ -15,8 +15,6 @@
   "dir:tests" = 13;
   "dir:tools" = 12;
   "dir:tools/discord-digest/src/discord_digest" = 7;
-  "dir:tools/jj-graph/src" = 17;
-  "dir:tools/jj-graph/tests" = 10;
   "dir:workbench" = 7;
   "dir:xr-workbench/web" = 16;
   "niri:window-rules" = 7;
