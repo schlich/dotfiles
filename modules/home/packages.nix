@@ -88,6 +88,7 @@ in
     eilmeldung
     acreomApp
     super-productivity
+    jabref
     element-desktop
     discord
     github-desktop

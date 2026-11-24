@@ -155,6 +155,17 @@ without a password. The unit builds the host from GitHub's `main` at a pinned
 revision, never from a working copy, skips the switch when that toplevel is
 already active, and records the result in `/var/lib/nixos-switch-main`.
 
+`system-switch HOST` names the host it switches, so the same command works
+from any host: on HOST it starts the unit there, and elsewhere it runs
+`system-switch` on HOST over ssh, at the destination
+`den/aspects/fleet/deploy-policy.nix` gives each host (`dotfiles.deploy.fleet`),
+and forwards that run's step reports. A bare `system-switch` switches the
+host it runs on and says which. Once `luvus-deliver` moves `main`, it
+compares each deployed host's running system and the user's standalone home
+with what `main` builds, by store path, and prints the command each host
+that is behind still needs; `luvus-deliver hosts` prints the same list
+later. A canary that stages `main` by itself gets no command.
+
 ## Applying a home
 
 On a host whose home is embedded (homelab), the home is part of the system

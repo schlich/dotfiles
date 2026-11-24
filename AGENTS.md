@@ -166,10 +166,16 @@ luvus quality gate and nixbot build.
   `main`; others cannot be switched to.
 - `system-switch` applies GitHub's `main` without sudo through the
   `nixos-switch-main` unit, which polkit lets the user start, and prints the
-  switch's output and any failed units. After `luvus-deliver` moves `main`,
-  the agent that delivered runs `system-switch --with-home` on asus at once,
-  without asking, and reports the outcome; a delivery that changed no closure
-  creates no generation. Ask first only when the change needs manual steps
+  switch's output and any failed units. `system-switch HOST` names the host
+  it switches and works from any host: elsewhere it runs the switch on HOST
+  over ssh. Always name the host; a bare `system-switch` switches whichever
+  machine the session runs on, which is not always asus. After
+  `luvus-deliver` moves `main`, it ends by listing what each deployed host
+  still needs, by store path, with the command that applies it
+  (`luvus-deliver hosts` lists it again later). The agent that delivered
+  runs the command it gives for asus, `system-switch asus --with-home`, at
+  once, without asking, and reports the outcome; a host listed as up to date
+  needs nothing. Ask first only when the change needs manual steps
   before activation. A change to boot, storage, encryption, or security
   configuration switches like any other once `luvus-deliver`'s mitigations
   have passed, canary first included. Switch another host only when the user asks.
@@ -321,6 +327,30 @@ luvus quality gate and nixbot build.
   It waits for homelab to build, so run it as a `job-log` job. When
   `luvus/integration` no longer contains `origin/main`, merge `origin/main`
   into it first.
+- Gating, merging, and delivering run themselves; the user has authorized
+  this standing path, so a finished task needs no request to deliver it.
+  From a finished worktree, run `luvus-ship --task ID` as a `job-log` job:
+  it runs prek, `luvus-jj sync`, and the gate, merges exactly the commit
+  the gate passed into `luvus/integration` (aborting on a conflict), and
+  marks the task done with a note naming both commits. A failure stops it with the step and what to fix;
+  rerun it afterwards. homelab's autopilot (`luvus-autopilot`,
+  `services.luvusAutopilot`) also merges every gated task that luvus
+  workers finish (`done`) in that checkout, and, with
+  `services.luvusDeliver`, starts `luvus-autodeliver.service` once
+  `luvus/integration` has been quiet for ten minutes. That runs
+  `luvus-deliver` with its mitigations, merging `origin/main` in first when
+  needed, then removes the delivered tasks' worktrees; homelab's canary
+  timer deploys the result. It never retries a commit whose delivery failed,
+  never resolves a conflict, and sends a desktop notification on each
+  delivery or failure. `luvus-ship --deliver` starts the delivery at once.
+  `luvus-autopilot pause` stops all of it; `luvus-autopilot status` shows
+  the backlog of tasks done before it took over, which it leaves alone, and
+  `luvus-autopilot log` the actions it took, with the commits before and
+  after each. Each delivery's output is under
+  `~/.local/state/luvus-autopilot/logs/`; follow one with `watch-job LOG`.
+  The autopilot switches no workstation: asus takes a delivery at its next
+  `system-switch --with-home`, run when the user asks or after a delivery
+  an agent on asus made.
 - A user request to publish or deliver authorizes the whole path: gate,
   merge, `luvus-deliver`, and the switch "Applying configuration" describes.
   A high-risk delivery never waits for the owner. It changes `secrets/`,

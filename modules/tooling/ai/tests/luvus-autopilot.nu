@@ -3,13 +3,67 @@
 # Usage: nu luvus-autopilot.nu <autopilot script>
 
 # A task as `luvus task list` reports it.
-def task [id: string, status: string, --deps: list<string> = [], --notes: list<string> = [], --paths: list<string> = [], --created: int = 0, --ws: string = 'w1'] {
+def task [id: string, status: string, --deps: list<string> = [], --notes: list<string> = [], --paths: list<string> = [], --created: int = 0, --ws: string = 'w1', --gate: string = '', --branch: string = '', --finished: int = 0] {
   {
     id: $id, title: $"task ($id)", status: $status, deps: $deps, notes: $notes
     paths: (if ($paths | is-empty) { [$"src/($id)/**"] } else { $paths })
     created: (if $created == 0 { ($id | str replace 't' '' | into int) } else { $created })
-    attempt: 1, project: { root: $"/repo/($ws)", workspace_id: $ws }
+    attempt: 1, project: { root: $"/repo/($ws)/.git", workspace_id: $ws }
+    gate: (if $gate == '' { null } else { $gate })
+    branch: (if $branch == '' { null } else { $branch })
+    attempt_finished_at: (if $finished == 0 { null } else { $finished })
+    updated: $finished
   }
+}
+
+# A gated task on a branch, finished at `finished`.
+def gated [id: string, status: string, --finished: int = 200, --notes: list<string> = [], --ws: string = 'w1'] {
+  task $id $status --gate 'nix flake check' --branch $"luvus/($id)" --finished $finished --notes $notes --ws $ws
+}
+
+# deliver-plan's cases: the state it reads and what it should decide.
+def deliver-cases [] {
+  let now = '2026-11-24T12:00:00+00:00'
+  let base = { integration: 'b', main: 'a', seen: null, failed: null, pending: [], running: false, now: $now, quiet: '10min' }
+  [
+    [name state expect];
+    ['nothing to deliver when main is current' ($base | merge { integration: 'a' }) { action: idle }]
+    ['nothing to deliver without the branch' ($base | merge { integration: null }) { action: idle }]
+    ['a new head starts the quiet period' $base { action: wait, seen_sha: b, seen_since: $now }]
+    ['waits out the quiet period' ($base | merge { seen: { sha: b, since: '2026-11-24T11:55:00+00:00' } }) { action: wait, seen_since: '2026-11-24T11:55:00+00:00' }]
+    ['delivers once the branch has been quiet long enough' ($base | merge { seen: { sha: b, since: '2026-11-24T11:49:00+00:00' } }) { action: deliver }]
+    ['a moved branch restarts the quiet period' ($base | merge { seen: { sha: x, since: '2026-11-24T10:00:00+00:00' } }) { action: wait, seen_sha: b, seen_since: $now }]
+    ['tasks still to merge hold the delivery' ($base | merge { pending: [t1], seen: { sha: b, since: '2026-11-24T10:00:00+00:00' } }) { action: wait }]
+    ['a running delivery is not started again' ($base | merge { running: true, seen: { sha: b, since: '2026-11-24T10:00:00+00:00' } }) { action: busy }]
+    ['a head that failed is not retried' ($base | merge { failed: b, seen: { sha: b, since: '2026-11-24T10:00:00+00:00' } }) { action: stalled }]
+    ['a new head after a failure is delivered as usual' ($base | merge { failed: x, seen: { sha: b, since: '2026-11-24T10:00:00+00:00' } }) { action: deliver }]
+  ]
+}
+
+def run-deliver-cases [script: string, dir: string] {
+  mut failures = 0
+  for c in (deliver-cases | enumerate) {
+    let f = ($dir | path join $"deliver-($c.index).json")
+    $c.item.state | to json | save $f
+    let r = (^nu --no-config-file $script plan-deliver $f | complete)
+    let got = (try { $r.stdout | from json } catch { null })
+    let view = if $got == null { null } else {
+      { action: $got.action, seen_sha: $got.seen.sha?, seen_since: (try { $got.seen.since | into datetime | format date '%+' } catch { null }) }
+    }
+    let bad = if $view == null { ['no decision'] } else {
+      $c.item.expect | transpose key want | where {|e|
+        let have = ($view | get $e.key)
+        if $e.key == 'seen_since' { ($have | into datetime) != ($e.want | into datetime) } else { $have != $e.want }
+      } | each {|e| $"($e.key): want ($e.want | to nuon) got ($view | get $e.key | to nuon)" }
+    }
+    let ok = ($r.exit_code == 0 and ($bad | is-empty))
+    print $"(if $ok { 'ok  ' } else { 'FAIL' }) luvus-autopilot deliver: ($c.item.name)"
+    if not $ok {
+      print $"     ($bad | str join '; ') stderr: ($r.stderr | str trim)"
+      $failures += 1
+    }
+  }
+  $failures
 }
 
 def lease [task: string, paths: list<string>] { { id: $"l-($task)", task: $task, pane: 1, paths: $paths } }
@@ -93,6 +147,33 @@ def main [script: string] {
     ["a smaller cap from the command line"
       [(task t1 queued --notes $auto) (task t2 queued --notes $auto) (task t9 running)] [] [--cap 2]
       { starts: [t1], waiting_cap: [t2] }]
+    ["merges a gated done task in a listed repository without opt-in"
+      [(gated t1 done) (gated t2 running)] [] [--repos /repo/w1 --since 100]
+      { merges: [t1], backlog: [], unmergeable: [] }]
+    ["a checkout and its .git directory name the same repository"
+      [(gated t1 done)] [] [--repos /repo/w1/.git/ --since 100]
+      { merges: [t1] }]
+    ["a task done before the autopilot first saw the repository is backlog"
+      [(gated t1 done --finished 50) (gated t2 done --finished 150)] [] [--repos /repo/w1 --since 100]
+      { merges: [t2], backlog: [t1] }]
+    ["an ungated or branchless done task is not merged"
+      [(task t1 done --branch luvus/t1 --finished 200) (task t2 done --gate g --finished 200)] [] [--repos /repo/w1 --since 100]
+      { merges: [], unmergeable: [{ id: t1, why: 'no gate' } { id: t2, why: 'no branch' }] }]
+    ["auto off keeps a gated task out"
+      [(gated t1 done --notes ['auto off'])] [] [--repos /repo/w1 --since 100]
+      { merges: [], backlog: [], unmergeable: [] }]
+    ["a task in an unlisted repository is left alone"
+      [(gated t1 done --ws w2)] [] [--repos /repo/w1 --since 100]
+      { merges: [] }]
+    ["without listed repositories only opted-in tasks merge"
+      [(gated t1 done) (gated t2 done --notes $auto)] [] []
+      { merges: [t2] }]
+    ["a blocked task in a listed repository stalls"
+      [(gated t1 blocked) (gated t2 blocked --ws w2)] [] [--repos /repo/w1 --since 100]
+      { stalled_ids: [t1] }]
+    ["paused merges nothing in a listed repository"
+      [(gated t1 done)] [] [--repos /repo/w1 --since 100 --paused]
+      { merges: [] }]
   ]
   mut failures = 0
   for c in ($cases | enumerate) {
@@ -119,5 +200,6 @@ def main [script: string] {
       $failures += 1
     }
   }
+  $failures += (run-deliver-cases $script $dir)
   if $failures > 0 { exit 1 }
 }

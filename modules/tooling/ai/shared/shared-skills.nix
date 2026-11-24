@@ -49,6 +49,13 @@
   "hegel"
   "hegel-review"
 ] (name: "${inputs.hegel-skill}/skills/${name}")
+# Baygent's Bayesian modeling skills (PyMC, BayesFlow, CausalPy), one per
+# top-level directory.
+// inputs.nixpkgs.lib.genAttrs [
+  "amortized-workflow"
+  "bayesian-workflow"
+  "causal-inference"
+] (name: "${inputs.baygent-skills}/${name}")
 # HumanLayer ships each skill inside its own Claude plugin.
 // inputs.nixpkgs.lib.genAttrs [
   "show-me"

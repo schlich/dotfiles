@@ -10,6 +10,12 @@
       url = "github:marimo-team/skills";
       flake = false;
     };
+    # Bayesian workflow, amortized inference, and causal inference skills (PyMC,
+    # BayesFlow)
+    baygent-skills = {
+      url = "github:Learning-Bayesian-Statistics/baygent-skills";
+      flake = false;
+    };
   };
 
   # `sources` are this group's inputs, with those of the groups inside it,

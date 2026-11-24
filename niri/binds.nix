@@ -267,6 +267,14 @@ let
       (bind "Ctrl+Print" "Screenshot: the screen" "screenshot-screen")
       (bind "Alt+Print" "Screenshot: the window" "screenshot-window")
     ])
+    # T3 Code's SnapShot capture, over its session D-Bus interface. busctl
+    # (systemd) makes the call; glib's gdbus is not installed.
+    (member "snapshot" [
+      (with' "repeat=false" (
+        bind "Ctrl+Shift+0" "SnapShot: capture into T3 Code"
+          ''spawn "busctl" "--user" "call" "com.t3tools.T3Code.SnapShot" "/com/t3tools/SnapShot" "com.t3tools.SnapShot" "Capture"''
+      ))
+    ])
     (member "volume" (
       map (with' "allow-when-locked=true") [
         (twin "XF86AudioRaiseVolume" ''spawn-sh "noctalia msg volume-up"'')
