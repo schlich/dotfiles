@@ -26,10 +26,14 @@
   ];
 
   # Servers with a Home Manager user: remote editor helpers without pulling in
-  # desktop GUI closures.
-  den.aspects.user-server.homeManager.imports = [
-    ../../../modules/tooling/editors/zed-remote-server.nix
-  ];
+  # desktop GUI closures, and a high-contrast hostname badge so server shells
+  # stand out from local workstation panes.
+  den.aspects.user-server.homeManager = {
+    imports = [
+      ../../../modules/tooling/editors/zed-remote-server.nix
+    ];
+    dotfiles.shell.hostBadge.enable = true;
+  };
 
   # Workstations only: terminals, editors, agent clients, desktop apps and
   # the user services that go with them. modules/programs repeats the shell
