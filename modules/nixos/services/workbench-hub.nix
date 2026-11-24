@@ -58,8 +58,8 @@ in
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
-      ExecStart = "${pkgs.tailscale}/bin/tailscale serve --bg --https=${toString servePort} http://127.0.0.1:${toString cfg.port}";
-      ExecStop = "${pkgs.tailscale}/bin/tailscale serve --https=${toString servePort} off";
+      ExecStart = "${config.dotfiles.tailscale.serve} serve --bg --https=${toString servePort} http://127.0.0.1:${toString cfg.port}";
+      ExecStop = "${config.dotfiles.tailscale.serve} serve --https=${toString servePort} off";
     };
 
     # Like the Funnel units, start this manually after `tailscale up` so a

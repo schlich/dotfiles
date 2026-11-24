@@ -123,7 +123,9 @@ let
         expr = {
           enabled = config.services.kb-git.enable;
           claim = config.dotfiles.tailscale.https.kb-git;
-          serve = lib.hasSuffix "/bin/tailscale serve --https=7445 http://127.0.0.1:${toString config.services.kb-git.port}" config.systemd.services.kb-git-serve.serviceConfig.ExecStart;
+          serve =
+            config.systemd.services.kb-git-serve.serviceConfig.ExecStart
+            == "${config.dotfiles.tailscale.serve} serve --https=7445 http://127.0.0.1:${toString config.services.kb-git.port}";
         };
         expected = {
           enabled = true;
@@ -173,7 +175,9 @@ let
         owner = config.dotfiles.t3code.user;
         linger = config.users.users.${config.dotfiles.t3code.user}.linger;
         claim = config.dotfiles.tailscale.https.t3code;
-        serve = lib.hasSuffix "/bin/tailscale serve --https=3773 http://127.0.0.1:3773" config.systemd.services.t3code-tailscale-serve.serviceConfig.ExecStart;
+        serve =
+          config.systemd.services.t3code-tailscale-serve.serviceConfig.ExecStart
+          == "${config.dotfiles.tailscale.serve} serve --https=3773 http://127.0.0.1:3773";
       };
       expected = {
         owner = lib.head (builtins.attrNames (homesOf name));
@@ -195,7 +199,9 @@ let
         owner = config.dotfiles.luvusWeb.user;
         linger = config.users.users.${config.dotfiles.luvusWeb.user}.linger;
         claim = config.dotfiles.tailscale.https.luvus-web;
-        serve = lib.hasSuffix "/bin/tailscale serve --https=4174 http://127.0.0.1:4174" config.systemd.services.luvus-web-tailscale-serve.serviceConfig.ExecStart;
+        serve =
+          config.systemd.services.luvus-web-tailscale-serve.serviceConfig.ExecStart
+          == "${config.dotfiles.tailscale.serve} serve --https=4174 http://127.0.0.1:4174";
       };
       expected = {
         owner = lib.head (builtins.attrNames (homesOf name));
@@ -211,27 +217,59 @@ let
 
   # A unit that runs `tailscale serve` or `tailscale funnel` when the system
   # starts it fails a switch that restarts tailscaled before the daemon is
-  # back, even though Restart= recovers it seconds later: asus reverted the
-  # 2026-11-03 nixpkgs update over t3code-tailscale-serve. Every such unit
-  # waits for the backend first (waitForBackend, modules/nixos/fleet/tailscale-https.nix).
-  tailscaleServeTests = config: {
-    testTailscaleServeUnitsWaitForTheBackend = {
-      expr = builtins.attrNames (
-        lib.filterAttrs (
-          _: unit:
-          let
-            start = toString (lib.toList (unit.serviceConfig.ExecStart or ""));
-            pre = map toString (lib.toList (unit.serviceConfig.ExecStartPre or [ ]));
-          in
-          unit.enable
-          && unit.wantedBy != [ ]
-          && (lib.hasInfix "/bin/tailscale serve " start || lib.hasInfix "/bin/tailscale funnel " start)
-          && !(lib.elem (toString (config.dotfiles.tailscale.waitForBackend or "")) pre)
-        ) config.systemd.services
+  # back (asus reverted the 2026-11-03 nixpkgs update over t3code-tailscale-serve),
+  # or when concurrent Serve/Funnel units race on /localapi/v0/serve-config and
+  # hit "Preconditions failed: etag mismatch" (homelab reverted the 2026-11-24
+  # flake update over kb-git-serve and rex-tailscale-serve). Every boot-started
+  # Serve/Funnel unit waits for the backend (waitForBackend), and every
+  # Serve/Funnel ExecStart/ExecStop goes through the serialized wrapper
+  # (`dotfiles.tailscale.serve`, modules/nixos/fleet/tailscale-https.nix).
+  tailscaleServeTests =
+    config:
+    let
+      serveWrapper = builtins.unsafeDiscardStringContext (
+        toString (config.dotfiles.tailscale.serve or "")
       );
-      expected = [ ];
+      hasBareServeOrFunnel =
+        cmd: lib.hasInfix "/bin/tailscale serve " cmd || lib.hasInfix "/bin/tailscale funnel " cmd;
+      hasWrappedServeOrFunnel =
+        cmd:
+        serveWrapper != ""
+        && (lib.hasInfix "${serveWrapper} serve " cmd || lib.hasInfix "${serveWrapper} funnel " cmd);
+      isServeOrFunnel = cmd: hasBareServeOrFunnel cmd || hasWrappedServeOrFunnel cmd;
+    in
+    {
+      testTailscaleServeUnitsWaitForTheBackend = {
+        expr = builtins.attrNames (
+          lib.filterAttrs (
+            _: unit:
+            let
+              start = toString (lib.toList (unit.serviceConfig.ExecStart or ""));
+              pre = map toString (lib.toList (unit.serviceConfig.ExecStartPre or [ ]));
+            in
+            unit.enable
+            && unit.wantedBy != [ ]
+            && isServeOrFunnel start
+            && !(lib.elem (toString (config.dotfiles.tailscale.waitForBackend or "")) pre)
+          ) config.systemd.services
+        );
+        expected = [ ];
+      };
+
+      testTailscaleServeUnitsSerializeConfigChanges = {
+        expr = builtins.attrNames (
+          lib.filterAttrs (
+            _: unit:
+            let
+              start = toString (lib.toList (unit.serviceConfig.ExecStart or ""));
+              stop = toString (lib.toList (unit.serviceConfig.ExecStop or ""));
+            in
+            unit.enable && (hasBareServeOrFunnel start || hasBareServeOrFunnel stop)
+          ) config.systemd.services
+        );
+        expected = [ ];
+      };
     };
-  };
 
   # A home follows the host it is named for: the desktop home only
   # on a workstation, ci's traces only where the viewer runs, and the T3 Code

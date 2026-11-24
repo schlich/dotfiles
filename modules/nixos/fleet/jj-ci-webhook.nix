@@ -146,8 +146,8 @@ in
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
-        ExecStart = "${pkgs.tailscale}/bin/tailscale funnel --bg ${toString cfg.listenPort}";
-        ExecStop = "${pkgs.tailscale}/bin/tailscale funnel ${toString cfg.listenPort} off";
+        ExecStart = "${config.dotfiles.tailscale.serve} funnel --bg ${toString cfg.listenPort}";
+        ExecStop = "${config.dotfiles.tailscale.serve} funnel ${toString cfg.listenPort} off";
       };
 
       # Funnel requires one-time interactive Tailscale authentication and

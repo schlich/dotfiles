@@ -852,6 +852,136 @@
               ruff format --no-cache --config ${./workbench/ruff.toml} --check ${./workbench/python} ${./workbench/tests}
               touch "$out"
             '';
+        # Concurrent Tailscale Serve/Funnel units must serialize updates to
+        # /localapi/v0/serve-config and retry on etag mismatch without blocking
+        # each other once registered.
+        tailscale-serve =
+          let
+            serveScript = denFlake.nixosConfigurations.homelab.config.dotfiles.tailscale.serve;
+          in
+          pkgs.runCommand "tailscale-serve-check" { } ''
+            set -euo pipefail
+            mkdir -p "$TMPDIR/bin" "$TMPDIR/state"
+
+            # Mock tailscale that detects overlapping serve-config writes and
+            # fails them with the exact etag mismatch error tailscaled returns.
+            cat > "$TMPDIR/bin/mock-tailscale" <<'EOF'
+            #!${pkgs.bash}/bin/bash
+            set -euo pipefail
+            state="$MOCK_STATE_DIR"
+            mkdir -p "$state"
+
+            if [ -f "$state/force-etag-once" ]; then
+              rm -f "$state/force-etag-once"
+              echo "Another client is changing the serve config; please try again." >&2
+              echo "sending serve config: Preconditions failed: etag mismatch" >&2
+              exit 1
+            fi
+
+            if [ "''${1:-}" = "serve" ] && [ "''${2:-}" = "fail-hard" ]; then
+              echo "invalid serve target" >&2
+              exit 2
+            fi
+
+            # Detect concurrent serve-config mutation: mkdir is atomic.
+            if ! mkdir "$state/inflight" 2>/dev/null; then
+              echo "Another client is changing the serve config; please try again." >&2
+              echo "sending serve config: Preconditions failed: etag mismatch" >&2
+              exit 1
+            fi
+            sleep 0.05
+            rmdir "$state/inflight"
+
+            for arg in "$@"; do
+              case "$arg" in
+                --bg | --bg=true | off | status | reset)
+                  echo "ok:$*" >> "$state/short.log"
+                  exit 0
+                  ;;
+              esac
+            done
+
+            echo "Available within your tailnet:"
+            echo "https://homelab.example.ts.net/"
+            echo "Press Ctrl+C to exit."
+            echo "started:$*" >> "$state/fg.log"
+            trap 'echo "stopped:$*" >> "$state/fg.log"; exit 0' TERM INT
+            while true; do sleep 1; done
+            EOF
+            chmod +x "$TMPDIR/bin/mock-tailscale"
+
+            export TAILSCALE_BIN="$TMPDIR/bin/mock-tailscale"
+            export TAILSCALE_SERVE_LOCK="$TMPDIR/serve.lock"
+            export TAILSCALE_SERVE_RETRY_DELAY="0.05"
+            export MOCK_STATE_DIR="$TMPDIR/state"
+            : > "$MOCK_STATE_DIR/fg.log"
+
+            # 1. Eight concurrent foreground serve units serialize registration
+            #    with zero etag collisions, stay up concurrently, and stop cleanly.
+            pids=()
+            for i in 1 2 3 4 5 6 7 8; do
+              ${serveScript} serve --https="$((7440 + i))" "http://127.0.0.1:$((8000 + i))" >"$TMPDIR/fg-$i.log" 2>&1 &
+              pids+=($!)
+            done
+
+            deadline=$((SECONDS + 15))
+            while [ "$(wc -l < "$MOCK_STATE_DIR/fg.log" 2>/dev/null || echo 0)" -lt 8 ]; do
+              if [ "$SECONDS" -ge "$deadline" ]; then
+                echo "timed out waiting for 8 foreground units" >&2
+                exit 1
+              fi
+              sleep 0.05
+            done
+
+            for pid in "''${pids[@]}"; do
+              kill -0 "$pid"
+            done
+            for pid in "''${pids[@]}"; do
+              kill -TERM "$pid"
+            done
+            for pid in "''${pids[@]}"; do
+              wait "$pid"
+            done
+            test "$(grep -c '^stopped:' "$MOCK_STATE_DIR/fg.log")" -eq 8
+
+            # 2. Forced etag mismatch on foreground startup retries and succeeds.
+            touch "$MOCK_STATE_DIR/force-etag-once"
+            ${serveScript} serve --https=7450 http://127.0.0.1:8050 >"$TMPDIR/retry-fg.log" 2>&1 &
+            rpid=$!
+            deadline=$((SECONDS + 10))
+            while ! grep -q '^started:serve --https=7450' "$MOCK_STATE_DIR/fg.log"; do
+              if [ "$SECONDS" -ge "$deadline" ]; then
+                echo "foreground retry did not succeed" >&2
+                cat "$TMPDIR/retry-fg.log" >&2
+                exit 1
+              fi
+              sleep 0.05
+            done
+            kill -TERM "$rpid"
+            wait "$rpid"
+
+            # 3. Concurrent short-lived (--bg and off) commands serialize and retry.
+            touch "$MOCK_STATE_DIR/force-etag-once"
+            spids=()
+            for i in 1 2 3 4; do
+              ${serveScript} funnel --bg --https=8443 "$((8010 + i))" &
+              spids+=($!)
+              ${serveScript} serve --https="$((7440 + i))" off &
+              spids+=($!)
+            done
+            for pid in "''${spids[@]}"; do
+              wait "$pid"
+            done
+            test "$(wc -l < "$MOCK_STATE_DIR/short.log")" -eq 8
+
+            # 4. Real errors are not retried and preserve exit code.
+            rc=0
+            ${serveScript} serve fail-hard >/dev/null 2>&1 || rc=$?
+            test "$rc" -eq 2
+
+            touch "$out"
+          '';
+
         # TLC explores every state of the staged switch's bounded model, once
         # with activation able to outlast the dead-man's grace period and once
         # with the timer firing only after its run has died.
