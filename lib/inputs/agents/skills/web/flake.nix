@@ -15,6 +15,10 @@
       url = "github:GoogleChrome/modern-web-guidance";
       flake = false;
     };
+    stately-skills = {
+      url = "github:statelyai/skills";
+      flake = false;
+    };
   };
 
   # `sources` are this group's inputs, with those of the groups inside it,

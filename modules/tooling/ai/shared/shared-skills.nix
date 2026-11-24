@@ -60,3 +60,12 @@
 // inputs.nixpkgs.lib.genAttrs [
   "show-me"
 ] (name: "${inputs.humanlayer-skills}/plugins/${name}/skills/${name}")
+# Stately's skills for finding implicit state machines, checking flows,
+# state management, XState v5/v6, and symbolic README references.
+// inputs.nixpkgs.lib.genAttrs [
+  "readme"
+  "state-management"
+  "stately"
+  "xstate-v5"
+  "xstate-v6"
+] (name: "${inputs.stately-skills}/skills/${name}")

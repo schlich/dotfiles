@@ -1657,6 +1657,22 @@
         "type": "github"
       }
     },
+    "stately-skills": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1795532073,
+        "narHash": "sha256-u4lCDWt1a/WeVvrBY2bqF7X+DaE8y5rJgVTYa1fQjpI=",
+        "owner": "statelyai",
+        "repo": "skills",
+        "rev": "b9167d86e5522e9e990eef1f3a6bf3bc9bad3435",
+        "type": "github"
+      },
+      "original": {
+        "owner": "statelyai",
+        "repo": "skills",
+        "type": "github"
+      }
+    },
     "system": {
       "inputs": {
         "agenix": "agenix",
@@ -1904,7 +1920,8 @@
       "inputs": {
         "archify": "archify",
         "effective-html": "effective-html",
-        "modern-web-guidance": "modern-web-guidance"
+        "modern-web-guidance": "modern-web-guidance",
+        "stately-skills": "stately-skills"
       },
       "locked": {
         "path": "./web",
