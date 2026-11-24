@@ -6,6 +6,11 @@ to the current day's group.
 
 ## 2026-11-23
 
+- **Architecture**: [Delivery risk](architecture/delivery-risk.md) no longer
+  holds a delivery for approval. A high-risk verdict names mitigations that run
+  in its place: secret recipients, ruleset guarantees, the boot menu's rollback,
+  the changed classifier's own verdict, and canary first, which waits for
+  homelab to deploy the commit before any other host switches.
 - **Architecture**: [luvus jj workspaces](architecture/luvus-jj-workspaces.md).
   In a repository colocated with jj, each luvus task worktree is a jj workspace
   on the task branch, and `luvus-jj sync` moves that branch before the gate;

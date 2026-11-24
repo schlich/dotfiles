@@ -18,8 +18,8 @@ when activating. Create a NixOS generation only if the candidate system
 toplevel differs from the active system.
 For breaking changes, add a "## Manual steps" section after this one.
 Paste the verdict of `luvus-deliver risk`: the hosts it reaches and why it is
-low, medium, or high risk. A high-risk delivery waits for the owner's approval
-of its exact commit (AGENTS.md, "Delivery").
+low, medium, or high risk, and the mitigations a high-risk one runs instead
+of waiting for approval (AGENTS.md, "Delivery").
 -->
 
 ## Validation
