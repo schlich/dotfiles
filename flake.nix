@@ -913,11 +913,14 @@
       # deploy, homelab with modules it has not adopted yet, the staged
       # switch's revert in a VM, and Bombadil's exploration of Fieldwork.
       # Bombadil explores Fieldwork, a prototype whose bridge answers some
-      # requests with 4xx by design, so its findings report here first.
+      # requests with 4xx by design, so its findings report here first; the
+      # keymap checks of programs that do not follow the keymap rules yet,
+      # such as jjui, report here too.
       remoteChecks.${system} =
         remoteHostEvaluationChecks
         // clanMachineChecks
         // import ./xr-workbench/bombadil-check.nix { inherit lib pkgs; }
+        // import ./modules/tooling/keymap-checks/remote.nix { inherit inputs lib pkgs; }
         // {
           # TLC over every three-change graph takes about twelve minutes.
           jj-graph-model-exhaustive = jjGraph.exhaustive;
