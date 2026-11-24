@@ -112,6 +112,7 @@
       "inputs": {
         "gen-inspect": "gen-inspect",
         "iets": "iets",
+        "ncro": "ncro",
         "nix-grpc-store": "nix-grpc-store",
         "nixbot": "nixbot"
       },
@@ -1094,6 +1095,27 @@
       "original": {
         "owner": "GoogleChrome",
         "repo": "modern-web-guidance",
+        "type": "github"
+      }
+    },
+    "ncro": {
+      "inputs": {
+        "nixpkgs": [
+          "system",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1795462421,
+        "narHash": "sha256-KYLLZofXDLakJYZS5UjOO3vEt7D6w2HLSqFV4jBTR1M=",
+        "owner": "manic-systems",
+        "repo": "ncro",
+        "rev": "f973c8888dbd53334e2c42a782af43bb65e8b2fd",
+        "type": "github"
+      },
+      "original": {
+        "owner": "manic-systems",
+        "repo": "ncro",
         "type": "github"
       }
     },

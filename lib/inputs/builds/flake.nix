@@ -7,6 +7,8 @@
     # grpc:// stores: homelab's daemon and every remote host's client plugin.
     nix-grpc-store.url = "github:Mic92/nix-grpc-store";
     nixbot.url = "github:Mic92/nixbot";
+    # Local binary-cache routing proxy (EMA latency + SQLite route cache).
+    ncro.url = "github:manic-systems/ncro";
     gen-inspect.url = "github:sini/gen-inspect";
   };
 

@@ -263,7 +263,11 @@ in
 
   config = lib.mkMerge [
     {
-      # A workaround of the systems, which share this home's nixpkgs.
+      # Workarounds of the systems, which share this home's nixpkgs.
+      dotfiles.nixpkgsWatch.ncro = {
+        inherit (inputs.ncro.packages.${system}.default) version;
+        reason = "replace inputs.ncro.nixosModules.default in modules/nixos/builds/homelab-cache-client.nix with nixpkgs' services.ncro and drop the ncro input";
+      };
       dotfiles.nixpkgsWatch.marimohub = {
         inherit (marimohub) version;
         repo = "marimo-team/marimohub";
