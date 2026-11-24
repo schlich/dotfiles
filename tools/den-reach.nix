@@ -54,6 +54,16 @@ let
     else
       own ++ builtins.concatMap (walk ctx (seen ++ own)) (aspect.includes or [ ]);
   hostOf = home: builtins.elemAt (builtins.split "@" home) 2;
+  # The ssh destination a host is reached at, as
+  # den/aspects/fleet/deploy-policy.nix gives it to `system-switch HOST`.
+  destination =
+    name: host:
+    if host.deploy.targetHost == null then
+      name
+    else if host.deploy.sshPort == null then
+      host.deploy.targetHost
+    else
+      "ssh://${host.deploy.targetHost}:${toString host.deploy.sshPort}";
 in
 {
   systems = builtins.mapAttrs (
@@ -79,26 +89,19 @@ in
   # names them. A delivery's canary-first mitigation waits for them.
   canaries = builtins.listToAttrs (
     map
-      (
-        name:
-        let
-          host = hosts.${name};
-        in
-        {
-          inherit name;
-          value =
-            if host.deploy.sshPort == null then
-              host.deploy.targetHost
-            else
-              "ssh://${host.deploy.targetHost}:${toString host.deploy.sshPort}";
-        }
-      )
+      (name: {
+        inherit name;
+        value = destination name hosts.${name};
+      })
       (
         builtins.filter (name: hosts.${name}.policy.autoDeploy && hosts.${name}.deploy.targetHost != null) (
           builtins.attrNames hosts
         )
       )
   );
+  # Every host by its ssh destination, for the steps luvus-deliver lists
+  # once main has moved.
+  destinations = builtins.mapAttrs destination hosts;
   # The risk den/model/policy.nix assigns each aspect, or null for none.
   risks = builtins.mapAttrs (_: aspect: (aspect.meta or { }).risk or null) den.aspects;
 }

@@ -31,7 +31,22 @@ def main [script: path] {
     deployed: [asus homelab]
     risks: { base: medium, workstation: medium, homelab-platform: high, user-shell: null }
     canaries: { homelab: "ssh://homelab:2222" }
+    destinations: { asus: asus, homelab: "ssh://homelab:2222", spare: spare }
   } | to json | save $den
+  # What main builds for each host, and what each runs, in place of
+  # evaluating the flake and asking the hosts: asus runs an older system with
+  # main's home, and homelab, the canary, already runs main, which the
+  # staged switch rebuilt under a label ending in the evaluated path's hash.
+  let closures = ($tmp | path join closures.json)
+  {
+    asus: { system: "/nix/store/aaa2-nixos-system-asus", homes: { "schlich@asus": "/nix/store/home-2" } }
+    homelab: { system: "/nix/store/hhh2-nixos-system-homelab", homes: {} }
+  } | to json | save $closures
+  let generations = ($tmp | path join generations.json)
+  {
+    asus: { system: { generation: 5, path: "/nix/store/aaa1-nixos-system-asus", staged: false }, home: { path: "/nix/store/home-2" } }
+    homelab: { system: { generation: 9, path: "/nix/store/xyz9-nixos-system-homelab-26.11-hhh2", staged: false }, home: { path: "/nix/store/embedded" } }
+  } | to json | save $generations
   let ledger = ($tmp | path join risk.jsonl)
   # What each host's boot loaders keep, in place of evaluating them.
   let loaders = ($tmp | path join loaders.json)
@@ -104,6 +119,9 @@ def main [script: path] {
       LUVUS_DELIVER_DEN: $den
       LUVUS_DELIVER_LEDGER: $ledger
       LUVUS_DELIVER_LOADERS: $loaders
+      LUVUS_DELIVER_CLOSURES: $closures
+      LUVUS_DELIVER_GENERATIONS: ($env.LUVUS_DELIVER_GENERATIONS? | default $generations)
+      USER: schlich
       LUVUS_DELIVER_HOST: ($env.LUVUS_DELIVER_HOST? | default "builder")
     } { ^$nu.current-exe --no-config-file $script ...$args | complete }
   }
@@ -222,8 +240,34 @@ def main [script: path] {
   ^chmod +x ($bin | path join gh)
   let shipped = (do $case shipped { "docs/guide.md": "# Guide\n\nShipped.\n" })
   let path = ($env.PATH | each {|p| $p | split row (char esep) } | flatten | prepend $bin)
-  with-env { PATH: $path } { do $run [--repo $repo] } | ignore
+  let delivered = (with-env { PATH: $path } { do $run [--repo $repo] })
   $failures = ($failures | append (expect "a delivery fast-forwards main and the local main tasks start from" [(^git -C $origin rev-parse main | str trim) (^git -C $repo rev-parse main | str trim)] [$shipped $shipped]))
+
+  # Once main moves, the delivery says what each deployed host needs and
+  # the command that applies it, which names the host.
+  let said = ($delivered.stdout | lines | each { str trim })
+  $failures = ($failures | append (expect "a delivery ends with each host's next step" [
+    ($said | any {|line| $line =~ '^asus\s+needs its system → system-switch asus --with-home$' })
+    ($said | any {|line| $line =~ '^homelab\s+up to date \(generation 9\)$' })
+  ] [true true]))
+  let steps = {|file: string|
+    let result = (with-env { LUVUS_DELIVER_GENERATIONS: $file } { do $run [hosts --repo $repo --json] })
+    if $result.exit_code == 0 { $result.stdout | from json | select host state needs command } else { $result.stderr }
+  }
+  let behind = ($tmp | path join behind.json)
+  {
+    homelab: { system: { generation: 8, path: "/nix/store/xyz8-nixos-system-homelab-26.11-hhh1", staged: false } }
+  } | to json | save $behind
+  $failures = ($failures | append (expect "a canary behind main gets no command, and an unreachable host keeps its command" (do $steps $behind) [
+    { host: asus, state: unreachable, needs: [], command: "system-switch asus --with-home" }
+    { host: homelab, state: behind, needs: [system], command: null }
+  ]))
+  let home_behind = ($tmp | path join home-behind.json)
+  {
+    asus: { system: { generation: 6, path: "/nix/store/aaa2-nixos-system-asus", staged: false }, home: { path: "/nix/store/home-1" } }
+    homelab: { system: { generation: 9, path: "/nix/store/xyz9-nixos-system-homelab-26.11-hhh2", staged: false } }
+  } | to json | save $home_behind
+  $failures = ($failures | append (expect "a standalone home behind main needs the same command" (do $steps $home_behind | get 0) { host: asus, state: behind, needs: [home], command: "system-switch asus --with-home" }))
 
   # canary-first: once main moves, the delivery waits for the canary, which
   # an ssh stub answers from CANARY_REVERTED and CANARY_RAN.

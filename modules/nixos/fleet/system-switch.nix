@@ -157,6 +157,8 @@ let
       DEPLOY_STATE = stateDir;
       DEPLOY_REPO = repo;
       DEPLOY_HOST = host;
+      # `system-switch HOST` reaches another host at its destination here.
+      DEPLOY_FLEET = builtins.toJSON cfg.fleet;
       DEPLOY_GIT = lib.getExe pkgs.git;
       DEPLOY_NIX = lib.getExe' (config.iets.classic.nix or config.nix.package) "nix";
     };
@@ -190,6 +192,18 @@ in
       type = lib.types.attrsOf probeType;
       default = { };
       description = "Health probes by name that healthChecks may select.";
+    };
+    fleet = lib.mkOption {
+      type = lib.types.attrsOf lib.types.str;
+      default = { };
+      example = {
+        asus = "asus";
+        homelab = "ssh://homelab:2222";
+      };
+      description = ''
+        Every host in the inventory by the ssh destination `system-switch
+        HOST` reaches it at, from den/aspects/fleet/deploy-policy.nix.
+      '';
     };
     notify = {
       enable = lib.mkOption {

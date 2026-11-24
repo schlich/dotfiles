@@ -27,6 +27,12 @@
 # A host whose inventory embeds the user's home (homeActivation =
 # "embedded", as on homelab) activates it with the system, so there is no
 # gap to guard, and --with-home only says so.
+#
+# `system-switch HOST` names the host to switch, so the command means the
+# same wherever it runs: on HOST it switches here, and elsewhere it runs
+# `system-switch` on HOST over ssh, at the destination DEPLOY_FLEET gives
+# for it (den/aspects/fleet/deploy-policy.nix), and forwards that run's step
+# reports to PST_FILE. Without a host it switches this one, and says which.
 
 const BIN = '/run/current-system/sw/bin'
 const APP = 'nixos-switch-main'
@@ -209,9 +215,62 @@ def activate-home [last] {
     record-home $last.rev $out
 }
 
+# Each host's ssh destination, from the inventory.
+def fleet []: nothing -> record {
+    try { $env.DEPLOY_FLEET? | default '{}' | from json } catch { {} }
+}
+
+# Run system-switch on another host over ssh, printing its output as it
+# arrives. With PST_FILE set, the remote run writes its step reports to its
+# stdout, and they are forwarded here rather than printed.
+def switch-remote [host: string, destination: string, with_home: bool] {
+    print $"This is ($env.DEPLOY_HOST); switching ($host) over ssh \(($destination)\)."
+    let forwarding = ($env.PST_FILE? | is-not-empty)
+    # The remote login shell parses this line; `NAME=value command` means
+    # the same to Nushell and to POSIX shells.
+    let command = (
+        (if $forwarding { ['PST_FILE=/dev/stdout'] } else { [] })
+        ++ ['system-switch']
+        ++ (if $with_home { ['--with-home'] } else { [] })
+        | str join ' '
+    )
+    try {
+        ^$"($BIN)/ssh" -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=15 -o ServerAliveCountMax=8 $destination $command
+        | lines
+        | each {|line|
+            let report = if $forwarding and ($line | str starts-with '{') {
+                try { $line | from json } catch { null }
+            } else { null }
+            if ($report | describe | str starts-with 'record') and ($report.app? | is-not-empty) {
+                forward $report
+            } else {
+                print $line
+            }
+        }
+        | ignore
+    } catch {|err|
+        error make { msg: $"system-switch on ($host) failed: ($err.msg). Its revert report, if any, is under ($env.DEPLOY_STATE)/reports/ on ($host)." }
+    }
+}
+
 def main [
+    host?: string # the host to switch: this one, or another over ssh; defaults to this host
     --with-home # after a successful switch, activate this user's standalone home from the same commit; a no-op where the system embeds the home
 ] {
+    let here = $env.DEPLOY_HOST
+    if $host != null and $host != $here {
+        let fleet = (fleet)
+        let destination = ($fleet | get --optional $host)
+        if $destination == null {
+            error make { msg: $"No host named ($host) in the inventory. Known: ($fleet | columns | str join ', ')." }
+        }
+        switch-remote $host $destination $with_home
+        return
+    }
+    if $host == null {
+        print $"This is ($here); switching ($here). Name a host to switch another one: system-switch HOST."
+    }
+
     let gap = (home-gap)
     if $gap != null and not $with_home {
         error make { msg: (gap-message $gap) }
