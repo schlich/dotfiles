@@ -99,6 +99,7 @@ in
     nix-tree
     nix-du
     nix-output-monitor
+    rom
     graphviz
     systemctl-tui
     systemd-manager-tui
