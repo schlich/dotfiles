@@ -57,23 +57,20 @@ script, use valid Nushell syntax.
   for Jujutsu log, diff, status, describe, bookmark, abandon, and push; the
   GitHub MCP server for GitHub pull requests, issues, Actions runs, and
   releases; the Nix MCP server for nixpkgs packages, options, and pinned
-  flake-input sources; the ci MCP server for the `ci` workflow in a ci
-  repository (see Jujutsu); and the harness's own
+  flake-input sources; and the harness's own
   file-reading and editing tools for single files. Fall back to the Nushell
   evaluate tool only when no dedicated tool fits, such as flake
   evaluation, multi-step pipelines, or combining several results into one
   structured record.
 
-- The ci MCP server runs each command as a job in the given `workspace`
-  (default: the session's directory). Like the `ci` command, it runs the
+- Run the `ci` workflow in a ci repository (see Jujutsu) from the Nushell
+  evaluate tool, and its long commands, such as `ci preflight`,
+  `ci dispatch`, and `ci land`, with `job-log`. The `ci` command runs the
   `ci.nu` its package bundles, the version the installed system pins;
   inside the ci repository itself it runs the topic's own `ci.nu` when the
   topic edits it and trunk's otherwise. In a repository whose
   flake.lock moved `ci` ahead of the installed one, `nix develop path:.`
   runs the locked version.
-  A tool returns once the command finishes or
-  its `wait_seconds` elapse; poll a `running` result with its `job` tool,
-  which also serves `ci dispatch` and `ci land`.
 
 - When a shell is needed, use the Nushell evaluate tool rather than invoking
   `nu -c` through Bash. It preserves the session and structured results and
@@ -149,7 +146,7 @@ script, use valid Nushell syntax.
   nothing while it runs, and a call that outlasts about two minutes is
   silently promoted to a bare Nushell job you must collect with `job recv`.
   Run anything that may take that long, such as `nix build`, a test suite,
-  or `ci land` without the ci MCP server, with the session's `job-log`
+  or `ci land`, with the session's `job-log`
   command instead, not with Bash:
 
   ```nu
@@ -190,11 +187,6 @@ script, use valid Nushell syntax.
   Monitor expires before `DONE`, start the same command again; it resumes
   where the last one stopped. Without Monitor, check the done marker
   before reporting.
-
-- When a ci MCP tool returns `state: running`, follow it the same way
-  instead of polling `job` in a loop: start a Monitor running `watch-job`
-  on the result's `log_path`, and read the final record with `job` once
-  `DONE` arrives.
 
 - A `⏸ BLOCKED` line, or a `✗ DONE` with a nonzero exit or `lost`, needs
   the user: tell them, and send a push
@@ -365,7 +357,7 @@ option `dotfiles.ci.repositories` in `~/Nix/dotfiles` opts in every clone and
 workspace at a path. Opt a repository in only when the user asks: a new
 project is not a ci repository.
 
-Only in a ci repository do the `ci` command, its MCP server and skill, and the
+Only in a ci repository do the `ci` command and its skill, and the
 rules below that name `ci` apply, and only there does a session start with a
 context-status note or have its first edit claim the workspace. Everywhere
 else, use plain JJ for whatever the user asks, and never run `ci`, not even

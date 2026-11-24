@@ -22,12 +22,6 @@ let
       exec ${iwe}/bin/iwec --transport stdio
     }
   '';
-  # The ci input's MCP server, which starts the same `ci` as the shell; with
-  # xs it announces its jobs on cross.stream.
-  ciMcp = inputs.ci.packages.${pkgs.stdenv.hostPlatform.system}.ci-mcp.override {
-    inherit xs;
-    ci = config.dotfiles.ci.package;
-  };
   # The `honeycomb` command's package, which also ships `honeycomb-mcp`.
   inherit (inputs.honeycomb.overlays.default pkgs pkgs) honeycomb;
   sudoplz = pkgs.callPackage ./sudoplz.nix { };
@@ -111,8 +105,6 @@ in
       };
       # The personal knowledge base, for agents working in other repositories.
       kb.command = "${kbMcp}/bin/kb-mcp";
-      # The `ci` trunk workflow as tools, in the client's working directory.
-      ci.command = "${ciMcp}/bin/ci-mcp";
       # The six-at-a-time counts (census, prune, sessions, sidebar, flower)
       # as tools, so an agent checks them before starting another topic
       # (github:schlich/honeycomb). Only `prune` with `yes` changes anything.
@@ -162,7 +154,8 @@ in
     };
   };
 
-  # Follow `job-log` and ci MCP jobs as a Monitor running watch-job does,
+  # Follow `job-log` jobs (and earlier ci MCP jobs' records) as a Monitor
+  # running watch-job does,
   # with a local cross.stream store and without one.
   dotfiles.tooling.checks.watch-job =
     pkgs.runCommand "watch-job-check"
