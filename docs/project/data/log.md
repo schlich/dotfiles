@@ -7,7 +7,8 @@ to the current day's group.
 ## 2026-11-23
 
 - **Tooling**: Packaged the upstream Jujutsu description generator and added
-  the `jj ai-describe` alias.
+  the `jj ai-describe` alias. It asks Claude Code (Haiku by default) instead of
+  `llm`, so a Claude subscription covers it without API keys.
 - **Version control**: Configured KDiff3 for `jj resolve` to show the common
   ancestor, both sides, and the editable merge result together.
 - **Architecture**: [Delivery risk](architecture/delivery-risk.md) no longer

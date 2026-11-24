@@ -31,9 +31,52 @@ let
     }";
   };
   # jj ai-describe, pinned to an upstream revision that includes its own
-  # prompt engine.
+  # prompt engine. It asks the model through `llm`, which needs API keys;
+  # the `llm` below answers through Claude Code instead, so a Claude
+  # subscription pays for it. JJ_AI_DESCRIBE_MODEL picks the default model,
+  # and `jj ai-describe -m sonnet` one run's.
   jjAiDescribe =
     let
+      claudeAsLlm = pkgs.writeShellApplication {
+        name = "llm";
+        runtimeInputs = [
+          pkgs.claude-code
+          pkgs.coreutils
+        ];
+        text = ''
+          default="''${JJ_AI_DESCRIBE_MODEL:-haiku}"
+          model=ai-commit-message
+          case "''${1:-}" in
+            models)
+              printf 'Claude Code: %s\n' ai-commit-message haiku sonnet opus
+              exit 0
+              ;;
+            aliases)
+              printf 'ai-commit-message : claude-code/%s\n' "$default"
+              exit 0
+              ;;
+            -m | --model)
+              model="$2"
+              ;;
+          esac
+          if [ "$model" = ai-commit-message ]; then model="$default"; fi
+
+          # jj-ai-describe folds stderr into the message, so keep it for failures.
+          err=$(mktemp)
+          trap 'rm -f "$err"' EXIT
+          if ! CLAUDE_BASH_FEEDBACK=off claude --print \
+            --model "$model" \
+            --tools "" \
+            --strict-mcp-config \
+            --disable-slash-commands \
+            --no-session-persistence \
+            --system-prompt "You write commit messages for Jujutsu changes. Reply with the commit message only." \
+            2>"$err"; then
+            cat "$err" >&2
+            exit 1
+          fi
+        '';
+      };
       rev = "3c4a0ceb7e45afe81cb09996a6d5760a07f182bf";
       fetchScript =
         name: hash:
@@ -55,7 +98,7 @@ let
         pkgs.coreutils
         pkgs.gnugrep
         pkgs.gnused
-        pkgs.llm
+        claudeAsLlm
         pkgs.python3
       ];
       text = ''
