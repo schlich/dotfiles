@@ -38,6 +38,8 @@
     ../../../modules/tooling/terminals/kitty.nix
     ../../../modules/tooling/terminals/ghostty.nix
     ../../../modules/tooling/terminals/rex.nix
+    ../../../modules/tooling/terminals/taskers
+    ../../../modules/tooling/terminals/webterm
     ../../../modules/tooling/editors/helix.nix
     ../../../modules/tooling/editors/zed.nix
     ../../../modules/tooling/keymap-checks

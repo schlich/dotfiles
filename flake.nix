@@ -441,6 +441,8 @@
         # A Rust build this flake owns, with a `timings` output holding
         # cargo's build timing report (lib/with-cargo-timings.nix).
         jj-hunk = import ./modules/programs/vcs/jj-hunk-package.nix { inherit inputs lib pkgs; };
+        taskers = import ./modules/tooling/terminals/taskers/package.nix { inherit inputs lib pkgs; };
+        webterm = import ./modules/tooling/terminals/webterm/package.nix { inherit inputs lib pkgs; };
         # nu_plugin_ghostty and the libghostty-vt it links, which nixpkgs
         # ships too old (modules/programs/shell/nu-plugin-ghostty).
         libghostty-vt =
