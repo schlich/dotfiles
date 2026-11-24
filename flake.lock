@@ -113,8 +113,7 @@
         "gen-inspect": "gen-inspect",
         "iets": "iets",
         "nix-grpc-store": "nix-grpc-store",
-        "nixbot": "nixbot",
-        "npr": "npr"
+        "nixbot": "nixbot"
       },
       "locked": {
         "path": "./lib/inputs/builds",
@@ -1342,27 +1341,6 @@
         "agents",
         "skills"
       ]
-    },
-    "npr": {
-      "inputs": {
-        "nixpkgs": [
-          "system",
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1794951514,
-        "narHash": "sha256-GQMEmB71EUdS3JggFcxnpAqCLyov/DBjXzpRK8vMOoE=",
-        "owner": "manic-systems",
-        "repo": "npr",
-        "rev": "63e952f7f3e8c9ee02c3077340d909681e285940",
-        "type": "github"
-      },
-      "original": {
-        "owner": "manic-systems",
-        "repo": "npr",
-        "type": "github"
-      }
     },
     "nu-batteries-src": {
       "flake": false,

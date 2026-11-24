@@ -7,9 +7,6 @@
     # grpc:// stores: homelab's daemon and every remote host's client plugin.
     nix-grpc-store.url = "github:Mic92/nix-grpc-store";
     nixbot.url = "github:Mic92/nixbot";
-    # Which nixpkgs pull requests touch a package and which channels they
-    # reached; modules/home/nix/nixpkgs-watch.nix runs it. Not in nixpkgs.
-    npr.url = "github:manic-systems/npr";
     gen-inspect.url = "github:sini/gen-inspect";
   };
 

@@ -1,14 +1,22 @@
-# nixpkgs-watch against npr's real output format, with npr, notify-send, and
-# jev replaced by stubs:
+# nixpkgs-watch against `nh search prs --json`'s real output format, with nh,
+# notify-send, and jev replaced by stubs:
 #   nu --no-config-file tests/nixpkgs-watch.nu tools/nixpkgs-watch.nu jev/questions.nuon
 
-# One PR block as npr renders it: ANSI colours and an OSC 8 link on the number.
-def npr-pr [title: string, status: string, number: int, reached?: string] {
-  let link = $"\e]8;;https://github.com/NixOS/nixpkgs/pull/($number)\e\\#($number)\e]8;;\e\\"
-  let head = $"(ansi attr_bold)PR:(ansi reset) (ansi cyan)($title)(ansi reset) \((ansi green)($status)(ansi reset)\) (ansi attr_dimmed)($link)(ansi reset)"
-  if $reached == null { $head } else {
-    $"($head)\n   (ansi attr_dimmed)└─(ansi reset) Reachable in: ($reached)"
+# One PR object as `nh search prs --json` emits it.
+def nh-pr [title: string, state: string, number: int, reachability: list<record> = []] {
+  {
+    number: $number
+    title: $title
+    url: $"https://github.com/NixOS/nixpkgs/pull/($number)"
+    state: $state
+    base_branch: "master"
+    merge_commit_sha: (if $state == "merged" { "deadbeef" } else { null })
+    reachability: $reachability
   }
+}
+
+def nh-prs-json [results: list<record>] {
+  { query: "opencode", days: 30, direct_pr_number: null, elapsed_ms: 42, results: $results } | to json
 }
 
 def expect [name: string, actual: any, expected: any] {
@@ -31,17 +39,25 @@ def main [script: path, questions: path] {
   let module = ($tmp | path join watch.nu)
   open --raw $script | lines | take until {|line| $line starts-with "def main" } | str join "\n" | save $module
 
-  let output = ([
-    "Searching for opencode..."
-    (npr-pr "opencode: 1.19.0 -> 2.0.16" merged 501 $"(ansi light_green)nixpkgs-unstable(ansi reset), (ansi light_green)nixos-unstable-small(ansi reset)")
-    (npr-pr "[Backport release-26.05] opencode: 1.18.0 -> 1.19.0" merged 502 $"(ansi yellow)None(ansi reset) \(pending Hydra/Mirror\)")
-    (npr-pr "opencode: 2.0.16 -> 2.1.0" open 503)
-    (npr-pr "opencode-desktop: init at 2.0.16" closed 504)
-    (npr-pr "treewide: mention opencode" merged 505 $"(ansi yellow)Unknown(ansi reset)")
-  ] | str join "\n")
+  let output = (nh-prs-json [
+    (nh-pr "opencode: 1.19.0 -> 2.0.16" merged 501 [
+      { branch: "master", status: "contains", reason: null }
+      { branch: "nixpkgs-unstable", status: "contains", reason: null }
+      { branch: "nixos-unstable-small", status: "contains", reason: null }
+      { branch: "nixos-unstable", status: "missing", reason: null }
+    ])
+    (nh-pr "[Backport release-26.05] opencode: 1.18.0 -> 1.19.0" merged 502 [
+      { branch: "nixpkgs-unstable", status: "missing", reason: null }
+    ])
+    (nh-pr "opencode: 2.0.16 -> 2.1.0" open 503)
+    (nh-pr "opencode-desktop: init at 2.0.16" closed 504)
+    (nh-pr "treewide: mention opencode" merged 505 [
+      { branch: "nixos-unstable", status: "unknown", reason: "timeout" }
+    ])
+  ])
 
-  let parsed = (nu --no-config-file -c $"use ($module) *; ($output | to nuon) | parse-npr | to nuon" | from nuon)
-  $failures = ($failures | append (expect "parse-npr reads each PR block" $parsed [
+  let parsed = (nu --no-config-file -c $"use ($module) *; ($output | to nuon) | parse-nh-prs | to nuon" | from nuon)
+  $failures = ($failures | append (expect "parse-nh-prs reads each PR record" $parsed [
     { title: "opencode: 1.19.0 -> 2.0.16", status: merged, number: 501, reached: [nixpkgs-unstable nixos-unstable-small] }
     { title: "[Backport release-26.05] opencode: 1.18.0 -> 1.19.0", status: merged, number: 502, reached: [] }
     { title: "opencode: 2.0.16 -> 2.1.0", status: open, number: 503, reached: [] }
@@ -65,14 +81,21 @@ def main [script: path, questions: path] {
   let before_landing = ($remembered | update landed {|row| if $row.key == "opencode#501" { false } else { $row.landed } })
   $failures = ($failures | append (expect "events when a PR reaches unstable" (do $events $before_landing) [landed]))
 
-  # The whole check, with stubbed npr and notify-send.
-  let fixture = ($tmp | path join npr-output)
+  # The whole check, with stubbed nh and notify-send.
+  let fixture = ($tmp | path join nh-prs-output.json)
   let notes = ($tmp | path join notifications)
-  let npr = ($tmp | path join npr)
+  let nh = ($tmp | path join nh)
   let notify = ($tmp | path join notify-send)
-  $"#!/bin/sh\nif [ -n \"$FAIL\" ]; then echo 'Error: gh is not authenticated' >&2; exit 1; fi\ncat ($fixture)\n" | save $npr
+  [
+    "#!/bin/sh"
+    "if [ -n \"$FAIL\" ]; then"
+    "  printf 'Error: GitHub token not found\n\nLocation:\n  crates/nh-search/src/github/auth.rs:33:5\n' >&2"
+    "  exit 1"
+    "fi"
+    $"cat ($fixture)"
+  ] | str join "\n" | save $nh
   $"#!/bin/sh\nprintf '%s|%s\\n' \"$3\" \"$4\" >> ($notes)\n" | save $notify
-  ^chmod +x $npr $notify
+  ^chmod +x $nh $notify
   let status = ($tmp | path join status.json)
   { opencode: ($entry | update ready false | update nixpkgs "1.19.0") } | to json | save $status
   let check = {|fail|
@@ -80,19 +103,19 @@ def main [script: path, questions: path] {
       HOME: $tmp
       XDG_STATE_HOME: ($tmp | path join state)
       NIXPKGS_WATCH_STATUS: $status
-      NIXPKGS_WATCH_NPR: $npr
+      NIXPKGS_WATCH_NH: $nh
       NIXPKGS_WATCH_NOTIFY: $notify
       FAIL: $fail
     } { ^nu --no-config-file $script check --notify | complete }
   }
   let summaries = {|| if ($notes | path exists) { open $notes | lines | each { split row '|' | first } } else { [] } }
 
-  [(npr-pr "opencode: 2.0.16 -> 2.1.0" open 503)] | str join "\n" | save --force $fixture
+  nh-prs-json [(nh-pr "opencode: 2.0.16 -> 2.1.0" open 503)] | save --force $fixture
   let run = (do $check "")
   $failures = ($failures | append (expect "first check exits cleanly" $run.exit_code 0))
   $failures = ($failures | append (expect "first check sends one summary" (do $summaries) ["nixpkgs-watch is on"]))
 
-  [(npr-pr "opencode: 2.0.16 -> 2.1.0" merged 503 "nixos-unstable")] | str join "\n" | save --force $fixture
+  nh-prs-json [(nh-pr "opencode: 2.0.16 -> 2.1.0" merged 503 [{ branch: "nixos-unstable", status: "contains", reason: null }])] | save --force $fixture
   do $check "" | ignore
   $failures = ($failures | append (expect "a PR reaching unstable notifies" (do $summaries | skip 1) ["nixpkgs: opencode"]))
   do $check "" | ignore
@@ -100,11 +123,11 @@ def main [script: path, questions: path] {
 
   do $check "1" | ignore
   do $check "1" | ignore
-  $failures = ($failures | append (expect "a lasting npr failure notifies once" (do $summaries | skip 2) ["nixpkgs-watch: npr failed for opencode"]))
+  $failures = ($failures | append (expect "a lasting nh search prs failure notifies once" (do $summaries | skip 2) ["nixpkgs-watch: nh search prs failed for opencode"]))
   let seen = (open ($tmp | path join state nixpkgs-watch seen.json) | get key)
   $failures = ($failures | append (expect "a failed search keeps what was seen" $seen ["opencode#503"]))
   let report = (open ($tmp | path join state nixpkgs-watch report.json))
-  $failures = ($failures | append (expect "the report records the failure" ($report.entries.0.error) "Error: gh is not authenticated"))
+  $failures = ($failures | append (expect "the report records the failure" ($report.entries.0.error) "Error: GitHub token not found"))
 
   let shown = (with-env { HOME: $tmp, XDG_STATE_HOME: ($tmp | path join state) } { ^nu --no-config-file $script | complete })
   $failures = ($failures | append (expect "the report prints" ($shown.exit_code == 0 and ($shown.stdout | str contains opencode)) true))
@@ -131,7 +154,7 @@ def main [script: path, questions: path] {
       HOME: $tmp
       XDG_STATE_HOME: $state
       NIXPKGS_WATCH_STATUS: $status
-      NIXPKGS_WATCH_NPR: $npr
+      NIXPKGS_WATCH_NH: $nh
       NIXPKGS_WATCH_NOTIFY: $notify
       NIXPKGS_WATCH_JEV: $jev
       NIXPKGS_WATCH_QUESTIONS: ($questions | path expand)
@@ -140,12 +163,12 @@ def main [script: path, questions: path] {
     } { ^nu --no-config-file $script check --notify | complete }
   }
   let jev_calls = {|| if ($calls | path exists) { open --raw $calls | lines | each { from json } } else { [] } }
-  [
-    (npr-pr "opencode: 2.0.16 -> 2.1.0" open 503)
-    (npr-pr "opencode-desktop: init at 2.0.16" open 504)
-    (npr-pr "[Backport release-26.05] python3Packages.foo: rename opencode" merged 505 "nixos-unstable")
-    (npr-pr "treewide: rename opencode-unwrapped to opencode" merged 506 "nixpkgs-unstable")
-  ] | str join "\n" | save --force $fixture
+  nh-prs-json [
+    (nh-pr "opencode: 2.0.16 -> 2.1.0" open 503)
+    (nh-pr "opencode-desktop: init at 2.0.16" open 504)
+    (nh-pr "[Backport release-26.05] python3Packages.foo: rename opencode" merged 505 [{ branch: "nixos-unstable", status: "contains", reason: null }])
+    (nh-pr "treewide: rename opencode-unwrapped to opencode" merged 506 [{ branch: "nixpkgs-unstable", status: "contains", reason: null }])
+  ] | save --force $fixture
   rm --force $notes
 
   let jev_state = ($tmp | path join jev-state)
@@ -283,7 +306,7 @@ def main [script: path, questions: path] {
     hex: ($common | merge { name: hex, package: hex, nixpkgs: "3.4.0", reason: "drop the cargoDeps override in hex.nix", fix: "https://github.com/anomalyco/hex/pull/7", input: hex, attr: hex, repo: anomalyco/hex, locked: "github:anomalyco/hex/abc", rev: abc, follows: true, onFlakehub: true, files: [modules/programs/hex.nix] })
     tool: ($common | merge { name: tool, package: tool, version: "1.0", reason: "replace tool-package.nix", repo: acme/tool, files: [modules/tool.nix] })
   } | to json | save $upstream_status
-  "" | save --force $fixture
+  nh-prs-json [] | save --force $fixture
   let upstream_state = ($tmp | path join upstream-state)
   mkdir ($upstream_state | path join nixpkgs-watch)
   [] | to json | save ($upstream_state | path join nixpkgs-watch seen.json)
@@ -292,7 +315,7 @@ def main [script: path, questions: path] {
       HOME: $tmp
       XDG_STATE_HOME: $state
       NIXPKGS_WATCH_STATUS: $upstream_status
-      NIXPKGS_WATCH_NPR: $npr
+      NIXPKGS_WATCH_NH: $nh
       NIXPKGS_WATCH_NOTIFY: $notify
       NIXPKGS_WATCH_GH: ($bin | path join gh)
       NIXPKGS_WATCH_NIX: ($bin | path join nix)

@@ -12,7 +12,7 @@
 #
 # The wrapper sets NIXPKGS_WATCH_STATUS (each entry with the version the
 # locked nixpkgs ships and its input's locked revision, written at build
-# time), NIXPKGS_WATCH_NPR, and NIXPKGS_WATCH_NOTIFY. Every other lookup runs
+# time), NIXPKGS_WATCH_NH, and NIXPKGS_WATCH_NOTIFY. Every other lookup runs
 # only when the wrapper sets its command:
 #
 #   NIXPKGS_WATCH_JEV and   Jev judges the pull requests that only mention a
@@ -43,45 +43,44 @@ def last-line [text: string]: nothing -> string {
   $text | str trim | lines | last | default ""
 }
 
-# npr prints for people only: colours, OSC 8 links, one "PR:" line per pull
-# request and a "Reachable in:" line under each merged one.
-export def parse-npr []: string -> list<record> {
-  let lines = (
-    $in
-    | str replace --all --regex '\x1b\]8;;[^\x1b]*\x1b\\' ''
-    | ansi strip
-    | lines
-  )
-  mut prs = []
-  for line in $lines {
-    let pr = ($line | parse --regex '^PR: (?<title>.*) \((?<status>open|closed|merged)\) #(?<number>\d+)\s*$')
-    if ($pr | is-not-empty) {
-      $prs = ($prs | append ($pr.0 | update number { into int } | insert reached []))
-    } else if ($prs | is-not-empty) and ($line =~ 'Reachable in: ') {
-      let reached = (
-        $line
-        | parse --regex 'Reachable in: (?<branches>.*)$'
-        | get 0.branches
-        | split row ','
-        | each { str trim }
-        | where {|branch| $branch =~ '^nix(os|pkgs)-' }
-      )
-      let i = ($prs | length) - 1
-      $prs = ($prs | update $i ($prs | get $i | update reached $reached))
+# nh formats errors with a `Location:` footer; take the `Error:` line when present.
+def nh-error [text: string]: nothing -> string {
+  let lines = ($text | ansi strip | lines | each { str trim } | where { is-not-empty })
+  $lines | where {|line| $line | str starts-with "Error:" } | get --optional 0 | default ($lines | last | default "")
+}
+
+# `nh search prs --json` emits `{ results: [{ number, title, state, reachability }] }`
+# where each reachability entry has `branch` and `status` ("contains" | "missing" | "unknown").
+export def parse-nh-prs []: string -> list<record> {
+  let raw = ($in | str trim)
+  if ($raw | is-empty) { return [] }
+  $raw
+  | from json
+  | get results
+  | each {|pr|
+      {
+        title: $pr.title
+        status: $pr.state
+        number: $pr.number
+        reached: (
+          $pr.reachability?
+          | default []
+          | where {|r| $r.status == "contains" and ($r.branch =~ '^nix(os|pkgs)-') }
+          | each {|r| $r.branch }
+        )
+      }
     }
-  }
-  $prs
 }
 
 # A package's own pull requests, as nixpkgs titles them ("pkg: 1.0 -> 1.1",
-# "pkg: init at 1.0"); npr's search also returns anything that mentions it.
+# "pkg: init at 1.0"); `nh search prs` also returns anything that mentions it.
 # Backports target release branches, which this flake does not follow.
 export def own-prs [package: string]: list<record> -> list<record> {
   where {|pr| $pr.title | str starts-with $"($package):" }
   | each {|pr| $pr | insert landed ($pr.reached | any {|branch| $branch in $channels }) }
 }
 
-# The rest of npr's results, minus backports: pull requests that mention the
+# The rest of `nh search prs`'s results, minus backports: pull requests that mention the
 # package without being its own, such as a rename, a treewide change, or a
 # dependency's update.
 export def other-prs [package: string]: list<record> -> list<record> {
@@ -481,7 +480,7 @@ def main [] {
 }
 
 def "main check" [
-  --days: int = 30  # how far back npr searches; PRs are tracked from then on
+  --days: int = 30  # how far back `nh search prs` searches; PRs are tracked from then on
   --notify          # report changes as desktop notifications
   --queue-tasks     # queue a luvus task for each workaround that can go
 ] {
@@ -496,13 +495,28 @@ def "main check" [
   let use_jev = (has JEV) and (has QUESTIONS)
   let min_related = if $use_jev { (open $env.NIXPKGS_WATCH_QUESTIONS).nixpkgs_watch.min_related } else { 1.0 }
 
+  let gh_token = if ($env.GH_TOKEN? | is-not-empty) {
+    $env.GH_TOKEN
+  } else if (has GH) {
+    let tok = (^$env.NIXPKGS_WATCH_GH auth token | complete)
+    if $tok.exit_code == 0 { $tok.stdout | str trim } else { null }
+  } else {
+    null
+  }
+
   let results = (
     open $env.NIXPKGS_WATCH_STATUS
     | transpose name entry
     | each {|item|
         let entry = $item.entry
-        let run = (^$env.NIXPKGS_WATCH_NPR --days $days $entry.package | complete)
-        let found = if $run.exit_code == 0 { $run.stdout | parse-npr } else { [] }
+        let run = if ($gh_token | is-not-empty) {
+          with-env { GH_TOKEN: $gh_token } {
+            ^$env.NIXPKGS_WATCH_NH search prs --days $days --json $entry.package | complete
+          }
+        } else {
+          ^$env.NIXPKGS_WATCH_NH search prs --days $days --json $entry.package | complete
+        }
+        let found = if $run.exit_code == 0 { $run.stdout | parse-nh-prs } else { [] }
         let prs = ($found | own-prs $entry.package)
         let judged = if $use_jev { judge-related $entry ($found | other-prs $entry.package) $seen } else { [] }
         let related = ($judged | where related != null | where related >= $min_related)
@@ -519,7 +533,7 @@ def "main check" [
           fix: $fix
           cache: $cache
           upstream: $upstream
-          error: (if $run.exit_code != 0 { last-line $run.stderr })
+          error: (if $run.exit_code != 0 { nh-error $run.stderr })
           events: (
             (if $run.exit_code == 0 { events $entry $prs $seen | append (related-events $entry $related $seen) } else { [] })
             | append (fix-events $entry $fix $seen)
@@ -580,7 +594,7 @@ def "main check" [
     # A failure that persists is reported once, not every day.
     for r in ($results | where error != null) {
       if ($previous_errors | where package == $r.entry.package and error == $r.error | is-empty) {
-        notify $"nixpkgs-watch: npr failed for ($r.entry.package)" $r.error
+        notify $"nixpkgs-watch: nh search prs failed for ($r.entry.package)" $r.error
       }
     }
     if $tasks != null {

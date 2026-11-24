@@ -312,7 +312,7 @@ decisions, how-tos, and personal notes.
   static Codex defaults belong on its wrapped package; Home Manager can still
   manage non-mutating skills and context files.
 - When nixpkgs lacks a package or ships an older version than a task needs,
-  run `npr <attribute>` (add `--days 60` for a slow-moving package) before
+  run `GH_TOKEN=(gh auth token) nh search prs <attribute>` (add `--days 60` for a slow-moving package) before
   proposing a workaround such as an extra flake input, an overlay, an
   override, or a version pin, and before answering when an update will reach
   nixpkgs. It lists that package's recent nixpkgs pull requests and which
