@@ -109,6 +109,22 @@
         "type": "github"
       }
     },
+    "baygent-skills": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1788507045,
+        "narHash": "sha256-fxetRzjFL9gN4/8+UUTr21rPEv5Lb3eLuDo4ruCEKLE=",
+        "owner": "Learning-Bayesian-Statistics",
+        "repo": "baygent-skills",
+        "rev": "18ab0de9b63b5bb03caa96146235e8f1534d45d4",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Learning-Bayesian-Statistics",
+        "repo": "baygent-skills",
+        "type": "github"
+      }
+    },
     "builds": {
       "inputs": {
         "gen-inspect": "gen-inspect",
@@ -1359,6 +1375,7 @@
     },
     "notebooks": {
       "inputs": {
+        "baygent-skills": "baygent-skills",
         "marimo-pair": "marimo-pair",
         "marimo-skills": "marimo-skills"
       },
