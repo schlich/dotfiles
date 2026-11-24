@@ -1,3 +1,4 @@
+# nixpkgs-watch: jj-scripts
 {
   pkgs,
   config,
@@ -29,6 +30,38 @@ let
       config.programs.jujutsu.settings
     }";
   };
+  # jj ai-describe, pinned to an upstream revision that includes its own
+  # prompt engine.
+  jjAiDescribe =
+    let
+      rev = "3c4a0ceb7e45afe81cb09996a6d5760a07f182bf";
+      fetchScript =
+        name: hash:
+        pkgs.fetchurl {
+          url = "https://raw.githubusercontent.com/osteele/jj-scripts/${rev}/${name}";
+          inherit hash;
+        };
+      describe = fetchScript "jj-ai-describe" "sha256-pDrq6bla8O+D24gjpkExFtn4r7+t9u79wLikDBIzYwU=";
+      shared = fetchScript "jj-ai-lib.sh" "sha256-4E4H15UQcAO34Js0SGepI4RKSQ4uYU+054wyZCxG/II=";
+      scripts = pkgs.runCommand "jj-ai-describe-scripts" { } ''
+        mkdir -p "$out"
+        cp ${describe} "$out/jj-ai-describe"
+        cp ${shared} "$out/jj-ai-lib.sh"
+      '';
+    in
+    pkgs.writeShellApplication {
+      name = "jj-ai-describe";
+      runtimeInputs = [
+        pkgs.coreutils
+        pkgs.gnugrep
+        pkgs.gnused
+        pkgs.llm
+        pkgs.python3
+      ];
+      text = ''
+        exec ${pkgs.bash}/bin/bash ${scripts}/jj-ai-describe "$@"
+      '';
+    };
   # Plans, checks, and normalizes change graphs (tools/jj-graph/README.md).
   jjGraph = (import ../../../tools/jj-graph { inherit lib pkgs; }).package;
   # dotfiles' delivery: luvus/integration to main once its risk verdict
@@ -124,6 +157,12 @@ in
       "--"
       (lib.getExe jjGraph)
     ];
+    aliases.ai-describe = [
+      "util"
+      "exec"
+      "--"
+      (lib.getExe jjAiDescribe)
+    ];
     # GitHub (origin) holds dotfiles' trunk and topics. Elsewhere jj keeps
     # its own remote defaults; a global trunk() broke every repository
     # without that remote.
@@ -141,6 +180,8 @@ in
     git
     jj
     jjGraph
+    jjAiDescribe
+    pkgs.llm
     pkgs.oyui
     ci.jj-describe
     config.dotfiles.ci.package
@@ -154,6 +195,12 @@ in
     ".config/git/attributes"
     ".config/jj/config.toml"
   ];
+
+  dotfiles.nixpkgsWatch.jj-scripts = {
+    version = "0-unstable-2026-03-15";
+    reason = "Replace the pinned jj-ai-describe scripts with the nixpkgs package once available.";
+    repo = "osteele/jj-scripts";
+  };
 
   dotfiles.nushellAutoload = {
     ci = ciNushell.completions;
