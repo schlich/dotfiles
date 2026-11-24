@@ -127,7 +127,7 @@
       dagger = import ./modules/programs/vcs/dagger-package.nix { inherit lib pkgs; };
       inherit (pkgs) iwe;
       marimohub = import ./modules/tooling/knowledge/marimohub-package.nix { inherit lib pkgs; };
-      # jj-normalize and its model checks, from github:schlich/jj-graph.
+      # jj-shape and its model checks, from github:schlich/jj-graph.
       jjGraph = inputs.jj-graph.packages.${system};
       jjGraphChecks = inputs.jj-graph.checks.${system};
       workbench = import ./workbench { inherit pkgs lib iwe; };
@@ -435,7 +435,7 @@
         jj = pkgs.jujutsu;
         jjui = pkgs.jjui;
         jj-ci-lifecycle = jjCiLifecycle;
-        inherit (jjGraph) jj-normalize;
+        inherit (jjGraph) jj-shape;
         xr-workbench = xrWorkbench;
         quota-advisor = quotaAdvisor;
         nixbot-register = nixbotRegister;
@@ -518,9 +518,9 @@
           type = "app";
           program = "${pkgs.jjui}/bin/jjui";
         };
-        jj-normalize = {
+        jj-shape = {
           type = "app";
-          program = "${jjGraph.jj-normalize}/bin/jj-normalize";
+          program = "${jjGraph.jj-shape}/bin/jj-shape";
         };
         xr-workbench = {
           type = "app";
@@ -574,11 +574,11 @@
         '';
         # discord-digest's build runs its tests.
         discord-digest = pkgs.callPackage ./tools/discord-digest/package.nix { };
-        # jj-normalize's build runs its lints, its Hegel properties (some in
+        # jj-shape's build runs its lints, its Hegel properties (some in
         # real jj repositories), and its conformance to spec/Normalize.qnt;
         # the model check simulates and model checks the specifications.
         # Both come from the jj-graph input and rebuild only when it moves.
-        inherit (jjGraphChecks) jj-normalize jj-normalize-model;
+        inherit (jjGraphChecks) jj-shape jj-shape-model;
         marimohub = marimohub;
         # One Markdown file as an IWE node and a marimo notebook: IWE
         # validates the corpus, marimo executes the demo in the Nix
@@ -1072,7 +1072,7 @@
         // import ./modules/tooling/keymap-checks/remote.nix { inherit inputs lib pkgs; }
         // {
           # TLC over every three-change graph takes about twelve minutes.
-          inherit (jjGraph) jj-normalize-model-exhaustive;
+          inherit (jjGraph) jj-shape-model-exhaustive;
           deploy-revert = import ./tests/deploy-revert.nix { inherit pkgs; };
           marimohub-homelab-evaluation = marimohubHomelabEvaluationCheck;
           discord-digest-homelab-evaluation = discordDigestHomelabEvaluationCheck;

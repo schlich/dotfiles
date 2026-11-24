@@ -106,8 +106,8 @@ let
       '';
     };
   # Plans, checks, and normalizes change graphs, from the jj-graph input
-  # (crates/jj-normalize/README.md there).
-  jjNormalize = inputs.jj-graph.packages.${pkgs.stdenv.hostPlatform.system}.jj-normalize;
+  # (crates/jj-shape/README.md there).
+  jjShape = inputs.jj-graph.packages.${pkgs.stdenv.hostPlatform.system}.jj-shape;
   # dotfiles' delivery: luvus/integration to main once its risk verdict
   # allows it and nixbot passes on it.
   luvusDeliver = pkgs.writeNuScriptBin "luvus-deliver" (
@@ -193,13 +193,13 @@ in
       "-r"
       "topics()"
     ];
-    # `jj normalize check`, `jj normalize plan`, and the rest of
-    # jj-normalize's commands, run against the repository jj is in.
-    aliases.normalize = [
+    # `jj shape check`, `jj shape normalize`, and the rest of jj-shape's
+    # commands, run against the repository jj is in.
+    aliases.shape = [
       "util"
       "exec"
       "--"
-      (lib.getExe jjNormalize)
+      (lib.getExe jjShape)
     ];
     aliases.ai-describe = [
       "util"
@@ -223,7 +223,7 @@ in
   home.packages = [
     git
     jj
-    jjNormalize
+    jjShape
     jjAiDescribe
     pkgs.llm
     pkgs.oyui
