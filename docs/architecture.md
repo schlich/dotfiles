@@ -159,8 +159,11 @@ already active, and records the result in `/var/lib/nixos-switch-main`.
 from any host: on HOST it starts the unit there, and elsewhere it runs
 `system-switch` on HOST over ssh, at the destination
 `den/aspects/fleet/deploy-policy.nix` gives each host (`dotfiles.deploy.fleet`),
-and forwards that run's step reports. A bare `system-switch` switches the
-host it runs on and says which. Once `luvus-deliver` moves `main`, it
+and forwards that run's step reports. Live phase progress prints concisely on
+stderr while stdout emits a structured Nushell summary table (`--json` emits
+the same record as JSON for Nushell pipelines; `--verbose` streams the raw
+systemd journal and Home Manager output). A bare `system-switch` switches the
+host it runs on. Once `luvus-deliver` moves `main`, it
 compares each deployed host's running system and the user's standalone home
 with what `main` builds, by store path, and prints the command each host
 that is behind still needs; `luvus-deliver hosts` prints the same list
