@@ -227,7 +227,9 @@ let
         requireApiKey = config.services.omniroute.settings.REQUIRE_API_KEY;
         publicUrl = config.services.omniroute.settings.NEXT_PUBLIC_BASE_URL;
         claim = config.dotfiles.tailscale.https.omniroute;
-        serve = lib.hasSuffix "/bin/tailscale serve --https=20128 http://127.0.0.1:20128" config.systemd.services.omniroute-serve.serviceConfig.ExecStart;
+        serve =
+          config.systemd.services.omniroute-serve.serviceConfig.ExecStart
+          == "${config.dotfiles.tailscale.serve} serve --https=20128 http://127.0.0.1:20128";
       };
       expected = {
         enabled = true;

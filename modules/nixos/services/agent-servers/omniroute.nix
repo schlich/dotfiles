@@ -17,7 +17,9 @@ let
   servePort = config.dotfiles.tailscale.https.omniroute.port;
   fqdn = config.dotfiles.fleet.fqdn;
   publicUrl = "https://${fqdn}:${toString servePort}";
-  tailscale = "${config.services.tailscale.package}/bin/tailscale";
+  # Serializes serve-config updates with the other serve units
+  # (modules/nixos/fleet/tailscale-https.nix).
+  tailscaleServe = config.dotfiles.tailscale.serve;
 
   secretFile = ../../../../secrets/omniroute/env.age;
   secretReady = builtins.pathExists secretFile;
@@ -83,8 +85,8 @@ in
       Type = "simple";
       ExecStartPre = config.dotfiles.tailscale.waitForBackend;
       TimeoutStartSec = "2min";
-      ExecStart = "${tailscale} serve --https=${toString servePort} http://127.0.0.1:${toString port}";
-      ExecStop = "${tailscale} serve --https=${toString servePort} off";
+      ExecStart = "${tailscaleServe} serve --https=${toString servePort} http://127.0.0.1:${toString port}";
+      ExecStop = "${tailscaleServe} serve --https=${toString servePort} off";
       Restart = "on-failure";
       RestartSec = "10s";
     };
