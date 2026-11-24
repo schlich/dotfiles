@@ -166,7 +166,12 @@ try {
 
   // asus predates the Tailscale remote: its origin still points elsewhere.
   const staleBare = path.join(tmp, "stale.git");
-  await execClean("git", ["init", "--bare", "--initial-branch=main", staleBare]);
+  await execClean("git", [
+    "init",
+    "--bare",
+    "--initial-branch=main",
+    staleBare,
+  ]);
   await execClean("jj", [
     "--no-pager",
     "-R",
@@ -200,8 +205,16 @@ try {
       .split("\n")
       .map((l) => l.trim().split(/\s+/)),
   );
-  assert.equal(remotes.origin, remoteUrl, "origin should be the configured URL");
-  assert.equal(remotes["origin-old"], staleBare, "stale origin kept as origin-old");
+  assert.equal(
+    remotes.origin,
+    remoteUrl,
+    "origin should be the configured URL",
+  );
+  assert.equal(
+    remotes["origin-old"],
+    staleBare,
+    "stale origin kept as origin-old",
+  );
 
   // Verify on-push hook fired.
   for (let i = 0; i < 40 && !fs.existsSync(pushMarker); i++) {
