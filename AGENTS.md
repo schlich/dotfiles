@@ -321,6 +321,30 @@ luvus quality gate and nixbot build.
   It waits for homelab to build, so run it as a `job-log` job. When
   `luvus/integration` no longer contains `origin/main`, merge `origin/main`
   into it first.
+- Gating, merging, and delivering run themselves; the user has authorized
+  this standing path, so a finished task needs no request to deliver it.
+  From a finished worktree, run `luvus-ship --task ID` as a `job-log` job:
+  it runs prek, `luvus-jj sync`, and the gate, merges exactly the commit
+  the gate passed into `luvus/integration` (aborting on a conflict), and
+  marks the task merged. A failure stops it with the step and what to fix;
+  rerun it afterwards. homelab's autopilot (`luvus-autopilot`,
+  `services.luvusAutopilot`) also merges every gated task that luvus
+  workers finish (`done`) in that checkout, and, with
+  `services.luvusDeliver`, starts `luvus-autodeliver.service` once
+  `luvus/integration` has been quiet for ten minutes. That runs
+  `luvus-deliver` with its mitigations, merging `origin/main` in first when
+  needed, then removes the delivered tasks' worktrees; homelab's canary
+  timer deploys the result. It never retries a commit whose delivery failed,
+  never resolves a conflict, and sends a desktop notification on each
+  delivery or failure. `luvus-ship --deliver` starts the delivery at once.
+  `luvus-autopilot pause` stops all of it; `luvus-autopilot status` shows
+  the backlog of tasks done before it took over, which it leaves alone, and
+  `luvus-autopilot log` the actions it took, with the commits before and
+  after each. Each delivery's output is under
+  `~/.local/state/luvus-autopilot/logs/`; follow one with `watch-job LOG`.
+  The autopilot switches no workstation: asus takes a delivery at its next
+  `system-switch --with-home`, run when the user asks or after a delivery
+  an agent on asus made.
 - A user request to publish or deliver authorizes the whole path: gate,
   merge, `luvus-deliver`, and the switch "Applying configuration" describes.
   A high-risk delivery never waits for the owner. It changes `secrets/`,

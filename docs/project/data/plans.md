@@ -28,6 +28,7 @@ moves them.*
 
 ## Done
 
+[Deliver gated luvus tasks without a hand on each step](plans/20261124-autopilot-delivery.md)
 [Commute jj-graph's edits of one file](plans/20261020-jj-graph-commutation.md)
 [Make nixbot's GitHub App and secrets declarative](plans/20261019-nixbot-app-declarative.md)
 [Add Stately MCP server](plans/20261016-stately-mcp-server.md)

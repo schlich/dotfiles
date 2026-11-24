@@ -36,10 +36,20 @@
           includes = [ den.aspects.nix-observability-home ];
         }
       )
+      # The autopilot merges this repository's gated tasks as they finish,
+      # and on the host that delivers, delivers them.
       (
         { home, ... }:
         lib.optionalAttrs home.host.services.luvusAutopilot {
-          homeManager.dotfiles.luvus.autopilot.enable = true;
+          homeManager =
+            { config, ... }:
+            {
+              dotfiles.luvus.autopilot = {
+                enable = true;
+                repositories = [ config.dotfiles.paths.dotfiles ];
+                deliver.enable = home.host.services.luvusDeliver;
+              };
+            };
         }
       )
       # The T3 Code server runs in the home of the host's one user with a
