@@ -111,6 +111,13 @@ in
   # module is not needed.
   home.packages = [ atuin ];
 
+  # The hosts' overlay (modules/nixos/base/user/nushell-package.nix) carries a
+  # Nushell newer than nixpkgs; this home builds from that package set.
+  dotfiles.nixpkgsWatch.nushell = {
+    inherit (pkgs.nushell) version;
+    reason = "delete modules/nixos/base/user/nushell-package.nix and its imports in modules/nixos/base/user/default.nix and flake.nix";
+  };
+
   programs.carapace = {
     enable = true;
     enableNushellIntegration = true;
