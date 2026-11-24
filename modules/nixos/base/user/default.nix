@@ -16,7 +16,7 @@
       "networkmanager"
     ];
     # Any host in the fleet may log in here, over the LAN or Tailscale.
-    openssh.authorizedKeys.keys = builtins.attrValues (import ../../../hosts/login-keys.nix);
+    openssh.authorizedKeys.keys = builtins.attrValues (import ../../../../hosts/login-keys.nix);
   };
   environment.shells = [ pkgs.nushell ];
   # Nushell searches share/nushell/vendor/autoload in the system and per-user

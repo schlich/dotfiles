@@ -65,7 +65,7 @@
       system = "x86_64-linux";
       overlays = [
         # The hosts' Nushell, so the checks run the scripts with it.
-        (import ./modules/nixos/base/nushell-package.nix)
+        (import ./modules/nixos/base/user/nushell-package.nix)
         nushellWith.overlays.default
       ];
       pkgs = import nixpkgs {

@@ -7,7 +7,7 @@
 }:
 
 let
-  # asus administers homelab; modules/nixos/base/user.nix authorizes its login.
+  # asus administers homelab; modules/nixos/base/user/default.nix authorizes its login.
   adminKey = (import ../../../hosts/login-keys.nix).asus;
 
   fieldnotes = import ../../tooling/ai/claude/fieldnotes-package.nix { inherit inputs lib pkgs; };
