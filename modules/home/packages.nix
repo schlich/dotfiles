@@ -84,7 +84,7 @@ in
     bubblewrap
     # The Antigravity app: once signed in, ai-usagebar reads the quota from
     # its saved Google session, which the CLI's `agy` server does not expose.
-    antigravity
+    antigravity-ide
     eilmeldung
     acreomApp
     super-productivity
