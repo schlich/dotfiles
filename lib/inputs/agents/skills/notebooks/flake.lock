@@ -1,0 +1,61 @@
+{
+  "nodes": {
+    "baygent-skills": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1788507045,
+        "narHash": "sha256-fxetRzjFL9gN4/8+UUTr21rPEv5Lb3eLuDo4ruCEKLE=",
+        "owner": "Learning-Bayesian-Statistics",
+        "repo": "baygent-skills",
+        "rev": "18ab0de9b63b5bb03caa96146235e8f1534d45d4",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Learning-Bayesian-Statistics",
+        "repo": "baygent-skills",
+        "type": "github"
+      }
+    },
+    "marimo-pair": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1795032385,
+        "narHash": "sha256-Du4AugWG6PQ3intanBIWJkfQsLTJ9xh27YoygtatVNQ=",
+        "owner": "marimo-team",
+        "repo": "marimo-pair",
+        "rev": "23ca56ab44791d9ace76fc1ee8ad59e34f8c8881",
+        "type": "github"
+      },
+      "original": {
+        "owner": "marimo-team",
+        "repo": "marimo-pair",
+        "type": "github"
+      }
+    },
+    "marimo-skills": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1794598249,
+        "narHash": "sha256-S98F8lTGcOZU5ppRqYbKtf22+wzgDXq8aFY+tMp4sgU=",
+        "owner": "marimo-team",
+        "repo": "skills",
+        "rev": "d5783f16066d6b05576e8a8637466c11f2433734",
+        "type": "github"
+      },
+      "original": {
+        "owner": "marimo-team",
+        "repo": "skills",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "baygent-skills": "baygent-skills",
+        "marimo-pair": "marimo-pair",
+        "marimo-skills": "marimo-skills"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
