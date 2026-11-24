@@ -55,7 +55,48 @@ let
   # `use_stdin = false` each is the shell's last argument: `jj-starship
   # detect` and `jj-starship prompt`. Fed on stdin instead, `when` ran the
   # whole prompt a second time and pushed it past `command_timeout`.
+  # The running system's generation, for the prompt: the system profile's
+  # link that points at /run/current-system, the newest when several do, and
+  # the boot default's when it differs, as `generation --line` shows it
+  # (deploy/generation.nu). Two forks instead of starting Nushell; it prints
+  # nothing off NixOS.
+  promptGeneration = pkgs.writeShellScript "prompt-generation" ''
+    running=$(${pkgs.coreutils}/bin/readlink /run/current-system 2>/dev/null) || exit 0
+    links=$(${pkgs.findutils}/bin/find /nix/var/nix/profiles -maxdepth 1 -name 'system-*-link' -printf '%f %l\n')
+    generation=""
+    boot=""
+    default=$(${pkgs.coreutils}/bin/readlink /nix/var/nix/profiles/system)
+    while read -r name target; do
+      n=''${name#system-}
+      n=''${n%-link}
+      if [ "$target" = "$running" ] && [ "''${n}" -gt "''${generation:-0}" ]; then generation=$n; fi
+      if [ "$name" = "$default" ]; then boot=$n; fi
+    done <<<"$links"
+    [ -n "$generation" ] || exit 0
+    if [ -n "$boot" ] && [ "$boot" != "$generation" ]; then
+      printf 'gen %s boot %s' "$generation" "$boot"
+    else
+      printf 'gen %s' "$generation"
+    fi
+  '';
+
   starshipConfig = toml.generate "starship.toml" {
+    # The host and its running system generation lead the prompt, on every
+    # host and not only over ssh, so a session always shows which machine
+    # it runs on; `$all` follows with every other module.
+    format = "$hostname\${custom.generation}$all";
+    hostname = {
+      ssh_only = false;
+      format = "[$hostname]($style) ";
+    };
+    custom.generation = {
+      shell = [ "${promptGeneration}" ];
+      use_stdin = false;
+      when = true;
+      command = "prompt";
+      style = "dimmed";
+      format = "([$output]($style) )";
+    };
     custom.jj = {
       shell = [ "jj-starship" ];
       use_stdin = false;
