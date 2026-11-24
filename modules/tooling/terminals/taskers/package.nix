@@ -4,13 +4,70 @@
   pkgs,
 }:
 
-# nixpkgs has no taskers, and building from source compiles both the Rust
-# workspace and a vendored Zig Ghostty GTK bridge. Repackage the upstream
-# Linux release bundle with patched ELF dependencies and GTK4/WebKitGTK
-# runtime wrappers, taking its desktop entry, icon, and version from the
-# pinned source input.
+# nixpkgs has no taskers. Repackage the upstream v0.7.0 Linux release bundle
+# for the Rust binaries and runtime assets, but rebuild its vendored Ghostty
+# GTK bridge with `-Dcpu=baseline`: the v0.7.0 release artifact was compiled
+# for the packager's host CPU and crashes with SIGILL on Ryzen CPUs without
+# those instructions (fixed upstream after v0.7.0 in OneNoted/taskers#13).
 let
   version = (lib.importTOML "${inputs.taskers}/Cargo.toml").workspace.package.version;
+
+  ghosttySrc = "${inputs.taskers}/vendor/ghostty";
+  ghosttyDeps = pkgs.callPackage "${ghosttySrc}/build.zig.zon.nix" {
+    name = "taskers-ghostty-cache-${version}";
+  };
+  ghosttyBridge = pkgs.stdenv.mkDerivation {
+    pname = "taskers-ghostty-bridge";
+    inherit version;
+    src = ghosttySrc;
+
+    nativeBuildInputs = [
+      pkgs.blueprint-compiler
+      pkgs.gettext
+      pkgs.gitMinimal
+      pkgs.gobject-introspection
+      pkgs.libxml2
+      pkgs.ncurses
+      pkgs.pkg-config
+      pkgs.zig_0_15
+    ];
+
+    buildInputs = import "${ghosttySrc}/nix/build-support/build-inputs.nix" {
+      inherit pkgs lib;
+      inherit (pkgs) stdenv;
+      enableX11 = true;
+      enableWayland = false;
+    };
+
+    GI_TYPELIB_PATH = import "${ghosttySrc}/nix/build-support/gi-typelib-path.nix" {
+      inherit pkgs lib;
+      inherit (pkgs) stdenv;
+    };
+
+    dontConfigure = true;
+    dontUseZigBuild = true;
+    dontUseZigInstall = true;
+
+    buildPhase = ''
+      runHook preBuild
+      export ZIG_GLOBAL_CACHE_DIR="$TMPDIR/zig-cache"
+      zig build taskers-bridge \
+        --system ${ghosttyDeps} \
+        -Dapp-runtime=gtk \
+        -Demit-exe=false \
+        -Dgtk-wayland=false \
+        -Dstrip=true \
+        -Di18n=false \
+        -Dcpu=baseline \
+        -Doptimize=ReleaseFast \
+        -Dversion-string=1.3.0 \
+        --summary none \
+        --prefix "$out"
+      runHook postBuild
+    '';
+
+    dontInstall = true;
+  };
 in
 pkgs.stdenv.mkDerivation {
   pname = "taskers";
@@ -52,6 +109,8 @@ pkgs.stdenv.mkDerivation {
 
     mkdir -p "$out/libexec/taskers" "$out/bin"
     cp -r bin ghostty terminfo "$out/libexec/taskers/"
+    install -Dm755 "${ghosttyBridge}/lib/libtaskers_ghostty_bridge.so" \
+      "$out/libexec/taskers/ghostty/lib/libtaskers_ghostty_bridge.so"
     chmod +x "$out/libexec/taskers/bin/"*
 
     substitute "${inputs.taskers}/assets/taskers.desktop.in" dev.taskers.app.desktop \
