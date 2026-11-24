@@ -1701,11 +1701,30 @@
         "type": "github"
       }
     },
+    "taskers": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1776188882,
+        "narHash": "sha256-7FL5iw92YFf2b8LoAbmX+OvX4m7MZYPSyQnAt3L6AOg=",
+        "owner": "OneNoted",
+        "repo": "taskers",
+        "rev": "5831c615b6774d868b6d2e78e09fe44a4e5c9a01",
+        "type": "github"
+      },
+      "original": {
+        "owner": "OneNoted",
+        "ref": "v0.7.0",
+        "repo": "taskers",
+        "type": "github"
+      }
+    },
     "terminal": {
       "inputs": {
         "luvus": "luvus",
         "shell": "shell",
-        "vcs": "vcs"
+        "taskers": "taskers",
+        "vcs": "vcs",
+        "webterm": "webterm"
       },
       "locked": {
         "path": "./lib/inputs/terminal",
@@ -1877,6 +1896,23 @@
         "agents",
         "skills"
       ]
+    },
+    "webterm": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1778342176,
+        "narHash": "sha256-RwmmJgvYECiQC+uS/aAAWjyBgd6UDhb5D/NEgemeegM=",
+        "owner": "rcarmo",
+        "repo": "webterm",
+        "rev": "e57a8eb7c15a81f48ff764094332d3982ab21184",
+        "type": "github"
+      },
+      "original": {
+        "owner": "rcarmo",
+        "ref": "v1.4.0",
+        "repo": "webterm",
+        "type": "github"
+      }
     },
     "xs": {
       "inputs": {

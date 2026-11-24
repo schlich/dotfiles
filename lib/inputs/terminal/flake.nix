@@ -6,6 +6,16 @@
     vcs.url = "path:./vcs";
     # Mission control TUI for AI coding agents; not in nixpkgs.
     luvus.url = "github:RizRiyz/luvus";
+    # Web terminal server with session dashboard; not in nixpkgs
+    webterm = {
+      url = "github:rcarmo/webterm/v1.4.0";
+      flake = false;
+    };
+    # Agent-first terminal workspace app; not in nixpkgs
+    taskers = {
+      url = "github:OneNoted/taskers/v0.7.0";
+      flake = false;
+    };
   };
 
   # `sources` are this group's inputs, with those of the groups inside it,
