@@ -14,7 +14,11 @@ deprecation — the `status` frontmatter (`proposed` → `accepted` → `impleme
 terminal `deprecated`/`cancelled`) carries the lifecycle, so the list stays
 flat. Group with `##` headings once it outgrows a single list.*
 
-[jj-graph: change-graph normalization](features/jj-graph.md)
+jj-normalize, the change-graph normalizer that began here as jj-graph, is now
+a flake input: it lives in
+[github:schlich/jj-graph](https://github.com/schlich/jj-graph/tree/main/crates/jj-normalize),
+with its feature, plans, and decision under that crate's `docs/`, and jj runs
+it as `jj normalize`.
 
 [Reactive CI and Nix dashboard](features/ci-nix-dashboard.md)
 

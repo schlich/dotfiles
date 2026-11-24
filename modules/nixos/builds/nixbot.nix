@@ -171,8 +171,8 @@ in
         RestartSec = "10s";
         TimeoutStartSec = "2min";
         ExecStartPre = config.dotfiles.tailscale.waitForBackend;
-        ExecStart = "${pkgs.tailscale}/bin/tailscale funnel --bg --https=${toString funnelPort} ${toString port}";
-        ExecStop = "${pkgs.tailscale}/bin/tailscale funnel --https=${toString funnelPort} off";
+        ExecStart = "${config.dotfiles.tailscale.serve} funnel --bg --https=${toString funnelPort} ${toString port}";
+        ExecStop = "${config.dotfiles.tailscale.serve} funnel --https=${toString funnelPort} off";
       };
     };
   };

@@ -123,7 +123,9 @@ let
         expr = {
           enabled = config.services.kb-git.enable;
           claim = config.dotfiles.tailscale.https.kb-git;
-          serve = lib.hasSuffix "/bin/tailscale serve --https=7445 http://127.0.0.1:${toString config.services.kb-git.port}" config.systemd.services.kb-git-serve.serviceConfig.ExecStart;
+          serve =
+            config.systemd.services.kb-git-serve.serviceConfig.ExecStart
+            == "${config.dotfiles.tailscale.serve} serve --https=7445 http://127.0.0.1:${toString config.services.kb-git.port}";
         };
         expected = {
           enabled = true;
@@ -173,7 +175,9 @@ let
         owner = config.dotfiles.t3code.user;
         linger = config.users.users.${config.dotfiles.t3code.user}.linger;
         claim = config.dotfiles.tailscale.https.t3code;
-        serve = lib.hasSuffix "/bin/tailscale serve --https=3773 http://127.0.0.1:3773" config.systemd.services.t3code-tailscale-serve.serviceConfig.ExecStart;
+        serve =
+          config.systemd.services.t3code-tailscale-serve.serviceConfig.ExecStart
+          == "${config.dotfiles.tailscale.serve} serve --https=3773 http://127.0.0.1:3773";
       };
       expected = {
         owner = lib.head (builtins.attrNames (homesOf name));
@@ -195,7 +199,9 @@ let
         owner = config.dotfiles.luvusWeb.user;
         linger = config.users.users.${config.dotfiles.luvusWeb.user}.linger;
         claim = config.dotfiles.tailscale.https.luvus-web;
-        serve = lib.hasSuffix "/bin/tailscale serve --https=4174 http://127.0.0.1:4174" config.systemd.services.luvus-web-tailscale-serve.serviceConfig.ExecStart;
+        serve =
+          config.systemd.services.luvus-web-tailscale-serve.serviceConfig.ExecStart
+          == "${config.dotfiles.tailscale.serve} serve --https=4174 http://127.0.0.1:4174";
       };
       expected = {
         owner = lib.head (builtins.attrNames (homesOf name));
@@ -209,29 +215,93 @@ let
     };
   };
 
-  # A unit that runs `tailscale serve` or `tailscale funnel` when the system
-  # starts it fails a switch that restarts tailscaled before the daemon is
-  # back, even though Restart= recovers it seconds later: asus reverted the
-  # 2026-11-03 nixpkgs update over t3code-tailscale-serve. Every such unit
-  # waits for the backend first (waitForBackend, modules/nixos/fleet/tailscale-https.nix).
-  tailscaleServeTests = config: {
-    testTailscaleServeUnitsWaitForTheBackend = {
-      expr = builtins.attrNames (
-        lib.filterAttrs (
-          _: unit:
-          let
-            start = toString (lib.toList (unit.serviceConfig.ExecStart or ""));
-            pre = map toString (lib.toList (unit.serviceConfig.ExecStartPre or [ ]));
-          in
-          unit.enable
-          && unit.wantedBy != [ ]
-          && (lib.hasInfix "/bin/tailscale serve " start || lib.hasInfix "/bin/tailscale funnel " start)
-          && !(lib.elem (toString (config.dotfiles.tailscale.waitForBackend or "")) pre)
-        ) config.systemd.services
-      );
-      expected = [ ];
+  # OmniRoute stays on loopback and is published privately on the tailnet
+  # over HTTPS, with production cookie/API-key settings and tailnet origin.
+  omnirouteTests = name: config: {
+    testOmnirouteIsPublishedToTheTailnetOnly = {
+      expr = {
+        enabled = config.services.omniroute.enable;
+        host = config.services.omniroute.settings.OMNIROUTE_SERVER_HOST;
+        port = config.services.omniroute.settings.PORT;
+        cookieSecure = config.services.omniroute.settings.AUTH_COOKIE_SECURE;
+        requireApiKey = config.services.omniroute.settings.REQUIRE_API_KEY;
+        publicUrl = config.services.omniroute.settings.NEXT_PUBLIC_BASE_URL;
+        claim = config.dotfiles.tailscale.https.omniroute;
+        serve =
+          config.systemd.services.omniroute-serve.serviceConfig.ExecStart
+          == "${config.dotfiles.tailscale.serve} serve --https=20128 http://127.0.0.1:20128";
+      };
+      expected = {
+        enabled = true;
+        host = "127.0.0.1";
+        port = "20128";
+        cookieSecure = "true";
+        requireApiKey = "true";
+        publicUrl = "https://${name}.${hosts.${name}.network.tailnet}:20128";
+        claim = {
+          port = 20128;
+          funnel = false;
+        };
+        serve = true;
+      };
     };
   };
+
+  # A unit that runs `tailscale serve` or `tailscale funnel` when the system
+  # starts it fails a switch that restarts tailscaled before the daemon is
+  # back (asus reverted the 2026-11-03 nixpkgs update over t3code-tailscale-serve),
+  # or when concurrent Serve/Funnel units race on /localapi/v0/serve-config and
+  # hit "Preconditions failed: etag mismatch" (homelab reverted the 2026-11-24
+  # flake update over kb-git-serve and rex-tailscale-serve). Every boot-started
+  # Serve/Funnel unit waits for the backend (waitForBackend), and every
+  # Serve/Funnel ExecStart/ExecStop goes through the serialized wrapper
+  # (`dotfiles.tailscale.serve`, modules/nixos/fleet/tailscale-https.nix).
+  tailscaleServeTests =
+    config:
+    let
+      serveWrapper = builtins.unsafeDiscardStringContext (
+        toString (config.dotfiles.tailscale.serve or "")
+      );
+      hasBareServeOrFunnel =
+        cmd: lib.hasInfix "/bin/tailscale serve " cmd || lib.hasInfix "/bin/tailscale funnel " cmd;
+      hasWrappedServeOrFunnel =
+        cmd:
+        serveWrapper != ""
+        && (lib.hasInfix "${serveWrapper} serve " cmd || lib.hasInfix "${serveWrapper} funnel " cmd);
+      isServeOrFunnel = cmd: hasBareServeOrFunnel cmd || hasWrappedServeOrFunnel cmd;
+    in
+    {
+      testTailscaleServeUnitsWaitForTheBackend = {
+        expr = builtins.attrNames (
+          lib.filterAttrs (
+            _: unit:
+            let
+              start = toString (lib.toList (unit.serviceConfig.ExecStart or ""));
+              pre = map toString (lib.toList (unit.serviceConfig.ExecStartPre or [ ]));
+            in
+            unit.enable
+            && unit.wantedBy != [ ]
+            && isServeOrFunnel start
+            && !(lib.elem (toString (config.dotfiles.tailscale.waitForBackend or "")) pre)
+          ) config.systemd.services
+        );
+        expected = [ ];
+      };
+
+      testTailscaleServeUnitsSerializeConfigChanges = {
+        expr = builtins.attrNames (
+          lib.filterAttrs (
+            _: unit:
+            let
+              start = toString (lib.toList (unit.serviceConfig.ExecStart or ""));
+              stop = toString (lib.toList (unit.serviceConfig.ExecStop or ""));
+            in
+            unit.enable && (hasBareServeOrFunnel start || hasBareServeOrFunnel stop)
+          ) config.systemd.services
+        );
+        expected = [ ];
+      };
+    };
 
   # A home follows the host it is named for: the desktop home only
   # on a workstation, ci's traces only where the viewer runs, and the T3 Code
@@ -244,6 +314,7 @@ let
       "testHome_${userName}_FollowsItsHost" = {
         expr = {
           desktop = config.programs.ghostty.enable;
+          hostBadge = config.dotfiles.shell.hostBadge.enable;
           traces = (config.dotfiles.ci.tracesEndpoint or null) != null;
           t3code = config.dotfiles.t3code.server.enable or false;
           t3codeLoopback =
@@ -254,6 +325,7 @@ let
         };
         expected = {
           desktop = host.profile.role == "workstation";
+          hostBadge = host.profile.role == "server";
           traces = host.services.nixObservability;
           t3code = host.services.t3code;
           t3codeLoopback = true;
@@ -361,6 +433,7 @@ let
         // lib.optionalAttrs (host.profile.remote && name != "homelab") (remoteClientTests config)
         // lib.optionalAttrs host.services.t3code (t3codeTests name config)
         // lib.optionalAttrs host.services.luvusWeb (luvusWebTests name config)
+        // lib.optionalAttrs host.services.omniroute (omnirouteTests name config)
         // lib.optionalAttrs config.services.tailscale.enable (tailscaleServeTests config)
         // (hostTests.${name} or (_: { })) config
         // lib.concatMapAttrs (

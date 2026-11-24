@@ -16,7 +16,7 @@ let
   cfg = config.dotfiles.rex;
   uid = config.users.users.${cfg.user}.uid;
   socket = "/run/user/${toString uid}/${cfg.socket}";
-  tailscale = "${config.services.tailscale.package}/bin/tailscale";
+  tailscaleServe = config.dotfiles.tailscale.serve;
 in
 {
   imports = [ ../../fleet/tailscale-https.nix ];
@@ -80,8 +80,8 @@ in
         Type = "simple";
         ExecStartPre = config.dotfiles.tailscale.waitForBackend;
         TimeoutStartSec = "2min";
-        ExecStart = "${tailscale} serve --https=${toString cfg.port} unix:${socket}";
-        ExecStop = "${tailscale} serve --https=${toString cfg.port} off";
+        ExecStart = "${tailscaleServe} serve --https=${toString cfg.port} unix:${socket}";
+        ExecStop = "${tailscaleServe} serve --https=${toString cfg.port} off";
         Restart = "on-failure";
         RestartSec = "10s";
       };

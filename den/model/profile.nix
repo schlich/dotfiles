@@ -75,6 +75,10 @@ let
       service = "crossStream";
       aspect = "cross-stream";
     }
+    {
+      service = "omniroute";
+      aspect = "omniroute";
+    }
   ];
 
   # The laptop aspect keeps its place between the desktop and the profile's

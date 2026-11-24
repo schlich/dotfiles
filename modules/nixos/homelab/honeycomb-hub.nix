@@ -5,7 +5,6 @@
 {
   config,
   lib,
-  pkgs,
   ...
 }:
 
@@ -34,8 +33,8 @@ in
         Type = "simple";
         ExecStartPre = config.dotfiles.tailscale.waitForBackend;
         TimeoutStartSec = "2min";
-        ExecStart = "${pkgs.tailscale}/bin/tailscale serve --https=${toString servePort} http://127.0.0.1:${toString cfg.port}";
-        ExecStop = "${pkgs.tailscale}/bin/tailscale serve --https=${toString servePort} off";
+        ExecStart = "${config.dotfiles.tailscale.serve} serve --https=${toString servePort} http://127.0.0.1:${toString cfg.port}";
+        ExecStop = "${config.dotfiles.tailscale.serve} serve --https=${toString servePort} off";
         Restart = "on-failure";
         RestartSec = "10s";
       };

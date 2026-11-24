@@ -16,7 +16,7 @@ let
   inherit (lib) mkIf mkOption types;
   cfg = config.dotfiles.t3code;
   port = toString cfg.port;
-  tailscale = "${config.services.tailscale.package}/bin/tailscale";
+  tailscaleServe = config.dotfiles.tailscale.serve;
 in
 {
   imports = [ ../../fleet/tailscale-https.nix ];
@@ -69,8 +69,8 @@ in
         Type = "simple";
         ExecStartPre = config.dotfiles.tailscale.waitForBackend;
         TimeoutStartSec = "2min";
-        ExecStart = "${tailscale} serve --https=${port} http://127.0.0.1:${port}";
-        ExecStop = "${tailscale} serve --https=${port} off";
+        ExecStart = "${tailscaleServe} serve --https=${port} http://127.0.0.1:${port}";
+        ExecStop = "${tailscaleServe} serve --https=${port} off";
         Restart = "on-failure";
         RestartSec = "10s";
       };

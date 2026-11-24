@@ -31,6 +31,7 @@
     terminal.inputs.shell.inputs.rex.inputs.nixpkgs.follows = "system/nixpkgs";
     terminal.inputs.vcs.inputs.ci.inputs.nixpkgs.follows = "system/nixpkgs";
     terminal.inputs.vcs.inputs.ci.inputs.osc7501-nu.follows = "terminal/shell/osc7501-nu";
+    terminal.inputs.vcs.inputs.jj-graph.inputs.nixpkgs.follows = "system/nixpkgs";
     # Only its non-flake default.nix uses flake-compat. Nix 2.34 cannot
     # refetch the lix tarball it locks (the locked URL keeps a ?rev= that
     # the fetch drops), which fails nixbot's prefetch once the source
@@ -126,7 +127,9 @@
       dagger = import ./modules/programs/vcs/dagger-package.nix { inherit lib pkgs; };
       inherit (pkgs) iwe;
       marimohub = import ./modules/tooling/knowledge/marimohub-package.nix { inherit lib pkgs; };
-      jjGraph = import ./tools/jj-graph { inherit lib pkgs; };
+      # jj-normalize and its model checks, from github:schlich/jj-graph.
+      jjGraph = inputs.jj-graph.packages.${system};
+      jjGraphChecks = inputs.jj-graph.checks.${system};
       workbench = import ./workbench { inherit pkgs lib iwe; };
       workbenchImages = lib.mapAttrs' (
         name: environment: lib.nameValuePair "workbench-image-${name}" environment.image
@@ -432,7 +435,7 @@
         jj = pkgs.jujutsu;
         jjui = pkgs.jjui;
         jj-ci-lifecycle = jjCiLifecycle;
-        jj-graph = jjGraph.package;
+        inherit (jjGraph) jj-normalize;
         xr-workbench = xrWorkbench;
         quota-advisor = quotaAdvisor;
         nixbot-register = nixbotRegister;
@@ -441,6 +444,8 @@
         # A Rust build this flake owns, with a `timings` output holding
         # cargo's build timing report (lib/with-cargo-timings.nix).
         jj-hunk = import ./modules/programs/vcs/jj-hunk-package.nix { inherit inputs lib pkgs; };
+        taskers = import ./modules/tooling/terminals/taskers/package.nix { inherit inputs lib pkgs; };
+        webterm = import ./modules/tooling/terminals/webterm/package.nix { inherit inputs lib pkgs; };
         # nu_plugin_ghostty and the libghostty-vt it links, which nixpkgs
         # ships too old (modules/programs/shell/nu-plugin-ghostty).
         libghostty-vt =
@@ -513,9 +518,9 @@
           type = "app";
           program = "${pkgs.jjui}/bin/jjui";
         };
-        jj-graph = {
+        jj-normalize = {
           type = "app";
-          program = "${jjGraph.package}/bin/jj-graph";
+          program = "${jjGraph.jj-normalize}/bin/jj-normalize";
         };
         xr-workbench = {
           type = "app";
@@ -569,11 +574,11 @@
         '';
         # discord-digest's build runs its tests.
         discord-digest = pkgs.callPackage ./tools/discord-digest/package.nix { };
-        # jj-graph's build runs its lints, its Hegel properties (some in real
-        # jj repositories), and its conformance to spec/Normalize.qnt; the
-        # model check simulates and model checks the specifications.
-        jj-graph = jjGraph.package;
-        jj-graph-model = jjGraph.model;
+        # jj-normalize's build runs its lints, its Hegel properties (some in
+        # real jj repositories), and its conformance to spec/Normalize.qnt;
+        # the model check simulates and model checks the specifications.
+        # Both come from the jj-graph input and rebuild only when it moves.
+        inherit (jjGraphChecks) jj-normalize jj-normalize-model;
         marimohub = marimohub;
         # One Markdown file as an IWE node and a marimo notebook: IWE
         # validates the corpus, marimo executes the demo in the Nix
@@ -768,6 +773,19 @@
               ${pkgs.nushell}/bin/nu --no-config-file ${./tests/staged-switch-units.nu} ${./deploy/switch.nu}
               touch "$out"
             '';
+        # system-switch's step tracker, journal/closure-diff parsers, and
+        # structured Nushell summary formatter.
+        nushell-system-switch =
+          pkgs.runCommand "nushell-system-switch-check"
+            {
+              nativeBuildInputs = [ pkgs.nushell ];
+            }
+            ''
+              export HOME="$TMPDIR/home"
+              mkdir -p "$HOME"
+              ${pkgs.nushell}/bin/nu --no-config-file ${./tests/system-switch.nu} ${./deploy/system-switch.nu}
+              touch "$out"
+            '';
         # The Mod+Slash keymap overlay replayed headlessly with `tui debug`.
         nushell-keymap =
           let
@@ -837,6 +855,136 @@
               ruff format --no-cache --config ${./workbench/ruff.toml} --check ${./workbench/python} ${./workbench/tests}
               touch "$out"
             '';
+        # Concurrent Tailscale Serve/Funnel units must serialize updates to
+        # /localapi/v0/serve-config and retry on etag mismatch without blocking
+        # each other once registered.
+        tailscale-serve =
+          let
+            serveScript = denFlake.nixosConfigurations.homelab.config.dotfiles.tailscale.serve;
+          in
+          pkgs.runCommand "tailscale-serve-check" { } ''
+            set -euo pipefail
+            mkdir -p "$TMPDIR/bin" "$TMPDIR/state"
+
+            # Mock tailscale that detects overlapping serve-config writes and
+            # fails them with the exact etag mismatch error tailscaled returns.
+            cat > "$TMPDIR/bin/mock-tailscale" <<'EOF'
+            #!${pkgs.bash}/bin/bash
+            set -euo pipefail
+            state="$MOCK_STATE_DIR"
+            mkdir -p "$state"
+
+            if [ -f "$state/force-etag-once" ]; then
+              rm -f "$state/force-etag-once"
+              echo "Another client is changing the serve config; please try again." >&2
+              echo "sending serve config: Preconditions failed: etag mismatch" >&2
+              exit 1
+            fi
+
+            if [ "''${1:-}" = "serve" ] && [ "''${2:-}" = "fail-hard" ]; then
+              echo "invalid serve target" >&2
+              exit 2
+            fi
+
+            # Detect concurrent serve-config mutation: mkdir is atomic.
+            if ! mkdir "$state/inflight" 2>/dev/null; then
+              echo "Another client is changing the serve config; please try again." >&2
+              echo "sending serve config: Preconditions failed: etag mismatch" >&2
+              exit 1
+            fi
+            sleep 0.05
+            rmdir "$state/inflight"
+
+            for arg in "$@"; do
+              case "$arg" in
+                --bg | --bg=true | off | status | reset)
+                  echo "ok:$*" >> "$state/short.log"
+                  exit 0
+                  ;;
+              esac
+            done
+
+            echo "Available within your tailnet:"
+            echo "https://homelab.example.ts.net/"
+            echo "Press Ctrl+C to exit."
+            echo "started:$*" >> "$state/fg.log"
+            trap 'echo "stopped:$*" >> "$state/fg.log"; exit 0' TERM INT
+            while true; do sleep 1; done
+            EOF
+            chmod +x "$TMPDIR/bin/mock-tailscale"
+
+            export TAILSCALE_BIN="$TMPDIR/bin/mock-tailscale"
+            export TAILSCALE_SERVE_LOCK="$TMPDIR/serve.lock"
+            export TAILSCALE_SERVE_RETRY_DELAY="0.05"
+            export MOCK_STATE_DIR="$TMPDIR/state"
+            : > "$MOCK_STATE_DIR/fg.log"
+
+            # 1. Eight concurrent foreground serve units serialize registration
+            #    with zero etag collisions, stay up concurrently, and stop cleanly.
+            pids=()
+            for i in 1 2 3 4 5 6 7 8; do
+              ${serveScript} serve --https="$((7440 + i))" "http://127.0.0.1:$((8000 + i))" >"$TMPDIR/fg-$i.log" 2>&1 &
+              pids+=($!)
+            done
+
+            deadline=$((SECONDS + 15))
+            while [ "$(wc -l < "$MOCK_STATE_DIR/fg.log" 2>/dev/null || echo 0)" -lt 8 ]; do
+              if [ "$SECONDS" -ge "$deadline" ]; then
+                echo "timed out waiting for 8 foreground units" >&2
+                exit 1
+              fi
+              sleep 0.05
+            done
+
+            for pid in "''${pids[@]}"; do
+              kill -0 "$pid"
+            done
+            for pid in "''${pids[@]}"; do
+              kill -TERM "$pid"
+            done
+            for pid in "''${pids[@]}"; do
+              wait "$pid"
+            done
+            test "$(grep -c '^stopped:' "$MOCK_STATE_DIR/fg.log")" -eq 8
+
+            # 2. Forced etag mismatch on foreground startup retries and succeeds.
+            touch "$MOCK_STATE_DIR/force-etag-once"
+            ${serveScript} serve --https=7450 http://127.0.0.1:8050 >"$TMPDIR/retry-fg.log" 2>&1 &
+            rpid=$!
+            deadline=$((SECONDS + 10))
+            while ! grep -q '^started:serve --https=7450' "$MOCK_STATE_DIR/fg.log"; do
+              if [ "$SECONDS" -ge "$deadline" ]; then
+                echo "foreground retry did not succeed" >&2
+                cat "$TMPDIR/retry-fg.log" >&2
+                exit 1
+              fi
+              sleep 0.05
+            done
+            kill -TERM "$rpid"
+            wait "$rpid"
+
+            # 3. Concurrent short-lived (--bg and off) commands serialize and retry.
+            touch "$MOCK_STATE_DIR/force-etag-once"
+            spids=()
+            for i in 1 2 3 4; do
+              ${serveScript} funnel --bg --https=8443 "$((8010 + i))" &
+              spids+=($!)
+              ${serveScript} serve --https="$((7440 + i))" off &
+              spids+=($!)
+            done
+            for pid in "''${spids[@]}"; do
+              wait "$pid"
+            done
+            test "$(wc -l < "$MOCK_STATE_DIR/short.log")" -eq 8
+
+            # 4. Real errors are not retried and preserve exit code.
+            rc=0
+            ${serveScript} serve fail-hard >/dev/null 2>&1 || rc=$?
+            test "$rc" -eq 2
+
+            touch "$out"
+          '';
+
         # TLC explores every state of the staged switch's bounded model, once
         # with activation able to outlast the dead-man's grace period and once
         # with the timer firing only after its run has died.
@@ -924,7 +1072,7 @@
         // import ./modules/tooling/keymap-checks/remote.nix { inherit inputs lib pkgs; }
         // {
           # TLC over every three-change graph takes about twelve minutes.
-          jj-graph-model-exhaustive = jjGraph.exhaustive;
+          inherit (jjGraph) jj-normalize-model-exhaustive;
           deploy-revert = import ./tests/deploy-revert.nix { inherit pkgs; };
           marimohub-homelab-evaluation = marimohubHomelabEvaluationCheck;
           discord-digest-homelab-evaluation = discordDigestHomelabEvaluationCheck;

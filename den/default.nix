@@ -10,6 +10,7 @@
     ./aspects/services/rex.nix
     ./aspects/services/cross-stream.nix
     ./aspects/services/marimohub.nix
+    ./aspects/services/agent-servers/omniroute.nix
     ./aspects/roles/workstation.nix
     ./aspects/roles/server.nix
     ./aspects/fleet/system-files.nix
