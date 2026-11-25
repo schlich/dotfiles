@@ -4,6 +4,13 @@ The history of this workspace, newest first. The `ship` skill appends a dated
 group on every release; any skill that creates or retires a document adds a line
 to the current day's group.
 
+## 2026-11-24
+
+- **Tooling**: jj-graph's normalizer moved, with its history, to
+  github:schlich/jj-graph as `crates/jj-shape`, and its feature, both
+  plans, and the normal-form decision moved with it. This repository takes it
+  from the `jj-graph` flake input, and jj runs it as `jj shape`.
+
 ## 2026-11-23
 
 - **Homelab**: Configured private Gerrit with tailnet sign-in and Git over
@@ -108,7 +115,7 @@ to the current day's group.
   the Cachix cache in CI, the staged switch's TLA+ model, Helix on homelab, and
   Zed's removal. The rest was closed as superseded or stale.
 - **Delivery**:
-  [Commute jj-graph's edits of one file](plans/20261020-jj-graph-commutation.md)
+  [Commute jj-graph's edits of one file](https://github.com/schlich/jj-graph/blob/main/crates/jj-shape/docs/plans/20261020-jj-graph-commutation.md)
   done.
 
 ## 2026-10-24
@@ -120,7 +127,7 @@ to the current day's group.
 ## 2026-10-20
 
 - **Plan**:
-  [Commute jj-graph's edits of one file](plans/20261020-jj-graph-commutation.md);
+  [Commute jj-graph's edits of one file](https://github.com/schlich/jj-graph/blob/main/crates/jj-shape/docs/plans/20261020-jj-graph-commutation.md);
   two changes that touch one file keep their order only when jj cannot move each
   past the other, with mergiraf as an opt-in structural fallback.
 - **Delivery**:

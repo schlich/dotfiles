@@ -277,6 +277,7 @@ in
       dotfiles.nixpkgsWatchExempt = {
         ci = "the user's own trunk workflow, which homelab's cache serves";
         fieldnotes = "the user's own dashboard";
+        jj-graph = "the user's own jj-graph and jj-shape";
         honeycomb = "the user's own navigation model and its `honeycomb` command";
         continuum-ide = "the user's own fork of T3 Code";
         clan-core = "clan-cli has to match the clan-core modules this flake imports";

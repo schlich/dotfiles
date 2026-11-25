@@ -567,7 +567,7 @@ def activate-home [last, verbose: bool]: nothing -> record {
     let short = (short-rev $last.rev)
     if (embedded-home) {
         let gen = (profile-generation (home-profile))
-        print --stderr (format-step-line info home '' $"embedded in system(if $gen != null { $' (gen ($gen))' } else { '' })")
+        print --stderr (format-step-line info home '' $"embedded in system(if $gen != null { $" \(gen ($gen))" } else { '' })")
         return { home: { status: embedded, name: $name, generation: $gen }, step: null, ok: true, output: '' }
     }
     let home = (standalone-home $last.rev)
@@ -577,7 +577,7 @@ def activate-home [last, verbose: bool]: nothing -> record {
     }
     if (running-home) == $home.path {
         let gen = (profile-generation (home-profile))
-        print --stderr (format-step-line info home '' $"already active(if $gen != null { $' (gen ($gen))' } else { '' })")
+        print --stderr (format-step-line info home '' $"already active(if $gen != null { $" \(gen ($gen))" } else { '' })")
         return { home: { status: unchanged, name: $name, generation: $gen }, step: null, ok: true, output: '' }
     }
 

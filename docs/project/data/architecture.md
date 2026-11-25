@@ -25,7 +25,8 @@ rejected are as valuable as the one you picked.*
 
 [Generation provenance](architecture/generation-provenance.md)
 
-[jj-graph normal form](architecture/jj-graph-normal-form.md)
+[jj-graph normal form](https://github.com/schlich/jj-graph/blob/main/crates/jj-shape/docs/architecture/jj-graph-normal-form.md)
+(moved with jj-shape to github:schlich/jj-graph)
 
 [GitHub trunk](architecture/github-trunk.md)
 

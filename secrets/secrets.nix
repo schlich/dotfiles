@@ -33,4 +33,11 @@ in
     admin
     homelab
   ];
+
+  # Executor's optional environmentFile (BETTER_AUTH_SECRET,
+  # EXECUTOR_ENCRYPTION_KEY, etc.; modules/nixos/services/agent-servers/executor.nix).
+  "executor/env.age".publicKeys = [
+    admin
+    homelab
+  ];
 }

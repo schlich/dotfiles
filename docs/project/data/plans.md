@@ -21,7 +21,7 @@ moves them.*
 [Add an OpenCode workflow-status plugin](plans/20261106-opencode-workflow-status.md)
 [Run the flake checks with Dagger](plans/20261029-dagger-ci.md)
 [Run a T3 Code agent fleet](plans/20261029-t3-code-fleet.md)
-[Implement jj graph normalization](plans/20261019-jj-graph.md)
+[Implement jj graph normalization](https://github.com/schlich/jj-graph/blob/main/crates/jj-shape/docs/plans/20261019-jj-graph.md) (moved to github:schlich/jj-graph)
 [Add OpenCode desktop client](plans/20261017-add-opencode-desktop.md)
 [Run MCP-NixOS with Nix](plans/20261016-mcp-nixos-nix-launch.md)
 [Adopt Home Manager mutable settings for app-owned config](plans/20261017-mutable-settings.md)
@@ -29,7 +29,7 @@ moves them.*
 ## Done
 
 [Deliver gated luvus tasks without a hand on each step](plans/20261124-autopilot-delivery.md)
-[Commute jj-graph's edits of one file](plans/20261020-jj-graph-commutation.md)
+[Commute jj-graph's edits of one file](https://github.com/schlich/jj-graph/blob/main/crates/jj-shape/docs/plans/20261020-jj-graph-commutation.md) (moved to github:schlich/jj-graph)
 [Make nixbot's GitHub App and secrets declarative](plans/20261019-nixbot-app-declarative.md)
 [Add Stately MCP server](plans/20261016-stately-mcp-server.md)
 [Build a reactive CI and Nix dashboard](plans/20261016-ci-nix-dashboard.md)

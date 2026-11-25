@@ -79,6 +79,10 @@ let
       service = "omniroute";
       aspect = "omniroute";
     }
+    {
+      service = "executor";
+      aspect = "executor";
+    }
   ];
 
   # The laptop aspect keeps its place between the desktop and the profile's
