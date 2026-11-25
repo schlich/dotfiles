@@ -73,8 +73,6 @@ in
         type = "remote";
         url = "https://api.githubcopilot.com/mcp/";
         enabled = true;
-        oauth = false;
-        headers.Authorization = "Bearer {env:GITHUB_TOKEN}";
       };
       mcp.stitch = {
         type = "remote";
