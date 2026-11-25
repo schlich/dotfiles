@@ -117,10 +117,23 @@ let
     mv -f "$tmp" "$settings"
   '';
   kbMcpCommand = config.programs.mcp.servers.kb.command or null;
+  executorMcpUrl = config.programs.mcp.servers.executor.url or null;
   # T3 Code isolates Antigravity under ~/.t3/userdata/providers/antigravity/<id>/
   # (its own GEMINI_HOME), so those profiles do not read ~/.gemini/config/mcp_config.json.
-  # Merge the `kb` MCP server into every existing profile's config/mcp_config.json
-  # while preserving any user-added servers.
+  # Merge the `kb` and `executor` MCP servers into every existing profile's
+  # config/mcp_config.json while preserving any user-added servers.
+  antigravityMergedMcp =
+    lib.optionalAttrs (kbMcpCommand != null) {
+      kb = {
+        command = kbMcpCommand;
+        args = [ ];
+      };
+    }
+    // lib.optionalAttrs (executorMcpUrl != null) {
+      executor = {
+        serverUrl = executorMcpUrl;
+      };
+    };
   syncAntigravityKbMcp = pkgs.writeShellScript "t3code-antigravity-kb-mcp" ''
     set -euo pipefail
     PATH=${
@@ -137,12 +150,12 @@ let
       mkdir -p "$profile/config"
       tmp="$(mktemp "$cfg.XXXXXX")"
       if [ -s "$cfg" ] && ${jq} -e 'type == "object"' "$cfg" >/dev/null 2>&1; then
-        ${jq} --arg cmd ${lib.escapeShellArg kbMcpCommand} \
-          '.mcpServers = ((.mcpServers // {}) + {kb: {command: $cmd, args: []}})' \
+        ${jq} --argjson servers ${lib.escapeShellArg (builtins.toJSON antigravityMergedMcp)} \
+          '.mcpServers = ((.mcpServers // {}) + $servers)' \
           "$cfg" > "$tmp"
       else
-        ${jq} -n --arg cmd ${lib.escapeShellArg kbMcpCommand} \
-          '{mcpServers: {kb: {command: $cmd, args: []}}}' > "$tmp"
+        ${jq} -n --argjson servers ${lib.escapeShellArg (builtins.toJSON antigravityMergedMcp)} \
+          '{mcpServers: $servers}' > "$tmp"
       fi
       if [ -f "$cfg" ] && cmp -s "$tmp" "$cfg"; then
         rm -f "$tmp"
@@ -378,7 +391,7 @@ in
         ExecStartPre = [
           "-${dropJobsAction} ${baseDir}/userdata/settings.json"
         ]
-        ++ lib.optional (kbMcpCommand != null) "${syncAntigravityKbMcp}";
+        ++ lib.optional (antigravityMergedMcp != { }) "${syncAntigravityKbMcp}";
         ExecStart = "${serve} --host 127.0.0.1 --port ${port} --base-dir ${baseDir}";
         ExecStartPost = "${clearStamp} ${outageStamp}";
         WorkingDirectory = "%h";
@@ -508,7 +521,7 @@ in
       url = "${local}/mcp";
     };
 
-    home.activation.t3codeAntigravityKbMcp = mkIf (kbMcpCommand != null) (
+    home.activation.t3codeAntigravityKbMcp = mkIf (antigravityMergedMcp != { }) (
       lib.hm.dag.entryAfter [ "writeBoundary" ] ''
         run ${syncAntigravityKbMcp}
       ''

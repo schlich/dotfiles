@@ -3,6 +3,7 @@
   inputs,
   lib,
   pkgs,
+  osConfig ? { },
   ...
 }:
 
@@ -10,6 +11,9 @@ let
   inherit (pkgs) iwe;
   inherit (pkgs) atuin;
   kbRoot = config.dotfiles.paths.kb;
+  homelabFqdn = osConfig.dotfiles.fleet.hosts.homelab.fqdn or "homelab.tail338351.ts.net";
+  executorPort = osConfig.dotfiles.tailscale.https.executor.port or 4400;
+  executorMcpUrl = "https://${homelabFqdn}:${toString executorPort}/mcp";
   xs = inputs.xs.packages.${pkgs.stdenv.hostPlatform.system}.default;
   # iwec serves the workspace in its working directory.
   kbMcp = pkgs.writeNuScriptBin "kb-mcp" ''
@@ -112,6 +116,10 @@ in
       # Stately's hosted HTTP MCP server provides access to state-machine
       # design tools; authentication is handled by the MCP client.
       stately.url = "https://mcp.stately.ai/mcp";
+      # Self-hosted Executor tool gateway on homelab
+      # (modules/nixos/services/agent-servers/executor.nix); clients sign in
+      # through browser OAuth over the tailnet.
+      executor.url = executorMcpUrl;
     }
     // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
       # metavr ships binaries only for macOS and Windows, not Linux.
