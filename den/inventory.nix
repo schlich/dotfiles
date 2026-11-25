@@ -33,6 +33,7 @@ let
       rex = false;
       crossStream = false;
       omniroute = false;
+      executor = false;
     };
     # Clan logs in as the everyday user and escalates with sudo.
     deploy.targetUser = "schlich";
@@ -135,6 +136,8 @@ let
           crossStream = true;
           # Multi-provider AI gateway, published privately on the tailnet.
           omniroute = true;
+          # Tool and MCP gateway, published privately on the tailnet.
+          executor = true;
         };
         deploy = {
           enable = true;

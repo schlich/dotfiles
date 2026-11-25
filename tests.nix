@@ -91,6 +91,7 @@ in
         rex = true;
         crossStream = true;
         omniroute = false;
+        executor = false;
       };
     };
     expected = [
@@ -124,6 +125,7 @@ in
         "rex"
         "cross-stream"
         "omniroute"
+        "executor"
       ];
     };
   };

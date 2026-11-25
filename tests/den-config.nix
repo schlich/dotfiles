@@ -215,6 +215,41 @@ let
     };
   };
 
+  # Executor stays on loopback inside Podman and is published privately on the
+  # tailnet over HTTPS, with its exact tailnet origin in BETTER_AUTH_URL.
+  executorTests = name: config: {
+    testExecutorIsPublishedToTheTailnetOnly = {
+      expr = {
+        podman = config.virtualisation.podman.enable;
+        backend = config.virtualisation.oci-containers.backend;
+        ports = config.virtualisation.oci-containers.containers.executor.ports;
+        volumes = config.virtualisation.oci-containers.containers.executor.volumes;
+        extraOptions = config.virtualisation.oci-containers.containers.executor.extraOptions;
+        betterAuthUrl =
+          config.virtualisation.oci-containers.containers.executor.environment.BETTER_AUTH_URL;
+        env = config.virtualisation.oci-containers.containers.executor.environment.EXECUTOR_ENVIRONMENT;
+        claim = config.dotfiles.tailscale.https.executor;
+        serve =
+          config.systemd.services.executor-serve.serviceConfig.ExecStart
+          == "${config.dotfiles.tailscale.serve} serve --https=4400 http://127.0.0.1:4400";
+      };
+      expected = {
+        podman = true;
+        backend = "podman";
+        ports = [ "127.0.0.1:4400:4400" ];
+        volumes = [ "/var/lib/executor:/app/data" ];
+        extraOptions = [ "--init" ];
+        betterAuthUrl = "https://${name}.${hosts.${name}.network.tailnet}:4400";
+        env = "self-host";
+        claim = {
+          port = 4400;
+          funnel = false;
+        };
+        serve = true;
+      };
+    };
+  };
+
   # OmniRoute stays on loopback and is published privately on the tailnet
   # over HTTPS, with production cookie/API-key settings and tailnet origin.
   omnirouteTests = name: config: {
@@ -434,6 +469,7 @@ let
         // lib.optionalAttrs host.services.t3code (t3codeTests name config)
         // lib.optionalAttrs host.services.luvusWeb (luvusWebTests name config)
         // lib.optionalAttrs host.services.omniroute (omnirouteTests name config)
+        // lib.optionalAttrs host.services.executor (executorTests name config)
         // lib.optionalAttrs config.services.tailscale.enable (tailscaleServeTests config)
         // (hostTests.${name} or (_: { })) config
         // lib.concatMapAttrs (

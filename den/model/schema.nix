@@ -84,6 +84,7 @@ let
       rex = "the personal Rex terminal server for the host's home user";
       crossStream = "the system cross.stream service, for hosts without the Home Manager one";
       omniroute = "the OmniRoute AI gateway, published privately on the tailnet";
+      executor = "the Executor tool and MCP gateway, published privately on the tailnet";
     };
   };
 
