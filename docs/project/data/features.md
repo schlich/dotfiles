@@ -27,3 +27,5 @@ it as `jj shape`.
 [Streamed flake-check progress](features/flake-check-progress.md)
 
 [Traces of ci landings](features/ci-traces.md)
+
+[marimo notebooks in Rex](features/rex-notebooks.md)
