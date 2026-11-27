@@ -4,6 +4,14 @@ The history of this workspace, newest first. The `ship` skill appends a dated
 group on every release; any skill that creates or retires a document adds a line
 to the current day's group.
 
+## 2026-11-26
+
+- **Terminal**: Prepared [marimo notebooks in Rex](features/rex-notebooks.md).
+  `notebook open` serves a repository's notebooks from a Rex terminal on asus
+  or homelab, in the project's Python environment, and opens them in the
+  browser on asus, through `rex forward open` for homelab. The change awaits
+  validation and delivery.
+
 ## 2026-11-24
 
 - **Tooling**: jj-graph's normalizer moved, with its history, to

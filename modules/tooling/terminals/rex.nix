@@ -86,7 +86,11 @@ let
   '';
 in
 {
-  imports = [ inputs.rex.homeManagerModules.default ];
+  imports = [
+    inputs.rex.homeManagerModules.default
+    # `notebook`: marimo notebooks in Rex terminals, here or on a host.
+    ./rex-notebooks
+  ];
 
   options.dotfiles.rex.hosts = lib.mkOption {
     type = lib.types.attrsOf lib.types.str;
